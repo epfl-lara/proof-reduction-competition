@@ -1,0 +1,364 @@
+**Yes—there is a directly relevant literature on improving already valid Lean proofs, and I would start with four works: ImProver, ProofOptimizer, the organizers’ Lean Refactor paper, and LeanPolish.** If you plan to train a model, add **ImProver 2** early.
+
+My main recommendation is to study this as **optimization over verified proof transformations**: start with an existing proof, propose changes, verify them, and select changes using the competition’s actual objective. That framing connects the recent Lean papers to useful older work on program superoptimization, proof minimization, and proof refactoring.
+
+I checked the papers, available artifacts, and the arena’s public rules as of **2 October 2026**. Several relevant papers appeared after the version you linked.
+
+## 1. First, understand exactly what the competition rewards
+
+The arena currently combines three objectives:
+
+| Objective | What is measured | Consequence for your method |
+|---|---|---|
+| Proof size | Reduction in proof-source tokens relative to the reference | Shorter source can help, even if the underlying mathematical argument stays similar. |
+| Elaboration efficiency | Reduction in Lean heartbeats | Replacing several explicit steps with a powerful tactic can make this worse. |
+| Version compatibility | Fraction of listed toolchains on which the submitted proof compiles unchanged | A rewrite needs to survive the relevant library environments. |
+
+For a valid proof, the published scoring implementation is essentially
+
+\[
+S_i=\frac{1}{3}\left[
+100\left(1-\frac{L_i}{L_i^{\mathrm{ref}}}\right)
++
+100\left(1-\frac{H_i}{H_i^{\mathrm{ref}}}\right)
++
+C_i
+\right],
+\]
+
+where \(C_i\) is the compatibility percentage. The final score averages over **all benchmark problems**, including missing or rejected submissions, which receive zero. Reductions can be negative. :chatgpt-content-reference{index="0"}
+
+Here is a hypothetical illustration:
+
+| Candidate | Token reduction | Heartbeat reduction | Compatibility | Combined score |
+|---|---:|---:|---:|---:|
+| A | 80% | −20% | 100% | 53.3% |
+| B | 50% | 50% | 100% | **66.7%** |
+
+This makes **candidate selection** a substantial part of the problem. A method that generates excellent short proofs can still perform poorly if it selects candidates using length alone.
+
+Also distinguish **heartbeats, elapsed compilation time, and proof-term size**. Lean’s heartbeat counter tracks small memory allocations on the executing thread; it is a computational-effort proxy, not a direct measurement of seconds or proof-term length. :chatgpt-content-reference{index="1"}
+
+For your experiments, I would represent each candidate by the full vector
+
+\[
+\bigl(\text{token count},\ \text{heartbeats},\ \text{version outcomes}\bigr)
+\]
+
+and keep the original proof as a fallback alongside improved candidates.
+
+## 2. The organizers’ paper: what to take from it
+
+### Lean Refactor: Multi-Objective Controllable Proof Optimization via Agentic Strategy Search
+
+**Jialin Lu et al., 2026.**  
+[Your linked v1](https://arxiv.org/abs/2605.20244v1) · [Latest v2](https://arxiv.org/abs/2605.20244v2)
+
+The arXiv record lists v1 on **18 May 2026** and v2 on **4 August 2026**. :chatgpt-content-reference{index="2"}
+
+The method’s central idea is to retrieve **reusable refactoring strategies**, with metadata describing compilation effects and version compatibility. A planner selects transformations, a refactoring component applies them, and a debugging component uses Lean feedback. Retrieval can prioritize semantic relevance, expected compilation savings, and supported versions.
+
+Two details matter when building on it:
+
+- The generator is frozen, but the system **does train its strategy retriever**. “Training-free” should therefore be interpreted carefully.
+- The strategy metadata summarizes previous examples. It helps prioritize candidates; the new proof still needs verification and measurement.
+
+On their particular input proofs, Table 1 reports average relative length reductions of **88.40% on miniF2F** and **70.38% on PutnamBench**. These are compression results, not arena combined scores.
+
+**Read closely:** Sections 3.1–3.3, Appendix B on strategy construction, and the experimental settings and metrics. **The most useful component to build on is the transformation database and its objective-aware retrieval.** :chatgpt-content-reference{index="3"}
+
+## 3. The closest literature you should read
+
+### A. ImProver — the foundational agent approach
+
+**Riyaz Ahuja, Jeremy Avigad, Prasad Tetali, Sean Welleck.**  
+**ImProver: Agent-Based Automated Proof Optimization.** ICLR 2025; preprint 2024.  
+[Paper](https://arxiv.org/abs/2410.04753) · [Code](https://github.com/riyazahuja/ImProver)
+
+ImProver takes an existing proof and a user-defined metric, then searches for a verified improvement using candidate sampling, iterative refinement, error correction, and retrieval. Its particularly useful idea is **Chain-of-States prompting**: expose the intermediate Lean goals alongside the original proof so the model can see what each tactic accomplishes.
+
+It studies length, declarative structure, and a mixed metric. Consequently, it is inaccurate to describe all earlier work as optimizing only a single primitive property: ImProver already combines length and declarativity in one score. Its length measure also differs from the arena’s source-token objective. :chatgpt-content-reference{index="4"}
+
+**Why read it:** it provides a clear starting point for a frozen-model optimizer.
+
+**What I would reuse:** proof-state annotations, retention of the best valid candidate, and a bounded repair loop.
+
+**Reading priority:** very high, especially Section 3. The public repository is available, although you should check its environment assumptions against the arena. :chatgpt-content-reference{index="5"}
+
+### B. ProofOptimizer — the foundational training approach
+
+**Alex Gu, Bartosz Piotrowski, Fabian Gloeckle, Kaiyu Yang, Aram H. Markosyan.**  
+**ProofOptimizer: Training Language Models to Simplify Proofs without Human Demonstrations.** 2025.  
+[Paper](https://arxiv.org/abs/2510.15700) · [Project](https://proof-optimizer.github.io/)
+
+ProofOptimizer combines a symbolic linter, a specialized 7B model, and iterative candidate generation. It compares two training routes:
+
+- **Expert iteration:** generate simplifications, verify them, and train on successful improvements.
+- **Reinforcement learning:** use correctness and reduction as the training signal.
+
+At inference, it repeatedly samples alternatives to the current proof and retains the best verified result. Section 5.2.1 also explicitly investigates **heartbeat optimization**, so this is useful beyond compression. :chatgpt-content-reference{index="6"}
+
+**Why read it:** this is the direct reference for learning an optimizer without a large collection of human-written before/after examples.
+
+**What I would reuse:** the data-generation loop and the separation between training improvements and inference-time search.
+
+**Caveat:** its large reported reductions involve substantial iterative sampling. Compare methods using the same starting proofs and declared budgets. I verified the paper and project results, but did not verify a publicly downloadable trained checkpoint.
+
+**Reading priority:** very high; focus on Sections 3, 4.3, and 5.2.1.
+
+### C. LeanPolish — the most immediately useful new baseline and dataset
+
+**Pauline Bourigault.**  
+**LeanPolish: Verified Supervision for Lean Proof Compression.** 29 September 2026, preprint.  
+[Paper](https://arxiv.org/abs/2609.38384) · [Code](https://github.com/paulinebourigault/leanpolish) · [Dataset](https://huggingface.co/datasets/leanpolish-anon/lean-proof-compression)
+
+LeanPolish supplies a symbolic pipeline for local proof edits and studies whether models learn useful optimization behavior from those edits. Its release includes **33,402 accepted edits and 65,596 unsuccessful attempts**.
+
+Its most important finding for experimental design is that **verification does not eliminate dataset shortcuts**. If candidate search stops at its first success, candidate order can reveal the preferred answer. Evaluating complete candidate menus removes that particular shortcut.
+
+It also shows why you should repeat symbolic cleanup: on its full miniF2F input set, iteration increases compression from **19.7% to 27.5%**, exceeding the tested neural hybrids on that source. This does not establish that symbolic methods always win. :chatgpt-content-reference{index="7"}
+
+**Why read it:** it gives you an actionable baseline, local supervision, and unusually useful evaluation controls.
+
+**Artifact detail:** the implementation pins Lean/Mathlib 4.21.0 and provides an independent verifier and experiment scripts. Its dataset records observed failures under particular search conditions; those are not proofs that an edit could never work. :chatgpt-content-reference{index="8"}
+
+**Reading priority:** very high—read this before committing to a learned local editor.
+
+### D. ImProver 2 — preference learning for proof improvement
+
+**Riyaz Ahuja, Tate Rowney, Jeremy Avigad, Sean Welleck.**  
+**ImProver 2: Iteratively Self-Improving LMs for Neurosymbolic Proof Optimization.** May 2026.  
+[Paper](https://arxiv.org/abs/2605.22885)
+
+ImProver 2 trains a small model through iterative preference optimization and replay. Its training objective combines preferences between candidate proofs with likelihood training on preferred outputs.
+
+Its context includes referenced declaration signatures, documentation, intermediate proof states, and an automatically generated informal explanation. It studies tactic count, explicit dependencies, and a structural modularity measure.
+
+Two qualifications make the paper especially useful to read carefully: those structural scores are **proxies**, not established measures of human preference; and stronger models given the same contextual scaffold can outperform the specialized model. :chatgpt-content-reference{index="9"}
+
+**Why read it:** it provides an alternative to ProofOptimizer’s training recipe and a good account of how context helps proof rewriting.
+
+**What I would reuse:** correctness-aware preference pairs, replay, and contextual augmentation.
+
+**Reading priority:** high for the open-model track. I did not verify a separate public release of ImProver-2-specific weights, so I would treat this first as a method to study.
+
+## 4. Other direct work that broadens your transformation vocabulary
+
+### Proof-Refactor — extracting and redesigning subproofs
+
+**Yiming Fu, Peixuan Liu, Zichen Wang, Kun Yuan.**  
+**Proof-Refactor: Refactoring Generated Formal Proofs into Modular Artifacts.** June 2026.  
+[Paper](https://arxiv.org/abs/2606.03743) · [Project](https://pelicanhere.github.io/proof-refactor-site/) · [Code](https://github.com/pelicanhere/proof-refactor)
+
+The pipeline identifies proof fragments, designs reusable helper signatures, proves those helpers, and rewrites the original proof to use them. Its custom extraction mechanism makes it interesting for **subproof decomposition and abstraction**.
+
+Its evaluation emphasizes an LLM-based quality rubric. That evidence should be distinguished from demonstrated human readability or stronger arena scores. :chatgpt-content-reference{index="10"}
+
+There is an important competition-specific restriction: the arena prohibits auxiliary top-level declarations and syntax extensions in submissions. Therefore, transferring this approach would require using existing accessible lemmas or adapting decomposition to local `have`/`let` constructions inside the proof. :chatgpt-content-reference{index="11"}
+
+### LeanRefiner — global restructuring followed by local reduction
+
+**Tian Cui et al.**  
+**LeanRefiner: Agentic Global-to-Local Optimization of Lean Proofs.** ICML 2026 AI for Math Workshop.  
+[Paper](https://openreview.net/forum?id=60bd3O67QA) · [Code](https://github.com/Tristan-sdu/LeanRefiner)
+
+LeanRefiner uses separate agents for global restructuring and local reduction, accepting changes after verification. The repository contains orchestration code, prompts, and worked examples, with a Lean project pinned to 4.26.0. The author’s publication list confirms the workshop paper. :chatgpt-content-reference{index="12"}
+
+**Why inspect it:** it offers a concrete implementation of alternating large changes and small cleanup steps. I could inspect its code documentation, but the paper page was blocked during retrieval, so I would not rely on unverified performance claims.
+
+### Growing Mathlib — the maintainer perspective on actual cost
+
+**Anne Baanen et al.**  
+**Growing Mathlib: maintenance of a large scale mathematical library.** 2025.  
+[Paper](https://arxiv.org/abs/2508.21593)
+
+I would put this surprisingly high on your reading list. Its performance discussion explains how typeclass synthesis, coercions, definitional equality, and tactics affect compilation.
+
+It also qualifies a common optimization heuristic: restricting `simp` to `simp only` is **not universally beneficial**. Lean 4’s indexing already avoids much irrelevant work, and explicit premise lists can impose maintenance costs. Conversely, replacing unnecessarily powerful proof search with a simpler tactic can help substantially. :chatgpt-content-reference{index="13"}
+
+**Why read it:** it will help you design transformations with plausible computational benefits and avoid learning simplistic rules such as “fewer tactic lines means faster.”
+
+## 5. Older and adjacent literature worth borrowing from
+
+These works address related representations or objectives. The adaptations in the right column are **research ideas for Lean**, not results already demonstrated by those papers.
+
+| Work | Relevant published idea | How it could inform your project |
+|---|---|---|
+| **Zeller & Hildebrandt, [Simplifying and Isolating Failure-Inducing Input](https://www.cs.purdue.edu/homes/xyzhang/fall07/Papers/delta-debugging.pdf), TSE 2002** | Delta debugging reduces an input while preserving a predicate. `ddmin` gives 1-minimality under its deletion units, not a globally smallest input. | Preserve “accepted proof of the original theorem” while deleting tactic blocks, unused facts, or premise-list elements. Use syntax-aware units. :chatgpt-content-reference{index="14"} |
+| **Schkufza, Sharma & Aiken, [Stochastic Superoptimization](https://arxiv.org/abs/1211.0557), ASPLOS 2013** | STOKE searches program transformations using a cost function and stochastic exploration. | Treat the original proof as an incumbent and explore replacements and restructuring. For a fixed theorem, validity requires proving the original type; the derivation need not match the old one. :chatgpt-content-reference{index="15"} |
+| **Blanchette et al., [Hammering towards QED](https://jfr.unibo.it/article/view/4593), 2016** | Hammer systems combine premise selection, automated search, and proof reconstruction. Sledgehammer also minimizes returned fact sets. | Separate discovering a proof from minimizing its dependencies and choosing a compact reconstruction. The [Sledgehammer manual](https://isabelle.in.tum.de/doc/sledgehammer.pdf) is useful implementation reading. :chatgpt-content-reference{index="16"} |
+| **Binder, Lachnitt & Kosaian, [Apply2Isar](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ITP.2026.18), ITP 2026** | Converts procedural Isabelle proofs into structured declarative proofs. | Use execution structure to identify meaningful regions for rewriting. This is particularly relevant if you investigate readability and robustness alongside compression. :chatgpt-content-reference{index="17"} |
+| **Ringer et al., [Proof Repair across Type Equivalences](https://arxiv.org/abs/2010.00774), PLDI 2021** | Pumpkin Pi transforms Coq proof terms and decompiles them into tactic scripts after representation changes. | Study the distinction between transforming source scripts and transforming elaborated proof terms. Most relevant if your project extends toward semantic refactoring or maintenance. :chatgpt-content-reference{index="18"} |
+| **Wang et al., [LEGO-Prover: Neural Theorem Proving with Growing Libraries](https://proceedings.iclr.cc/paper_files/paper/2024/hash/85dca46374dc0f27b4bb5f265b3d17f0-Abstract-Conference.html), ICLR 2024** | Builds modular Isabelle proofs using a growing library of verified lemmas. | Learn patterns for replacing repeated derivations with reusable results. For this arena, prioritize lemmas already available in the permitted environment. :chatgpt-content-reference{index="19"} |
+
+For historical coverage, also note **Mark Adams’ [Refactoring Proofs with Tactician](https://proof-technologies.com/papers/tactician_hofm2015.html)**, from the SEFM 2015 workshops. It is a relevant pre-LLM proof-refactoring reference to include when positioning this research area. :chatgpt-content-reference{index="20"}
+
+### Two infrastructure papers that are especially relevant
+
+**LeanDojo: Theorem Proving with Retrieval-Augmented Language Models — Yang et al., NeurIPS 2023.**  
+[Paper](https://arxiv.org/abs/2306.15626)
+
+Read it for extracting proof states and premise annotations, and for retrieving **accessible premises**. An attractive replacement lemma is useful only if it is available at the theorem’s location. :chatgpt-content-reference{index="21"}
+
+For implementation, the original repository now marks itself deprecated and directs new projects to [LeanDojo-v2](https://github.com/lean-dojo/LeanDojo-v2). Check compatibility before adopting either infrastructure. :chatgpt-content-reference{index="22"}
+
+**Pantograph — Aniva et al., 2024/2025.**  
+[Paper](https://arxiv.org/abs/2410.16429) · [Python interface](https://github.com/stanford-centaur/PyPantograph)
+
+This is particularly relevant for executing local candidate tactics, extracting states, and handling **metavariable coupling**: apparently separate goals can share unresolved choices. Consequently, matching printed goals is insufficient justification for treating proof fragments as independent. Its support for incremental interaction is useful for testing local replacements without continually regenerating entire proofs. :chatgpt-content-reference{index="23"}
+
+## 6. What I would build first from this literature
+
+The following is my proposed experimental design. It is intended to establish a strong starting point and expose where learning actually helps.
+
+### Step 1: Reproduce the measurements before optimizing
+
+Build a local evaluator that records the original theorem, candidate proof, validity, length, heartbeats, and version outcomes.
+
+The arena’s benchmark metadata specifies repository locations and version-dependent commits. For project-resident problems, the proof is evaluated in its repository context; installing a Lean version and importing an arbitrary Mathlib snapshot does not reproduce that environment. :chatgpt-content-reference{index="24"}
+
+One unresolved implementation detail deserves attention: the public Space exposes benchmark metadata and score aggregation, but compilation occurs in a separate evaluation worker. I did not locate its exact tokenizer and measurement wrapper in the public files I inspected. **Do not silently assume that the paper’s measurement code is identical to the arena’s.** :chatgpt-content-reference{index="25"}
+
+I would first check whether a local implementation reproduces the published reference measurements closely enough to support candidate ranking.
+
+### Step 2: Establish a strong symbolic baseline
+
+Use a small collection of explicit, interpretable transformations:
+
+- Delete tactics or local facts that are unnecessary.
+- Remove unused entries from explicit premise lists.
+- Try simpler replacements for expensive tactics.
+- Simplify redundant local proof structure.
+- Repeat the passes until the chosen stopping condition is reached.
+
+Record the actual work spent. A “fixed point” reached after exhaustive application of a small transformation menu differs from a run that stops because a time budget expires.
+
+This baseline is valuable twice: it improves proofs directly and tells you which improvements remain available for a learned component.
+
+### Step 3: Add model proposals at two scales
+
+I would use both:
+
+**Local proposals:** replace one tactic, a short block, or a local subproof. Supply the relevant goal, hypotheses, original block, and necessary declaration information.
+
+**Global proposals:** rewrite the proof’s overall organization or choose another mathematical route. Reserve these for cases where local cleanup has stalled or profiling identifies a large opportunity.
+
+The scheduler should decide where to spend the next attempt. Constantly rewriting the entire proof may consume substantial generation and verification work without changing the expensive part.
+
+### Step 4: Preserve alternatives during search
+
+Retain several useful candidates rather than only the shortest proof. A small archive could preserve candidates with different strengths:
+
+- Best current combined score.
+- Best heartbeat count.
+- Best token count.
+- Best observed compatibility.
+- A structurally different candidate that may enable further improvement.
+
+Final selection should use the arena score. The archive exists to support further exploration, not to replace the competition’s objective.
+
+A useful experiment is whether temporary increases in source length enable later improvements. For example, an explicit local intermediate fact might make a larger rewrite possible, even though the first edit alone is unattractive.
+
+### Step 5: Train only after identifying a bottleneck
+
+Before training an entire rewriting model, I would test whether a smaller learned component can improve:
+
+1. **Location selection:** where to edit.
+2. **Transformation selection:** which operation to try.
+3. **Candidate ranking:** which generated alternative to verify first.
+4. **Budget allocation:** when to stop working on one proof or strategy.
+
+This gives you a clearer diagnostic target than immediately training an end-to-end optimizer. If most proposals are invalid, improve generation or context. If many proposals work but checking them dominates the budget, improve selection.
+
+## 7. Research directions that look promising
+
+I would distinguish **useful system assembly** from a claim of research novelty. Verified agent loops, retrieval, self-training, and local cleanup all have substantial precedent in the papers above.
+
+The following questions seem worth investigating, but they still require comparison against that prior work.
+
+### Direction A: Learn which transformation is worth trying next
+
+Model an action as
+
+\[
+a=(\text{location},\ \text{transformation},\ \text{parameters}).
+\]
+
+Condition selection on the current goal, local context, source structure, environment version, and previous attempts. Predict both whether an action will work and its likely improvement.
+
+For scheduling, a useful target could be expected positive score gain per unit of search cost:
+
+\[
+\frac{\mathbb{E}[\max(0,S_{\mathrm{new}}-S_{\mathrm{best}})]}
+{\mathbb{E}[\text{generation and verification cost}]}.
+\]
+
+This is a scheduling heuristic, not a replacement for the official score.
+
+The key experiment would compare a learned selector with fixed ordering, random ordering, semantic similarity, and a strong hand-designed policy. Use complete or appropriately sampled candidate outcomes so the model cannot succeed merely by learning the data-collection order.
+
+### Direction B: Optimize robustness using the proof’s dependencies
+
+Investigate which representation choices predict successful unchanged compilation:
+
+- Existing lemma applications versus unfolded arguments.
+- Explicit arguments versus inferred arguments.
+- Broad automation versus explicit reconstruction.
+- Dependence on particular names, simp sets, or typeclass behavior.
+
+I would avoid assuming that one direction always improves portability. The experiment should measure the effects on actual version pairs and separate compatibility seen during development from generalization to held-out versions.
+
+This could produce something more useful than a single compression number: an empirical account of **which transformations remain effective as Lean environments change**.
+
+### Direction C: Search over transformations that require several steps
+
+A greedy optimizer may reject a useful intermediate proof because it is temporarily longer or slower. Compare greedy acceptance with a small beam or bounded lookahead over valid rewrites.
+
+The research question is whether extra exploration produces enough final improvement to justify its cost. A convincing result would show gains under matched budgets, with examples explaining which intermediate transformations unlocked them.
+
+Of these, **Direction A is where I would start**. It connects naturally to the available local-edit data and provides an incremental path from a working baseline to a learning contribution.
+
+## 8. How to make the experimental evidence convincing
+
+I would use the following baseline ladder:
+
+| Baseline | What it isolates |
+|---|---|
+| Original proof | Starting point and fallback behavior |
+| Symbolic cleanup, one pass | Immediate local redundancy |
+| Repeated symbolic cleanup | Benefits from iteration alone |
+| Frozen model with verification | Benefits from generation and selection |
+| Symbolic cleanup plus frozen model | Complementarity of proposal mechanisms |
+| Same system plus learned component | Added value of training |
+
+Keep the **input proofs identical** across comparisons. Large percentage reductions can reflect unusually verbose starting proofs, so headline compression numbers from different papers are not automatically comparable.
+
+For each system, report:
+
+- All three score components and the combined score.
+- Per-problem outcomes, including regressions and failures.
+- Generation cost, verification calls, and elapsed search time.
+- Results by proof source and initial complexity.
+- The exact repository commits and toolchains.
+- Variation across repeated stochastic runs where feasible.
+
+For a robustness claim, distinguish problems tested on several versions from those tested on only one. For a readability claim, collect suitable human evidence; source length, explicit lemma counts, and automated rubrics answer narrower questions.
+
+## 9. A practical reading order
+
+My suggested sequence is:
+
+1. **ImProver, Section 3:** understand the basic optimization task and proof-state context.
+2. **ProofOptimizer, Sections 3 and 5.2.1:** understand learning from verified improvements and heartbeat optimization.
+3. **Lean Refactor, Section 3 and Appendix B:** understand reusable transformations and objective-aware retrieval.
+4. **LeanPolish, Sections 3–5:** establish strong baselines and avoid misleading training evaluations.
+5. **Growing Mathlib, Section 5:** learn what actually drives Lean compilation cost.
+6. **Pantograph:** work out how to implement reliable local experimentation.
+7. **ImProver 2:** study preference learning if training is part of your approach.
+8. **Proof-Refactor and the classical papers:** expand the transformation space and sharpen the research framing.
+
+If you need more Lean background, use [Theorem Proving in Lean 4](https://lean-lang.org/theorem_proving_in_lean4/) for proofs and tactics, then [Metaprogramming in Lean 4](https://leanprover-community.github.io/lean4-metaprogramming-book/) for syntax, expressions, elaboration, and tactic implementation. Those concepts will matter directly when moving from text rewriting to structured proof transformations. :chatgpt-content-reference{index="26"}
+
+For the **closed-model track**, I would prioritize the evaluator, symbolic passes, contextual prompting, and scheduling under the published **US$3-per-problem** limit. For the **open-model track**, the same baseline provides a foundation for a learned selector or editor under the published **4 × A100 80 GB / 48-hour** execution constraint. :chatgpt-content-reference{index="27"}
+
+**My first experimental milestone would be a reproducible optimizer that combines repeated symbolic cleanup with targeted model proposals, then measures whether a learned transformation selector improves the arena score at the same budget.** That gives you a competitive starting point and a precise research question to develop.

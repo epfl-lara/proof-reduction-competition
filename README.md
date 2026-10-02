@@ -10,6 +10,7 @@ The task is to refactor existing Lean 4 proofs while preserving their statements
 - [data/benchmark_data_warmup.jsonl](data/benchmark_data_warmup.jsonl): the original, unmodified warm-up benchmark.
 - [data/benchmark_heartbeats.jsonl](data/benchmark_heartbeats.jsonl): the organizer's published reference heartbeat counts, preserved separately from local measurements.
 - [src/proof_eval](src/proof_eval): Python, CLI, and localhost HTTP evaluation API, including training reward adapters.
+- [related_work](related_work/README.md): verified literature, downloadable papers, model feasibility, and the proposed harness/SFT/GRPO plan for both tracks.
 - [.gitignore](.gitignore): Python environments, caches, build artifacts, Lean/Lake build outputs, and local credentials.
 
 Each benchmark row specifies its own evaluation versions. The evaluator uses explicitly configured, prebuilt Lean projects at those exact revisions; there is no single repository-wide Lean toolchain. Its Python package has no external runtime dependencies and invokes Lean through Lake.
