@@ -44,7 +44,7 @@ For project-resident declarations, evaluation takes place inside the source repo
 
 ## Participation
 
-1. Read [RULES.md](RULES.md) and choose a track.
+1. Read [RULES.md](RULES.md) and prepare the required artifacts for each track you enter.
 2. Use the exact statement from each row and replace only its proof body. Validate in the row's repository context and listed versions.
 3. Produce a UTF-8 JSONL file with a `name` and a `proof` string per submitted declaration. `proof` must contain the complete declaration, not just the tactics.
 4. Upload proofs in the arena's Submit tab. Keep the submission key issued on the first successful upload outside Git.
@@ -73,10 +73,19 @@ configuration. `--source strata` or `--version v4.26.0` limits setup. Projects a
 logs live under `.proof-eval-projects/`; this can require substantial disk space.
 Evaluation itself continues to use only configured projects.
 
-For deterministic optimization, use [src/run_deterministic.py](src/run_deterministic.py).
+For deterministic optimization, use [src/run_experiments.py](src/run_experiments.py)
+for one method or [src/run_portfolio.py](src/run_portfolio.py) for the staged
+portfolio and repeated sweeps. The first linter/simplifier experiments retain
+[their original runner](src/run_deterministic.py).
 The [experiment guide](results/README.md) gives the stage order, commands, objective,
 budgets, and artifact format. It retains the original proof unless a fully checked
 candidate improves the competition's combined score.
+Completed stages have component scores, accepted-edit examples, rejected trials,
+version coverage, and stop reasons. [The evidence auditor](src/audit_experiments.py)
+checks saved proofs, reference values, score arithmetic, and implementation hashes
+without rerunning Lean.
+See [the measured findings](results/FINDINGS.md) for the practical conclusions,
+costs, coverage limits, and next isolated experiment.
 
 ### Python and reward functions
 
@@ -183,7 +192,7 @@ The published heartbeat file is pinned to the same Space revision as the benchma
 ### Validation
 
 ```bash
-python -m unittest discover -s tests -v
+python -m pytest -q
 ```
 
-The tests cover tokenizer agreement, unchanged statements, malformed and forbidden code, baseline and candidate cache reuse, environment invalidation, incomplete compatibility, reward semantics, HTTP transport, and isolated Lean compilation. Lean integration tests require the toolchain indicated in the test fixture; otherwise they skip explicitly.
+The tests cover tokenizer agreement, unchanged statements, malformed and forbidden code, baseline and candidate cache reuse, environment invalidation, incomplete compatibility, reward semantics, HTTP transport, isolated Lean compilation, deterministic proposal scope, checkpoint recovery, and independent evidence audits. Lean integration tests require the toolchain indicated in the test fixture; otherwise they skip explicitly. The [saved validation record](results/validation/test_suite.json) includes the tested source hashes.

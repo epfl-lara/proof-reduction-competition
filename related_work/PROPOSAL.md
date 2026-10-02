@@ -1,27 +1,38 @@
 # Proposed development plan for both tracks
 
 **Execution update:** [staged warm-up experiments](../results/README.md) now cover
-all 36 reference checks and two measured deterministic passes. The local combined
-score improved from 33.330% to 37.100%. Follow those reports for the concrete next
-experiment; the model and training stages below remain proposals.
+all 36 reference checks, ten deterministic methods, and two completed repeat sweeps.
+Follow those reports for current scores, concrete accepted edits, costs, and the
+next experiment; the model and training stages below remain proposals. The
+[measured findings](../results/FINDINGS.md) identify continuation through unvisited
+discovery sites as the next isolated scheduling experiment.
 
 **Recommendation:** build a shared search engine around the existing evaluator; make repeated symbolic cleanup plus a frozen model competitive first. Train a small editor on verified improvements, compare expert iteration with GRPO, and keep final-data adaptation as an optional experiment. Large-model deployment should earn its place through score gained per unit of time.
 
-This is an implementation proposal, not a claim that the harness or training jobs already exist. Literature mechanisms and limits are summarized in [LITERATURE.md](LITERATURE.md); hardware and framework choices are in [MODELS.md](MODELS.md).
+The deterministic proposal runner and evaluator are implemented; model proposal
+loops and training jobs below remain proposals. Literature mechanisms and limits
+are summarized in [LITERATURE.md](LITERATURE.md); hardware and framework choices are
+in [MODELS.md](MODELS.md).
 
 ## What to build first
 
 | Priority | Deliverable | Acceptance evidence |
 | --- | --- | --- |
-| P0 | Complete project/version setup and cached references | Every requested environment is pinned and every original proof is measured once locally; unavailable entries are resolved before claiming combined scores. |
-| P1 | Repeated deterministic cleanup | A resumable run over all warm-up proofs, with per-edit verifier outcomes, stopping reason, and final score vector. |
+| P0 — complete | Project/version setup and cached references | Every requested environment is pinned and all 36 local reference measurements are prepared and reused. |
+| P1 — complete | Repeated deterministic cleanup | Ten methods and two bounded sweeps over all 15 warm-up proofs, with per-edit outcomes, stop reasons, and complete score vectors. |
 | P2 | Shared model proposal loop and budget scheduler | Valid incumbent survives errors/interruption; closed dollars and open runtime are bounded; final output passes all configured version checks. |
 | P3 | Qwen3.8-27B versus Qwen3.6-35B frozen pilot | Matched-budget results choose the initial editor and serving topology. |
 | P4 | Verified data pipeline and LoRA SFT | One small end-to-end training run improves a held-out set, including reloaded-checkpoint inference. |
 | P5 | GRPO and offline preference alternatives | Improvement over frozen/SFT search at equal inference budget, with training cost reported separately. |
 | P6 | Large quantized model and test-time adaptation ablations | Demonstrated extra score under the complete resource cap; rule questions resolved before final-data training. |
 
-The existing processing output currently contains 15 problems with **3 prepared and 33 unavailable theorem/version measurements** (local inspection, 2026-10-02). Thus environment coverage is the first blocker to full-score experiments. The repository already has cached reference preparation, source-token scoring, local heartbeat measurement, per-version validation, and reward methods. It does not yet have proposal generation, a training corpus builder, or a trainer.
+All **15 warm-up problems and 36 theorem/version reference measurements** are
+prepared (October 2, 2026); optimization reuses these cached values. The repository
+has deterministic proposal generation, resumable experiments, source-token and
+local-heartbeat scoring, per-version validation, and reward methods. It does not
+yet have model proposal generation, a training corpus builder, or a trainer. The
+measured deterministic baseline in `results/` is the comparison point for those
+future experiments.
 
 ## Shared harness
 
