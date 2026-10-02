@@ -1,7 +1,7 @@
 """Plot saved benchmark scores; no Lean calls or new reference measurements.
 
 Usage: python src/plot_experiments.py
-Reads results/deterministic_comparison.json and writes results/score_progress.svg.
+Reads the archived deterministic comparison and writes its score-progress plot.
 Requires matplotlib, an optional plotting dependency already present in af.
 """
 from __future__ import annotations
@@ -151,8 +151,8 @@ def plot_comparison(comparison, output):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=Path("results/deterministic_comparison.json"))
-    parser.add_argument("--output", type=Path, default=Path("results/score_progress.svg"))
+    parser.add_argument("--input", type=Path, default=Path("results/deterministic/deterministic_comparison.json"))
+    parser.add_argument("--output", type=Path, default=Path("results/deterministic/score_progress.svg"))
     args = parser.parse_args(argv)
     try:
         output = plot_comparison(json.loads(args.input.read_text()), args.output)

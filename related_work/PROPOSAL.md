@@ -1,10 +1,10 @@
 # Proposed development plan for both tracks
 
-**Execution update:** [staged warm-up experiments](../results/README.md) now cover
+**Execution update:** [staged warm-up experiments](../results/deterministic/README.md) now cover
 all 36 reference checks, ten deterministic methods, and two completed repeat sweeps.
 Follow those reports for current scores, concrete accepted edits, costs, and the
 next experiment; the model and training stages below remain proposals. The
-[measured findings](../results/FINDINGS.md) identify continuation through unvisited
+[measured findings](../results/deterministic/FINDINGS.md) identify continuation through unvisited
 discovery sites as the next isolated scheduling experiment.
 
 **Recommendation:** build a shared search engine around the existing evaluator; make repeated symbolic cleanup plus a frozen model competitive first. Train a small editor on verified improvements, compare expert iteration with GRPO, and keep final-data adaptation as an optional experiment. Large-model deployment should earn its place through score gained per unit of time.
@@ -31,7 +31,7 @@ prepared (October 2, 2026); optimization reuses these cached values. The reposit
 has deterministic proposal generation, resumable experiments, source-token and
 local-heartbeat scoring, per-version validation, and reward methods. It does not
 yet have model proposal generation, a training corpus builder, or a trainer. The
-measured deterministic baseline in `results/` is the comparison point for those
+measured deterministic baseline in `results/deterministic/` is the comparison point for those
 future experiments.
 
 ## Shared harness

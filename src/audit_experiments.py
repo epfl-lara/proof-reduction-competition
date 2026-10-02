@@ -1,7 +1,7 @@
 """Audit saved experiment evidence without running Lean or preparing references.
 
-    python src/audit_experiments.py --stages results/03_wrappers \
-      --check-cache --check-code --output results/validation/audit.json
+    python src/audit_experiments.py --stages results/deterministic/03_wrappers \
+      --check-cache --check-code --output results/deterministic/validation/audit.json
 
 This checks artifact consistency and score arithmetic, not kernel correctness
 afresh. The saved compiler outcomes remain the source of passing-check evidence.
@@ -137,6 +137,14 @@ def _input_proofs(stage, config, rows, previous):
         possibilities.append(previous / "candidates.jsonl")
     if config.get("input_path"):
         possibilities.append(Path(config["input_path"]))
+        # Historical evidence keeps its original paths after the results move.
+        # Resolve the known relocation without changing recorded hashes/inputs.
+        try:
+            relative = Path(config["input_path"]).relative_to("results")
+        except ValueError:
+            pass
+        else:
+            possibilities.append(Path("results/deterministic") / relative)
     # Original stages did not save input_path. Resolve their recorded digest
     # among sibling stage artifacts, rather than infer a proof from its hash.
     possibilities.extend(sorted(stage.parent.glob("*/candidates.jsonl")))
@@ -191,9 +199,9 @@ def _transitions(stage, row, baseline, record, initial, margin):
 
 
 def audit(stages, *, dataset="data/benchmark_data_warmup.jsonl",
-          references="results/00_reference_baseline/reference_values.jsonl",
+          references="results/deterministic/00_reference_baseline/reference_values.jsonl",
           check_code=False, check_cache=False, cache=".proof-eval", code_root=".",
-          snapshots="results/validation/implementation_snapshots"):
+          snapshots="results/deterministic/validation/implementation_snapshots"):
     """Audit immutable artifacts. Optional cache checks only read JSON files."""
     stages = [Path(stage) for stage in stages]
     _require(stages and len({stage.resolve() for stage in stages}) == len(stages), "Provide distinct stages in execution order")
@@ -290,11 +298,11 @@ def main(argv=None):
     parser.add_argument("--stages", nargs="+", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--dataset", type=Path, default=Path("data/benchmark_data_warmup.jsonl"))
-    parser.add_argument("--references", type=Path, default=Path("results/00_reference_baseline/reference_values.jsonl"))
+    parser.add_argument("--references", type=Path, default=Path("results/deterministic/00_reference_baseline/reference_values.jsonl"))
     parser.add_argument("--check-code", action="store_true")
     parser.add_argument("--check-cache", action="store_true")
     parser.add_argument("--cache", type=Path, default=Path(".proof-eval"))
-    parser.add_argument("--snapshots", type=Path, default=Path("results/validation/implementation_snapshots"),
+    parser.add_argument("--snapshots", type=Path, default=Path("results/deterministic/validation/implementation_snapshots"),
                         help="Content-addressed historical sources, used only by --check-code")
     args = parser.parse_args(argv)
     try:

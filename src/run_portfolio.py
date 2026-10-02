@@ -50,8 +50,8 @@ def finished_stage(output, input_path, method, budget, references):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output-root", type=Path, default=Path("results"))
-    parser.add_argument("--input", type=Path, default=Path("results/02_explicit_simp/candidates.jsonl"))
+    parser.add_argument("--output-root", type=Path, default=Path("results/deterministic"))
+    parser.add_argument("--input", type=Path, default=Path("results/deterministic/02_explicit_simp/candidates.jsonl"))
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--max-rounds", type=int, default=6)
     parser.add_argument("--max-trials", type=int, default=64)

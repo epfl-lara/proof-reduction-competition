@@ -11,7 +11,7 @@ The task is to refactor existing Lean 4 proofs while preserving their statements
 - [data/benchmark_heartbeats.jsonl](data/benchmark_heartbeats.jsonl): the organizer's published reference heartbeat counts, preserved separately from local measurements.
 - [src/proof_eval](src/proof_eval): Python, CLI, and localhost HTTP evaluation API, including training reward adapters.
 - [related_work](related_work/README.md): verified literature, downloadable papers, model feasibility, and the proposed harness/SFT/GRPO plan for both tracks.
-- [results](results/README.md): staged, model-free warm-up experiments, exact candidates, rejected attempts, and measured score changes.
+- [results](results/README.md): experiment index; [deterministic](results/deterministic/README.md) contains the warm-up proofs, rejected trials, measurements and reported arena result.
 - [.gitignore](.gitignore): Python environments, caches, build artifacts, Lean/Lake build outputs, and local credentials.
 
 Each benchmark row specifies its own evaluation versions. The evaluator uses explicitly configured, prebuilt Lean projects at those exact revisions; there is no single repository-wide Lean toolchain. Its Python package has no external runtime dependencies and invokes Lean through Lake.
@@ -73,18 +73,20 @@ configuration. `--source strata` or `--version v4.26.0` limits setup. Projects a
 logs live under `.proof-eval-projects/`; this can require substantial disk space.
 Evaluation itself continues to use only configured projects.
 
-For deterministic optimization, use [src/run_experiments.py](src/run_experiments.py)
-for one method or [src/run_portfolio.py](src/run_portfolio.py) for the staged
-portfolio and repeated sweeps. The first linter/simplifier experiments retain
-[their original runner](src/run_deterministic.py).
-The [experiment guide](results/README.md) gives the stage order, commands, objective,
+For a new dataset, call [src/run_deterministic_batch.py](src/run_deterministic_batch.py).
+The [batch interface guide](docs/DETERMINISTIC_BATCH.md) covers setup, explicit
+dataset/environment/cache inputs, resume, exit codes and submission export.
+[src/run_experiments.py](src/run_experiments.py) runs a single method. The original
+`run_deterministic.py` supports only linter and simplifier passes; `run_portfolio.py`
+continues the earlier warm-up workflow from stage 02.
+The [experiment guide](results/deterministic/README.md) gives the stage order, commands, objective,
 budgets, and artifact format. It retains the original proof unless a fully checked
 candidate improves the competition's combined score.
 Completed stages have component scores, accepted-edit examples, rejected trials,
 version coverage, and stop reasons. [The evidence auditor](src/audit_experiments.py)
 checks saved proofs, reference values, score arithmetic, and implementation hashes
 without rerunning Lean.
-See [the measured findings](results/FINDINGS.md) for the practical conclusions,
+See [the measured findings](results/deterministic/FINDINGS.md) for the practical conclusions,
 costs, coverage limits, and next isolated experiment.
 
 ### Python and reward functions
@@ -195,4 +197,4 @@ The published heartbeat file is pinned to the same Space revision as the benchma
 python -m pytest -q
 ```
 
-The tests cover tokenizer agreement, unchanged statements, malformed and forbidden code, baseline and candidate cache reuse, environment invalidation, incomplete compatibility, reward semantics, HTTP transport, isolated Lean compilation, deterministic proposal scope, checkpoint recovery, and independent evidence audits. Lean integration tests require the toolchain indicated in the test fixture; otherwise they skip explicitly. The [saved validation record](results/validation/test_suite.json) includes the tested source hashes.
+The tests cover tokenizer agreement, unchanged statements, malformed and forbidden code, baseline and candidate cache reuse, environment invalidation, incomplete compatibility, reward semantics, HTTP transport, isolated Lean compilation, deterministic proposal scope, checkpoint recovery, independent evidence audits, and running/resuming the full portfolio on a new dataset from outside the repository. Lean integration tests require the toolchain indicated in the test fixture; otherwise they skip explicitly. The [saved validation record](results/deterministic/validation/batch_api_test_suite.json) includes the tested source hashes.
