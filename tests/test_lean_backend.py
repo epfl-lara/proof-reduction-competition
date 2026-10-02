@@ -107,6 +107,48 @@ class LeanIntegrationTests(unittest.TestCase):
         result = self.evaluate(self.source)
         self.assertEqual(result["status"], "unavailable", result["diagnostics"])
 
+    def test_import_support_precedes_module_documentation(self):
+        self.prefix = "/- Copyright -/\nimport Lean\n\n/-! # Module documentation\nMore text. -/\nnamespace Demo\n"
+        self._write_project()
+        result = self.evaluate(self.source)
+        self.assertEqual(result["status"], "passed", result["diagnostics"])
+
+    def test_declaration_doc_comment_and_scoped_option(self):
+        self.prefix += "set_option linter.unusedVariables false in\n/-- Target documentation. -/\n"
+        self._write_project()
+        result = self.evaluate(self.source)
+        self.assertEqual(result["status"], "passed", result["diagnostics"])
+
+    def test_quoted_package_name_uses_unquoted_directory(self):
+        dependency = self.project / ".lake/packages/a-b"
+        subprocess.run(["git", "clone", "-q", str(self.project), str(dependency)], check=True)
+        manifest_path = self.project / "lake-manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["packages"] = [{"name": "«a-b»", "type": "git", "rev": self._git("rev-parse", "HEAD")}]
+        manifest_path.write_text(json.dumps(manifest))
+        self._git("add", "lake-manifest.json")
+        self._git("-c", "user.name=Backend Test", "-c", "user.email=backend@example.invalid", "commit", "-qm", "Dependency")
+        self.row["version_info"] = [{self.version: self._git("rev-parse", "HEAD")}]
+        environment = self.backend._environment(self.row, self.version, self.project)
+        self.assertIn("a-b", environment["dependencies"])
+
+    def test_optimizer_syntax_observer_in_both_module_modes(self):
+        from proof_eval import Evaluator
+        from proof_eval.optimizer import analyze
+        for version in ("v4.25.0", "v4.32.0"):
+            if not _installed(version):
+                continue
+            self.version = version
+            self.prefix = ("import Lean\n" if version == "v4.25.0" else "module\npublic import Lean\npublic section\n") + "namespace Demo\n-- Syntax observer fixture\n"
+            self._write_project()
+            dataset = self.project / "dataset.jsonl"
+            dataset.write_text(json.dumps({**self.row, "source": "fixture", "proof_length": 2}) + "\n")
+            config = self.project / "environments.json"
+            config.write_text(json.dumps({"projects": [{"source": "fixture", "version": version, "path": str(self.project)}]}))
+            evaluator = Evaluator(dataset, config, self.project / ".cache", timeout=30)
+            analysis = analyze(evaluator, evaluator.dataset.get(self.row["name"]), self.source)
+            self.assertTrue(any(self.source[n["start"]:n["end"]] == "by rfl" for n in analysis["nodes"]))
+
     def test_candidate_cannot_use_original_target(self):
         result = self.evaluate(self.row["statement"] + " := by exact Demo.tiny n")
         self.assertEqual(result["status"], "failed", result["diagnostics"])

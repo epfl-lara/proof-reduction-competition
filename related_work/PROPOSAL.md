@@ -1,5 +1,10 @@
 # Proposed development plan for both tracks
 
+**Execution update:** [staged warm-up experiments](../results/README.md) now cover
+all 36 reference checks and two measured deterministic passes. The local combined
+score improved from 33.330% to 37.100%. Follow those reports for the concrete next
+experiment; the model and training stages below remain proposals.
+
 **Recommendation:** build a shared search engine around the existing evaluator; make repeated symbolic cleanup plus a frozen model competitive first. Train a small editor on verified improvements, compare expert iteration with GRPO, and keep final-data adaptation as an optional experiment. Large-model deployment should earn its place through score gained per unit of time.
 
 This is an implementation proposal, not a claim that the harness or training jobs already exist. Literature mechanisms and limits are summarized in [LITERATURE.md](LITERATURE.md); hardware and framework choices are in [MODELS.md](MODELS.md).

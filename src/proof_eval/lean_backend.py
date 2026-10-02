@@ -111,16 +111,18 @@ def _inject_support(prefix: str) -> str:
     """Insert the import and command after a Lean module's import header."""
     masked = _masked_comments(prefix)
     pos = 0
+    offset = 0
     for line, original in zip(masked.splitlines(keepends=True), prefix.splitlines(keepends=True)):
         stripped = line.strip()
-        if not stripped or stripped in {"module", "prelude"}:
-            pos += len(original)
+        offset += len(original)
+        if not stripped:
             continue
-        if re.match(r"(?:(?:public|private|meta)\s+)*import\s", stripped):
-            pos += len(original)
+        if stripped in {"module", "prelude"} or re.match(r"(?:(?:public|private|meta)\s+)*import\s", stripped):
+            pos = offset
             continue
         break
-    # Whitespace-only prefixes are valid for tiny projects with no imports.
+    # Stop at the last import, not at the first declaration: /-! module docs
+    # are commands even though the comment scanner masks their contents.
     return prefix[:pos] + "\nimport Lean\n" + MEASUREMENT_WRAPPER + "\n" + prefix[pos:]
 
 
@@ -157,6 +159,15 @@ def _source(row: dict, candidate: str, project: Path, nonce: str) -> tuple[str, 
     else:
         prefix, suffix = row.get("header", ""), ""
         context_mode = "standalone_header"
+    # A declaration doc comment must remain attached to the declaration inside
+    # the measurement command. Leaving it before our custom command makes Lean
+    # (and Mathlib's lemma parser) reject the file. Scoped `omit ... in` and
+    # `set_option ... in` stay outside and continue to scope the whole command.
+    comment_start = len(_masked_comments(prefix).rstrip())
+    trailing = prefix[comment_start:]
+    if "/--" in trailing:
+        prefix = prefix[:comment_start]
+        candidate = trailing + candidate
     prefix = _inject_support(prefix)
     marker = f"PROOF_EVAL_{nonce}"
     # Adding a decimal offset changes the offset itself. Find its fixed point.
@@ -256,9 +267,12 @@ class LeanBackend:
         for package in packages:
             if package.get("type") != "git" or not package.get("rev"):
                 raise ValueError(f"Dependency {package.get('name')} is not pinned to a Git revision")
-            dependency_path = packages_dir / package["name"]
+            # Recent Lake manifests serialize non-identifier Name components
+            # with Lean quotes, while checkout directory names are unquoted.
+            package_name = re.sub(r"«([^»]+)»", r"\1", package["name"])
+            dependency_path = packages_dir / package_name
             _checked_git(dependency_path, package["rev"])
-            dependencies[package["name"]] = package["rev"]
+            dependencies[package_name] = package["rev"]
         if row.get("file_path"):
             _checked_git(project, expected)
         elif dependencies.get("mathlib") != expected:

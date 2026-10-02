@@ -1,0 +1,2354 @@
+{
+  "name": "putnam_1995_a3",
+  "source": "putnambench",
+  "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by \n  have h_main : ∀ (d e f : (Fin 9 → ℤ)), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n    intro d e f h\n    have h₁ : relation d e := h.1\n    have h₂ : relation e f := h.2\n    have h₃ : ∀ (i : Fin 9), 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j)) := by\n      have h₄ : (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))) := (hrelation d e).mp h₁ |>.2\n      exact h₄\n    have h₄ : ∀ (i : Fin 9), 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then f j else e j)) := by\n      have h₅ : (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then f j else e j))) := (hrelation e f).mp h₂ |>.2\n      exact h₅\n    \n    have h₅ : ∀ (i : Fin 9), 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n      intro i\n      have h₆ : 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j)) := h₃ i\n      have h₇ : (digits_to_num (fun j : Fin 9 => if j = i then e j else d j)) = digits_to_num d + (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n        calc\n          (digits_to_num (fun j : Fin 9 => if j = i then e j else d j)) = ∑ j : Fin 9, (if j = i then e j else d j) * (10 : ℤ) ^ (j : ℕ) := by\n            simp [hdigits_to_num]\n            \n          _ = ∑ j : Fin 9, (if j = i then e j else d j) * (10 : ℤ) ^ (j : ℕ) := rfl\n          _ = (∑ j : Fin 9, d j * (10 : ℤ) ^ (j : ℕ)) + (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n            calc\n              (∑ j : Fin 9, (if j = i then e j else d j) * (10 : ℤ) ^ (j : ℕ)) = ∑ j : Fin 9, (d j * (10 : ℤ) ^ (j : ℕ) + (if j = i then (e j - d j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n                apply Finset.sum_congr rfl\n                intro j _\n                by_cases h : j = i\n                · simp [h]\n                  <;> ring\n                · simp [h]\n                  \n              _ = (∑ j : Fin 9, d j * (10 : ℤ) ^ (j : ℕ)) + ∑ j : Fin 9, (if j = i then (e j - d j) else 0) * (10 : ℤ) ^ (j : ℕ) := by\n                rw [Finset.sum_add_distrib]\n              _ = (∑ j : Fin 9, d j * (10 : ℤ) ^ (j : ℕ)) + (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n                have h₈ : ∑ j : Fin 9, (if j = i then (e j - d j) else 0) * (10 : ℤ) ^ (j : ℕ) = (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n                  calc\n                    _ = ∑ j : Fin 9, (if j = i then (e j - d j) else 0) * (10 : ℤ) ^ (j : ℕ) := rfl\n                    _ = (if i = i then (e i - d i) else 0) * (10 : ℤ) ^ (i : ℕ) := by\n                      \n                      simp [Finset.sum_ite_eq', Finset.mem_univ, i.is_lt]\n                    _ = (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by simp\n                rw [h₈]\n                \n                \n          _ = digits_to_num d + (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n            simp [hdigits_to_num]\n            \n      have h₈ : 7 ∣ digits_to_num d + (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n        rw [h₇] at h₆\n        exact h₆\n      \n      have h₉ : 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n        \n        have h₁₀ : (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d = digits_to_num d + (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by ring\n        rw [h₁₀]\n        exact h₈\n      exact h₉\n    \n    have h₆ : ∀ (i : Fin 9), 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n      intro i\n      have h₇ : 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then f j else e j)) := h₄ i\n      have h₈ : (digits_to_num (fun j : Fin 9 => if j = i then f j else e j)) = digits_to_num e + (f i - e i) * (10 : ℤ) ^ (i : ℕ) := by\n        calc\n          (digits_to_num (fun j : Fin 9 => if j = i then f j else e j)) = ∑ j : Fin 9, (if j = i then f j else e j) * (10 : ℤ) ^ (j : ℕ) := by\n            simp [hdigits_to_num]\n            \n          _ = ∑ j : Fin 9, (if j = i then f j else e j) * (10 : ℤ) ^ (j : ℕ) := rfl\n          _ = (∑ j : Fin 9, e j * (10 : ℤ) ^ (j : ℕ)) + (f i - e i) * (10 : ℤ) ^ (i : ℕ) := by\n            calc\n              (∑ j : Fin 9, (if j = i then f j else e j) * (10 : ℤ) ^ (j : ℕ)) = ∑ j : Fin 9, (e j * (10 : ℤ) ^ (j : ℕ) + (if j = i then (f j - e j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n                apply Finset.sum_congr rfl\n                intro j _\n                by_cases h : j = i\n                · simp [h]\n                  <;> ring\n                · simp [h]\n                  \n              _ = (∑ j : Fin 9, e j * (10 : ℤ) ^ (j : ℕ)) + ∑ j : Fin 9, (if j = i then (f j - e j) else 0) * (10 : ℤ) ^ (j : ℕ) := by\n                rw [Finset.sum_add_distrib]\n              _ = (∑ j : Fin 9, e j * (10 : ℤ) ^ (j : ℕ)) + (f i - e i) * (10 : ℤ) ^ (i : ℕ) := by\n                have h₉ : ∑ j : Fin 9, (if j = i then (f j - e j) else 0) * (10 : ℤ) ^ (j : ℕ) = (f i - e i) * (10 : ℤ) ^ (i : ℕ) := by\n                  calc\n                    _ = ∑ j : Fin 9, (if j = i then (f j - e j) else 0) * (10 : ℤ) ^ (j : ℕ) := rfl\n                    _ = (if i = i then (f i - e i) else 0) * (10 : ℤ) ^ (i : ℕ) := by\n                      \n                      simp [Finset.sum_ite_eq', Finset.mem_univ, i.is_lt]\n                    _ = (f i - e i) * (10 : ℤ) ^ (i : ℕ) := by simp\n                rw [h₉]\n                \n                \n          _ = digits_to_num e + (f i - e i) * (10 : ℤ) ^ (i : ℕ) := by\n            simp [hdigits_to_num]\n            \n      have h₉ : 7 ∣ digits_to_num e + (f i - e i) * (10 : ℤ) ^ (i : ℕ) := by\n        rw [h₈] at h₇\n        exact h₇\n      \n      have h₁₀ : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n        \n        have h₁₁ : (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e = digits_to_num e + (f i - e i) * (10 : ℤ) ^ (i : ℕ) := by ring\n        rw [h₁₁]\n        exact h₉\n      exact h₁₀\n    \n    have h₇ : 7 ∣ digits_to_num e + digits_to_num d := by\n      have h₈ : digits_to_num e = digits_to_num d + ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n        calc\n          digits_to_num e = ∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ) := by simp [hdigits_to_num]\n          _ = ∑ i : Fin 9, (d i + (e i - d i)) * (10 : ℤ) ^ (i : ℕ) := by\n            apply Finset.sum_congr rfl\n            intro i _\n            ring\n          _ = ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n            apply Finset.sum_congr rfl\n            intro i _\n            ring\n          _ = (∑ i : Fin 9, d i * (10 : ℤ) ^ (i : ℕ)) + ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n            rw [Finset.sum_add_distrib]\n          _ = digits_to_num d + ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n            simp [hdigits_to_num]\n            \n      have h₉ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := h₅\n      have h₁₀ : 7 ∣ ∑ i : Fin 9, ((e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d) := by\n        apply Finset.dvd_sum\n        intro i _\n        exact h₉ i\n      have h₁₁ : ∑ i : Fin 9, ((e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d) = ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) + 9 * digits_to_num d := by\n        calc\n          ∑ i : Fin 9, ((e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d) = ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) + ∑ i : Fin 9, digits_to_num d := by\n            rw [Finset.sum_add_distrib]\n          _ = ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) + 9 * digits_to_num d := by\n            simp [Finset.sum_const, Finset.card_fin]\n            \n            \n      have h₁₂ : 7 ∣ ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) + 9 * digits_to_num d := by\n        rw [h₁₁] at h₁₀\n        exact h₁₀\n      have h₁₃ : 7 ∣ digits_to_num e + digits_to_num d := by\n        have h₁₄ : digits_to_num e + digits_to_num d = 2 * digits_to_num d + ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n          linarith\n        rw [h₁₄]\n        have h₁₅ : 7 ∣ 2 * digits_to_num d + ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n          have h₁₆ : 7 ∣ ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) + 9 * digits_to_num d := h₁₂\n          have h₁₇ : 7 ∣ 2 * digits_to_num d + ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n            \n            have h₁₈ : (∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) + 9 * digits_to_num d) = (∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)) + 9 * digits_to_num d := by ring\n            rw [h₁₈] at h₁₆\n            \n            \n            \n            \n            \n            \n            have h₁₉ : 7 ∣ (∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)) + 2 * digits_to_num d := by\n              \n              \n              \n              have h₂₀ : 7 ∣ (∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)) + 9 * digits_to_num d := h₁₆\n              have h₂₁ : 7 ∣ 7 * digits_to_num d := by\n                use digits_to_num d\n                \n              have h₂₂ : 7 ∣ (∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)) + 2 * digits_to_num d := by\n                \n                have h₂₃ : (∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)) + 2 * digits_to_num d = ((∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)) + 9 * digits_to_num d) - 7 * digits_to_num d := by ring\n                rw [h₂₃]\n                exact dvd_sub h₂₀ h₂₁\n              exact h₂₂\n            \n            have h₂₀ : 7 ∣ 2 * digits_to_num d + ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n              \n              have h₂₁ : 2 * digits_to_num d + ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ) = (∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)) + 2 * digits_to_num d := by ring\n              rw [h₂₁]\n              exact h₁₉\n            exact h₂₀\n          exact h₁₇\n        exact h₁₅\n      exact h₁₃\n    \n    have h₈ : ∀ (i : Fin 9), 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n      intro i\n      have h₉ : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := h₆ i\n      have h₁₀ : 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := h₅ i\n      have h₁₁ : 7 ∣ digits_to_num e + digits_to_num d := h₇\n      \n      have h₁₂ : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n        \n        \n        have h₁₃ : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := h₆ i\n        have h₁₄ : 7 ∣ digits_to_num e + digits_to_num d := h₇\n        \n        have h₁₅ : 7 ∣ ((f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e) - (digits_to_num e + digits_to_num d) := by\n          exact dvd_sub h₁₃ h₁₄\n        \n        have h₁₆ : ((f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e) - (digits_to_num e + digits_to_num d) = (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n          ring\n        rw [h₁₆] at h₁₅\n        exact h₁₅\n      \n      have h₁₃ : 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n        have h₁₄ : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := h₁₂\n        have h₁₅ : 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := h₅ i\n        \n        have h₁₆ : 7 ∣ ((f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d) + ((e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d) := by\n          exact dvd_add h₁₄ h₁₅\n        \n        have h₁₇ : ((f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d) + ((e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d) = (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n          ring\n        rw [h₁₇] at h₁₆\n        exact h₁₆\n      exact h₁₃\n    \n    have h₉ : ∀ (i : Fin 9), 7 ∣ d i - f i := by\n      intro i\n      have h₁₀ : 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := h₈ i\n      have h₁₁ : 7 ∣ (f i - d i) := by\n        \n        have h₁₂ : (7 : ℤ) ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := h₁₀\n        \n        have h₁₃ : (7 : ℕ).Prime := by decide\n        have h₁₄ : ¬(7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n          \n          intro h\n          have h₁₅ : (7 : ℕ) ∣ (10 : ℕ) ^ (i : ℕ) := by\n            norm_cast at h ⊢\n            \n          have h₁₆ : (7 : ℕ) ∣ 10 := by\n            \n            exact Nat.Prime.dvd_of_dvd_pow h₁₃ h₁₅\n          norm_num at h₁₆\n          \n        \n        have h₁₅ : (7 : ℤ) ∣ (f i - d i) := by\n          \n          have h₁₆ : (7 : ℤ) ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := h₁₂\n          have h₁₇ : ¬(7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := h₁₄\n          \n          have h₁₈ : (7 : ℤ) ∣ (f i - d i) := by\n            \n            have h₁₉ : (7 : ℤ) ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := h₁₂\n            have h₂₀ : (7 : ℕ).Prime := by decide\n            have h₂₁ : (7 : ℤ) ∣ (f i - d i) ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n              \n              have h₂₂ : (7 : ℤ) ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := h₁₂\n              have h₂₃ : (7 : ℤ) ∣ (f i - d i) ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n                \n                apply (Int.prime_iff_natAbs_prime.mpr (by decide)).dvd_mul.mp\n                exact h₂₂\n              exact h₂₃\n            cases h₂₁ with\n            | inl h₂₁ =>\n              exact h₂₁\n            | inr h₂₁ =>\n              exfalso\n              exact h₁₄ h₂₁\n          exact h₁₈\n        exact h₁₅\n      \n      have h₁₂ : 7 ∣ d i - f i := by\n        have h₁₃ : 7 ∣ (f i - d i) := h₁₁\n        have h₁₄ : 7 ∣ -(f i - d i) := by\n          exact dvd_neg.mpr h₁₃\n        have h₁₅ : -(f i - d i) = d i - f i := by ring\n        rw [h₁₅] at h₁₄\n        exact h₁₄\n      exact h₁₂\n    \n    intro i\n    have h₁₀ : 7 ∣ d i - f i := h₉ i\n    exact h₁₀\n  exact h_main",
+  "changed": true,
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 0.0,
+      "heartbeat_reduction_pct": -0.0015870577169563305,
+      "compatibility_pct": 100.0,
+      "combined_pct": 33.332804314094346
+    },
+    "candidate": {
+      "length": 4085,
+      "code_sha256": "56dcc03e9f1d22a0655aeb46aa929c75efddb21f2fa73d7504b648792b6e8329"
+    },
+    "primary_version": "v4.25.0",
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 17958.044,
+        "heartbeat_reduction_pct": -0.0015870577169563305,
+        "cached": true,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "elapsed_seconds": 4.2882841639220715,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_2c320a6ecef7442dbe676b3708f54fda:17958044",
+            "endPos": {
+              "column": 14,
+              "line": 313
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  i.is_lt\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_ite_eq', Finset.mem_univ,̵ ̵i̵.̵i̵s̵_̵l̵t̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 72,
+              "line": 77
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 65,
+              "line": 77
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  i.is_lt\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_ite_eq', Finset.mem_univ,̵ ̵i̵.̵i̵s̵_̵l̵t̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 72,
+              "line": 126
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 65,
+              "line": 126
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.card_fin\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_const,̵ ̵F̵i̵n̵s̵e̵t̵.̵c̵a̵r̵d̵_̵f̵i̵n̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 51,
+              "line": 175
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 36,
+              "line": 175
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 57
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 57
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 26,
+              "line": 68
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 22,
+              "line": 68
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 41,
+              "line": 80
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 20,
+              "line": 80
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 19,
+              "line": 82
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 82
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 86
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 86
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 106
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 106
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 26,
+              "line": 117
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 22,
+              "line": 117
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 41,
+              "line": 129
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 20,
+              "line": 129
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 19,
+              "line": 131
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 131
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 135
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 135
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 164
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 164
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 20,
+              "line": 176
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 176
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 24,
+              "line": 177
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 177
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 24,
+              "line": 204
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 20,
+              "line": 204
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 52,
+              "line": 268
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 268
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 27,
+              "line": 273
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 14,
+              "line": 273
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 21,
+              "line": 66
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 18,
+              "line": 66
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 21,
+              "line": 115
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 18,
+              "line": 115
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 57
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 57
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'ring' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 26,
+              "line": 68
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 22,
+              "line": 68
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'simp [hdigits_to_num]' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 41,
+              "line": 80
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 20,
+              "line": 80
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 19,
+              "line": 82
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 82
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 86
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 86
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 106
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 106
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'ring' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 26,
+              "line": 117
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 22,
+              "line": 117
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'simp [hdigits_to_num]' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 41,
+              "line": 129
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 20,
+              "line": 129
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 19,
+              "line": 131
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 131
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 135
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 135
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 164
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 164
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'ring' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 20,
+              "line": 176
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 176
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'norm_num' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 24,
+              "line": 177
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 177
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'ring' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 24,
+              "line": 204
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 20,
+              "line": 204
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'simpa [Int.coe_nat_dvd_left] using h' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 52,
+              "line": 268
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 268
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'contradiction' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 27,
+              "line": 273
+            },
+            "fileName": "_ProofEval_2c320a6ecef7442dbe676b3708f54fda.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 14,
+              "line": 273
+            },
+            "severity": "warning"
+          }
+        ]
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 14311.712,
+        "heartbeat_reduction_pct": -0.00131362669693047,
+        "cached": true,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "elapsed_seconds": 5.175398359075189,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_dcaeabff517f4cc6a6f7957a1f9bacc9:14311712",
+            "endPos": {
+              "column": 14,
+              "line": 313
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  i.is_lt\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_ite_eq', Finset.mem_univ,̵ ̵i̵.̵i̵s̵_̵l̵t̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 72,
+              "line": 77
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 65,
+              "line": 77
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  i.is_lt\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_ite_eq', Finset.mem_univ,̵ ̵i̵.̵i̵s̵_̵l̵t̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 72,
+              "line": 126
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 65,
+              "line": 126
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.card_fin\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_const,̵ ̵F̵i̵n̵s̵e̵t̵.̵c̵a̵r̵d̵_̵f̵i̵n̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 51,
+              "line": 175
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 36,
+              "line": 175
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 57
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 57
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 26,
+              "line": 68
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 22,
+              "line": 68
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 41,
+              "line": 80
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 20,
+              "line": 80
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 19,
+              "line": 82
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 82
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 86
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 86
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 106
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 106
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 26,
+              "line": 117
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 22,
+              "line": 117
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 41,
+              "line": 129
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 20,
+              "line": 129
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 19,
+              "line": 131
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 131
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 135
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 135
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 164
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 164
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 20,
+              "line": 176
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 176
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 24,
+              "line": 177
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 177
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 24,
+              "line": 204
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 20,
+              "line": 204
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 52,
+              "line": 268
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 268
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 27,
+              "line": 273
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 14,
+              "line": 273
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 21,
+              "line": 66
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 18,
+              "line": 66
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 21,
+              "line": 115
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 18,
+              "line": 115
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 57
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 57
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'ring' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 26,
+              "line": 68
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 22,
+              "line": 68
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'simp [hdigits_to_num]' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 41,
+              "line": 80
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 20,
+              "line": 80
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 19,
+              "line": 82
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 82
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 86
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 86
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 106
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 106
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'ring' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 26,
+              "line": 117
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 22,
+              "line": 117
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'simp [hdigits_to_num]' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 41,
+              "line": 129
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 20,
+              "line": 129
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 19,
+              "line": 131
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 131
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 135
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 135
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 164
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 164
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'ring' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 20,
+              "line": 176
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 176
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'norm_num' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 24,
+              "line": 177
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 177
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'ring' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 24,
+              "line": 204
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 20,
+              "line": 204
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'simpa [Int.coe_nat_dvd_left] using h' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 52,
+              "line": 268
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 268
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'contradiction' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 27,
+              "line": 273
+            },
+            "fileName": "_ProofEval_dcaeabff517f4cc6a6f7957a1f9bacc9.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 14,
+              "line": 273
+            },
+            "severity": "warning"
+          }
+        ]
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 14136.642,
+        "heartbeat_reduction_pct": -0.017079107539519356,
+        "cached": true,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "elapsed_seconds": 5.632486695423722,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_33592b008b404a2f9eecf8b4f484abc7:14136642",
+            "endPos": {
+              "column": 14,
+              "line": 313
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  i.is_lt\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_ite_eq', Finset.mem_univ,̵ ̵i̵.̵i̵s̵_̵l̵t̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 72,
+              "line": 77
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 65,
+              "line": 77
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  i.is_lt\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_ite_eq', Finset.mem_univ,̵ ̵i̵.̵i̵s̵_̵l̵t̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 72,
+              "line": 126
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 65,
+              "line": 126
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.card_fin\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_const,̵ ̵F̵i̵n̵s̵e̵t̵.̵c̵a̵r̵d̵_̵f̵i̵n̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 51,
+              "line": 175
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 36,
+              "line": 175
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 57
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 57
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 26,
+              "line": 68
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 22,
+              "line": 68
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 41,
+              "line": 80
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 20,
+              "line": 80
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 19,
+              "line": 82
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 82
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 86
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 86
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 106
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 106
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 26,
+              "line": 117
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 22,
+              "line": 117
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 41,
+              "line": 129
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 20,
+              "line": 129
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 19,
+              "line": 131
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 131
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 135
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 135
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 164
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 12,
+              "line": 164
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 20,
+              "line": 176
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 176
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 24,
+              "line": 177
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 177
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 24,
+              "line": 204
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 20,
+              "line": 204
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 52,
+              "line": 268
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 16,
+              "line": 268
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 27,
+              "line": 273
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 14,
+              "line": 273
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 21,
+              "line": 66
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 18,
+              "line": 66
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 21,
+              "line": 115
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 18,
+              "line": 115
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 57
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 57
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'ring' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 26,
+              "line": 68
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 22,
+              "line": 68
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'simp [hdigits_to_num]' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 41,
+              "line": 80
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 20,
+              "line": 80
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 19,
+              "line": 82
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 82
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 86
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 86
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 106
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 106
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'ring' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 26,
+              "line": 117
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 22,
+              "line": 117
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'simp [hdigits_to_num]' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 41,
+              "line": 129
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 20,
+              "line": 129
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 19,
+              "line": 131
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 131
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 135
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 135
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'rfl' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 15,
+              "line": 164
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 12,
+              "line": 164
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'ring' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 20,
+              "line": 176
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 176
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'norm_num' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 24,
+              "line": 177
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 177
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'ring' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 24,
+              "line": 204
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 20,
+              "line": 204
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'simpa [Int.coe_nat_dvd_left] using h' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 52,
+              "line": 268
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 16,
+              "line": 268
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'contradiction' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 27,
+              "line": 273
+            },
+            "fileName": "_ProofEval_33592b008b404a2f9eecf8b4f484abc7.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 14,
+              "line": 273
+            },
+            "severity": "warning"
+          }
+        ]
+      }
+    }
+  },
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 1.0526315789473717,
+      "heartbeat_reduction_pct": 0.06896183426895464,
+      "compatibility_pct": 100.0,
+      "combined_pct": 33.707197804405446
+    },
+    "candidate": {
+      "length": 4042,
+      "code_sha256": "ef5a9c2d15ad19778d779399df409ee05623417fd4d38f7298bcc7130dea59ad"
+    },
+    "primary_version": "v4.25.0",
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 17945.375,
+        "heartbeat_reduction_pct": 0.06896183426895464,
+        "cached": true,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "elapsed_seconds": 6.35647938400507,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_b27d668ff5cf4b67846a79c1feb53e9a:17945375",
+            "endPos": {
+              "column": 14,
+              "line": 306
+            },
+            "fileName": "_ProofEval_b27d668ff5cf4b67846a79c1feb53e9a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  i.is_lt\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_ite_eq', Finset.mem_univ,̵ ̵i̵.̵i̵s̵_̵l̵t̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 72,
+              "line": 76
+            },
+            "fileName": "_ProofEval_b27d668ff5cf4b67846a79c1feb53e9a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 65,
+              "line": 76
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  i.is_lt\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_ite_eq', Finset.mem_univ,̵ ̵i̵.̵i̵s̵_̵l̵t̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 72,
+              "line": 122
+            },
+            "fileName": "_ProofEval_b27d668ff5cf4b67846a79c1feb53e9a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 65,
+              "line": 122
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.card_fin\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_const,̵ ̵F̵i̵n̵s̵e̵t̵.̵c̵a̵r̵d̵_̵f̵i̵n̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 51,
+              "line": 168
+            },
+            "fileName": "_ProofEval_b27d668ff5cf4b67846a79c1feb53e9a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 36,
+              "line": 168
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 21,
+              "line": 65
+            },
+            "fileName": "_ProofEval_b27d668ff5cf4b67846a79c1feb53e9a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 18,
+              "line": 65
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 21,
+              "line": 111
+            },
+            "fileName": "_ProofEval_b27d668ff5cf4b67846a79c1feb53e9a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 18,
+              "line": 111
+            },
+            "severity": "warning"
+          }
+        ]
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 14303.488,
+        "heartbeat_reduction_pct": 0.05615055391724466,
+        "cached": true,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "elapsed_seconds": 14.595064602792263,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_472cab926bf94790aa68b61d16b3f865:14303488",
+            "endPos": {
+              "column": 14,
+              "line": 306
+            },
+            "fileName": "_ProofEval_472cab926bf94790aa68b61d16b3f865.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  i.is_lt\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_ite_eq', Finset.mem_univ,̵ ̵i̵.̵i̵s̵_̵l̵t̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 72,
+              "line": 76
+            },
+            "fileName": "_ProofEval_472cab926bf94790aa68b61d16b3f865.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 65,
+              "line": 76
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  i.is_lt\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_ite_eq', Finset.mem_univ,̵ ̵i̵.̵i̵s̵_̵l̵t̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 72,
+              "line": 122
+            },
+            "fileName": "_ProofEval_472cab926bf94790aa68b61d16b3f865.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 65,
+              "line": 122
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.card_fin\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_const,̵ ̵F̵i̵n̵s̵e̵t̵.̵c̵a̵r̵d̵_̵f̵i̵n̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 51,
+              "line": 168
+            },
+            "fileName": "_ProofEval_472cab926bf94790aa68b61d16b3f865.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 36,
+              "line": 168
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 21,
+              "line": 65
+            },
+            "fileName": "_ProofEval_472cab926bf94790aa68b61d16b3f865.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 18,
+              "line": 65
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 21,
+              "line": 111
+            },
+            "fileName": "_ProofEval_472cab926bf94790aa68b61d16b3f865.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 18,
+              "line": 111
+            },
+            "severity": "warning"
+          }
+        ]
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 14127.361,
+        "heartbeat_reduction_pct": 0.04858418868012304,
+        "cached": true,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "elapsed_seconds": 10.85117463208735,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_c913a1a1683a4d33b19a59cee097c673:14127361",
+            "endPos": {
+              "column": 14,
+              "line": 306
+            },
+            "fileName": "_ProofEval_c913a1a1683a4d33b19a59cee097c673.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  i.is_lt\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_ite_eq', Finset.mem_univ,̵ ̵i̵.̵i̵s̵_̵l̵t̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 72,
+              "line": 76
+            },
+            "fileName": "_ProofEval_c913a1a1683a4d33b19a59cee097c673.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 65,
+              "line": 76
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  i.is_lt\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_ite_eq', Finset.mem_univ,̵ ̵i̵.̵i̵s̵_̵l̵t̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 72,
+              "line": 122
+            },
+            "fileName": "_ProofEval_c913a1a1683a4d33b19a59cee097c673.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 65,
+              "line": 122
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.card_fin\n\nHint: Omit it from the simp argument list.\n  simp [Finset.sum_const,̵ ̵F̵i̵n̵s̵e̵t̵.̵c̵a̵r̵d̵_̵f̵i̵n̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 51,
+              "line": 168
+            },
+            "fileName": "_ProofEval_c913a1a1683a4d33b19a59cee097c673.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 36,
+              "line": 168
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 21,
+              "line": 65
+            },
+            "fileName": "_ProofEval_c913a1a1683a4d33b19a59cee097c673.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 18,
+              "line": 65
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 21,
+              "line": 111
+            },
+            "fileName": "_ProofEval_c913a1a1683a4d33b19a59cee097c673.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 18,
+              "line": 111
+            },
+            "severity": "warning"
+          }
+        ]
+      }
+    }
+  },
+  "attempts": 1,
+  "accepted_edits": 16,
+  "analysis_requests": 2,
+  "rounds": 2,
+  "stop_reason": "no_proposals",
+  "elapsed_seconds": 9.054
+}

@@ -11,6 +11,7 @@ The task is to refactor existing Lean 4 proofs while preserving their statements
 - [data/benchmark_heartbeats.jsonl](data/benchmark_heartbeats.jsonl): the organizer's published reference heartbeat counts, preserved separately from local measurements.
 - [src/proof_eval](src/proof_eval): Python, CLI, and localhost HTTP evaluation API, including training reward adapters.
 - [related_work](related_work/README.md): verified literature, downloadable papers, model feasibility, and the proposed harness/SFT/GRPO plan for both tracks.
+- [results](results/README.md): staged, model-free warm-up experiments, exact candidates, rejected attempts, and measured score changes.
 - [.gitignore](.gitignore): Python environments, caches, build artifacts, Lean/Lake build outputs, and local credentials.
 
 Each benchmark row specifies its own evaluation versions. The evaluator uses explicitly configured, prebuilt Lean projects at those exact revisions; there is no single repository-wide Lean toolchain. Its Python package has no external runtime dependencies and invokes Lean through Lake.
@@ -64,6 +65,18 @@ proof-eval environments
 Copy [environments.example.json](environments.example.json) to `environments.local.json` and set the paths of prebuilt projects. Each entry identifies a source corpus and version. Project-resident rows require the source repository at the row's exact commit; PutnamBench entries require a project with Mathlib pinned to the row's commit. The evaluator checks toolchains, repository revisions, and dependency manifests and refuses unavailable or changed environments. It never downloads dependencies or changes repository revisions during an evaluation.
 
 The warm-up set has 15 distinct source/version environments and 36 theorem/version checks. One configured version is sufficient for local proof search; all of a theorem's listed versions must be checked to report its compatibility and combined score. `proof-eval environments` lists the required commits and configured paths. Unconfigured environments remain explicitly unavailable.
+
+To provision the warm-up environments explicitly, run `python src/setup_benchmark.py`.
+It downloads the pinned toolchains and repositories, obtains Mathlib build caches,
+builds the required source modules, and registers successful builds in the local
+configuration. `--source strata` or `--version v4.26.0` limits setup. Projects and
+logs live under `.proof-eval-projects/`; this can require substantial disk space.
+Evaluation itself continues to use only configured projects.
+
+For deterministic optimization, use [src/run_deterministic.py](src/run_deterministic.py).
+The [experiment guide](results/README.md) gives the stage order, commands, objective,
+budgets, and artifact format. It retains the original proof unless a fully checked
+candidate improves the competition's combined score.
 
 ### Python and reward functions
 
