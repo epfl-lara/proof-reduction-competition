@@ -12,6 +12,7 @@ The task is to refactor existing Lean 4 proofs while preserving their statements
 - [src/proof_eval](src/proof_eval): Python, CLI, and localhost HTTP evaluation API, including training reward adapters.
 - [related_work](related_work/README.md): verified literature, downloadable papers, model feasibility, and the proposed harness/SFT/GRPO plan for both tracks.
 - [results](results/README.md): experiment index; [deterministic](results/deterministic/README.md) contains the warm-up proofs, rejected trials, measurements and reported arena result.
+- [prompts](prompts): the one-shot system prompt and conditional strategy cards; [the context experiment](results/one_shot/README.md) compares cards, goal annotations and measured tactic costs using three original models and a later Qwen3.8 extension.
 - [.gitignore](.gitignore): Python environments, caches, build artifacts, Lean/Lake build outputs, and local credentials.
 
 Each benchmark row specifies its own evaluation versions. The evaluator uses explicitly configured, prebuilt Lean projects at those exact revisions; there is no single repository-wide Lean toolchain. Its Python package has no external runtime dependencies and invokes Lean through Lake.
@@ -88,6 +89,27 @@ checks saved proofs, reference values, score arithmetic, and implementation hash
 without rerunning Lean.
 See [the measured findings](results/deterministic/FINDINGS.md) for the practical conclusions,
 costs, coverage limits, and next isolated experiment.
+
+The [one-shot runner](src/run_one_shot.py) evaluates model edits of a fixed batch
+of incumbents through the existing RCP client. The [runner guide](docs/ONE_SHOT.md)
+documents its independent single-call conditions, 32,768-token output budget,
+saved requests, interruption handling and per-condition submission exports.
+[Context extraction](docs/PROOF_CONTEXT.md) supplies bounded original-proof goals
+and optional tactic-cost observations; candidate acceptance still uses the same
+full-declaration evaluator and cached references.
+The [correctness debugger](docs/VALIDITY_REPAIR.md) adds up to three compiler
+feedback rounds to one optimization proposal. It stops at the first proof that
+passes all required versions, without returning candidate performance to the model.
+The [combined workflow](docs/COMBINED.md) adds a deterministic cleanup of valid
+model proposals and compares it with the same cleanup applied to each incumbent.
+
+The [Codex agent baseline](results/one_shot/09_codex_tools_baselines/PROTOCOL.md)
+uses Astra/max and Luna/max, high and medium with tools for source inspection and
+Lean validation. It compares original proofs with deterministic preprocessing
+and cleanup using the same prompts and cached references. The CLI does not expose
+the RCP experiment's exact output-token and temperature controls. Run or resume
+with `python src/run_codex_baselines.py --model gpt-6-astra --effort max`;
+audit and report saved results with `python src/report_codex_baselines.py`.
 
 ### Python and reward functions
 
@@ -194,7 +216,16 @@ The published heartbeat file is pinned to the same Space revision as the benchma
 ### Validation
 
 ```bash
-python -m pytest -q
+python -m pytest -q -k 'not TestRCPLiveIntegration'
 ```
 
-The tests cover tokenizer agreement, unchanged statements, malformed and forbidden code, baseline and candidate cache reuse, environment invalidation, incomplete compatibility, reward semantics, HTTP transport, isolated Lean compilation, deterministic proposal scope, checkpoint recovery, independent evidence audits, and running/resuming the full portfolio on a new dataset from outside the repository. Lean integration tests require the toolchain indicated in the test fixture; otherwise they skip explicitly. The [saved validation record](results/deterministic/validation/batch_api_test_suite.json) includes the tested source hashes.
+The tests cover tokenizer agreement, unchanged statements, malformed and forbidden code, baseline and candidate cache reuse, environment invalidation, incomplete compatibility, reward semantics, HTTP transport, isolated Lean compilation, deterministic proposal scope, checkpoint recovery, independent evidence audits, and running/resuming the full portfolio on a new dataset from outside the repository. Lean integration tests require the toolchain indicated in the test fixture; otherwise they skip explicitly. The command excludes the RCP client's three live model smoke tests; run those explicitly only when model requests are intended. The [saved validation record](results/deterministic/validation/batch_api_test_suite.json) includes the deterministic suite's tested source hashes.
+
+The model/context and correctness-repair additions also cover prompt isolation,
+goal/cost extraction, bounded debugging, first-valid stopping, no-resampling
+resume, pilot reuse, all-version cleanup eligibility, shared deterministic jobs,
+control comparisons and evidence/report arithmetic. The
+[latest offline validation](results/one_shot/09_codex_tools_baselines/validation/offline_tests.json)
+records **466 passing tests, 102 passing subtests and three deselected live tests**.
+It includes the admission gate, cleanup counterfactual analysis, effort probe,
+paired Codex inputs, and a localhost CLI request test with no live model calls.

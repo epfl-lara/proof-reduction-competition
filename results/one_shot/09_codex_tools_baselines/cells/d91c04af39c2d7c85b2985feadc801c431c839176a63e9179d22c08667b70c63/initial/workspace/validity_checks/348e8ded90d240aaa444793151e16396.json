@@ -1,0 +1,37 @@
+{
+  "code": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' := der\n  induction der <;> subst eq\n  case var mem => cases mem\n  case abs => exact .inl (.abs der'.wf.2.1)\n  case tabs => exact .inl (.tabs der'.wf.2.1)\n  case app l r ih_l ih_r =>\n    right\n    rcases ih_l rfl l with v | ⟨_, h⟩\n    · rcases ih_r rfl r with w | ⟨_, h⟩\n      · obtain ⟨_, _, rfl⟩ := l.canonical_form_abs v\n        exact ⟨_, .abs v.lc w⟩\n      · exact ⟨_, .appᵣ v h⟩\n    · exact ⟨_, .appₗ r.wf.2.1 h⟩\n  case tapp der sub ih =>\n    right\n    have lc := (Sub.wf _ _ _ sub).2.1.lc\n    rcases ih rfl der with v | ⟨_, h⟩\n    · obtain ⟨_, _, rfl⟩ := der.canonical_form_tabs v\n      exact ⟨_, .tabs v.lc lc⟩\n    · exact ⟨_, .tapp lc h⟩\n  case let' der _ ih _ =>\n    right\n    have b := (body_let.mp der'.wf.2.1).2\n    rcases ih rfl der with v | ⟨_, h⟩\n    · exact ⟨_, .let_body v b⟩\n    · exact ⟨_, .let_bind h b⟩\n  case inl der _ ih =>\n    rcases ih rfl der with v | ⟨_, h⟩\n    · exact .inl (.inl v)\n    · exact .inr ⟨_, .inl h⟩\n  case inr der _ ih =>\n    rcases ih rfl der with v | ⟨_, h⟩\n    · exact .inl (.inr v)\n    · exact .inr ⟨_, .inr h⟩\n  case case der _ _ ih _ _ =>\n    right\n    obtain ⟨_, b₂, b₃⟩ := body_case.mp der'.wf.2.1\n    rcases ih rfl der with v | ⟨_, h⟩\n    · obtain ⟨_, rfl | rfl⟩ := der.canonical_form_sum v\n      · cases v with\n        | inl v => exact ⟨_, .case_inl v b₂ b₃⟩\n      · cases v with\n        | inr v => exact ⟨_, .case_inr v b₂ b₃⟩\n    · exact ⟨_, .case h b₂ b₃⟩\n  case sub der _ ih => exact ih rfl der\n",
+  "feedback": {
+    "kind": "lean_correctness_feedback",
+    "status": "valid",
+    "primary_version": "v4.33.0-rc2",
+    "primary_passed": true,
+    "all_versions_passed": true,
+    "required_versions": [
+      "v4.33.0-rc2",
+      "v4.32.0",
+      "v4.31.0"
+    ],
+    "errors": [],
+    "versions": [
+      {
+        "version": "v4.33.0-rc2",
+        "status": "passed",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "version": "v4.32.0",
+        "status": "passed",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "version": "v4.31.0",
+        "status": "passed",
+        "passed": true,
+        "errors": []
+      }
+    ],
+    "truncated": false
+  }
+}

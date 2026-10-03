@@ -1,0 +1,21 @@
+{
+  "status": "received",
+  "content": "\n\n```lean\ntheorem InitsUpdatesComm\n  {P : PureExpr} {σ σ' σ'' : SemanticStore P}\n  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :\n  UpdateStates σ ks vs σ' →\n  InitStates σ' ks' vs' σ'' →\n  ∃ σ₁,\n    σ₁ = (updatedStates σ ks' vs') ∧\n    InitStates σ ks' vs' σ₁ ∧\n    UpdateStates σ₁ ks vs σ'' := by\n  intros Hup Hinit\n  exists (updatedStates σ ks' vs')\n  have Hlen1 := InitStatesLength Hinit\n  induction Hup generalizing σ''\n  case update_none =>\n    simp_all\n    apply And.intro\n    refine updatedStatesInit Hlen1 ?_ ?_\n    exact InitStatesNotDefined Hinit\n    exact InitStatesNodup Hinit\n    simp [InitStatesUpdated Hinit]\n    constructor\n  case update_some σ x v σ₀ xs vs σ₁ Hup Hups ih =>\n    refine ⟨rfl, ?_, ?_⟩\n    . apply updatedStatesInit Hlen1\n      apply UpdateStateNotDefMonotone' ?_ Hup\n      apply UpdateStatesNotDefMonotone' ?_ Hups\n      exact InitStatesNotDefined Hinit\n      exact InitStatesNodup Hinit\n    . apply UpdateStates.update_some (σ':=updatedStates σ₀ ks' vs')\n      . simp [UpdateStateUpdated Hup, updatedStates]\n        rw [← updatedStateComm']\n        . have Hdef := UpdateStateDefined' Hup\n          simp [isDefined, Option.isSome] at Hdef\n          split at Hdef <;> norm_cast\n          next val heq =>\n          apply updatedStateUpdate (v':=val)\n          apply InitStatesSomeMonotone heq\n          apply updatedStatesInit\n          . omega\n          . apply UpdateStateNotDefMonotone' ?_ Hup\n            apply UpdateStatesNotDefMonotone' ?_ Hups\n            apply InitStatesNotDefined Hinit\n          . exact InitStatesNodup Hinit\n        . rw [List.unzip_zip] <;> norm_cast\n          have Hnd := InitStatesNotDefined Hinit\n          simp only [isDefined] at *\n          apply Not.intro\n          intros Hin\n          specialize Hnd _ Hin\n          simp_all\n      . exact (ih Hinit).2.2\n```",
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 8943,
+    "prompt_tokens": 5316,
+    "total_tokens": 14259,
+    "completion_tokens_details": {
+      "reasoning_tokens": 8390
+    },
+    "prompt_tokens_details": {
+      "cached_tokens": 3168,
+      "created_cache_tokens": 2112
+    }
+  },
+  "returned_model": "Qwen/Qwen3.6-35B-A3B",
+  "response_id": "chatcmpl-79a6031f-0ca5-4605-976c-eae0952f5e36",
+  "reasoning_characters": 27637,
+  "elapsed_seconds": 57.527
+}

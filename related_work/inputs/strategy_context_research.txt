@@ -1,0 +1,228 @@
+**I would use a small bank assembled from Lean4 Skills and mathlib-quality, backed by retrieved LeanPolish examples.** These give you both descriptions of transformations and concrete before/after proofs. You can then add the heartbeat and version-compatibility measurements needed for the arena.
+
+I also found the authors’ public [Lean Refactor implementation](https://github.com/delta-lab-ai/lean-refactor). It includes their agent prompts, but I still could not locate the complete **9,237-strategy bank** in the official resources I checked. The retrieval component in the released code searches for Mathlib lemmas. My earlier answer should have distinguished the paper’s promising strategy database from a confirmed downloadable artifact. :chatgpt-content-reference{index="0"}
+
+Here are the substitutes I would prioritize, and how I would use them.
+
+## 1. The closest ready-to-use text banks
+
+### Lean4 Skills: start with the transformation references
+
+[Cameron Freer’s Lean4 Skills](https://github.com/cameronfreer/lean4-skills) is a public, MIT-licensed collection of Lean workflows and reference material for coding agents. For your purpose, the useful pieces are its individual pattern files. You can incorporate selected sections into your own prompts without installing the full workflow. :chatgpt-content-reference{index="1"}
+
+| File | What I would extract |
+|---|---|
+| [proof-golfing-patterns.md](https://github.com/cameronfreer/lean4-skills/blob/main/plugins/lean4/skills/lean4/references/proof-golfing-patterns.md) | Local transformations: collapse `apply`/`exact` chains, inline suitable single-use facts, use direct lemma applications, simplify constructors and short `calc` chains. |
+| [proof-simplification.md](https://github.com/cameronfreer/lean4-skills/blob/main/plugins/lean4/skills/lean4/references/proof-simplification.md) | Changes to the mathematical approach: reuse Mathlib results, transfer properties through congruence lemmas, use `Set.EqOn` or `EventuallyEq`, replace mechanical finite-set inductions with existing lemmas. |
+| [performance-optimization.md](https://github.com/cameronfreer/lean4-skills/blob/main/plugins/lean4/skills/lean4/references/performance-optimization.md) | Candidates for reducing elaboration work: supply type information, restructure nested applications, and investigate expensive automation or definitional equality. |
+
+**The first two files are where I would start.** They offer a useful combination of small syntactic changes and larger proof-strategy changes.
+
+The performance file needs more selective use: it also discusses changes to definitions, global helpers, and theorem signatures. Those ideas need to be filtered against the arena’s permitted scope.
+
+### Mathlib-quality: another useful collection of concrete rules
+
+[Chris Birkbeck’s mathlib-quality](https://github.com/CBirkbeck/mathlib-quality) has a complementary collection of golfing and profiling guidance. The repository describes its reference documents as originally seeded from Mathlib PRs and review comments; I have not independently audited that provenance. :chatgpt-content-reference{index="2"}
+
+The most relevant files are:
+
+| File | What I would extract |
+|---|---|
+| [golfing-rules.md](https://github.com/CBirkbeck/mathlib-quality/blob/main/skills/mathlib-quality/references/golfing-rules.md) | A compact checklist of candidate edits, with before/after snippets. |
+| [proof-patterns.md](https://github.com/CBirkbeck/mathlib-quality/blob/main/skills/mathlib-quality/references/proof-patterns.md) | Broader transformations, including library reuse, redundant steps before automation, and choosing tactics suited to the goal. |
+| [profiling.md](https://github.com/CBirkbeck/mathlib-quality/blob/main/skills/mathlib-quality/references/profiling.md) | A diagnostic taxonomy: instance synthesis, simplification, definitional equality, heavy automation, missing type information, repeated subterms, and kernel checking. |
+
+There is one important adaptation I would make to **both** collections: **keep the transformations and their preconditions, but replace their priority rules with your measured competition objective.**
+
+For example, their preferences about terminal `simp`, explicit proof terms, or broad automation reflect particular maintenance and readability goals. These preferences do not establish which candidate will score best on length, heartbeats, and compatibility. I would also remove labels such as “zero risk” and fixed percentage savings from the cards you feed to the model.
+
+A good extracted card should say:
+
+> “This transformation is applicable under these conditions; try it and measure the result.”
+
+That is more useful for your optimizer than an unconditional instruction to prefer one tactic style.
+
+## 2. LeanPolish: the best concrete source of example pairs
+
+If you want a **retrieval corpus**, I would prioritize [LeanPolish’s dataset](https://huggingface.co/datasets/leanpolish-anon/lean-proof-compression).
+
+The release contains **33,402 accepted local edits** and **65,596 same-state failed attempts**. It records the original fragment, replacement, and proof-state information, so it can support example retrieval directly. An additional distillation step can turn recurring edits into abstract strategy cards. :chatgpt-content-reference{index="3"}
+
+### Start with these two configurations
+
+| Configuration | Accepted edits |
+|---|---:|
+| `mathlib` | 6,695 |
+| `goedel` | 20,822 |
+
+The useful fields include `goal_state`, `original`, `replacement`, `context`, `type`, `kind`, and version/source provenance. The dataset documents verification under Lean/Mathlib 4.21.0. **Its version provenance does not establish compatibility with other toolchains.** :chatgpt-content-reference{index="4"}
+
+You can load those configurations with:
+
+```python
+from datasets import load_dataset
+
+repo = "leanpolish-anon/lean-proof-compression"
+
+banks = {
+    corpus: load_dataset(repo, corpus, split="training")
+    for corpus in ("mathlib", "goedel")
+}
+```
+
+One naming detail matters: **`training` means accepted edits within a configuration.** Even the miniF2F and Putnam configurations use that split name. Start with the two configurations above and check overlap with your evaluation inputs before expanding the corpus. :chatgpt-content-reference{index="5"}
+
+My suggested retrieval representation is:
+
+- **Search text:** goal and local hypotheses, followed by the original proof fragment.
+- **Returned example:** original fragment, replacement, and enough surrounding context to understand the change.
+- **Metadata:** source identity, edit category, pinned environment, and verification status.
+
+This is a proposed use of the data. A local fragment and a printed goal are useful for retrieval, but replaying an edit still requires the corresponding Lean environment.
+
+### There are also complete input/output proof files
+
+For whole-proof prompting, the release includes:
+
+[**experiments/wholeproof.tar.gz**](https://huggingface.co/datasets/leanpolish-anon/lean-proof-compression/resolve/main/experiments/wholeproof.tar.gz)
+
+The archive contains `wholeproof/data/wp_train.jsonl`. Its [construction statistics](https://github.com/paulinebourigault/leanpolish/blob/main/experiments/wholeproof/results/build_stats.json) report **6,852 shortening pairs** and **856 unchanged pairs**, reconstructed from Goedel training files. The [whole-proof README](https://github.com/paulinebourigault/leanpolish/blob/main/experiments/wholeproof/README.md) explains the construction and experiments.
+
+For an initial demonstration bank, I would use the `kind="shorten"` records. The unchanged examples could later help teach a stopping policy.
+
+### What you still need to add
+
+The useful missing layer is **measurement in your target environments**:
+
+- Recompute length using the competition’s counter.
+- Measure original and replacement heartbeats under the same setup.
+- Record compilation results for each required Lean/project version.
+- Keep these outcomes attached to the particular example and environment.
+
+I would not infer a strategy-wide speedup from a single successful edit. A transformation can help one goal and make another more expensive.
+
+If you later train a selector, LeanPolish’s **complete-menu candidate pools** are also relevant. The paper shows how first-success search can introduce an ordering shortcut into winner/loser data. Those pools provide a better starting point for studying candidate selection, with whole-file verification still needed for the final combined edits. :chatgpt-content-reference{index="6"}
+
+## 3. Useful material that is already available from the organizers
+
+Although I could not find the complete bank, their implementation exposes the actual prompts:
+
+- [planner-initial.md](https://github.com/delta-lab-ai/lean-refactor/blob/main/lean_refactor/data/prompts/planner-initial.md): locate regions and propose transformations.
+- [executer-initial.md](https://github.com/delta-lab-ai/lean-refactor/blob/main/lean_refactor/data/prompts/executer-initial.md): apply a selected transformation.
+- [planner-update.md](https://github.com/delta-lab-ai/lean-refactor/blob/main/lean_refactor/data/prompts/planner-update.md): revise plans after attempts.
+- [optimizer-corrector.md](https://github.com/delta-lab-ai/lean-refactor/blob/main/lean_refactor/data/prompts/optimizer-corrector.md): repair candidates using compiler feedback.
+
+The public planner prompt consumes the proof, elaborated signature, documentation, and dependencies, and asks for a location, transformation description, and qualitative reduction estimate. That is a useful scaffold into which you can insert your own retrieved cards.
+
+The paper itself also provides the strategy schema in **Appendix B.5**, two schematic strategy examples in **Appendix N**, and abbreviated agent prompts in **Appendix O**. These can seed the format and workflow. The schematic examples require their applicability conditions to be checked before use. :chatgpt-content-reference{index="7"}
+
+A smaller historical source is [ImProver’s `evaluate/metrics.py`](https://github.com/riyazahuja/ImProver/blob/main/evaluate/metrics.py), which contains before/after examples for its length and readability-related objectives. I would treat those as additional few-shot seeds; LeanPolish is the more substantial starting corpus.
+
+## 4. A strong alternative: generate suggestions at the current proof state
+
+You can also equip the optimizer with **operators that generate concrete candidates on demand**. This reduces dependence on finding a closely matching example in an external bank.
+
+Where supported by the project’s pinned toolchain:
+
+| Probe | Candidate to extract |
+|---|---|
+| `exact?`, `apply?` | An explicit lemma application, possibly with remaining obligations to solve. Lean’s documentation recommends incorporating the suggestion into the proof. :chatgpt-content-reference{index="8"} |
+| `simp?` | A `simp only [...]` call containing a sufficient set of rules for the observed simplification. This is particularly useful for controlling intermediate simplification states. :chatgpt-content-reference{index="9"} |
+| `aesop?` | An explicit tactic script obtained from the successful search. Aesop documents that generated scripts can require adjustment, so compile the extracted script. :chatgpt-content-reference{index="10"} |
+| `grind?` | A restricted `grind only [...]` invocation and, in current versions, an explicit `grind => ...` script. :chatgpt-content-reference{index="11"} |
+
+The workflow I would use is:
+
+1. Run a probe at the original proof state.
+2. Extract its proposed replacement.
+3. Compile the complete declaration containing that replacement.
+4. Compare its measured score with the current candidate.
+5. Save successful examples for later retrieval.
+
+This is especially attractive for heartbeat optimization: an explicit replay may avoid repeating proof search. It can also make the source longer, so the acceptance decision should use the full arena objective.
+
+Similarly, `simp only` can stabilize a nonterminal simplification against additions to the default simp set, but its referenced lemmas still have to exist and behave appropriately in each target version. It should receive measured compatibility labels. :chatgpt-content-reference{index="12"}
+
+## 5. The strategy-bank format I would actually use
+
+I would begin with **roughly 20–40 reviewed cards**, retrieving **3–5 cards for a proof region**. Those are engineering starting points, not experimentally established optima.
+
+Each card should contain:
+
+| Field | Purpose |
+|---|---|
+| **Trigger** | What feature of the goal or existing proof suggests this strategy? |
+| **Preconditions** | Which mathematical and elaboration conditions must hold? |
+| **Action** | What transformation or probe should the agent try? |
+| **Scope** | Which changes are permitted: proof body, local facts, available lemmas. |
+| **Examples** | Concrete before/after edits, with context. |
+| **Evidence** | Where each example was verified and how its metrics changed. |
+| **Failure conditions** | Situations where the transformation failed or caused regressions. |
+| **Provenance** | Source URL and pinned repository or dataset revision. |
+
+For example, this would be a reasonable initial card:
+
+```yaml
+id: replace_search_with_explicit_replay
+
+trigger:
+  - A proof region uses aesop.
+  - Profiling identifies that region as expensive.
+
+preconditions:
+  - The pinned project supports aesop?.
+  - The generated script uses declarations available at this location.
+
+action:
+  - Run aesop? at the original proof state.
+  - Extract the suggested tactic script.
+  - Replace the search invocation with that script.
+  - Compile the complete declaration.
+  - Measure length, heartbeats, and required version passes.
+
+scope: proof_body
+
+known_failure_conditions:
+  - The generated script does not compile without adjustment.
+  - The script is longer enough to reduce the overall score.
+  - Required names or tactic syntax differ across target versions.
+
+verified_examples: []
+measurements: []
+```
+
+The empty evidence fields are deliberate: this is a **candidate strategy** until your experiments populate them.
+
+I would initially cover these families:
+
+| Family | Candidate transformation |
+|---|---|
+| Existing lemma reuse | Replace a derivation with an available theorem, supplying its arguments and side conditions. |
+| Redundant intermediate facts | Remove unused facts or inline suitable single-use facts. |
+| Direct proof construction | Collapse suitable `apply`/`exact` chains and constructor sequences. |
+| Definitional equality | Try a direct term or `rfl` where a longer proof only establishes definitional equality. |
+| Search replay | Replace automation with its generated explicit proof or restricted rule set. |
+| Specialized arithmetic | Try a tactic matched to the arithmetic fragment instead of a longer cascade. |
+| Congruence and transfer | Reuse a known property through equality, `EqOn`, or `EventuallyEq`. |
+| Repeated local work | Share a useful local result where several regions repeat the same derivation. |
+| Elaboration guidance | Add expected types, explicit arguments, or typed intermediate facts at measured hotspots. |
+| Structural simplification | Replace duplicated case or entry proofs with an appropriate extensionality argument and common finisher. |
+
+For retrieval, I would include **both the goal and the current proof fragment**. The same goal can need different optimization advice depending on how it is currently proved. For performance-oriented retrieval, add the observed hotspot category: simplification, typeclass search, definitional equality, or tactic search.
+
+Keep lemma retrieval alongside this. A card such as “replace this induction with an existing finite-set lemma” becomes much more actionable when the model also receives the relevant lemma’s exact type from the allowed environment.
+
+## 6. A useful first experiment
+
+For a research baseline, I would compare four conditions while holding the model, generation budget, repair budget, and verifier fixed:
+
+| Condition | Context supplied to the optimizer |
+|---|---|
+| **No bank** | Proof, goals, objective, and compiler feedback. |
+| **Curated cards** | The same context plus selected Lean4 Skills/mathlib-quality patterns. |
+| **Retrieved examples** | The same context plus relevant LeanPolish before/after pairs. |
+| **Cards + examples** | A transformation description accompanied by concrete demonstrations. |
+
+Measure final arena score, candidate acceptance rate, optimization cost, and which strategy families produce improvements. Split and deduplicate by source theorem or file so that near-identical edits do not cross your evaluation boundary.
+
+**My first implementation would use the organizers’ planner/executor prompts, a small reviewed set of the pattern files above, and LeanPolish examples retrieved by goal plus original proof.** I would then grow the bank from verified successes and recorded failures on the development tasks. That gives you an immediately usable baseline and a clear way to test whether abstract strategies, concrete examples, or their combination actually help.

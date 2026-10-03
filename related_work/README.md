@@ -2,16 +2,22 @@
 
 Research snapshot: **2026-10-02**. Start with the [implementation proposal](PROPOSAL.md) and [model and training assessment](MODELS.md). The recommendation is to build one verified search harness for both tracks, establish repeated symbolic cleanup and frozen-model baselines, then train a smaller editor before attempting large-model or test-time RL.
 
+The **2026-10-03** extension is [strategy and context research](STRATEGY_CONTEXT.md),
+with a small conditional bank, goal/cost context, correctness-only debugging and
+[combined deterministic/model experiments](../results/one_shot/README.md).
+Those experiments now supply implementation evidence beyond the original plan.
+
 | File | Purpose |
 | --- | --- |
 | [LITERATURE.md](LITERATURE.md) | Annotated papers, useful mechanisms, limitations, and corrections to the supplied research. |
 | [PROPOSAL.md](PROPOSAL.md) | Prioritized experiments, shared harness, closed-track accounting, open-track SFT/GRPO, and milestones. |
 | [MODELS.md](MODELS.md) | Verified model IDs, weight sizes, A100 feasibility, framework support, and selection gates. |
+| [STRATEGY_CONTEXT.md](STRATEGY_CONTEXT.md) | Verified strategy-bank sources, context tools and the stepwise model experiments. |
 | [papers.json](papers.json) | Paper metadata, source URLs, versions where available, byte sizes, and SHA-256 checksums. |
 | [references.bib](references.bib) | Bibliography for the downloaded reading list. |
 | [model_metadata.json](model_metadata.json) | Public model configuration and weight-index metadata at exact Hub revisions; no weights. |
 | [framework_sources.json](framework_sources.json) | Exact framework commits inspected for support claims. |
-| [inputs](inputs/) | Both supplied research notes, preserved verbatim. They are discovery inputs, not authoritative citations. |
+| [inputs](inputs/) | Supplied research notes, preserved verbatim. They are discovery inputs, not authoritative citations. |
 
 ## Downloaded papers
 
@@ -39,6 +45,6 @@ LeanRefiner's code was accessible, but its OpenReview PDF returned HTTP 403. Its
 
 ## Evidence boundaries
 
-Paper results are author-reported, not reproduced here; their compression numbers use different input proofs and metrics. Framework documentation establishes a candidate implementation path, not a tested four-A100 configuration. This update downloads literature and adds proposals; harness generation, training, and GPU feasibility experiments remain future work.
+Paper results are author-reported, not reproduced here; their compression numbers use different input proofs and metrics. Framework documentation establishes a candidate implementation path, not a tested four-A100 configuration. The original October 2 update downloaded literature and added proposals. Subsequent harness implementations and local experiments are recorded under [results](../results/README.md); model training and GPU feasibility experiments remain future work.
 
 Use [RULES.md](../RULES.md) for the saved arena contract. The [workshop page](https://vericodegen.github.io/#challenge-competition-track) currently differs from the saved Space on report minimum length, required budget heading, and OpenReview venue. [PROPOSAL.md](PROPOSAL.md#rule-questions-to-resolve-before-the-final-run) records this and the unresolved treatment of test-time training. The saved rules snapshot has not been silently rewritten.

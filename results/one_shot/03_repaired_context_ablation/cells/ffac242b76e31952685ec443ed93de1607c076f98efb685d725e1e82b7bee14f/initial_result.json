@@ -1,0 +1,546 @@
+{
+  "name": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+  "source": "physlib",
+  "model": "Qwen/Qwen3.5-397B-A17B",
+  "arm": "cards",
+  "request_sha256": "ffac242b76e31952685ec443ed93de1607c076f98efb685d725e1e82b7bee14f",
+  "accepted": false,
+  "all_versions_passed": false,
+  "selected_proof": "lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d}\n    {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d)\n    (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J)\n    (t : Time) (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -\n      𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n      𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n  have hEs : ∀ j, ContDiff ℝ 2 (fun y => A.electricField 𝓕.c t y j) :=\n    fun j => electricField_apply_contDiff_space (i := j) (hA.of_le (right_eq_inf.mp rfl)) t\n  have hEd : ∀ j k, Differentiable ℝ (∂[k] (fun y => A.electricField 𝓕.c t y j)) :=\n    fun j k => Space.deriv_differentiable (hEs j) k\n  have hBt : ∀ j, Differentiable ℝ\n      (fun s => ∂[j] (fun y => A.magneticFieldMatrix 𝓕.c s y (j, i)) x) :=\n    fun j => Space.space_deriv_differentiable_time (i := j)\n      (magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) (j, i)) x\n  have hJt : Differentiable ℝ (fun s => J.currentDensity 𝓕.c s x i) :=\n    LorentzCurrentDensity.currentDensity_apply_differentiable_time (hJ.differentiable (by decide)) x i\n  calc _\n    _= ∂ₜ (fun t =>\n      1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv j (fun x => magneticFieldMatrix 𝓕.c A t x (j, i)) x -\n      1 / 𝓕.ε₀ * LorentzCurrentDensity.currentDensity 𝓕.c J t x i) t := by\n        conv_lhs =>\n          enter [1]\n          change fun t => ∂ₜ (A.electricField 𝓕.c · x i) t\n          enter [t]\n          rw [Time.deriv_euclid (electricField_differentiable_time\n            (hA.of_le (right_eq_inf.mp rfl)) _),\n            time_deriv_electricField_of_isExtrema hA J hJ h]\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∂ₜ (fun t => ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c t · (j, i)) x) t -\n      1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      rw [Time.deriv_eq]\n      rw [fderiv_fun_sub]\n      simp only\n      rw [fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt]\n      rw [fderiv_const_mul hJt.differentiableAt]\n      rfl\n      · exact ((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt\n      · exact hJt.differentiableAt.const_mul _\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ((∑ j, ∂ₜ (fun t => ∂[j] (A.magneticFieldMatrix 𝓕.c t · (j, i)) x)) t) -\n      1 / 𝓕.ε₀ * (∂ₜ (J.currentDensity 𝓕.c · x i) t) := by\n      congr\n      rw [Time.deriv_eq]\n      rw [fderiv_fun_sum fun i _ => (hBt i).differentiableAt]\n      simp only [FunLike.coe_sum, Finset.sum_apply]\n      rfl\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * (∑ j, ∂[j] (fun x => ∂ₜ (A.magneticFieldMatrix 𝓕.c · x (j, i)) t)) x -\n        1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      congr\n      simp only [Finset.sum_apply]\n      congr\n      funext k\n      rw [Space.time_deriv_comm_space_deriv]\n      apply magneticFieldMatrix_contDiff\n      apply hA.of_le (right_eq_inf.mp rfl)\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) *(∑ j, ∂[j] (fun x => ∂[j] (A.electricField 𝓕.c t · i) x -\n        ∂[i] (A.electricField 𝓕.c t · j) x)) x -\n        1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n        congr\n        simp only [Finset.sum_apply]\n        congr\n        funext k\n        congr\n        funext x\n        rw [time_deriv_magneticFieldMatrix _ (hA.of_le (ENat.LEInfty.out))]\n    _ = (1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, (∂[j] (fun x => ∂[j] (A.electricField 𝓕.c t · i) x) x -\n          ∂[j] (fun x => ∂[i] (A.electricField 𝓕.c t · j) x) x)) -\n          1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n        congr\n        simp only [Finset.sum_apply]\n        congr\n        funext j\n        rw [Space.deriv_eq_fderiv_basis]\n        rw [fderiv_fun_sub (hEd _ _).differentiableAt (hEd _ _).differentiableAt]\n        rfl\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, (∂[j] (fun x => ∂[j] (A.electricField 𝓕.c t · i) x) x) -\n          1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, (∂[j] (fun x => ∂[i] (A.electricField 𝓕.c t · j) x) x) -\n          1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by simp only [ Finset.sum_sub_distrib, mul_sub]\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, (∂[j] (fun x => ∂[j] (A.electricField 𝓕.c t · i) x) x) -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, (∂[i] (fun x => ∂[j] (A.electricField 𝓕.c t · j) x) x) -\n        1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n        congr\n        funext j\n        rw [Space.deriv_commute _ (hEs _)]\n      _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, (∂[j] (fun x => ∂[j] (A.electricField 𝓕.c t · i) x) x) -\n          1 / (𝓕.μ₀ * 𝓕.ε₀) * (∂[i] (fun x => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) x) x) -\n          1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n        congr\n        rw [Space.deriv_eq_fderiv_basis]\n        rw [fderiv_fun_sum]\n        simp only [_root_.sum_apply, ← deriv_eq_fderiv_basis]\n        intro j _\n        exact (hEd j j).differentiableAt\n      _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, (∂[j] (fun x => ∂[j] (A.electricField 𝓕.c t · i) x) x) -\n          1 / (𝓕.μ₀ * 𝓕.ε₀) * (∂[i] (fun x => (∇ ⬝ (A.electricField 𝓕.c t)) x) x) -\n          1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n        rfl\n      _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -\n          1 / (𝓕.μ₀ * 𝓕.ε₀ ^ 2) * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n          1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n        congr 2\n        rw [isExtrema_iff_gauss_ampere_magneticFieldMatrix] at h\n\n        conv_lhs =>\n          enter [2, 2, x]\n          rw [(h t x).1]\n        trans 1 / (𝓕.μ₀ * 𝓕.ε₀) * Space.deriv i\n            (fun x => (1/ 𝓕.ε₀) * LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x\n        · congr\n          funext x\n          ring\n        · rw [Space.deriv_eq_fderiv_basis]\n          rw [fderiv_const_mul]\n          simp only [ _root_.smul_apply, ← deriv_eq_fderiv_basis, smul_eq_mul]\n          field_simp\n          apply Differentiable.differentiableAt\n          apply LorentzCurrentDensity.chargeDensity_differentiable_space\n          exact hJ.differentiable (by decide)\n        · exact hA\n        · exact hJ\n      _ = 𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -\n            𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n            𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n          simp only [ FreeSpace.c_sq]\n          field_simp",
+  "selected_evaluation": {
+    "schema_version": 1,
+    "name": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+    "status": "passed",
+    "primary_version": "v4.32.0",
+    "requested_versions": [
+      "v4.32.0"
+    ],
+    "all_versions": [
+      "v4.32.0"
+    ],
+    "measurement": "local_cached_reference",
+    "reference": {
+      "length": 1372,
+      "published_heartbeats": 26970
+    },
+    "candidate": {
+      "length": 1366,
+      "code_sha256": "a23c69433789b9ad7bd4993d7c608c196690a5dec601484a44eb88d6c3c56026"
+    },
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 15921.939,
+        "heartbeats_raw": 15921939,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_be88dc4e543742b69af0c6b687dbb975:15921939",
+            "endPos": {
+              "column": 20,
+              "line": 524
+            },
+            "fileName": "_ProofEval_be88dc4e543742b69af0c6b687dbb975.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 398
+            },
+            "severity": "information"
+          }
+        ],
+        "elapsed_seconds": 7.9308957234025,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/physlib-v4.32.0",
+          "version": "v4.32.0",
+          "source_commit": "c48433678e8fb6306ebcd48453300c8e16058a62",
+          "toolchain": "leanprover/lean4:v4.32.0",
+          "compiler_version": "Lean (version 4.32.0, x86_64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)",
+          "dependencies": {
+            "mathlib": "81a5d257c8e410db227a6665ed08f64fea08e997",
+            "doc-gen4": "092d6318789e7bb9160ade1e85bdbcc0abfd7f6e",
+            "plausible": "e12c1910fe855cbfc38803cd4e55543906d5fa62",
+            "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+            "importGraph": "7e9612bf0b9ee66db3cb5b9988a35afc706f5a12",
+            "proofwidgets": "6e311e2a844da9b2cc3971187df2fe0066947b93",
+            "aesop": "a7dbf0c63b694e47f425f3dcddbc0e178bb432d3",
+            "Qq": "38d591e778f100aec9762bb582f9c7f55f50e9dc",
+            "batteries": "023ce7d62a0531e22a5331e20b587817a80d49ff",
+            "leansqlite": "b2e8105c3507d81adaa531fda5990d14b631528f",
+            "Cli": "88679d088c9720c27ebdf2ba4dafe17341747f94",
+            "UnicodeBasic": "947120c17904da8fc89abe3616d57e1c3e13aa9c",
+            "BibtexQuery": "b648facb6be09a29be636bbc02d28ddee77565c7",
+            "MD4Lean": "31907cc18f48a95384f99cee5582c00fb39e0f67"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "363203af4cc4973b3185fa72cb9592e070aeba7a3c6bfa16e97ad96fd85a0105",
+            "lake-manifest.json": "a9531c3978f21e50cb72cc89c2a7644b296bee59a7f2ff92ca2408aac4a67311"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "full_file_replacement",
+          "candidate_start_line": 399,
+          "original_file_path": "Physlib/Electromagnetism/Dynamics/IsExtrema.lean",
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+          "version": "v4.32.0",
+          "status": "prepared",
+          "heartbeats": 26982.141,
+          "heartbeats_raw": 26982141,
+          "length": 1372,
+          "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+          "measured_at": "2026-10-02T15:10:32.018449+00:00",
+          "reference_code_sha256": "9839fbd7f2dedf9c22190403722dc98210c990a14188a042ddf41ab5e050496c",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/physlib-v4.32.0",
+            "version": "v4.32.0",
+            "source_commit": "c48433678e8fb6306ebcd48453300c8e16058a62",
+            "toolchain": "leanprover/lean4:v4.32.0",
+            "compiler_version": "Lean (version 4.32.0, x86_64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)",
+            "dependencies": {
+              "mathlib": "81a5d257c8e410db227a6665ed08f64fea08e997",
+              "doc-gen4": "092d6318789e7bb9160ade1e85bdbcc0abfd7f6e",
+              "plausible": "e12c1910fe855cbfc38803cd4e55543906d5fa62",
+              "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+              "importGraph": "7e9612bf0b9ee66db3cb5b9988a35afc706f5a12",
+              "proofwidgets": "6e311e2a844da9b2cc3971187df2fe0066947b93",
+              "aesop": "a7dbf0c63b694e47f425f3dcddbc0e178bb432d3",
+              "Qq": "38d591e778f100aec9762bb582f9c7f55f50e9dc",
+              "batteries": "023ce7d62a0531e22a5331e20b587817a80d49ff",
+              "leansqlite": "b2e8105c3507d81adaa531fda5990d14b631528f",
+              "Cli": "88679d088c9720c27ebdf2ba4dafe17341747f94",
+              "UnicodeBasic": "947120c17904da8fc89abe3616d57e1c3e13aa9c",
+              "BibtexQuery": "b648facb6be09a29be636bbc02d28ddee77565c7",
+              "MD4Lean": "31907cc18f48a95384f99cee5582c00fb39e0f67"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "363203af4cc4973b3185fa72cb9592e070aeba7a3c6bfa16e97ad96fd85a0105",
+              "lake-manifest.json": "a9531c3978f21e50cb72cc89c2a7644b296bee59a7f2ff92ca2408aac4a67311"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "full_file_replacement",
+            "candidate_start_line": 399,
+            "original_file_path": "Physlib/Electromagnetism/Dynamics/IsExtrema.lean",
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 40.990824264093796
+      }
+    },
+    "diagnostics": [],
+    "scores": {
+      "length_reduction_pct": 0.4373177842565634,
+      "heartbeat_reduction_pct": 40.990824264093796,
+      "compatibility_pct": 100.0,
+      "combined_pct": 47.14271401611679
+    }
+  },
+  "generation": {
+    "status": "received",
+    "content": "\n\n```lean\nlemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d}\n    {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d)\n    (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J)\n    (t : Time) (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -\n      𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n      𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n  have hEs : ∀ j, ContDiff ℝ 2 (fun y => A.electricField 𝓕.c t y j) :=\n    fun j => electricField_apply_contDiff_space (i := j) (hA.of_le (right_eq_inf.mp rfl)) t\n  have hEd : ∀ j k, Differentiable ℝ (∂[k] (fun y => A.electricField 𝓕.c t y j)) :=\n    fun j k => Space.deriv_differentiable (hEs j) k\n  have hBt : ∀ j, Differentiable ℝ (fun s => ∂[j] (fun y => A.magneticFieldMatrix 𝓕.c s y (j, i)) x) :=\n    fun j => Space.space_deriv_differentiable_time (i := j)\n      (magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) (j, i)) x\n  have hJt : Differentiable ℝ (fun s => J.currentDensity 𝓕.c s x i) :=\n    LorentzCurrentDensity.currentDensity_apply_differentiable_time (hJ.differentiable (by decide)) x i\n  calc _\n    _ = ∂ₜ (fun t => 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c t · (j, i)) x -\n      1 / 𝓕.ε₀ * J.currentDensity 𝓕.c t x i) t := by\n      conv_lhs => enter [1]; change fun t => ∂ₜ (A.electricField 𝓕.c · x i) t\n      rw [Time.deriv_euclid (electricField_differentiable_time (hA.of_le (right_eq_inf.mp rfl)) _),\n          time_deriv_electricField_of_isExtrema hA J hJ h]\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∂ₜ (fun t => ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c t · (j, i)) x) t -\n      1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      rw [Time.deriv_eq, fderiv_fun_sub, fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt,\n          fderiv_const_mul hJt.differentiableAt]\n      simp\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂ₜ (fun t => ∂[j] (A.magneticFieldMatrix 𝓕.c t · (j, i)) x) t -\n      1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      rw [Time.deriv_eq, fderiv_fun_sum fun j _ => (hBt j).differentiableAt]\n      simp [Finset.sum_apply]\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (fun x => ∂ₜ (A.magneticFieldMatrix 𝓕.c · x (j, i)) t) x -\n      1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      congr 1\n      · simp [Finset.sum_apply]\n        congr 1\n        funext j\n        rw [Space.time_deriv_comm_space_deriv]\n        exact magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) _\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (fun x => ∂[j] (A.electricField 𝓕.c t · i) x -\n        ∂[i] (A.electricField 𝓕.c t · j) x) x - 1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      congr 1\n      · simp [Finset.sum_apply]\n        congr 1\n        funext j\n        congr 1\n        funext x\n        rw [time_deriv_magneticFieldMatrix _ (hA.of_le ENat.le_top)]\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x -\n        ∂[j] (∂[i] (A.electricField 𝓕.c t · j)) x) - 1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      congr 1\n      · simp [Finset.sum_apply]\n        congr 1\n        funext j\n        rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sub (hEd _ _).differentiableAt (hEd _ _).differentiableAt]\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x -\n        1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      rw [Finset.sum_sub_distrib, mul_sub]\n      congr 2\n      funext j\n      rw [Space.deriv_commute _ (hEs _)]\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * ∂[i] (∑ j, ∂[j] (A.electricField 𝓕.c t · j)) x -\n        1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sum]\n      simp [sum_apply]\n      intro j _\n      exact (hEd j j).differentiableAt\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * ∂[i] (J.chargeDensity 𝓕.c t ·) x / 𝓕.ε₀ -\n        1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      have := (isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t x\n      rw [this.1]\n      ring\n    _ = 𝓕.c ^ 2 * ∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x -\n        𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n        𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      simp [FreeSpace.c_sq]\n      field_simp\n```",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 4475,
+      "prompt_tokens": 6421,
+      "total_tokens": 10896,
+      "completion_tokens_details": {
+        "reasoning_tokens": 2400
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 5280,
+        "created_cache_tokens": 1056
+      }
+    },
+    "returned_model": "Qwen/Qwen3.5-397B-A17B",
+    "response_id": "chatcmpl-92474630-66f0-4f57-9540-5286cfb10af6",
+    "reasoning_characters": 5962,
+    "elapsed_seconds": 446.541
+  },
+  "extracted_proof": "lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d}\n    {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d)\n    (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J)\n    (t : Time) (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -\n      𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n      𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n  have hEs : ∀ j, ContDiff ℝ 2 (fun y => A.electricField 𝓕.c t y j) :=\n    fun j => electricField_apply_contDiff_space (i := j) (hA.of_le (right_eq_inf.mp rfl)) t\n  have hEd : ∀ j k, Differentiable ℝ (∂[k] (fun y => A.electricField 𝓕.c t y j)) :=\n    fun j k => Space.deriv_differentiable (hEs j) k\n  have hBt : ∀ j, Differentiable ℝ (fun s => ∂[j] (fun y => A.magneticFieldMatrix 𝓕.c s y (j, i)) x) :=\n    fun j => Space.space_deriv_differentiable_time (i := j)\n      (magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) (j, i)) x\n  have hJt : Differentiable ℝ (fun s => J.currentDensity 𝓕.c s x i) :=\n    LorentzCurrentDensity.currentDensity_apply_differentiable_time (hJ.differentiable (by decide)) x i\n  calc _\n    _ = ∂ₜ (fun t => 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c t · (j, i)) x -\n      1 / 𝓕.ε₀ * J.currentDensity 𝓕.c t x i) t := by\n      conv_lhs => enter [1]; change fun t => ∂ₜ (A.electricField 𝓕.c · x i) t\n      rw [Time.deriv_euclid (electricField_differentiable_time (hA.of_le (right_eq_inf.mp rfl)) _),\n          time_deriv_electricField_of_isExtrema hA J hJ h]\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∂ₜ (fun t => ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c t · (j, i)) x) t -\n      1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      rw [Time.deriv_eq, fderiv_fun_sub, fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt,\n          fderiv_const_mul hJt.differentiableAt]\n      simp\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂ₜ (fun t => ∂[j] (A.magneticFieldMatrix 𝓕.c t · (j, i)) x) t -\n      1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      rw [Time.deriv_eq, fderiv_fun_sum fun j _ => (hBt j).differentiableAt]\n      simp [Finset.sum_apply]\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (fun x => ∂ₜ (A.magneticFieldMatrix 𝓕.c · x (j, i)) t) x -\n      1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      congr 1\n      · simp [Finset.sum_apply]\n        congr 1\n        funext j\n        rw [Space.time_deriv_comm_space_deriv]\n        exact magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) _\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (fun x => ∂[j] (A.electricField 𝓕.c t · i) x -\n        ∂[i] (A.electricField 𝓕.c t · j) x) x - 1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      congr 1\n      · simp [Finset.sum_apply]\n        congr 1\n        funext j\n        congr 1\n        funext x\n        rw [time_deriv_magneticFieldMatrix _ (hA.of_le ENat.le_top)]\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x -\n        ∂[j] (∂[i] (A.electricField 𝓕.c t · j)) x) - 1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      congr 1\n      · simp [Finset.sum_apply]\n        congr 1\n        funext j\n        rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sub (hEd _ _).differentiableAt (hEd _ _).differentiableAt]\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x -\n        1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      rw [Finset.sum_sub_distrib, mul_sub]\n      congr 2\n      funext j\n      rw [Space.deriv_commute _ (hEs _)]\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * ∂[i] (∑ j, ∂[j] (A.electricField 𝓕.c t · j)) x -\n        1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sum]\n      simp [sum_apply]\n      intro j _\n      exact (hEd j j).differentiableAt\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * ∂[i] (J.chargeDensity 𝓕.c t ·) x / 𝓕.ε₀ -\n        1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      have := (isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t x\n      rw [this.1]\n      ring\n    _ = 𝓕.c ^ 2 * ∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x -\n        𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n        𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      simp [FreeSpace.c_sq]\n      field_simp",
+  "evaluation": {
+    "schema_version": 1,
+    "name": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+    "status": "failed",
+    "primary_version": "v4.32.0",
+    "requested_versions": [
+      "v4.32.0"
+    ],
+    "all_versions": [
+      "v4.32.0"
+    ],
+    "measurement": "local_cached_reference",
+    "reference": {
+      "length": 1372,
+      "published_heartbeats": 26970
+    },
+    "candidate": {
+      "length": 1019,
+      "code_sha256": "40b72ce219d22ddce5466410833c99ca17f2cd7f3a61b90e65e0d334aaa3408a"
+    },
+    "per_version": {
+      "v4.32.0": {
+        "status": "failed",
+        "passed": false,
+        "heartbeats": null,
+        "heartbeats_raw": null,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  ∂ₜ (fun t => (electricField ?m.1189 A t ?m.1209).ofLp ?m.1185) ?t\nin the target expression\n  ∂ₜ (fun t => ∂ₜ (fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t) t =\n    ∂ₜ\n      (fun t =>\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv j (fun x => magneticFieldMatrix 𝓕.c A t x (j, i)) x -\n          1 / 𝓕.ε₀ * (LorentzCurrentDensity.currentDensity 𝓕.c J t x).ofLp i)\n      t\n\nd : ℕ\nA : ElectromagneticPotential d\n𝓕 : FreeSpace\nhA : ContDiff ℝ ∞ A.val\nJ : LorentzCurrentDensity d\nhJ : ContDiff ℝ ∞ J\nh : IsExtrema 𝓕 A J\nt : Time\nx : Space d\ni : Fin d\nhEs : ∀ (j : Fin d), ContDiff ℝ 2 fun y => (electricField 𝓕.c A t y).ofLp j\nhEd : ∀ (j k : Fin d), Differentiable ℝ (Space.deriv k fun y => (electricField 𝓕.c A t y).ofLp j)\nhBt : ∀ (j : Fin d), Differentiable ℝ fun s => Space.deriv j (fun y => magneticFieldMatrix 𝓕.c A s y (j, i)) x\nhJt : Differentiable ℝ fun s => (LorentzCurrentDensity.currentDensity 𝓕.c J s x).ofLp i\n⊢ ∂ₜ (fun t => ∂ₜ (fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t) t =\n    ∂ₜ\n      (fun t =>\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv j (fun x => magneticFieldMatrix 𝓕.c A t x (j, i)) x -\n          1 / 𝓕.ε₀ * (LorentzCurrentDensity.currentDensity 𝓕.c J t x).ofLp i)\n      t",
+            "endPos": {
+              "column": 98,
+              "line": 421
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 10,
+              "line": 421
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\nd : ℕ\nA : ElectromagneticPotential d\n𝓕 : FreeSpace\nhA : ContDiff ℝ ∞ A.val\nJ : LorentzCurrentDensity d\nhJ : ContDiff ℝ ∞ J\nh : IsExtrema 𝓕 A J\nt : Time\nx : Space d\ni : Fin d\nhEs : ∀ (j : Fin d), ContDiff ℝ 2 fun y => (electricField 𝓕.c A t y).ofLp j\nhEd : ∀ (j k : Fin d), Differentiable ℝ (Space.deriv k fun y => (electricField 𝓕.c A t y).ofLp j)\nhBt : ∀ (j : Fin d), Differentiable ℝ fun s => Space.deriv j (fun y => magneticFieldMatrix 𝓕.c A s y (j, i)) x\nhJt : Differentiable ℝ fun s => (LorentzCurrentDensity.currentDensity 𝓕.c J s x).ofLp i\n⊢ 𝓕.ε₀⁻¹ * 𝓕.μ₀⁻¹ *\n        (fderiv ℝ (fun y => ∑ i_1, Space.deriv i_1 (fun y_1 => magneticFieldMatrix 𝓕.c A y y_1 (i_1, i)) x) t) 1 -\n      𝓕.ε₀⁻¹ * (fderiv ℝ (fun s => (LorentzCurrentDensity.currentDensity 𝓕.c J s x).ofLp i) t) 1 =\n    𝓕.ε₀⁻¹ * 𝓕.μ₀⁻¹ * ∂ₜ (fun t => ∑ j, Space.deriv j (fun x => magneticFieldMatrix 𝓕.c A t x (j, i)) x) t -\n      𝓕.ε₀⁻¹ * ∂ₜ (fun s => (LorentzCurrentDensity.currentDensity 𝓕.c J s x).ofLp i) t\n\ncase hf\nd : ℕ\nA : ElectromagneticPotential d\n𝓕 : FreeSpace\nhA : ContDiff ℝ ∞ A.val\nJ : LorentzCurrentDensity d\nhJ : ContDiff ℝ ∞ J\nh : IsExtrema 𝓕 A J\nt : Time\nx : Space d\ni : Fin d\nhEs : ∀ (j : Fin d), ContDiff ℝ 2 fun y => (electricField 𝓕.c A t y).ofLp j\nhEd : ∀ (j k : Fin d), Differentiable ℝ (Space.deriv k fun y => (electricField 𝓕.c A t y).ofLp j)\nhBt : ∀ (j : Fin d), Differentiable ℝ fun s => Space.deriv j (fun y => magneticFieldMatrix 𝓕.c A s y (j, i)) x\nhJt : Differentiable ℝ fun s => (LorentzCurrentDensity.currentDensity 𝓕.c J s x).ofLp i\n⊢ DifferentiableAt ℝ (fun t => 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv j (fun x => magneticFieldMatrix 𝓕.c A t x (j, i)) x)\n    t\n\ncase hg\nd : ℕ\nA : ElectromagneticPotential d\n𝓕 : FreeSpace\nhA : ContDiff ℝ ∞ A.val\nJ : LorentzCurrentDensity d\nhJ : ContDiff ℝ ∞ J\nh : IsExtrema 𝓕 A J\nt : Time\nx : Space d\ni : Fin d\nhEs : ∀ (j : Fin d), ContDiff ℝ 2 fun y => (electricField 𝓕.c A t y).ofLp j\nhEd : ∀ (j k : Fin d), Differentiable ℝ (Space.deriv k fun y => (electricField 𝓕.c A t y).ofLp j)\nhBt : ∀ (j : Fin d), Differentiable ℝ fun s => Space.deriv j (fun y => magneticFieldMatrix 𝓕.c A s y (j, i)) x\nhJt : Differentiable ℝ fun s => (LorentzCurrentDensity.currentDensity 𝓕.c J s x).ofLp i\n⊢ DifferentiableAt ℝ (fun t => 1 / 𝓕.ε₀ * (LorentzCurrentDensity.currentDensity 𝓕.c J t x).ofLp i) t",
+            "endPos": {
+              "column": 10,
+              "line": 427
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 54,
+              "line": 424
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\nd : ℕ\nA : ElectromagneticPotential d\n𝓕 : FreeSpace\nhA : ContDiff ℝ ∞ A.val\nJ : LorentzCurrentDensity d\nhJ : ContDiff ℝ ∞ J\nh : IsExtrema 𝓕 A J\nt : Time\nx : Space d\ni : Fin d\nhEs : ∀ (j : Fin d), ContDiff ℝ 2 fun y => (electricField 𝓕.c A t y).ofLp j\nhEd : ∀ (j k : Fin d), Differentiable ℝ (Space.deriv k fun y => (electricField 𝓕.c A t y).ofLp j)\nhBt : ∀ (j : Fin d), Differentiable ℝ fun s => Space.deriv j (fun y => magneticFieldMatrix 𝓕.c A s y (j, i)) x\nhJt : Differentiable ℝ fun s => (LorentzCurrentDensity.currentDensity 𝓕.c J s x).ofLp i\n⊢ ∑ i_1, (fderiv ℝ (fun s => Space.deriv i_1 (fun y => magneticFieldMatrix 𝓕.c A s y (i_1, i)) x) t) 1 =\n    ∑ j, ∂ₜ (fun t => Space.deriv j (fun x => magneticFieldMatrix 𝓕.c A t x (j, i)) x) t",
+            "endPos": {
+              "column": 29,
+              "line": 431
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 54,
+              "line": 429
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Unknown constant `ENat.le_top`",
+            "endPos": {
+              "column": 66,
+              "line": 448
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "lean.unknownIdentifier._namedError",
+            "pos": {
+              "column": 55,
+              "line": 448
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `apply` failed: could not unify the conclusion of `@funext`\n  ?f = ?g\nwith the goal\n  ∑ x_1,\n      Space.deriv x_1\n        (fun x =>\n          Space.deriv x_1 (fun x => (electricField 𝓕.c A t x).ofLp i) x -\n            Space.deriv i (fun x => (electricField 𝓕.c A t x).ofLp x_1) x)\n        x =\n    ∑ x_1, Space.deriv x_1 (Space.deriv x_1 fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      ∑ x_1, Space.deriv x_1 (Space.deriv i fun x => (electricField 𝓕.c A t x).ofLp x_1) x\n\nNote: The full type of `@funext` is\n  ∀ {α : Sort ?u.691} {β : α → Sort ?u.690} {f g : (x : α) → β x}, (∀ (x : α), f x = g x) → f = g\n\ncase e_a\nd : ℕ\nA : ElectromagneticPotential d\n𝓕 : FreeSpace\nhA : ContDiff ℝ ∞ A.val\nJ : LorentzCurrentDensity d\nhJ : ContDiff ℝ ∞ J\nh : IsExtrema 𝓕 A J\nt : Time\nx : Space d\ni : Fin d\nhEs : ∀ (j : Fin d), ContDiff ℝ 2 fun y => (electricField 𝓕.c A t y).ofLp j\nhEd : ∀ (j k : Fin d), Differentiable ℝ (Space.deriv k fun y => (electricField 𝓕.c A t y).ofLp j)\nhBt : ∀ (j : Fin d), Differentiable ℝ fun s => Space.deriv j (fun y => magneticFieldMatrix 𝓕.c A s y (j, i)) x\nhJt : Differentiable ℝ fun s => (LorentzCurrentDensity.currentDensity 𝓕.c J s x).ofLp i\n⊢ ∑ x_1,\n      Space.deriv x_1\n        (fun x =>\n          Space.deriv x_1 (fun x => (electricField 𝓕.c A t x).ofLp i) x -\n            Space.deriv i (fun x => (electricField 𝓕.c A t x).ofLp x_1) x)\n        x =\n    ∑ x_1, Space.deriv x_1 (Space.deriv x_1 fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      ∑ x_1, Space.deriv x_1 (Space.deriv i fun x => (electricField 𝓕.c A t x).ofLp x_1) x",
+            "endPos": {
+              "column": 16,
+              "line": 454
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 454
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `apply` failed: could not unify the conclusion of `@funext`\n  ?f = ?g\nwith the goal\n  1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ x_1, Space.deriv x_1 (Space.deriv i fun x => (electricField 𝓕.c A t x).ofLp x_1) x =\n    1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv i (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) x\n\nNote: The full type of `@funext` is\n  ∀ {α : Sort ?u.696} {β : α → Sort ?u.695} {f g : (x : α) → β x}, (∀ (x : α), f x = g x) → f = g\n\ncase e_a.e_a\nd : ℕ\nA : ElectromagneticPotential d\n𝓕 : FreeSpace\nhA : ContDiff ℝ ∞ A.val\nJ : LorentzCurrentDensity d\nhJ : ContDiff ℝ ∞ J\nh : IsExtrema 𝓕 A J\nt : Time\nx : Space d\ni : Fin d\nhEs : ∀ (j : Fin d), ContDiff ℝ 2 fun y => (electricField 𝓕.c A t y).ofLp j\nhEd : ∀ (j k : Fin d), Differentiable ℝ (Space.deriv k fun y => (electricField 𝓕.c A t y).ofLp j)\nhBt : ∀ (j : Fin d), Differentiable ℝ fun s => Space.deriv j (fun y => magneticFieldMatrix 𝓕.c A s y (j, i)) x\nhJt : Differentiable ℝ fun s => (LorentzCurrentDensity.currentDensity 𝓕.c J s x).ofLp i\n⊢ 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ x_1, Space.deriv x_1 (Space.deriv i fun x => (electricField 𝓕.c A t x).ofLp x_1) x =\n    1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv i (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) x",
+            "endPos": {
+              "column": 14,
+              "line": 461
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 6,
+              "line": 461
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  fderiv ?m.1558 (fun y => ∑ i ∈ ?m.1568, ?m.1569 i y) ?m.1566\nin the target expression\n  1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv i (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) x -\n      1 / 𝓕.ε₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t =\n    1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) *\n          (fderiv ℝ (∑ j, Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) x) (Space.basis i) -\n      1 / 𝓕.ε₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t\n\nd : ℕ\nA : ElectromagneticPotential d\n𝓕 : FreeSpace\nhA : ContDiff ℝ ∞ A.val\nJ : LorentzCurrentDensity d\nhJ : ContDiff ℝ ∞ J\nh : IsExtrema 𝓕 A J\nt : Time\nx : Space d\ni : Fin d\nhEs : ∀ (j : Fin d), ContDiff ℝ 2 fun y => (electricField 𝓕.c A t y).ofLp j\nhEd : ∀ (j k : Fin d), Differentiable ℝ (Space.deriv k fun y => (electricField 𝓕.c A t y).ofLp j)\nhBt : ∀ (j : Fin d), Differentiable ℝ fun s => Space.deriv j (fun y => magneticFieldMatrix 𝓕.c A s y (j, i)) x\nhJt : Differentiable ℝ fun s => (LorentzCurrentDensity.currentDensity 𝓕.c J s x).ofLp i\n⊢ 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv i (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) x -\n      1 / 𝓕.ε₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t =\n    1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) *\n          (fderiv ℝ (∑ j, Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) x) (Space.basis i) -\n      1 / 𝓕.ε₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t",
+            "endPos": {
+              "column": 53,
+              "line": 466
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 39,
+              "line": 466
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  Space.div (electricField 𝓕.c A t) x\nin the target expression\n  1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * Space.deriv i (∑ j, Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) x -\n      1 / 𝓕.ε₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t =\n    1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x / 𝓕.ε₀ -\n      1 / 𝓕.ε₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t\n\nd : ℕ\nA : ElectromagneticPotential d\n𝓕 : FreeSpace\nhA : ContDiff ℝ ∞ A.val\nJ : LorentzCurrentDensity d\nhJ : ContDiff ℝ ∞ J\nh : IsExtrema 𝓕 A J\nt : Time\nx : Space d\ni : Fin d\nhEs : ∀ (j : Fin d), ContDiff ℝ 2 fun y => (electricField 𝓕.c A t y).ofLp j\nhEd : ∀ (j k : Fin d), Differentiable ℝ (Space.deriv k fun y => (electricField 𝓕.c A t y).ofLp j)\nhBt : ∀ (j : Fin d), Differentiable ℝ fun s => Space.deriv j (fun y => magneticFieldMatrix 𝓕.c A s y (j, i)) x\nhJt : Differentiable ℝ fun s => (LorentzCurrentDensity.currentDensity 𝓕.c J s x).ofLp i\nthis :\n  Space.div (electricField 𝓕.c A t) x = LorentzCurrentDensity.chargeDensity 𝓕.c J t x / 𝓕.ε₀ ∧\n    ∀ (i : Fin d),\n      𝓕.μ₀ * 𝓕.ε₀ * (∂ₜ (fun t => electricField 𝓕.c A t x) t).ofLp i =\n        ∑ j, Space.deriv j (fun x => magneticFieldMatrix 𝓕.c A t x (j, i)) x -\n          𝓕.μ₀ * (LorentzCurrentDensity.currentDensity 𝓕.c J t x).ofLp i\n⊢ 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * Space.deriv i (∑ j, Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) x -\n      1 / 𝓕.ε₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t =\n    1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x / 𝓕.ε₀ -\n      1 / 𝓕.ε₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t",
+            "endPos": {
+              "column": 16,
+              "line": 474
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 10,
+              "line": 474
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Target declaration depends on sorryAx",
+            "endPos": {
+              "column": 16,
+              "line": 480
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 398
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.sum_apply\n\nHint: Omit it from the simp argument list.\n  simp ̵[̵F̵i̵n̵s̵e̵t̵.̵s̵u̵m̵_̵a̵p̵p̵l̵y̵]̵\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 28,
+              "line": 431
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 12,
+              "line": 431
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.sum_apply\n\nHint: Omit it from the simp argument list.\n  simp ̵[̵F̵i̵n̵s̵e̵t̵.̵s̵u̵m̵_̵a̵p̵p̵l̵y̵]̵\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 30,
+              "line": 435
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 14,
+              "line": 435
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.sum_apply\n\nHint: Omit it from the simp argument list.\n  simp ̵[̵F̵i̵n̵s̵e̵t̵.̵s̵u̵m̵_̵a̵p̵p̵l̵y̵]̵\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 30,
+              "line": 443
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 14,
+              "line": 443
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.sum_apply\n\nHint: Omit it from the simp argument list.\n  simp ̵[̵F̵i̵n̵s̵e̵t̵.̵s̵u̵m̵_̵a̵p̵p̵l̵y̵]̵\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 30,
+              "line": 452
+            },
+            "fileName": "_ProofEval_4fd1811c04eb446b8800e1280c764d50.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 14,
+              "line": 452
+            },
+            "severity": "warning"
+          },
+          {
+            "severity": "error",
+            "message": "Expected exactly one verified target heartbeat marker"
+          }
+        ],
+        "elapsed_seconds": 5.488338595256209,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/physlib-v4.32.0",
+          "version": "v4.32.0",
+          "source_commit": "c48433678e8fb6306ebcd48453300c8e16058a62",
+          "toolchain": "leanprover/lean4:v4.32.0",
+          "compiler_version": "Lean (version 4.32.0, x86_64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)",
+          "dependencies": {
+            "mathlib": "81a5d257c8e410db227a6665ed08f64fea08e997",
+            "doc-gen4": "092d6318789e7bb9160ade1e85bdbcc0abfd7f6e",
+            "plausible": "e12c1910fe855cbfc38803cd4e55543906d5fa62",
+            "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+            "importGraph": "7e9612bf0b9ee66db3cb5b9988a35afc706f5a12",
+            "proofwidgets": "6e311e2a844da9b2cc3971187df2fe0066947b93",
+            "aesop": "a7dbf0c63b694e47f425f3dcddbc0e178bb432d3",
+            "Qq": "38d591e778f100aec9762bb582f9c7f55f50e9dc",
+            "batteries": "023ce7d62a0531e22a5331e20b587817a80d49ff",
+            "leansqlite": "b2e8105c3507d81adaa531fda5990d14b631528f",
+            "Cli": "88679d088c9720c27ebdf2ba4dafe17341747f94",
+            "UnicodeBasic": "947120c17904da8fc89abe3616d57e1c3e13aa9c",
+            "BibtexQuery": "b648facb6be09a29be636bbc02d28ddee77565c7",
+            "MD4Lean": "31907cc18f48a95384f99cee5582c00fb39e0f67"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "363203af4cc4973b3185fa72cb9592e070aeba7a3c6bfa16e97ad96fd85a0105",
+            "lake-manifest.json": "a9531c3978f21e50cb72cc89c2a7644b296bee59a7f2ff92ca2408aac4a67311"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "full_file_replacement",
+          "candidate_start_line": 399,
+          "original_file_path": "Physlib/Electromagnetism/Dynamics/IsExtrema.lean",
+          "exit_code": 1
+        },
+        "cached": false,
+        "reference": {
+          "name": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+          "version": "v4.32.0",
+          "status": "prepared",
+          "heartbeats": 26982.141,
+          "heartbeats_raw": 26982141,
+          "length": 1372,
+          "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+          "measured_at": "2026-10-02T15:10:32.018449+00:00",
+          "reference_code_sha256": "9839fbd7f2dedf9c22190403722dc98210c990a14188a042ddf41ab5e050496c",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/physlib-v4.32.0",
+            "version": "v4.32.0",
+            "source_commit": "c48433678e8fb6306ebcd48453300c8e16058a62",
+            "toolchain": "leanprover/lean4:v4.32.0",
+            "compiler_version": "Lean (version 4.32.0, x86_64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)",
+            "dependencies": {
+              "mathlib": "81a5d257c8e410db227a6665ed08f64fea08e997",
+              "doc-gen4": "092d6318789e7bb9160ade1e85bdbcc0abfd7f6e",
+              "plausible": "e12c1910fe855cbfc38803cd4e55543906d5fa62",
+              "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+              "importGraph": "7e9612bf0b9ee66db3cb5b9988a35afc706f5a12",
+              "proofwidgets": "6e311e2a844da9b2cc3971187df2fe0066947b93",
+              "aesop": "a7dbf0c63b694e47f425f3dcddbc0e178bb432d3",
+              "Qq": "38d591e778f100aec9762bb582f9c7f55f50e9dc",
+              "batteries": "023ce7d62a0531e22a5331e20b587817a80d49ff",
+              "leansqlite": "b2e8105c3507d81adaa531fda5990d14b631528f",
+              "Cli": "88679d088c9720c27ebdf2ba4dafe17341747f94",
+              "UnicodeBasic": "947120c17904da8fc89abe3616d57e1c3e13aa9c",
+              "BibtexQuery": "b648facb6be09a29be636bbc02d28ddee77565c7",
+              "MD4Lean": "31907cc18f48a95384f99cee5582c00fb39e0f67"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "363203af4cc4973b3185fa72cb9592e070aeba7a3c6bfa16e97ad96fd85a0105",
+              "lake-manifest.json": "a9531c3978f21e50cb72cc89c2a7644b296bee59a7f2ff92ca2408aac4a67311"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "full_file_replacement",
+            "candidate_start_line": 399,
+            "original_file_path": "Physlib/Electromagnetism/Dynamics/IsExtrema.lean",
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": null
+      }
+    },
+    "diagnostics": [],
+    "scores": {
+      "length_reduction_pct": 0.0,
+      "heartbeat_reduction_pct": 0.0,
+      "compatibility_pct": 0.0,
+      "combined_pct": 0.0
+    }
+  }
+}

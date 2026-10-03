@@ -1,0 +1,74 @@
+```lean
+lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp}
+    (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :
+    ι 𝓣ᶠ(a * [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * b) =
+    ι ([ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by
+  have ha := Basis.mem_span (ofCrAnListFBasis (𝓕 := 𝓕)) a
+  have hb := Basis.mem_span (ofCrAnListFBasis (𝓕 := 𝓕)) b
+  induction ha, hb using Submodule.span_induction₂ with
+  | mem_mem a b ha hb =>
+    rcases ha with ⟨l, rfl⟩
+    rcases hb with ⟨r, rfl⟩
+    simp only [ofListBasis_eq_ofList]
+    let L := (List.takeWhile (fun c => ¬ crAnTimeOrderRel φ c)
+        ((l ++ r).insertionSort crAnTimeOrderRel)) ++
+      (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) l)
+    let R := (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) r) ++
+      (List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬ crAnTimeOrderRel c φ)
+        ((l ++ r).insertionSort crAnTimeOrderRel))
+    have hs (m : List 𝓕.CrAnFieldOp)
+        (hm : ∀ c ∈ m, crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) :
+        crAnTimeOrderList (l ++ m ++ r) = L ++ m ++ R := by
+      simpa only [crAnTimeOrderList, L, R, List.append_assoc, decide_not,
+        Bool.decide_and] using insertionSort_of_eq_list 𝓕.crAnTimeOrderRel φ l m r hm
+    have h0 : crAnTimeOrderList (l ++ r) = L ++ R := by
+      simpa only [List.append_nil, List.nil_append] using hs [] (by simp)
+    have hc : [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF =
+        ofCrAnListF [φ, ψ] - 𝓢(𝓕.crAnStatistics φ, 𝓕.crAnStatistics ψ) •
+          ofCrAnListF [ψ, φ] := by
+      rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton,
+        superCommuteF_ofCrAnListF_ofCrAnListF]
+      simp only [List.singleton_append, ofList_singleton]
+    have hswap : crAnTimeOrderSign (l ++ [ψ, φ] ++ r) =
+        crAnTimeOrderSign (l ++ [φ, ψ] ++ r) := by
+      simpa only [List.append_assoc, List.cons_append, List.nil_append] using
+        (crAnTimeOrderSign_swap_eq_time hφψ hψφ l r).symm
+    calc
+      _ = crAnTimeOrderSign (l ++ [φ, ψ] ++ r) •
+          (ι (ofCrAnListF L) * ι [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF *
+            ι (ofCrAnListF R)) := by
+        conv_lhs =>
+          rw [hc]
+          simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc,
+            ← ofCrAnListF_append, map_sub, map_smul,
+            timeOrderF_ofCrAnListF]
+        rw [hs [φ, ψ] (by simp [hφψ, hψφ]), hs [ψ, φ] (by simp [hφψ, hψφ])]
+        simp only [hc, hswap, ofCrAnListF_append, map_mul, map_sub, map_smul,
+          mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc,
+          smul_sub, mul_assoc]
+        congr 1
+        exact smul_comm _ _ _
+      _ = crAnTimeOrderSign (l ++ [φ, ψ] ++ r) •
+          (ι [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF *
+            ι (ofCrAnListF (crAnTimeOrderList (l ++ r)))) := by
+        rw [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ),
+          mul_assoc, ← map_mul ι (ofCrAnListF L) (ofCrAnListF R),
+          ← ofCrAnListF_append L R, ← h0]
+      _ = _ := by
+        rw [map_mul, ← ofCrAnListF_append, timeOrderF_ofCrAnListF, map_smul,
+          Algebra.mul_smul_comm]
+        by_cases hq : (𝓕 |>ₛ φ) ≠ (𝓕 |>ₛ ψ)
+        · simp only [ι_superCommuteF_of_diff_statistic hq, zero_mul, smul_zero]
+        · have he : 𝓕.crAnStatistics ψ = 𝓕.crAnStatistics φ := (not_ne_iff.mp hq).symm
+          have ht := Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ he l r
+          simpa only [crAnTimeOrderSign, List.append_assoc, List.cons_append,
+            List.nil_append] using congrArg
+              (fun c => c • (ι [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF *
+                ι (ofCrAnListF (crAnTimeOrderList (l ++ r))))) ht
+  | zero_left _ _ | zero_right _ _ =>
+    simp only [zero_mul, mul_zero, map_zero]
+  | add_left x y z hx hy hz ih₁ ih₂ | add_right x y z hx hy hz ih₁ ih₂ =>
+    simp only [add_mul, mul_add, map_add, ih₁, ih₂]
+  | smul_left c x y hx hy ih | smul_right c x y hx hy ih =>
+    simp only [Algebra.smul_mul_assoc, Algebra.mul_smul_comm, map_smul, ih]
+```

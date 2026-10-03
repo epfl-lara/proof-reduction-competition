@@ -1,0 +1,1125 @@
+{
+  "round": 3,
+  "request_sha256": "1d8d4afe27e42f783a6e7021e256cce2c877ea3872fed916efa169ffa6c3c4ad",
+  "generation": {
+    "status": "received",
+    "content": "\n\n```lean\ntheorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  have h_main : ∃ i j, i < j ∧ u i = u j ∧ u (i+1) = u (j+1) ∧ u (i+2) = u (j+2) ∧ u (i+3) = u (j+3) := by\n    obtain ⟨B, T, hB⟩ := boundedu\n    classical\n    let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n+1), u (n+2), u (n+3))\n    have h_finite : Set.Finite (Set.range f) := by\n      have h_sub : Set.range f ⊆ Set.Icc (B,B,B,B) (T,T,T,T) := by\n        intro x hx; rcases hx with ⟨n, rfl⟩\n        simp only [mem_Icc, Prod.le_def]\n        constructor <;>\n        (try constructor) <;>\n        (try constructor) <;>\n        (try constructor) <;>\n        (try simp_all [f, and_self])\n      have h_finite_Icc : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n        apply Set.Finite.subset (Set.Finite.mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n        intro x hx\n        simp_all only [ge_iff_le, ne_eq, mem_Icc, Finset.mem_Icc, mem_setOf_eq, and_self]\n      exact Set.Finite.subset h_finite_Icc h_sub\n    have h_not_injective : ¬ Function.Injective f := by\n      intro h_inj\n      have h_inf := Set.infinite_range_of_injective h_inj\n      exact Set.not_infinite.mpr h_finite h_inf\n    have h_exists_distinct_eq : ∃ x y, x ≠ y ∧ f x = f y := by\n      by_contra! h\n      have h_inj : Function.Injective f := by\n        intro x y hxy\n        by_cases hxy' : x = y\n        · exact hxy'\n        · have hne : x ≠ y := hxy'\n          have h_eq : f x = f y := hxy\n          have h_contra := h x y hne h_eq\n          contradiction\n      exact h_not_injective h_inj\n    obtain ⟨x, y, hne, h_eq⟩ := h_exists_distinct_eq\n    have h_lt : x < y ∨ y < x := lt_or_gt_of_ne hne\n    obtain ⟨i, j, hij, h_eq⟩ := by\n      cases h_lt with\n      | inl hij => exact ⟨x, y, hij, h_eq⟩\n      | inr hij => exact ⟨y, x, hij, by simpa using h_eq⟩\n    refine' ⟨i, j, hij, _⟩\n    simp only [f, Prod.mk.injEq] at h_eq\n    exact h_eq\n  obtain ⟨i, j, hij, h_eq⟩ := h_main\n  have h_periodic : ∀ m, u (i+m) = u (j+m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      match m with\n      | 0 => exact h_eq.1\n      | 1 => exact h_eq.2.1\n      | 2 => exact h_eq.2.2.1\n      | 3 => exact h_eq.2.2.2\n      | k+4 =>\n        have h_i := hu (i+k+4) (by omega)\n        have h_j := hu (j+k+4) (by omega)\n        have h_eq_i : (u (i+k+4) : ℝ) = ((u (i+k+3) + u (i+k+2) + u (i+k+1) * u (i+k)) : ℝ) / (u (i+k+3) * u (i+k+2) + u (i+k+1) + u (i+k)) := by\n          norm_cast at h_i ⊢; exact h_i.1\n        have h_eq_j : (u (j+k+4) : ℝ) = ((u (j+k+3) + u (j+k+2) + u (j+k+1) * u (j+k)) : ℝ) / (u (j+k+3) * u (j+k+2) + u (j+k+1) + u (j+k)) := by\n          norm_cast at h_j ⊢; exact h_j.1\n        have h_rhs_eq_int : (u (i+k+3) + u (i+k+2) + u (i+k+1) * u (i+k)) =\n                           (u (j+k+3) + u (j+k+2) + u (j+k+1) * u (j+k)) := by\n          rw [ih (k+3) (by omega), ih (k+2) (by omega), ih (k+1) (by omega), ih k (by omega)]\n          rfl\n        have h_rhs_eq_denom_int : (u (i+k+3) * u (i+k+2) + u (i+k+1) + u (i+k)) =\n                                 (u (j+k+3) * u (j+k+2) + u (j+k+1) + u (j+k)) := by\n          rw [ih (k+3) (by omega), ih (k+2) (by omega), ih (k+1) (by omega), ih k (by omega)]\n          rfl\n        have h_rhs_eq : ((u (i+k+3) + u (i+k+2) + u (i+k+1) * u (i+k)) : ℝ) / (u (i+k+3) * u (i+k+2) + u (i+k+1) + u (i+k)) =\n                        ((u (j+k+3) + u (j+k+2) + u (j+k+1) * u (j+k)) : ℝ) / (u (j+k+3) * u (j+k+2) + u (j+k+1) + u (j+k)) := by\n          rw [h_rhs_eq_int, h_rhs_eq_denom_int]\n          rfl\n        calc\n          (u (i+k+4) : ℝ) = ((u (i+k+3) + u (i+k+2) + u (i+k+1) * u (i+k)) : ℝ) / (u (i+k+3) * u (i+k+2) + u (i+k+1) + u (i+k)) := h_eq_i\n          _ = ((u (j+k+3) + u (j+k+2) + u (j+k+1) * u (j+k)) : ℝ) / (u (j+k+3) * u (j+k+2) + u (j+k+1) + u (j+k)) := h_rhs_eq\n          _ = (u (j+k+4) : ℝ) := by rw [← h_eq_j]; rfl\n        exact_mod_cast this\n  use i, (j - i)\n  have h_pos : j - i > 0 := by omega\n  constructor\n  · exact h_pos\n  · intro n hn\n    have h_eq_n := h_periodic (n - i)\n    have h_add : i + (n - i) = n := by omega\n    have h_add_j : j + (n - i) = n + (j - i) := by omega\n    rw [h_add] at h_eq_n\n    rw [h_add_j] at h_eq_n\n    exact id (Eq.symm h_eq_n)\n```",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 13445,
+      "prompt_tokens": 8359,
+      "total_tokens": 21804,
+      "completion_tokens_details": {
+        "reasoning_tokens": 11484
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 2112,
+        "created_cache_tokens": 5280
+      }
+    },
+    "returned_model": "Qwen/Qwen3.6-35B-A3B",
+    "response_id": "chatcmpl-a49e5ac7-9c53-4d76-837c-d738592a919e",
+    "reasoning_characters": 29196,
+    "elapsed_seconds": 91.956
+  },
+  "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  have h_main : ∃ i j, i < j ∧ u i = u j ∧ u (i+1) = u (j+1) ∧ u (i+2) = u (j+2) ∧ u (i+3) = u (j+3) := by\n    obtain ⟨B, T, hB⟩ := boundedu\n    classical\n    let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n+1), u (n+2), u (n+3))\n    have h_finite : Set.Finite (Set.range f) := by\n      have h_sub : Set.range f ⊆ Set.Icc (B,B,B,B) (T,T,T,T) := by\n        intro x hx; rcases hx with ⟨n, rfl⟩\n        simp only [mem_Icc, Prod.le_def]\n        constructor <;>\n        (try constructor) <;>\n        (try constructor) <;>\n        (try constructor) <;>\n        (try simp_all [f, and_self])\n      have h_finite_Icc : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n        apply Set.Finite.subset (Set.Finite.mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n        intro x hx\n        simp_all only [ge_iff_le, ne_eq, mem_Icc, Finset.mem_Icc, mem_setOf_eq, and_self]\n      exact Set.Finite.subset h_finite_Icc h_sub\n    have h_not_injective : ¬ Function.Injective f := by\n      intro h_inj\n      have h_inf := Set.infinite_range_of_injective h_inj\n      exact Set.not_infinite.mpr h_finite h_inf\n    have h_exists_distinct_eq : ∃ x y, x ≠ y ∧ f x = f y := by\n      by_contra! h\n      have h_inj : Function.Injective f := by\n        intro x y hxy\n        by_cases hxy' : x = y\n        · exact hxy'\n        · have hne : x ≠ y := hxy'\n          have h_eq : f x = f y := hxy\n          have h_contra := h x y hne h_eq\n          contradiction\n      exact h_not_injective h_inj\n    obtain ⟨x, y, hne, h_eq⟩ := h_exists_distinct_eq\n    have h_lt : x < y ∨ y < x := lt_or_gt_of_ne hne\n    obtain ⟨i, j, hij, h_eq⟩ := by\n      cases h_lt with\n      | inl hij => exact ⟨x, y, hij, h_eq⟩\n      | inr hij => exact ⟨y, x, hij, by simpa using h_eq⟩\n    refine' ⟨i, j, hij, _⟩\n    simp only [f, Prod.mk.injEq] at h_eq\n    exact h_eq\n  obtain ⟨i, j, hij, h_eq⟩ := h_main\n  have h_periodic : ∀ m, u (i+m) = u (j+m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      match m with\n      | 0 => exact h_eq.1\n      | 1 => exact h_eq.2.1\n      | 2 => exact h_eq.2.2.1\n      | 3 => exact h_eq.2.2.2\n      | k+4 =>\n        have h_i := hu (i+k+4) (by omega)\n        have h_j := hu (j+k+4) (by omega)\n        have h_eq_i : (u (i+k+4) : ℝ) = ((u (i+k+3) + u (i+k+2) + u (i+k+1) * u (i+k)) : ℝ) / (u (i+k+3) * u (i+k+2) + u (i+k+1) + u (i+k)) := by\n          norm_cast at h_i ⊢; exact h_i.1\n        have h_eq_j : (u (j+k+4) : ℝ) = ((u (j+k+3) + u (j+k+2) + u (j+k+1) * u (j+k)) : ℝ) / (u (j+k+3) * u (j+k+2) + u (j+k+1) + u (j+k)) := by\n          norm_cast at h_j ⊢; exact h_j.1\n        have h_rhs_eq_int : (u (i+k+3) + u (i+k+2) + u (i+k+1) * u (i+k)) =\n                           (u (j+k+3) + u (j+k+2) + u (j+k+1) * u (j+k)) := by\n          rw [ih (k+3) (by omega), ih (k+2) (by omega), ih (k+1) (by omega), ih k (by omega)]\n          rfl\n        have h_rhs_eq_denom_int : (u (i+k+3) * u (i+k+2) + u (i+k+1) + u (i+k)) =\n                                 (u (j+k+3) * u (j+k+2) + u (j+k+1) + u (j+k)) := by\n          rw [ih (k+3) (by omega), ih (k+2) (by omega), ih (k+1) (by omega), ih k (by omega)]\n          rfl\n        have h_rhs_eq : ((u (i+k+3) + u (i+k+2) + u (i+k+1) * u (i+k)) : ℝ) / (u (i+k+3) * u (i+k+2) + u (i+k+1) + u (i+k)) =\n                        ((u (j+k+3) + u (j+k+2) + u (j+k+1) * u (j+k)) : ℝ) / (u (j+k+3) * u (j+k+2) + u (j+k+1) + u (j+k)) := by\n          rw [h_rhs_eq_int, h_rhs_eq_denom_int]\n          rfl\n        calc\n          (u (i+k+4) : ℝ) = ((u (i+k+3) + u (i+k+2) + u (i+k+1) * u (i+k)) : ℝ) / (u (i+k+3) * u (i+k+2) + u (i+k+1) + u (i+k)) := h_eq_i\n          _ = ((u (j+k+3) + u (j+k+2) + u (j+k+1) * u (j+k)) : ℝ) / (u (j+k+3) * u (j+k+2) + u (j+k+1) + u (j+k)) := h_rhs_eq\n          _ = (u (j+k+4) : ℝ) := by rw [← h_eq_j]; rfl\n        exact_mod_cast this\n  use i, (j - i)\n  have h_pos : j - i > 0 := by omega\n  constructor\n  · exact h_pos\n  · intro n hn\n    have h_eq_n := h_periodic (n - i)\n    have h_add : i + (n - i) = n := by omega\n    have h_add_j : j + (n - i) = n + (j - i) := by omega\n    rw [h_add] at h_eq_n\n    rw [h_add_j] at h_eq_n\n    exact id (Eq.symm h_eq_n)",
+  "evaluation": {
+    "schema_version": 1,
+    "name": "putnam_1964_a4",
+    "status": "failed",
+    "primary_version": "v4.25.0",
+    "requested_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "all_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "measurement": "local_cached_reference",
+    "reference": {
+      "length": 1769,
+      "published_heartbeats": 111476
+    },
+    "candidate": {
+      "length": 1442,
+      "code_sha256": "ba8c7ac87a412baead1c6d4d54909f37f5eaff60d332d752335425790d4536bf"
+    },
+    "per_version": {
+      "v4.25.0": {
+        "status": "failed",
+        "passed": false,
+        "heartbeats": null,
+        "heartbeats_raw": null,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "Unknown constant `Set.Finite.mem_finset`",
+            "endPos": {
+              "column": 54,
+              "line": 51
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "lean.unknownIdentifier._namedError",
+            "pos": {
+              "column": 33,
+              "line": 51
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\nu : ℕ → ℤ\nhu✝ :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\nB T : ℤ\nhB✝ : ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nf : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\nh_sub✝ : range f ⊆ Icc (B, B, B, B) (T, T, T, T)\nx : ℤ × ℤ × ℤ × ℤ\nhu :\n  ∀ (n : ℕ),\n    4 ≤ n →\n      ↑(u n) =\n          (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n            (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n        ¬u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) = 0\nhB : ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nh_sub : range f ⊆ Icc (B, B, B, B) (T, T, T, T)\nhx : (B, B, B, B) ≤ x ∧ x ≤ (T, T, T, T)\n⊢ x ∈ ?m.335\n\nu : ℕ → ℤ\nhu :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\nB T : ℤ\nhB : ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nf : ℕ → ℤ × ℤ × ℤ × ℤ := ⋯\nh_sub : range f ⊆ Icc (B, B, B, B) (T, T, T, T)\n⊢ Set (ℤ × ℤ × ℤ × ℤ)",
+            "endPos": {
+              "column": 89,
+              "line": 53
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 76,
+              "line": 50
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Invalid `⟨...⟩` notation: The expected type of this term could not be determined",
+            "endPos": {
+              "column": 42,
+              "line": 74
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 25,
+              "line": 74
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Invalid `⟨...⟩` notation: The expected type of this term could not be determined",
+            "endPos": {
+              "column": 57,
+              "line": 75
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 25,
+              "line": 75
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rcases` failed: `x✝ : ?m.472 h_lt` is not an inductive datatype",
+            "endPos": {
+              "column": 28,
+              "line": 72
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 11,
+              "line": 72
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  u (i + (k + 3))\nin the target expression\n  u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k) = u (j + k + 3) + u (j + k + 2) + u (j + k + 1) * u (j + k)\n\nu : ℕ → ℤ\nboundedu : ∃ B T, ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nhu :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\ni j : ℕ\nhij : i < j\nh_eq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3)\nm k : ℕ\nih : ∀ m < k + 4, u (i + m) = u (j + m)\nh_i :\n  ↑(u (i + k + 4)) =\n      (↑(u (i + k + 4 - 1)) + ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) * ↑(u (i + k + 4 - 4))) /\n        (↑(u (i + k + 4 - 1)) * ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) + ↑(u (i + k + 4 - 4))) ∧\n    u (i + k + 4 - 1) * u (i + k + 4 - 2) + u (i + k + 4 - 3) + u (i + k + 4 - 4) ≠ 0\nh_j :\n  ↑(u (j + k + 4)) =\n      (↑(u (j + k + 4 - 1)) + ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) * ↑(u (j + k + 4 - 4))) /\n        (↑(u (j + k + 4 - 1)) * ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) + ↑(u (j + k + 4 - 4))) ∧\n    u (j + k + 4 - 1) * u (j + k + 4 - 2) + u (j + k + 4 - 3) + u (j + k + 4 - 4) ≠ 0\nh_eq_i :\n  ↑(u (i + k + 4)) =\n    (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k)))\nh_eq_j :\n  ↑(u (j + k + 4)) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))\n⊢ u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k) = u (j + k + 3) + u (j + k + 2) + u (j + k + 1) * u (j + k)",
+            "endPos": {
+              "column": 33,
+              "line": 98
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 14,
+              "line": 98
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  u (i + (k + 3))\nin the target expression\n  u (i + k + 3) * u (i + k + 2) + u (i + k + 1) + u (i + k) = u (j + k + 3) * u (j + k + 2) + u (j + k + 1) + u (j + k)\n\nu : ℕ → ℤ\nboundedu : ∃ B T, ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nhu :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\ni j : ℕ\nhij : i < j\nh_eq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3)\nm k : ℕ\nih : ∀ m < k + 4, u (i + m) = u (j + m)\nh_i :\n  ↑(u (i + k + 4)) =\n      (↑(u (i + k + 4 - 1)) + ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) * ↑(u (i + k + 4 - 4))) /\n        (↑(u (i + k + 4 - 1)) * ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) + ↑(u (i + k + 4 - 4))) ∧\n    u (i + k + 4 - 1) * u (i + k + 4 - 2) + u (i + k + 4 - 3) + u (i + k + 4 - 4) ≠ 0\nh_j :\n  ↑(u (j + k + 4)) =\n      (↑(u (j + k + 4 - 1)) + ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) * ↑(u (j + k + 4 - 4))) /\n        (↑(u (j + k + 4 - 1)) * ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) + ↑(u (j + k + 4 - 4))) ∧\n    u (j + k + 4 - 1) * u (j + k + 4 - 2) + u (j + k + 4 - 3) + u (j + k + 4 - 4) ≠ 0\nh_eq_i :\n  ↑(u (i + k + 4)) =\n    (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k)))\nh_eq_j :\n  ↑(u (j + k + 4)) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))\nh_rhs_eq_int :\n  u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k) = u (j + k + 3) + u (j + k + 2) + u (j + k + 1) * u (j + k)\n⊢ u (i + k + 3) * u (i + k + 2) + u (i + k + 1) + u (i + k) = u (j + k + 3) * u (j + k + 2) + u (j + k + 1) + u (j + k)",
+            "endPos": {
+              "column": 33,
+              "line": 102
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 14,
+              "line": 102
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k)\nin the target expression\n  (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k))) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))\n\nu : ℕ → ℤ\nboundedu : ∃ B T, ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nhu :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\ni j : ℕ\nhij : i < j\nh_eq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3)\nm k : ℕ\nih : ∀ m < k + 4, u (i + m) = u (j + m)\nh_i :\n  ↑(u (i + k + 4)) =\n      (↑(u (i + k + 4 - 1)) + ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) * ↑(u (i + k + 4 - 4))) /\n        (↑(u (i + k + 4 - 1)) * ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) + ↑(u (i + k + 4 - 4))) ∧\n    u (i + k + 4 - 1) * u (i + k + 4 - 2) + u (i + k + 4 - 3) + u (i + k + 4 - 4) ≠ 0\nh_j :\n  ↑(u (j + k + 4)) =\n      (↑(u (j + k + 4 - 1)) + ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) * ↑(u (j + k + 4 - 4))) /\n        (↑(u (j + k + 4 - 1)) * ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) + ↑(u (j + k + 4 - 4))) ∧\n    u (j + k + 4 - 1) * u (j + k + 4 - 2) + u (j + k + 4 - 3) + u (j + k + 4 - 4) ≠ 0\nh_eq_i :\n  ↑(u (i + k + 4)) =\n    (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k)))\nh_eq_j :\n  ↑(u (j + k + 4)) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))\nh_rhs_eq_int :\n  u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k) = u (j + k + 3) + u (j + k + 2) + u (j + k + 1) * u (j + k)\nh_rhs_eq_denom_int :\n  u (i + k + 3) * u (i + k + 2) + u (i + k + 1) + u (i + k) = u (j + k + 3) * u (j + k + 2) + u (j + k + 1) + u (j + k)\n⊢ (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k))) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))",
+            "endPos": {
+              "column": 26,
+              "line": 106
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 14,
+              "line": 106
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "'calc' expression has type\n  ↑(u (i + k + 4)) = ↑(u (j + k + 4))\nbut is expected to have type\n  u (i + (k + 4)) = u (j + (k + 4))",
+            "endPos": {
+              "column": 12,
+              "line": 108
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 108
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "No goals to be solved",
+            "endPos": {
+              "column": 54,
+              "line": 111
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 51,
+              "line": 111
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Target declaration depends on sorryAx",
+            "endPos": {
+              "column": 29,
+              "line": 123
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  and_self\n\nHint: Omit it from the simp argument list.\n  simp_all [f,̵ ̵a̵n̵d̵_̵s̵e̵l̵f̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 34,
+              "line": 49
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 26,
+              "line": 49
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.mem_Icc\n\nHint: Omit it from the simp argument list.\n  simp_all only [ge_iff_le, ne_eq, mem_Icc, F̵i̵n̵s̵e̵t̵.̵m̵e̵m̵_̵I̵c̵c̵,̵ ̵mem_setOf_eq, and_self]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 64,
+              "line": 53
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 50,
+              "line": 53
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  mem_setOf_eq\n\nHint: Omit it from the simp argument list.\n  simp_all only [ge_iff_le, ne_eq, mem_Icc, Finset.mem_Icc, m̵e̵m̵_̵s̵e̵t̵O̵f̵_̵e̵q̵,̵ ̵and_self]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 78,
+              "line": 53
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 66,
+              "line": 53
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  and_self\n\nHint: Omit it from the simp argument list.\n  simp_all only [ge_iff_le, ne_eq, mem_Icc, Finset.mem_Icc, mem_setOf_eq,̵ ̵a̵n̵d̵_̵s̵e̵l̵f̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 88,
+              "line": 53
+            },
+            "fileName": "_ProofEval_3466b7bbf2ec46f99dce1716db643ea5.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 80,
+              "line": 53
+            },
+            "severity": "warning"
+          },
+          {
+            "severity": "error",
+            "message": "Expected exactly one verified target heartbeat marker"
+          }
+        ],
+        "elapsed_seconds": 6.105951389297843,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "details": {
+          "project_dir": "/localhome/milikic/miniconda3/envs/af/lib/python3.12/site-packages/lean_interact/cache/tmp_projects/v4.25.0/76aa669ccf1d618b7aeaf5d9bbd93695de28133e652494bfb5552694c9715773",
+          "version": "v4.25.0",
+          "source_commit": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+          "toolchain": "leanprover/lean4:v4.25.0",
+          "compiler_version": "Lean (version 4.25.0, x86_64-unknown-linux-gnu, commit cdd38ac5115bdeec5f609e9126cce00f51ae88b3, Release)",
+          "dependencies": {
+            "mathlib": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+            "plausible": "2503bfb5e2d4d8202165f5bd2cc39e44a3be31c3",
+            "LeanSearchClient": "2ed4ba69b6127de8f5c2af83cccacd3c988b06bf",
+            "importGraph": "009064c21bad4d7f421f2901c5e817c8bf3468cb",
+            "proofwidgets": "e8ef4bdd7a23c3a37170fbd3fa7ee07ef2a54c2d",
+            "aesop": "26e4c7c0e63eb3e6cce3cf7faba27b8526ea8349",
+            "Qq": "2781d8ad404303b2fe03710ac7db946ddfe3539f",
+            "batteries": "5c78955e8375f872c085514cb521216bac1bda17",
+            "Cli": "1dae8b12f8ba27576ffe5ddee78bebf6458157b0"
+          },
+          "configuration_sha256": {
+            "lakefile.lean": "e499b310ac31f26e019ae07722d0f1ed974a783005724aef23305747d8faa89c",
+            "lake-manifest.json": "c40097fa28208b0451fe4a0471e1ca54f2a1308ffa116b5fde2407e5d330b2bb"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 1
+        },
+        "cached": false,
+        "reference": {
+          "name": "putnam_1964_a4",
+          "version": "v4.25.0",
+          "status": "prepared",
+          "heartbeats": 141103.125,
+          "heartbeats_raw": 141103125,
+          "length": 1769,
+          "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+          "measured_at": "2026-10-02T15:11:28.576319+00:00",
+          "reference_code_sha256": "27b46ee810644ab2f6c3950cda14346274705204b619350947ad97d90e62b669",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/miniconda3/envs/af/lib/python3.12/site-packages/lean_interact/cache/tmp_projects/v4.25.0/76aa669ccf1d618b7aeaf5d9bbd93695de28133e652494bfb5552694c9715773",
+            "version": "v4.25.0",
+            "source_commit": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+            "toolchain": "leanprover/lean4:v4.25.0",
+            "compiler_version": "Lean (version 4.25.0, x86_64-unknown-linux-gnu, commit cdd38ac5115bdeec5f609e9126cce00f51ae88b3, Release)",
+            "dependencies": {
+              "mathlib": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+              "plausible": "2503bfb5e2d4d8202165f5bd2cc39e44a3be31c3",
+              "LeanSearchClient": "2ed4ba69b6127de8f5c2af83cccacd3c988b06bf",
+              "importGraph": "009064c21bad4d7f421f2901c5e817c8bf3468cb",
+              "proofwidgets": "e8ef4bdd7a23c3a37170fbd3fa7ee07ef2a54c2d",
+              "aesop": "26e4c7c0e63eb3e6cce3cf7faba27b8526ea8349",
+              "Qq": "2781d8ad404303b2fe03710ac7db946ddfe3539f",
+              "batteries": "5c78955e8375f872c085514cb521216bac1bda17",
+              "Cli": "1dae8b12f8ba27576ffe5ddee78bebf6458157b0"
+            },
+            "configuration_sha256": {
+              "lakefile.lean": "e499b310ac31f26e019ae07722d0f1ed974a783005724aef23305747d8faa89c",
+              "lake-manifest.json": "c40097fa28208b0451fe4a0471e1ca54f2a1308ffa116b5fde2407e5d330b2bb"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": null
+      },
+      "v4.26.0": {
+        "status": "failed",
+        "passed": false,
+        "heartbeats": null,
+        "heartbeats_raw": null,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "Unknown constant `Set.Finite.mem_finset`",
+            "endPos": {
+              "column": 54,
+              "line": 51
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "lean.unknownIdentifier._namedError",
+            "pos": {
+              "column": 44,
+              "line": 51
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\nu : ℕ → ℤ\nhu✝ :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\nB T : ℤ\nhB✝ : ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nf : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\nh_sub✝ : range f ⊆ Icc (B, B, B, B) (T, T, T, T)\nx : ℤ × ℤ × ℤ × ℤ\nhu :\n  ∀ (n : ℕ),\n    4 ≤ n →\n      ↑(u n) =\n          (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n            (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n        ¬u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) = 0\nhB : ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nh_sub : range f ⊆ Icc (B, B, B, B) (T, T, T, T)\nhx : (B, B, B, B) ≤ x ∧ x ≤ (T, T, T, T)\n⊢ x ∈ ?m.335\n\nu : ℕ → ℤ\nhu :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\nB T : ℤ\nhB : ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nf : ℕ → ℤ × ℤ × ℤ × ℤ := ⋯\nh_sub : range f ⊆ Icc (B, B, B, B) (T, T, T, T)\n⊢ Set (ℤ × ℤ × ℤ × ℤ)",
+            "endPos": {
+              "column": 89,
+              "line": 53
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 76,
+              "line": 50
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Invalid `⟨...⟩` notation: The expected type of this term could not be determined",
+            "endPos": {
+              "column": 42,
+              "line": 74
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 25,
+              "line": 74
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Invalid `⟨...⟩` notation: The expected type of this term could not be determined",
+            "endPos": {
+              "column": 57,
+              "line": 75
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 25,
+              "line": 75
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rcases` failed: `x✝ : ?m.475 h_lt` is not an inductive datatype",
+            "endPos": {
+              "column": 28,
+              "line": 72
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 11,
+              "line": 72
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  u (i + (k + 3))\nin the target expression\n  u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k) = u (j + k + 3) + u (j + k + 2) + u (j + k + 1) * u (j + k)\n\nu : ℕ → ℤ\nboundedu : ∃ B T, ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nhu :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\ni j : ℕ\nhij : i < j\nh_eq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3)\nm k : ℕ\nih : ∀ m < k + 4, u (i + m) = u (j + m)\nh_i :\n  ↑(u (i + k + 4)) =\n      (↑(u (i + k + 4 - 1)) + ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) * ↑(u (i + k + 4 - 4))) /\n        (↑(u (i + k + 4 - 1)) * ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) + ↑(u (i + k + 4 - 4))) ∧\n    u (i + k + 4 - 1) * u (i + k + 4 - 2) + u (i + k + 4 - 3) + u (i + k + 4 - 4) ≠ 0\nh_j :\n  ↑(u (j + k + 4)) =\n      (↑(u (j + k + 4 - 1)) + ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) * ↑(u (j + k + 4 - 4))) /\n        (↑(u (j + k + 4 - 1)) * ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) + ↑(u (j + k + 4 - 4))) ∧\n    u (j + k + 4 - 1) * u (j + k + 4 - 2) + u (j + k + 4 - 3) + u (j + k + 4 - 4) ≠ 0\nh_eq_i :\n  ↑(u (i + k + 4)) =\n    (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k)))\nh_eq_j :\n  ↑(u (j + k + 4)) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))\n⊢ u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k) = u (j + k + 3) + u (j + k + 2) + u (j + k + 1) * u (j + k)",
+            "endPos": {
+              "column": 33,
+              "line": 98
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 14,
+              "line": 98
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  u (i + (k + 3))\nin the target expression\n  u (i + k + 3) * u (i + k + 2) + u (i + k + 1) + u (i + k) = u (j + k + 3) * u (j + k + 2) + u (j + k + 1) + u (j + k)\n\nu : ℕ → ℤ\nboundedu : ∃ B T, ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nhu :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\ni j : ℕ\nhij : i < j\nh_eq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3)\nm k : ℕ\nih : ∀ m < k + 4, u (i + m) = u (j + m)\nh_i :\n  ↑(u (i + k + 4)) =\n      (↑(u (i + k + 4 - 1)) + ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) * ↑(u (i + k + 4 - 4))) /\n        (↑(u (i + k + 4 - 1)) * ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) + ↑(u (i + k + 4 - 4))) ∧\n    u (i + k + 4 - 1) * u (i + k + 4 - 2) + u (i + k + 4 - 3) + u (i + k + 4 - 4) ≠ 0\nh_j :\n  ↑(u (j + k + 4)) =\n      (↑(u (j + k + 4 - 1)) + ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) * ↑(u (j + k + 4 - 4))) /\n        (↑(u (j + k + 4 - 1)) * ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) + ↑(u (j + k + 4 - 4))) ∧\n    u (j + k + 4 - 1) * u (j + k + 4 - 2) + u (j + k + 4 - 3) + u (j + k + 4 - 4) ≠ 0\nh_eq_i :\n  ↑(u (i + k + 4)) =\n    (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k)))\nh_eq_j :\n  ↑(u (j + k + 4)) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))\nh_rhs_eq_int :\n  u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k) = u (j + k + 3) + u (j + k + 2) + u (j + k + 1) * u (j + k)\n⊢ u (i + k + 3) * u (i + k + 2) + u (i + k + 1) + u (i + k) = u (j + k + 3) * u (j + k + 2) + u (j + k + 1) + u (j + k)",
+            "endPos": {
+              "column": 33,
+              "line": 102
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 14,
+              "line": 102
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k)\nin the target expression\n  (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k))) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))\n\nu : ℕ → ℤ\nboundedu : ∃ B T, ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nhu :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\ni j : ℕ\nhij : i < j\nh_eq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3)\nm k : ℕ\nih : ∀ m < k + 4, u (i + m) = u (j + m)\nh_i :\n  ↑(u (i + k + 4)) =\n      (↑(u (i + k + 4 - 1)) + ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) * ↑(u (i + k + 4 - 4))) /\n        (↑(u (i + k + 4 - 1)) * ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) + ↑(u (i + k + 4 - 4))) ∧\n    u (i + k + 4 - 1) * u (i + k + 4 - 2) + u (i + k + 4 - 3) + u (i + k + 4 - 4) ≠ 0\nh_j :\n  ↑(u (j + k + 4)) =\n      (↑(u (j + k + 4 - 1)) + ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) * ↑(u (j + k + 4 - 4))) /\n        (↑(u (j + k + 4 - 1)) * ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) + ↑(u (j + k + 4 - 4))) ∧\n    u (j + k + 4 - 1) * u (j + k + 4 - 2) + u (j + k + 4 - 3) + u (j + k + 4 - 4) ≠ 0\nh_eq_i :\n  ↑(u (i + k + 4)) =\n    (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k)))\nh_eq_j :\n  ↑(u (j + k + 4)) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))\nh_rhs_eq_int :\n  u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k) = u (j + k + 3) + u (j + k + 2) + u (j + k + 1) * u (j + k)\nh_rhs_eq_denom_int :\n  u (i + k + 3) * u (i + k + 2) + u (i + k + 1) + u (i + k) = u (j + k + 3) * u (j + k + 2) + u (j + k + 1) + u (j + k)\n⊢ (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k))) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))",
+            "endPos": {
+              "column": 26,
+              "line": 106
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 14,
+              "line": 106
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "'calc' expression has type\n  ↑(u (i + k + 4)) = ↑(u (j + k + 4))\nbut is expected to have type\n  u (i + (k + 4)) = u (j + (k + 4))",
+            "endPos": {
+              "column": 12,
+              "line": 108
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 108
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "No goals to be solved",
+            "endPos": {
+              "column": 54,
+              "line": 111
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 51,
+              "line": 111
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Target declaration depends on sorryAx",
+            "endPos": {
+              "column": 29,
+              "line": 123
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  and_self\n\nHint: Omit it from the simp argument list.\n  simp_all [f,̵ ̵a̵n̵d̵_̵s̵e̵l̵f̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 34,
+              "line": 49
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 26,
+              "line": 49
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.mem_Icc\n\nHint: Omit it from the simp argument list.\n  simp_all only [ge_iff_le, ne_eq, mem_Icc, F̵i̵n̵s̵e̵t̵.̵m̵e̵m̵_̵I̵c̵c̵,̵ ̵mem_setOf_eq, and_self]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 64,
+              "line": 53
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 50,
+              "line": 53
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  mem_setOf_eq\n\nHint: Omit it from the simp argument list.\n  simp_all only [ge_iff_le, ne_eq, mem_Icc, Finset.mem_Icc, m̵e̵m̵_̵s̵e̵t̵O̵f̵_̵e̵q̵,̵ ̵and_self]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 78,
+              "line": 53
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 66,
+              "line": 53
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  and_self\n\nHint: Omit it from the simp argument list.\n  simp_all only [ge_iff_le, ne_eq, mem_Icc, Finset.mem_Icc, mem_setOf_eq,̵ ̵a̵n̵d̵_̵s̵e̵l̵f̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 88,
+              "line": 53
+            },
+            "fileName": "_ProofEval_2bb17f8b58ab4f7286a8eda3d0b38157.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 80,
+              "line": 53
+            },
+            "severity": "warning"
+          },
+          {
+            "severity": "error",
+            "message": "Expected exactly one verified target heartbeat marker"
+          }
+        ],
+        "elapsed_seconds": 5.424059953540564,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.26.0",
+          "version": "v4.26.0",
+          "source_commit": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+          "toolchain": "leanprover/lean4:v4.26.0",
+          "compiler_version": "Lean (version 4.26.0, x86_64-unknown-linux-gnu, commit d8204c9fd894f91bbb2cdfec5912ec8196fd8562, Release)",
+          "dependencies": {
+            "mathlib": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+            "plausible": "160af9e8e7d4ae448f3c92edcc5b6a8522453f11",
+            "LeanSearchClient": "3591c3f664ac3719c4c86e4483e21e228707bfa2",
+            "importGraph": "e9f31324f15ead11048b1443e62c5deaddd055d2",
+            "proofwidgets": "b4fb2aa5290ebf61bc5f80a5375ba642f0a49192",
+            "aesop": "2f6d238744c4cb07fdc91240feaf5d4221a27931",
+            "Qq": "9312503909aa8e8bb392530145cc1677a6298574",
+            "batteries": "24241822ef9d3e7f6a3bcc53ad136e12663db8f3",
+            "Cli": "933fce7e893f65969714c60cdb4bd8376786044e"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "ac86bcf8e6bf878066a78d76ea8e25f120040ccfca9627f51c612823441e6601",
+            "lake-manifest.json": "dad3466bf41524af6ad1eb3764fd6b4c6953d12992c4b6346aa75ae8975a61bd"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 1
+        },
+        "cached": false,
+        "reference": {
+          "name": "putnam_1964_a4",
+          "version": "v4.26.0",
+          "status": "prepared",
+          "heartbeats": 115713.286,
+          "heartbeats_raw": 115713286,
+          "length": 1769,
+          "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+          "measured_at": "2026-10-02T15:11:52.616173+00:00",
+          "reference_code_sha256": "27b46ee810644ab2f6c3950cda14346274705204b619350947ad97d90e62b669",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.26.0",
+            "version": "v4.26.0",
+            "source_commit": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+            "toolchain": "leanprover/lean4:v4.26.0",
+            "compiler_version": "Lean (version 4.26.0, x86_64-unknown-linux-gnu, commit d8204c9fd894f91bbb2cdfec5912ec8196fd8562, Release)",
+            "dependencies": {
+              "mathlib": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+              "plausible": "160af9e8e7d4ae448f3c92edcc5b6a8522453f11",
+              "LeanSearchClient": "3591c3f664ac3719c4c86e4483e21e228707bfa2",
+              "importGraph": "e9f31324f15ead11048b1443e62c5deaddd055d2",
+              "proofwidgets": "b4fb2aa5290ebf61bc5f80a5375ba642f0a49192",
+              "aesop": "2f6d238744c4cb07fdc91240feaf5d4221a27931",
+              "Qq": "9312503909aa8e8bb392530145cc1677a6298574",
+              "batteries": "24241822ef9d3e7f6a3bcc53ad136e12663db8f3",
+              "Cli": "933fce7e893f65969714c60cdb4bd8376786044e"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "ac86bcf8e6bf878066a78d76ea8e25f120040ccfca9627f51c612823441e6601",
+              "lake-manifest.json": "dad3466bf41524af6ad1eb3764fd6b4c6953d12992c4b6346aa75ae8975a61bd"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": null
+      },
+      "v4.27.0": {
+        "status": "failed",
+        "passed": false,
+        "heartbeats": null,
+        "heartbeats_raw": null,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "Unknown constant `Set.Finite.mem_finset`",
+            "endPos": {
+              "column": 54,
+              "line": 51
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "lean.unknownIdentifier._namedError",
+            "pos": {
+              "column": 33,
+              "line": 51
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\nu : ℕ → ℤ\nhu✝ :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\nB T : ℤ\nhB✝ : ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nf : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\nh_sub✝ : range f ⊆ Icc (B, B, B, B) (T, T, T, T)\nx : ℤ × ℤ × ℤ × ℤ\nhu :\n  ∀ (n : ℕ),\n    4 ≤ n →\n      ↑(u n) =\n          (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n            (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n        ¬u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) = 0\nhB : ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nh_sub : range f ⊆ Icc (B, B, B, B) (T, T, T, T)\nhx : (B, B, B, B) ≤ x ∧ x ≤ (T, T, T, T)\n⊢ x ∈ ?m.335\n\nu : ℕ → ℤ\nhu :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\nB T : ℤ\nhB : ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nf : ℕ → ℤ × ℤ × ℤ × ℤ := ⋯\nh_sub : range f ⊆ Icc (B, B, B, B) (T, T, T, T)\n⊢ Set (ℤ × ℤ × ℤ × ℤ)",
+            "endPos": {
+              "column": 89,
+              "line": 53
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 76,
+              "line": 50
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Invalid `⟨...⟩` notation: The expected type of this term could not be determined",
+            "endPos": {
+              "column": 42,
+              "line": 74
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 25,
+              "line": 74
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Invalid `⟨...⟩` notation: The expected type of this term could not be determined",
+            "endPos": {
+              "column": 57,
+              "line": 75
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 25,
+              "line": 75
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rcases` failed: `x✝ : ?m.475 h_lt` is not an inductive datatype",
+            "endPos": {
+              "column": 28,
+              "line": 72
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 11,
+              "line": 72
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  u (i + (k + 3))\nin the target expression\n  u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k) = u (j + k + 3) + u (j + k + 2) + u (j + k + 1) * u (j + k)\n\nu : ℕ → ℤ\nboundedu : ∃ B T, ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nhu :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\ni j : ℕ\nhij : i < j\nh_eq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3)\nm k : ℕ\nih : ∀ m < k + 4, u (i + m) = u (j + m)\nh_i :\n  ↑(u (i + k + 4)) =\n      (↑(u (i + k + 4 - 1)) + ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) * ↑(u (i + k + 4 - 4))) /\n        (↑(u (i + k + 4 - 1)) * ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) + ↑(u (i + k + 4 - 4))) ∧\n    u (i + k + 4 - 1) * u (i + k + 4 - 2) + u (i + k + 4 - 3) + u (i + k + 4 - 4) ≠ 0\nh_j :\n  ↑(u (j + k + 4)) =\n      (↑(u (j + k + 4 - 1)) + ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) * ↑(u (j + k + 4 - 4))) /\n        (↑(u (j + k + 4 - 1)) * ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) + ↑(u (j + k + 4 - 4))) ∧\n    u (j + k + 4 - 1) * u (j + k + 4 - 2) + u (j + k + 4 - 3) + u (j + k + 4 - 4) ≠ 0\nh_eq_i :\n  ↑(u (i + k + 4)) =\n    (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k)))\nh_eq_j :\n  ↑(u (j + k + 4)) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))\n⊢ u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k) = u (j + k + 3) + u (j + k + 2) + u (j + k + 1) * u (j + k)",
+            "endPos": {
+              "column": 33,
+              "line": 98
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 14,
+              "line": 98
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  u (i + (k + 3))\nin the target expression\n  u (i + k + 3) * u (i + k + 2) + u (i + k + 1) + u (i + k) = u (j + k + 3) * u (j + k + 2) + u (j + k + 1) + u (j + k)\n\nu : ℕ → ℤ\nboundedu : ∃ B T, ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nhu :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\ni j : ℕ\nhij : i < j\nh_eq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3)\nm k : ℕ\nih : ∀ m < k + 4, u (i + m) = u (j + m)\nh_i :\n  ↑(u (i + k + 4)) =\n      (↑(u (i + k + 4 - 1)) + ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) * ↑(u (i + k + 4 - 4))) /\n        (↑(u (i + k + 4 - 1)) * ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) + ↑(u (i + k + 4 - 4))) ∧\n    u (i + k + 4 - 1) * u (i + k + 4 - 2) + u (i + k + 4 - 3) + u (i + k + 4 - 4) ≠ 0\nh_j :\n  ↑(u (j + k + 4)) =\n      (↑(u (j + k + 4 - 1)) + ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) * ↑(u (j + k + 4 - 4))) /\n        (↑(u (j + k + 4 - 1)) * ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) + ↑(u (j + k + 4 - 4))) ∧\n    u (j + k + 4 - 1) * u (j + k + 4 - 2) + u (j + k + 4 - 3) + u (j + k + 4 - 4) ≠ 0\nh_eq_i :\n  ↑(u (i + k + 4)) =\n    (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k)))\nh_eq_j :\n  ↑(u (j + k + 4)) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))\nh_rhs_eq_int :\n  u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k) = u (j + k + 3) + u (j + k + 2) + u (j + k + 1) * u (j + k)\n⊢ u (i + k + 3) * u (i + k + 2) + u (i + k + 1) + u (i + k) = u (j + k + 3) * u (j + k + 2) + u (j + k + 1) + u (j + k)",
+            "endPos": {
+              "column": 33,
+              "line": 102
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 14,
+              "line": 102
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k)\nin the target expression\n  (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k))) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))\n\nu : ℕ → ℤ\nboundedu : ∃ B T, ∀ (n : ℕ), B ≤ u n ∧ u n ≤ T\nhu :\n  ∀ n ≥ 4,\n    ↑(u n) =\n        (↑(u (n - 1)) + ↑(u (n - 2)) + ↑(u (n - 3)) * ↑(u (n - 4))) /\n          (↑(u (n - 1)) * ↑(u (n - 2)) + ↑(u (n - 3)) + ↑(u (n - 4))) ∧\n      u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4) ≠ 0\ni j : ℕ\nhij : i < j\nh_eq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3)\nm k : ℕ\nih : ∀ m < k + 4, u (i + m) = u (j + m)\nh_i :\n  ↑(u (i + k + 4)) =\n      (↑(u (i + k + 4 - 1)) + ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) * ↑(u (i + k + 4 - 4))) /\n        (↑(u (i + k + 4 - 1)) * ↑(u (i + k + 4 - 2)) + ↑(u (i + k + 4 - 3)) + ↑(u (i + k + 4 - 4))) ∧\n    u (i + k + 4 - 1) * u (i + k + 4 - 2) + u (i + k + 4 - 3) + u (i + k + 4 - 4) ≠ 0\nh_j :\n  ↑(u (j + k + 4)) =\n      (↑(u (j + k + 4 - 1)) + ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) * ↑(u (j + k + 4 - 4))) /\n        (↑(u (j + k + 4 - 1)) * ↑(u (j + k + 4 - 2)) + ↑(u (j + k + 4 - 3)) + ↑(u (j + k + 4 - 4))) ∧\n    u (j + k + 4 - 1) * u (j + k + 4 - 2) + u (j + k + 4 - 3) + u (j + k + 4 - 4) ≠ 0\nh_eq_i :\n  ↑(u (i + k + 4)) =\n    (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k)))\nh_eq_j :\n  ↑(u (j + k + 4)) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))\nh_rhs_eq_int :\n  u (i + k + 3) + u (i + k + 2) + u (i + k + 1) * u (i + k) = u (j + k + 3) + u (j + k + 2) + u (j + k + 1) * u (j + k)\nh_rhs_eq_denom_int :\n  u (i + k + 3) * u (i + k + 2) + u (i + k + 1) + u (i + k) = u (j + k + 3) * u (j + k + 2) + u (j + k + 1) + u (j + k)\n⊢ (↑(u (i + k + 3)) + ↑(u (i + k + 2)) + ↑(u (i + k + 1)) * ↑(u (i + k))) /\n      (↑(u (i + k + 3)) * ↑(u (i + k + 2)) + ↑(u (i + k + 1)) + ↑(u (i + k))) =\n    (↑(u (j + k + 3)) + ↑(u (j + k + 2)) + ↑(u (j + k + 1)) * ↑(u (j + k))) /\n      (↑(u (j + k + 3)) * ↑(u (j + k + 2)) + ↑(u (j + k + 1)) + ↑(u (j + k)))",
+            "endPos": {
+              "column": 26,
+              "line": 106
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 14,
+              "line": 106
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "'calc' expression has type\n  ↑(u (i + k + 4)) = ↑(u (j + k + 4))\nbut is expected to have type\n  u (i + (k + 4)) = u (j + (k + 4))",
+            "endPos": {
+              "column": 12,
+              "line": 108
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 108
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "No goals to be solved",
+            "endPos": {
+              "column": 54,
+              "line": 111
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 51,
+              "line": 111
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Target declaration depends on sorryAx",
+            "endPos": {
+              "column": 29,
+              "line": 123
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  and_self\n\nHint: Omit it from the simp argument list.\n  simp_all [f,̵ ̵a̵n̵d̵_̵s̵e̵l̵f̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 34,
+              "line": 49
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 26,
+              "line": 49
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  Finset.mem_Icc\n\nHint: Omit it from the simp argument list.\n  simp_all only [ge_iff_le, ne_eq, mem_Icc, F̵i̵n̵s̵e̵t̵.̵m̵e̵m̵_̵I̵c̵c̵,̵ ̵mem_setOf_eq, and_self]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 64,
+              "line": 53
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 50,
+              "line": 53
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  mem_setOf_eq\n\nHint: Omit it from the simp argument list.\n  simp_all only [ge_iff_le, ne_eq, mem_Icc, Finset.mem_Icc, m̵e̵m̵_̵s̵e̵t̵O̵f̵_̵e̵q̵,̵ ̵and_self]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 78,
+              "line": 53
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 66,
+              "line": 53
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  and_self\n\nHint: Omit it from the simp argument list.\n  simp_all only [ge_iff_le, ne_eq, mem_Icc, Finset.mem_Icc, mem_setOf_eq,̵ ̵a̵n̵d̵_̵s̵e̵l̵f̵]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 88,
+              "line": 53
+            },
+            "fileName": "_ProofEval_dc1514a943c14fbe983feec5269d672a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 80,
+              "line": 53
+            },
+            "severity": "warning"
+          },
+          {
+            "severity": "error",
+            "message": "Expected exactly one verified target heartbeat marker"
+          }
+        ],
+        "elapsed_seconds": 4.42729858122766,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.27.0",
+          "version": "v4.27.0",
+          "source_commit": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+          "toolchain": "leanprover/lean4:v4.27.0",
+          "compiler_version": "Lean (version 4.27.0, x86_64-unknown-linux-gnu, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)",
+          "dependencies": {
+            "mathlib": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+            "plausible": "009dc1e6f2feb2c96c081537d80a0905b2c6498f",
+            "LeanSearchClient": "5ce7f0a355f522a952a3d678d696bd563bb4fd28",
+            "importGraph": "8f497d55985a189cea8020d9dc51260af1e41ad2",
+            "proofwidgets": "c04225ee7c0585effbd933662b3151f01b600e40",
+            "aesop": "cb837cc26236ada03c81837bebe0acd9c70ced7d",
+            "Qq": "bd58c9efe2086d56ca361807014141a860ddbf8c",
+            "batteries": "b25b36a7caf8e237e7d1e6121543078a06777c8a",
+            "Cli": "55c37290ff6186e2e965d68cf853a57c0702db82"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "d263ada844fc6d044e312196f91387036cc2791f594b08f7db177d76bc8f52ae",
+            "lake-manifest.json": "c014b41406a35a3bbd3477abc9e8f5dff8af0b0c8795b1ed7bfe89e086f215d2"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 1
+        },
+        "cached": false,
+        "reference": {
+          "name": "putnam_1964_a4",
+          "version": "v4.27.0",
+          "status": "prepared",
+          "heartbeats": 111517.663,
+          "heartbeats_raw": 111517663,
+          "length": 1769,
+          "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+          "measured_at": "2026-10-02T15:12:11.766632+00:00",
+          "reference_code_sha256": "27b46ee810644ab2f6c3950cda14346274705204b619350947ad97d90e62b669",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.27.0",
+            "version": "v4.27.0",
+            "source_commit": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+            "toolchain": "leanprover/lean4:v4.27.0",
+            "compiler_version": "Lean (version 4.27.0, x86_64-unknown-linux-gnu, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)",
+            "dependencies": {
+              "mathlib": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+              "plausible": "009dc1e6f2feb2c96c081537d80a0905b2c6498f",
+              "LeanSearchClient": "5ce7f0a355f522a952a3d678d696bd563bb4fd28",
+              "importGraph": "8f497d55985a189cea8020d9dc51260af1e41ad2",
+              "proofwidgets": "c04225ee7c0585effbd933662b3151f01b600e40",
+              "aesop": "cb837cc26236ada03c81837bebe0acd9c70ced7d",
+              "Qq": "bd58c9efe2086d56ca361807014141a860ddbf8c",
+              "batteries": "b25b36a7caf8e237e7d1e6121543078a06777c8a",
+              "Cli": "55c37290ff6186e2e965d68cf853a57c0702db82"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "d263ada844fc6d044e312196f91387036cc2791f594b08f7db177d76bc8f52ae",
+              "lake-manifest.json": "c014b41406a35a3bbd3477abc9e8f5dff8af0b0c8795b1ed7bfe89e086f215d2"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": null
+      }
+    },
+    "diagnostics": [],
+    "scores": {
+      "length_reduction_pct": 0.0,
+      "heartbeat_reduction_pct": 0.0,
+      "compatibility_pct": 0.0,
+      "combined_pct": 0.0
+    }
+  }
+}

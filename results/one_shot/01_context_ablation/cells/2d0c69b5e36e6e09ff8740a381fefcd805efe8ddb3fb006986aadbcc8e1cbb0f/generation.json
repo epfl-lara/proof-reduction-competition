@@ -1,0 +1,17 @@
+{
+  "status": "received",
+  "content": "```lean\ntheorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by\n  unfold fiberwiseClose at h_fw_dist_lt\n  unfold hammingClose\n  let d_fw := fiberwiseDistance 𝔽q β (i := i) steps h_i_add_steps f\n  let C_i := (BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  let d_H := Code.distFromCode f C_i\n  let d_i := BBF_CodeDistance ℓ 𝓡 (⟨i, by omega⟩)\n  let d_i_plus_steps := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩\n\n  have h_d_i_gt_0 : d_i > 0 := by\n    dsimp only [BBF_CodeDistance, d_i]\n    omega\n\n  have h_dist_bridge : d_H ≤ d_fw * 2 ^ steps := by\n    dsimp only [d_H, d_fw, C_i]\n    exact distFromCode_le_fiberwiseDistance_mul 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) i steps h_i_add_steps f\n\n  have h_fw_bound : 2 * d_fw ≤ d_i_plus_steps - 1 := by\n    exact Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt)\n\n  have h_algebraic_identity : (d_i_plus_steps - 1) * 2 ^ steps = d_i - 1 := by\n    dsimp only [BBF_CodeDistance, Nat.add_one_sub_one, d_i_plus_steps, d_i]\n    rw [Nat.sub_mul, ←Nat.pow_add, ←Nat.pow_add]\n    have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n    have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n    rw [h1, h2]\n\n  have h_dH_ne_top : d_H ≠ ⊤ := by\n    simp only [ne_eq, d_H]\n    rw [Code.distFromCode_eq_top_iff_empty f C_i]\n    exact Set.nonempty_iff_ne_empty'.mp (Submodule.nonempty C_i)\n\n  let d_H_nat := ENat.toNat d_H\n  have h_dH_eq : d_H = d_H_nat := (ENat.coe_toNat h_dH_ne_top).symm\n\n  have h_final_inequality : 2 * d_H_nat ≤ d_i - 1 := by\n    have h_bridge_nat : d_H_nat ≤ d_fw * 2 ^ steps := by\n      rw [←ENat.coe_le_coe]\n      exact le_of_eq_of_le (id (Eq.symm h_dH_eq)) h_dist_bridge\n    calc 2 * d_H_nat\n      _ ≤ 2 * (d_fw * 2 ^ steps) := Nat.mul_le_mul_left _ h_bridge_nat\n      _ = (2 * d_fw) * 2 ^ steps := by rw [mul_assoc]\n      _ ≤ (d_i_plus_steps - 1) * 2 ^ steps := Nat.mul_le_mul_right _ h_fw_bound\n      _ = d_i - 1 := h_algebraic_identity\n\n  simp only [d_H, d_H_nat, C_i] at h_dH_eq\n  rw [h_dH_eq]\n  rw [←ENat.coe_mul, ENat.coe_lt_coe]\n  exact Nat.lt_of_le_pred h_d_i_gt_0 h_final_inequality\n```",
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 29112,
+    "prompt_tokens": 15690,
+    "total_tokens": 44802,
+    "completion_tokens_details": {
+      "reasoning_tokens": 28080
+    }
+  },
+  "returned_model": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "response_id": "chatcmpl-b7ec4b60-81e2-46a2-af3f-7588bc430a5b",
+  "reasoning_characters": 86162,
+  "elapsed_seconds": 305.193
+}

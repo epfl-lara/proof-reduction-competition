@@ -1,0 +1,21 @@
+{
+  "status": "received",
+  "content": "\n\ntheorem InitsUpdatesComm\n  {P : PureExpr} {σ σ' σ'' : SemanticStore P}\n  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :\n  UpdateStates σ ks vs σ' →\n  InitStates σ' ks' vs' σ'' →\n  ∃ σ₁,\n    σ₁ = (updatedStates σ ks' vs') ∧\n    InitStates σ ks' vs' σ₁ ∧\n    UpdateStates σ₁ ks vs σ'' := by\n  intros Hup Hinit\n  exists (updatedStates σ ks' vs')\n  have Hlen1 := InitStatesLength Hinit\n  induction Hup generalizing σ''\n  case update_none =>\n    simp_all\n    apply And.intro\n    refine updatedStatesInit Hlen1 ?_ ?_\n    exact InitStatesNotDefined Hinit\n    exact InitStatesNodup Hinit\n    simp [InitStatesUpdated Hinit]\n    constructor\n  case update_some σ x v σ₀ xs vs σ₁ Hup Hups ih =>\n    refine ⟨rfl, ?_, ?_⟩\n    . apply updatedStatesInit Hlen1\n      apply UpdateStateNotDefMonotone' ?_ Hup\n      apply UpdateStatesNotDefMonotone' ?_ Hups\n      exact InitStatesNotDefined Hinit\n      exact InitStatesNodup Hinit\n    . apply UpdateStates.update_some (σ':=updatedStates σ₀ ks' vs')\n      . simp [UpdateStateUpdated Hup, updatedStates]\n        rw [← updatedStateComm']\n        . have Hdef := UpdateStateDefined' Hup\n          simp [isDefined, Option.isSome] at Hdef\n          split at Hdef <;> norm_cast\n          next val heq =>\n          apply updatedStateUpdate (v':=val)\n          apply InitStatesSomeMonotone heq\n          apply updatedStatesInit\n          . omega\n          . apply UpdateStateNotDefMonotone' ?_ Hup\n            apply UpdateStatesNotDefMonotone' ?_ Hups\n            apply InitStatesNotDefined Hinit\n          . exact InitStatesNodup Hinit\n        . rw [List.unzip_zip] <;> norm_cast\n          have Hnd := InitStatesNotDefined Hinit\n          simp only [isDefined] at *\n          apply Not.intro\n          intros Hin\n          specialize Hnd _ Hin\n          have Hsome : σ₁ x = some v := by\n            rw [UpdateStatesUpdate Hups]\n            simp [UpdateStateUpdate Hup]\n            exact UpdateStatesNodup Hup\n          simp_all\n      . exact (ih Hinit ?_ ?_).2.2\n        . exact UpdateStatesDefined Hups <;> simp_all\n        . exact UpdateStatesLength Hups",
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 6953,
+    "prompt_tokens": 4057,
+    "total_tokens": 11010,
+    "completion_tokens_details": {
+      "reasoning_tokens": 6334
+    },
+    "prompt_tokens_details": {
+      "cached_tokens": 3168,
+      "created_cache_tokens": 0
+    }
+  },
+  "returned_model": "Qwen/Qwen3.6-35B-A3B",
+  "response_id": "chatcmpl-ab6b79dd-e1ea-4156-8d56-4a833c0eb844",
+  "reasoning_characters": 24149,
+  "elapsed_seconds": 51.557
+}

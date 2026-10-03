@@ -1,0 +1,819 @@
+{
+  "round": 3,
+  "request_sha256": "1bec7229e4f7f9c16fb6615ed6ce83cee331eb78302703777041fc112df20057",
+  "generation": {
+    "status": "received",
+    "content": "\n\ntheorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have h₁ : relation d e := h.1\n  have h₂ : relation e f := h.2\n  have h₃ : ∀ i : Fin 9, 7 ∣ digits_to_num d + (e i - d i) * 10 ^ i.1 := by\n    intro i\n    have h₄ : 7 ∣ digits_to_num (fun j : Fin 9 => if j = i then e j else d j) := (hrelation d e).mp h₁ |>.2 i\n    have h₅ : digits_to_num (fun j : Fin 9 => if j = i then e j else d j) = digits_to_num d + (e i - d i) * 10 ^ i.1 := by\n      simp only [hdigits_to_num]\n      calc\n        ∑ j : Fin 9, (if j = i then e j else d j) * 10 ^ j.1\n          = ∑ j : Fin 9, (d j + (if j = i then e j - d j else 0)) * 10 ^ j.1 := by\n            apply Finset.sum_congr rfl\n            intro j _\n            by_cases h : j = i <;> simp [h] <;> ring\n          _ = ∑ j : Fin 9, (d j * 10 ^ j.1 + (if j = i then e j - d j else 0) * 10 ^ j.1) := by\n            apply Finset.sum_congr rfl\n            intro j _\n            ring\n          _ = ∑ j : Fin 9, d j * 10 ^ j.1 + ∑ j : Fin 9, (if j = i then e j - d j else 0) * 10 ^ j.1 := by\n            rw [Finset.sum_add_distrib]\n          _ = digits_to_num d + (e i - d i) * 10 ^ i.1 := by\n            simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte, hdigits_to_num]\n    rw [h₅] at h₄\n    exact h₄\n  have h₄ : ∀ i : Fin 9, 7 ∣ digits_to_num e + (f i - e i) * 10 ^ i.1 := by\n    intro i\n    have h₅ : 7 ∣ digits_to_num (fun j : Fin 9 => if j = i then f j else e j) := (hrelation e f).mp h₂ |>.2 i\n    have h₆ : digits_to_num (fun j : Fin 9 => if j = i then f j else e j) = digits_to_num e + (f i - e i) * 10 ^ i.1 := by\n      simp only [hdigits_to_num]\n      calc\n        ∑ j : Fin 9, (if j = i then f j else e j) * 10 ^ j.1\n          = ∑ j : Fin 9, (e j + (if j = i then f j - e j else 0)) * 10 ^ j.1 := by\n            apply Finset.sum_congr rfl\n            intro j _\n            by_cases h : j = i <;> simp [h] <;> ring\n          _ = ∑ j : Fin 9, (e j * 10 ^ j.1 + (if j = i then f j - e j else 0) * 10 ^ j.1) := by\n            apply Finset.sum_congr rfl\n            intro j _\n            ring\n          _ = ∑ j : Fin 9, e j * 10 ^ j.1 + ∑ j : Fin 9, (if j = i then f j - e j else 0) * 10 ^ j.1 := by\n            rw [Finset.sum_add_distrib]\n          _ = digits_to_num e + (f i - e i) * 10 ^ i.1 := by\n            simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte, hdigits_to_num]\n    rw [h₆] at h₅\n    exact h₅\n  have h₅ : 7 ∣ digits_to_num d + digits_to_num e := by\n    have h₆ : 7 ∣ ∑ i : Fin 9, (digits_to_num d + (e i - d i) * 10 ^ i.1) := by\n      apply Finset.dvd_sum\n      intro i _\n      exact h₃ i\n    have h₇ : ∑ i : Fin 9, (digits_to_num d + (e i - d i) * 10 ^ i.1) = 9 * digits_to_num d + ∑ i : Fin 9, (e i - d i) * 10 ^ i.1 := by\n      rw [Finset.sum_add_distrib]\n      simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul, Nat.cast_ofNat]\n    have h₈ : ∑ i : Fin 9, (e i - d i) * 10 ^ i.1 = digits_to_num e - digits_to_num d := by\n      simp only [hdigits_to_num]\n      calc\n        ∑ i : Fin 9, (e i - d i) * 10 ^ i.1 = ∑ i : Fin 9, (e i * 10 ^ i.1 - d i * 10 ^ i.1) := by\n          apply Finset.sum_congr rfl\n          intro i _\n          ring\n        _ = ∑ i : Fin 9, e i * 10 ^ i.1 - ∑ i : Fin 9, d i * 10 ^ i.1 := by\n          rw [Finset.sum_sub_distrib]\n        _ = digits_to_num e - digits_to_num d := by\n          simp only [hdigits_to_num]\n    rw [h₇, h₈] at h₆\n    have h₉ : 8 * digits_to_num d + digits_to_num e = (digits_to_num d + digits_to_num e) + 7 * digits_to_num d := by ring\n    rw [h₉] at h₆\n    have h₁₀ : 7 ∣ 7 * digits_to_num d := by use digits_to_num d\n    have h₁₁ : (digits_to_num d + digits_to_num e) = (8 * digits_to_num d + digits_to_num e) - 7 * digits_to_num d := by ring\n    rw [h₁₁]\n    exact dvd_sub h₆ h₁₀\n  have h₆ : 7 ∣ digits_to_num e + digits_to_num f := by\n    have h₇ : 7 ∣ ∑ i : Fin 9, (digits_to_num e + (f i - e i) * 10 ^ i.1) := by\n      apply Finset.dvd_sum\n      intro i _\n      exact h₄ i\n    have h₈ : ∑ i : Fin 9, (digits_to_num e + (f i - e i) * 10 ^ i.1) = 9 * digits_to_num e + ∑ i : Fin 9, (f i - e i) * 10 ^ i.1 := by\n      rw [Finset.sum_add_distrib]\n      simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul, Nat.cast_ofNat]\n    have h₉ : ∑ i : Fin 9, (f i - e i) * 10 ^ i.1 = digits_to_num f - digits_to_num e := by\n      simp only [hdigits_to_num]\n      calc\n        ∑ i : Fin 9, (f i - e i) * 10 ^ i.1 = ∑ i : Fin 9, (f i * 10 ^ i.1 - e i * 10 ^ i.1) := by\n          apply Finset.sum_congr rfl\n          intro i _\n          ring\n        _ = ∑ i : Fin 9, f i * 10 ^ i.1 - ∑ i : Fin 9, e i * 10 ^ i.1 := by\n          rw [Finset.sum_sub_distrib]\n        _ = digits_to_num f - digits_to_num e := by\n          simp only [hdigits_to_num]\n    rw [h₈, h₉] at h₇\n    have h₁₀ : 8 * digits_to_num e + digits_to_num f = (digits_to_num e + digits_to_num f) + 7 * digits_to_num e := by ring\n    rw [h₁₀] at h₇\n    have h₁₁ : 7 ∣ 7 * digits_to_num e := by use digits_to_num e\n    have h₁₂ : (digits_to_num e + digits_to_num f) = (8 * digits_to_num e + digits_to_num f) - 7 * digits_to_num e := by ring\n    rw [h₁₂]\n    exact dvd_sub h₇ h₁₁\n  have h₇ : ∀ i : Fin 9, 7 ∣ (f i - d i) * 10 ^ i.1 := by\n    intro i\n    have h₈ : 7 ∣ digits_to_num d + (e i - d i) * 10 ^ i.1 := h₃ i\n    have h₉ : 7 ∣ digits_to_num e + (f i - e i) * 10 ^ i.1 := h₄ i\n    have h₁₂ : 7 ∣ (digits_to_num d + (e i - d i) * 10 ^ i.1) + (digits_to_num e + (f i - e i) * 10 ^ i.1) := by\n      exact dvd_add h₈ h₉\n    have h₁₃ : (digits_to_num d + (e i - d i) * 10 ^ i.1) + (digits_to_num e + (f i - e i) * 10 ^ i.1) = (digits_to_num d + digits_to_num e) + (f i - d i) * 10 ^ i.1 := by ring\n    rw [h₁₃] at h₁₂\n    have h₁₄ : 7 ∣ (digits_to_num d + digits_to_num e) + (f i - d i) * 10 ^ i.1 := h₁₂\n    have h₁₅ : 7 ∣ (f i - d i) * 10 ^ i.1 := by\n      have h₁₆ : (f i - d i) * 10 ^ i.1 = ((digits_to_num d + digits_to_num e) + (f i - d i) * 10 ^ i.1) - (digits_to_num d + digits_to_num e) := by ring\n      rw [h₁₆]\n      exact dvd_sub h₁₄ h₅\n    exact h₁₅\n  have h₈ : ∀ i : Fin 9, 7 ∣ f i - d i := by\n    intro i\n    have h₉ : 7 ∣ (f i - d i) * 10 ^ i.1 := h₇ i\n    have h₁₀ : ¬(7 : ℤ) ∣ (10 : ℤ) ^ i.1 := by\n      intro h\n      have h₁₁ : (7 : ℕ) ∣ (10 : ℕ) ^ i.1 := by\n        norm_cast at h ⊢\n        exact h\n      have h₁₂ : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow (by decide) h₁₁\n      norm_num at h₁₂\n    have h₁₁ : (7 : ℤ) ∣ (f i - d i) ∨ (7 : ℤ) ∣ (10 : ℤ) ^ i.1 := by\n      apply (Int.prime_iff_natAbs_prime.mpr (by decide)).dvd_mul.mp\n      exact h₉\n    cases h₁₁ with\n    | inl h₁₁ => exact h₁₁\n    | inr h₁₁ => exfalso; exact h₁₀ h₁₁\n  intro i\n  exact h₈ i",
+    "finish_reason": "stop",
+    "usage": {
+      "completion_tokens": 17725,
+      "prompt_tokens": 12379,
+      "total_tokens": 30104,
+      "completion_tokens_details": {
+        "reasoning_tokens": 14647
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 5280,
+        "created_cache_tokens": 6336
+      }
+    },
+    "returned_model": "Qwen/Qwen3.6-35B-A3B",
+    "response_id": "chatcmpl-2eef3f63-a99d-42dd-ad4f-97078791dd8d",
+    "reasoning_characters": 38417,
+    "elapsed_seconds": 134.873
+  },
+  "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have h₁ : relation d e := h.1\n  have h₂ : relation e f := h.2\n  have h₃ : ∀ i : Fin 9, 7 ∣ digits_to_num d + (e i - d i) * 10 ^ i.1 := by\n    intro i\n    have h₄ : 7 ∣ digits_to_num (fun j : Fin 9 => if j = i then e j else d j) := (hrelation d e).mp h₁ |>.2 i\n    have h₅ : digits_to_num (fun j : Fin 9 => if j = i then e j else d j) = digits_to_num d + (e i - d i) * 10 ^ i.1 := by\n      simp only [hdigits_to_num]\n      calc\n        ∑ j : Fin 9, (if j = i then e j else d j) * 10 ^ j.1\n          = ∑ j : Fin 9, (d j + (if j = i then e j - d j else 0)) * 10 ^ j.1 := by\n            apply Finset.sum_congr rfl\n            intro j _\n            by_cases h : j = i <;> simp [h] <;> ring\n          _ = ∑ j : Fin 9, (d j * 10 ^ j.1 + (if j = i then e j - d j else 0) * 10 ^ j.1) := by\n            apply Finset.sum_congr rfl\n            intro j _\n            ring\n          _ = ∑ j : Fin 9, d j * 10 ^ j.1 + ∑ j : Fin 9, (if j = i then e j - d j else 0) * 10 ^ j.1 := by\n            rw [Finset.sum_add_distrib]\n          _ = digits_to_num d + (e i - d i) * 10 ^ i.1 := by\n            simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte, hdigits_to_num]\n    rw [h₅] at h₄\n    exact h₄\n  have h₄ : ∀ i : Fin 9, 7 ∣ digits_to_num e + (f i - e i) * 10 ^ i.1 := by\n    intro i\n    have h₅ : 7 ∣ digits_to_num (fun j : Fin 9 => if j = i then f j else e j) := (hrelation e f).mp h₂ |>.2 i\n    have h₆ : digits_to_num (fun j : Fin 9 => if j = i then f j else e j) = digits_to_num e + (f i - e i) * 10 ^ i.1 := by\n      simp only [hdigits_to_num]\n      calc\n        ∑ j : Fin 9, (if j = i then f j else e j) * 10 ^ j.1\n          = ∑ j : Fin 9, (e j + (if j = i then f j - e j else 0)) * 10 ^ j.1 := by\n            apply Finset.sum_congr rfl\n            intro j _\n            by_cases h : j = i <;> simp [h] <;> ring\n          _ = ∑ j : Fin 9, (e j * 10 ^ j.1 + (if j = i then f j - e j else 0) * 10 ^ j.1) := by\n            apply Finset.sum_congr rfl\n            intro j _\n            ring\n          _ = ∑ j : Fin 9, e j * 10 ^ j.1 + ∑ j : Fin 9, (if j = i then f j - e j else 0) * 10 ^ j.1 := by\n            rw [Finset.sum_add_distrib]\n          _ = digits_to_num e + (f i - e i) * 10 ^ i.1 := by\n            simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte, hdigits_to_num]\n    rw [h₆] at h₅\n    exact h₅\n  have h₅ : 7 ∣ digits_to_num d + digits_to_num e := by\n    have h₆ : 7 ∣ ∑ i : Fin 9, (digits_to_num d + (e i - d i) * 10 ^ i.1) := by\n      apply Finset.dvd_sum\n      intro i _\n      exact h₃ i\n    have h₇ : ∑ i : Fin 9, (digits_to_num d + (e i - d i) * 10 ^ i.1) = 9 * digits_to_num d + ∑ i : Fin 9, (e i - d i) * 10 ^ i.1 := by\n      rw [Finset.sum_add_distrib]\n      simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul, Nat.cast_ofNat]\n    have h₈ : ∑ i : Fin 9, (e i - d i) * 10 ^ i.1 = digits_to_num e - digits_to_num d := by\n      simp only [hdigits_to_num]\n      calc\n        ∑ i : Fin 9, (e i - d i) * 10 ^ i.1 = ∑ i : Fin 9, (e i * 10 ^ i.1 - d i * 10 ^ i.1) := by\n          apply Finset.sum_congr rfl\n          intro i _\n          ring\n        _ = ∑ i : Fin 9, e i * 10 ^ i.1 - ∑ i : Fin 9, d i * 10 ^ i.1 := by\n          rw [Finset.sum_sub_distrib]\n        _ = digits_to_num e - digits_to_num d := by\n          simp only [hdigits_to_num]\n    rw [h₇, h₈] at h₆\n    have h₉ : 8 * digits_to_num d + digits_to_num e = (digits_to_num d + digits_to_num e) + 7 * digits_to_num d := by ring\n    rw [h₉] at h₆\n    have h₁₀ : 7 ∣ 7 * digits_to_num d := by use digits_to_num d\n    have h₁₁ : (digits_to_num d + digits_to_num e) = (8 * digits_to_num d + digits_to_num e) - 7 * digits_to_num d := by ring\n    rw [h₁₁]\n    exact dvd_sub h₆ h₁₀\n  have h₆ : 7 ∣ digits_to_num e + digits_to_num f := by\n    have h₇ : 7 ∣ ∑ i : Fin 9, (digits_to_num e + (f i - e i) * 10 ^ i.1) := by\n      apply Finset.dvd_sum\n      intro i _\n      exact h₄ i\n    have h₈ : ∑ i : Fin 9, (digits_to_num e + (f i - e i) * 10 ^ i.1) = 9 * digits_to_num e + ∑ i : Fin 9, (f i - e i) * 10 ^ i.1 := by\n      rw [Finset.sum_add_distrib]\n      simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul, Nat.cast_ofNat]\n    have h₉ : ∑ i : Fin 9, (f i - e i) * 10 ^ i.1 = digits_to_num f - digits_to_num e := by\n      simp only [hdigits_to_num]\n      calc\n        ∑ i : Fin 9, (f i - e i) * 10 ^ i.1 = ∑ i : Fin 9, (f i * 10 ^ i.1 - e i * 10 ^ i.1) := by\n          apply Finset.sum_congr rfl\n          intro i _\n          ring\n        _ = ∑ i : Fin 9, f i * 10 ^ i.1 - ∑ i : Fin 9, e i * 10 ^ i.1 := by\n          rw [Finset.sum_sub_distrib]\n        _ = digits_to_num f - digits_to_num e := by\n          simp only [hdigits_to_num]\n    rw [h₈, h₉] at h₇\n    have h₁₀ : 8 * digits_to_num e + digits_to_num f = (digits_to_num e + digits_to_num f) + 7 * digits_to_num e := by ring\n    rw [h₁₀] at h₇\n    have h₁₁ : 7 ∣ 7 * digits_to_num e := by use digits_to_num e\n    have h₁₂ : (digits_to_num e + digits_to_num f) = (8 * digits_to_num e + digits_to_num f) - 7 * digits_to_num e := by ring\n    rw [h₁₂]\n    exact dvd_sub h₇ h₁₁\n  have h₇ : ∀ i : Fin 9, 7 ∣ (f i - d i) * 10 ^ i.1 := by\n    intro i\n    have h₈ : 7 ∣ digits_to_num d + (e i - d i) * 10 ^ i.1 := h₃ i\n    have h₉ : 7 ∣ digits_to_num e + (f i - e i) * 10 ^ i.1 := h₄ i\n    have h₁₂ : 7 ∣ (digits_to_num d + (e i - d i) * 10 ^ i.1) + (digits_to_num e + (f i - e i) * 10 ^ i.1) := by\n      exact dvd_add h₈ h₉\n    have h₁₃ : (digits_to_num d + (e i - d i) * 10 ^ i.1) + (digits_to_num e + (f i - e i) * 10 ^ i.1) = (digits_to_num d + digits_to_num e) + (f i - d i) * 10 ^ i.1 := by ring\n    rw [h₁₃] at h₁₂\n    have h₁₄ : 7 ∣ (digits_to_num d + digits_to_num e) + (f i - d i) * 10 ^ i.1 := h₁₂\n    have h₁₅ : 7 ∣ (f i - d i) * 10 ^ i.1 := by\n      have h₁₆ : (f i - d i) * 10 ^ i.1 = ((digits_to_num d + digits_to_num e) + (f i - d i) * 10 ^ i.1) - (digits_to_num d + digits_to_num e) := by ring\n      rw [h₁₆]\n      exact dvd_sub h₁₄ h₅\n    exact h₁₅\n  have h₈ : ∀ i : Fin 9, 7 ∣ f i - d i := by\n    intro i\n    have h₉ : 7 ∣ (f i - d i) * 10 ^ i.1 := h₇ i\n    have h₁₀ : ¬(7 : ℤ) ∣ (10 : ℤ) ^ i.1 := by\n      intro h\n      have h₁₁ : (7 : ℕ) ∣ (10 : ℕ) ^ i.1 := by\n        norm_cast at h ⊢\n        exact h\n      have h₁₂ : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow (by decide) h₁₁\n      norm_num at h₁₂\n    have h₁₁ : (7 : ℤ) ∣ (f i - d i) ∨ (7 : ℤ) ∣ (10 : ℤ) ^ i.1 := by\n      apply (Int.prime_iff_natAbs_prime.mpr (by decide)).dvd_mul.mp\n      exact h₉\n    cases h₁₁ with\n    | inl h₁₁ => exact h₁₁\n    | inr h₁₁ => exfalso; exact h₁₀ h₁₁\n  intro i\n  exact h₈ i",
+  "evaluation": {
+    "schema_version": 1,
+    "name": "putnam_1995_a3",
+    "status": "failed",
+    "primary_version": "v4.25.0",
+    "requested_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "all_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "measurement": "local_cached_reference",
+    "reference": {
+      "length": 4085,
+      "published_heartbeats": 14130
+    },
+    "candidate": {
+      "length": 1770,
+      "code_sha256": "42cc63b1c09e04707bcd558d7ac70fb789e4268727097a290771a5e4c249ef60"
+    },
+    "per_version": {
+      "v4.25.0": {
+        "status": "failed",
+        "passed": false,
+        "heartbeats": null,
+        "heartbeats_raw": null,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "unsolved goals\ncase calc.step\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\ni : Fin 9\nh₄ : 7 ∣ digits_to_num fun j => if j = i then e j else d j\n⊢ digits_to_num d + (e i - d i) * 10 ^ ↑i = ∑ i, d i * 10 ^ ↑i + (e i - d i) * 10 ^ ↑i",
+            "endPos": {
+              "column": 106,
+              "line": 59
+            },
+            "fileName": "_ProofEval_95b4085338c047f6aee917d0efcec275.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 120,
+              "line": 44
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\ncase calc.step\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\ni : Fin 9\nh₅ : 7 ∣ digits_to_num fun j => if j = i then f j else e j\n⊢ digits_to_num e + (f i - e i) * 10 ^ ↑i = ∑ i, e i * 10 ^ ↑i + (f i - e i) * 10 ^ ↑i",
+            "endPos": {
+              "column": 106,
+              "line": 80
+            },
+            "fileName": "_ProofEval_95b4085338c047f6aee917d0efcec275.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 120,
+              "line": 65
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\ncase calc.step\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\nh₄ : ∀ (i : Fin 9), 7 ∣ digits_to_num e + (f i - e i) * 10 ^ ↑i\nh₆ : 7 ∣ ∑ i, (digits_to_num d + (e i - d i) * 10 ^ ↑i)\nh₇ : ∑ i, (digits_to_num d + (e i - d i) * 10 ^ ↑i) = 9 * digits_to_num d + ∑ i, (e i - d i) * 10 ^ ↑i\n⊢ digits_to_num e - digits_to_num d = ∑ i, e i * 10 ^ ↑i - ∑ i, d i * 10 ^ ↑i",
+            "endPos": {
+              "column": 36,
+              "line": 101
+            },
+            "fileName": "_ProofEval_95b4085338c047f6aee917d0efcec275.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 89,
+              "line": 91
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  8 * digits_to_num d + digits_to_num e\nin the target expression\n  7 ∣ 9 * digits_to_num d + (digits_to_num e - digits_to_num d)\n\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\nh₄ : ∀ (i : Fin 9), 7 ∣ digits_to_num e + (f i - e i) * 10 ^ ↑i\nh₆ : 7 ∣ 9 * digits_to_num d + (digits_to_num e - digits_to_num d)\nh₇ : ∑ i, (digits_to_num d + (e i - d i) * 10 ^ ↑i) = 9 * digits_to_num d + ∑ i, (e i - d i) * 10 ^ ↑i\nh₈ : ∑ i, (e i - d i) * 10 ^ ↑i = digits_to_num e - digits_to_num d\nh₉ : 8 * digits_to_num d + digits_to_num e = digits_to_num d + digits_to_num e + 7 * digits_to_num d\n⊢ 7 ∣ digits_to_num d + digits_to_num e",
+            "endPos": {
+              "column": 10,
+              "line": 104
+            },
+            "fileName": "_ProofEval_95b4085338c047f6aee917d0efcec275.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 104
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\ncase calc.step\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\nh₄ : ∀ (i : Fin 9), 7 ∣ digits_to_num e + (f i - e i) * 10 ^ ↑i\nh₅ : 7 ∣ digits_to_num d + digits_to_num e\nh₇ : 7 ∣ ∑ i, (digits_to_num e + (f i - e i) * 10 ^ ↑i)\nh₈ : ∑ i, (digits_to_num e + (f i - e i) * 10 ^ ↑i) = 9 * digits_to_num e + ∑ i, (f i - e i) * 10 ^ ↑i\n⊢ digits_to_num f - digits_to_num e = ∑ i, f i * 10 ^ ↑i - ∑ i, e i * 10 ^ ↑i",
+            "endPos": {
+              "column": 36,
+              "line": 127
+            },
+            "fileName": "_ProofEval_95b4085338c047f6aee917d0efcec275.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 89,
+              "line": 117
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  8 * digits_to_num e + digits_to_num f\nin the target expression\n  7 ∣ 9 * digits_to_num e + (digits_to_num f - digits_to_num e)\n\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\nh₄ : ∀ (i : Fin 9), 7 ∣ digits_to_num e + (f i - e i) * 10 ^ ↑i\nh₅ : 7 ∣ digits_to_num d + digits_to_num e\nh₇ : 7 ∣ 9 * digits_to_num e + (digits_to_num f - digits_to_num e)\nh₈ : ∑ i, (digits_to_num e + (f i - e i) * 10 ^ ↑i) = 9 * digits_to_num e + ∑ i, (f i - e i) * 10 ^ ↑i\nh₉ : ∑ i, (f i - e i) * 10 ^ ↑i = digits_to_num f - digits_to_num e\nh₁₀ : 8 * digits_to_num e + digits_to_num f = digits_to_num e + digits_to_num f + 7 * digits_to_num e\n⊢ 7 ∣ digits_to_num e + digits_to_num f",
+            "endPos": {
+              "column": 11,
+              "line": 130
+            },
+            "fileName": "_ProofEval_95b4085338c047f6aee917d0efcec275.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 130
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "No goals to be solved",
+            "endPos": {
+              "column": 15,
+              "line": 156
+            },
+            "fileName": "_ProofEval_95b4085338c047f6aee917d0efcec275.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 156
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Type mismatch\n  h₈ i\nhas type\n  7 ∣ f i - d i\nbut is expected to have type\n  7 ∣ d i - f i",
+            "endPos": {
+              "column": 12,
+              "line": 166
+            },
+            "fileName": "_ProofEval_95b4085338c047f6aee917d0efcec275.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 2,
+              "line": 166
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Target declaration depends on sorryAx",
+            "endPos": {
+              "column": 12,
+              "line": 166
+            },
+            "fileName": "_ProofEval_95b4085338c047f6aee917d0efcec275.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "error"
+          },
+          {
+            "severity": "error",
+            "message": "Expected exactly one verified target heartbeat marker"
+          }
+        ],
+        "elapsed_seconds": 3.1987655628472567,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "details": {
+          "project_dir": "/localhome/milikic/miniconda3/envs/af/lib/python3.12/site-packages/lean_interact/cache/tmp_projects/v4.25.0/76aa669ccf1d618b7aeaf5d9bbd93695de28133e652494bfb5552694c9715773",
+          "version": "v4.25.0",
+          "source_commit": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+          "toolchain": "leanprover/lean4:v4.25.0",
+          "compiler_version": "Lean (version 4.25.0, x86_64-unknown-linux-gnu, commit cdd38ac5115bdeec5f609e9126cce00f51ae88b3, Release)",
+          "dependencies": {
+            "mathlib": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+            "plausible": "2503bfb5e2d4d8202165f5bd2cc39e44a3be31c3",
+            "LeanSearchClient": "2ed4ba69b6127de8f5c2af83cccacd3c988b06bf",
+            "importGraph": "009064c21bad4d7f421f2901c5e817c8bf3468cb",
+            "proofwidgets": "e8ef4bdd7a23c3a37170fbd3fa7ee07ef2a54c2d",
+            "aesop": "26e4c7c0e63eb3e6cce3cf7faba27b8526ea8349",
+            "Qq": "2781d8ad404303b2fe03710ac7db946ddfe3539f",
+            "batteries": "5c78955e8375f872c085514cb521216bac1bda17",
+            "Cli": "1dae8b12f8ba27576ffe5ddee78bebf6458157b0"
+          },
+          "configuration_sha256": {
+            "lakefile.lean": "e499b310ac31f26e019ae07722d0f1ed974a783005724aef23305747d8faa89c",
+            "lake-manifest.json": "c40097fa28208b0451fe4a0471e1ca54f2a1308ffa116b5fde2407e5d330b2bb"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 1
+        },
+        "cached": false,
+        "reference": {
+          "name": "putnam_1995_a3",
+          "version": "v4.25.0",
+          "status": "prepared",
+          "heartbeats": 17957.759,
+          "heartbeats_raw": 17957759,
+          "length": 4085,
+          "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+          "measured_at": "2026-10-02T15:12:33.147011+00:00",
+          "reference_code_sha256": "56dcc03e9f1d22a0655aeb46aa929c75efddb21f2fa73d7504b648792b6e8329",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/miniconda3/envs/af/lib/python3.12/site-packages/lean_interact/cache/tmp_projects/v4.25.0/76aa669ccf1d618b7aeaf5d9bbd93695de28133e652494bfb5552694c9715773",
+            "version": "v4.25.0",
+            "source_commit": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+            "toolchain": "leanprover/lean4:v4.25.0",
+            "compiler_version": "Lean (version 4.25.0, x86_64-unknown-linux-gnu, commit cdd38ac5115bdeec5f609e9126cce00f51ae88b3, Release)",
+            "dependencies": {
+              "mathlib": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+              "plausible": "2503bfb5e2d4d8202165f5bd2cc39e44a3be31c3",
+              "LeanSearchClient": "2ed4ba69b6127de8f5c2af83cccacd3c988b06bf",
+              "importGraph": "009064c21bad4d7f421f2901c5e817c8bf3468cb",
+              "proofwidgets": "e8ef4bdd7a23c3a37170fbd3fa7ee07ef2a54c2d",
+              "aesop": "26e4c7c0e63eb3e6cce3cf7faba27b8526ea8349",
+              "Qq": "2781d8ad404303b2fe03710ac7db946ddfe3539f",
+              "batteries": "5c78955e8375f872c085514cb521216bac1bda17",
+              "Cli": "1dae8b12f8ba27576ffe5ddee78bebf6458157b0"
+            },
+            "configuration_sha256": {
+              "lakefile.lean": "e499b310ac31f26e019ae07722d0f1ed974a783005724aef23305747d8faa89c",
+              "lake-manifest.json": "c40097fa28208b0451fe4a0471e1ca54f2a1308ffa116b5fde2407e5d330b2bb"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": null
+      },
+      "v4.26.0": {
+        "status": "failed",
+        "passed": false,
+        "heartbeats": null,
+        "heartbeats_raw": null,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "unsolved goals\ncase calc.step\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\ni : Fin 9\nh₄ : 7 ∣ digits_to_num fun j => if j = i then e j else d j\n⊢ digits_to_num d + (e i - d i) * 10 ^ ↑i = ∑ i, d i * 10 ^ ↑i + (e i - d i) * 10 ^ ↑i",
+            "endPos": {
+              "column": 106,
+              "line": 59
+            },
+            "fileName": "_ProofEval_7369d02b31f34891936622a352876887.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 120,
+              "line": 44
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\ncase calc.step\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\ni : Fin 9\nh₅ : 7 ∣ digits_to_num fun j => if j = i then f j else e j\n⊢ digits_to_num e + (f i - e i) * 10 ^ ↑i = ∑ i, e i * 10 ^ ↑i + (f i - e i) * 10 ^ ↑i",
+            "endPos": {
+              "column": 106,
+              "line": 80
+            },
+            "fileName": "_ProofEval_7369d02b31f34891936622a352876887.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 120,
+              "line": 65
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\ncase calc.step\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\nh₄ : ∀ (i : Fin 9), 7 ∣ digits_to_num e + (f i - e i) * 10 ^ ↑i\nh₆ : 7 ∣ ∑ i, (digits_to_num d + (e i - d i) * 10 ^ ↑i)\nh₇ : ∑ i, (digits_to_num d + (e i - d i) * 10 ^ ↑i) = 9 * digits_to_num d + ∑ i, (e i - d i) * 10 ^ ↑i\n⊢ digits_to_num e - digits_to_num d = ∑ i, e i * 10 ^ ↑i - ∑ i, d i * 10 ^ ↑i",
+            "endPos": {
+              "column": 36,
+              "line": 101
+            },
+            "fileName": "_ProofEval_7369d02b31f34891936622a352876887.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 89,
+              "line": 91
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  8 * digits_to_num d + digits_to_num e\nin the target expression\n  7 ∣ 9 * digits_to_num d + (digits_to_num e - digits_to_num d)\n\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\nh₄ : ∀ (i : Fin 9), 7 ∣ digits_to_num e + (f i - e i) * 10 ^ ↑i\nh₆ : 7 ∣ 9 * digits_to_num d + (digits_to_num e - digits_to_num d)\nh₇ : ∑ i, (digits_to_num d + (e i - d i) * 10 ^ ↑i) = 9 * digits_to_num d + ∑ i, (e i - d i) * 10 ^ ↑i\nh₈ : ∑ i, (e i - d i) * 10 ^ ↑i = digits_to_num e - digits_to_num d\nh₉ : 8 * digits_to_num d + digits_to_num e = digits_to_num d + digits_to_num e + 7 * digits_to_num d\n⊢ 7 ∣ digits_to_num d + digits_to_num e",
+            "endPos": {
+              "column": 10,
+              "line": 104
+            },
+            "fileName": "_ProofEval_7369d02b31f34891936622a352876887.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 104
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\ncase calc.step\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\nh₄ : ∀ (i : Fin 9), 7 ∣ digits_to_num e + (f i - e i) * 10 ^ ↑i\nh₅ : 7 ∣ digits_to_num d + digits_to_num e\nh₇ : 7 ∣ ∑ i, (digits_to_num e + (f i - e i) * 10 ^ ↑i)\nh₈ : ∑ i, (digits_to_num e + (f i - e i) * 10 ^ ↑i) = 9 * digits_to_num e + ∑ i, (f i - e i) * 10 ^ ↑i\n⊢ digits_to_num f - digits_to_num e = ∑ i, f i * 10 ^ ↑i - ∑ i, e i * 10 ^ ↑i",
+            "endPos": {
+              "column": 36,
+              "line": 127
+            },
+            "fileName": "_ProofEval_7369d02b31f34891936622a352876887.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 89,
+              "line": 117
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  8 * digits_to_num e + digits_to_num f\nin the target expression\n  7 ∣ 9 * digits_to_num e + (digits_to_num f - digits_to_num e)\n\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\nh₄ : ∀ (i : Fin 9), 7 ∣ digits_to_num e + (f i - e i) * 10 ^ ↑i\nh₅ : 7 ∣ digits_to_num d + digits_to_num e\nh₇ : 7 ∣ 9 * digits_to_num e + (digits_to_num f - digits_to_num e)\nh₈ : ∑ i, (digits_to_num e + (f i - e i) * 10 ^ ↑i) = 9 * digits_to_num e + ∑ i, (f i - e i) * 10 ^ ↑i\nh₉ : ∑ i, (f i - e i) * 10 ^ ↑i = digits_to_num f - digits_to_num e\nh₁₀ : 8 * digits_to_num e + digits_to_num f = digits_to_num e + digits_to_num f + 7 * digits_to_num e\n⊢ 7 ∣ digits_to_num e + digits_to_num f",
+            "endPos": {
+              "column": 11,
+              "line": 130
+            },
+            "fileName": "_ProofEval_7369d02b31f34891936622a352876887.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 130
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "No goals to be solved",
+            "endPos": {
+              "column": 15,
+              "line": 156
+            },
+            "fileName": "_ProofEval_7369d02b31f34891936622a352876887.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 156
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Type mismatch\n  h₈ i\nhas type\n  7 ∣ f i - d i\nbut is expected to have type\n  7 ∣ d i - f i",
+            "endPos": {
+              "column": 12,
+              "line": 166
+            },
+            "fileName": "_ProofEval_7369d02b31f34891936622a352876887.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 2,
+              "line": 166
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Target declaration depends on sorryAx",
+            "endPos": {
+              "column": 12,
+              "line": 166
+            },
+            "fileName": "_ProofEval_7369d02b31f34891936622a352876887.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "error"
+          },
+          {
+            "severity": "error",
+            "message": "Expected exactly one verified target heartbeat marker"
+          }
+        ],
+        "elapsed_seconds": 3.0999875739216805,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.26.0",
+          "version": "v4.26.0",
+          "source_commit": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+          "toolchain": "leanprover/lean4:v4.26.0",
+          "compiler_version": "Lean (version 4.26.0, x86_64-unknown-linux-gnu, commit d8204c9fd894f91bbb2cdfec5912ec8196fd8562, Release)",
+          "dependencies": {
+            "mathlib": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+            "plausible": "160af9e8e7d4ae448f3c92edcc5b6a8522453f11",
+            "LeanSearchClient": "3591c3f664ac3719c4c86e4483e21e228707bfa2",
+            "importGraph": "e9f31324f15ead11048b1443e62c5deaddd055d2",
+            "proofwidgets": "b4fb2aa5290ebf61bc5f80a5375ba642f0a49192",
+            "aesop": "2f6d238744c4cb07fdc91240feaf5d4221a27931",
+            "Qq": "9312503909aa8e8bb392530145cc1677a6298574",
+            "batteries": "24241822ef9d3e7f6a3bcc53ad136e12663db8f3",
+            "Cli": "933fce7e893f65969714c60cdb4bd8376786044e"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "ac86bcf8e6bf878066a78d76ea8e25f120040ccfca9627f51c612823441e6601",
+            "lake-manifest.json": "dad3466bf41524af6ad1eb3764fd6b4c6953d12992c4b6346aa75ae8975a61bd"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 1
+        },
+        "cached": false,
+        "reference": {
+          "name": "putnam_1995_a3",
+          "version": "v4.26.0",
+          "status": "prepared",
+          "heartbeats": 14311.524,
+          "heartbeats_raw": 14311524,
+          "length": 4085,
+          "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+          "measured_at": "2026-10-02T15:12:37.337573+00:00",
+          "reference_code_sha256": "56dcc03e9f1d22a0655aeb46aa929c75efddb21f2fa73d7504b648792b6e8329",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.26.0",
+            "version": "v4.26.0",
+            "source_commit": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+            "toolchain": "leanprover/lean4:v4.26.0",
+            "compiler_version": "Lean (version 4.26.0, x86_64-unknown-linux-gnu, commit d8204c9fd894f91bbb2cdfec5912ec8196fd8562, Release)",
+            "dependencies": {
+              "mathlib": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+              "plausible": "160af9e8e7d4ae448f3c92edcc5b6a8522453f11",
+              "LeanSearchClient": "3591c3f664ac3719c4c86e4483e21e228707bfa2",
+              "importGraph": "e9f31324f15ead11048b1443e62c5deaddd055d2",
+              "proofwidgets": "b4fb2aa5290ebf61bc5f80a5375ba642f0a49192",
+              "aesop": "2f6d238744c4cb07fdc91240feaf5d4221a27931",
+              "Qq": "9312503909aa8e8bb392530145cc1677a6298574",
+              "batteries": "24241822ef9d3e7f6a3bcc53ad136e12663db8f3",
+              "Cli": "933fce7e893f65969714c60cdb4bd8376786044e"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "ac86bcf8e6bf878066a78d76ea8e25f120040ccfca9627f51c612823441e6601",
+              "lake-manifest.json": "dad3466bf41524af6ad1eb3764fd6b4c6953d12992c4b6346aa75ae8975a61bd"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": null
+      },
+      "v4.27.0": {
+        "status": "failed",
+        "passed": false,
+        "heartbeats": null,
+        "heartbeats_raw": null,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "unsolved goals\ncase calc.step\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\ni : Fin 9\nh₄ : 7 ∣ digits_to_num fun j => if j = i then e j else d j\n⊢ digits_to_num d + (e i - d i) * 10 ^ ↑i = ∑ i, d i * 10 ^ ↑i + (e i - d i) * 10 ^ ↑i",
+            "endPos": {
+              "column": 106,
+              "line": 59
+            },
+            "fileName": "_ProofEval_c447d5928de6441b88e5169296201d8b.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 120,
+              "line": 44
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\ncase calc.step\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\ni : Fin 9\nh₅ : 7 ∣ digits_to_num fun j => if j = i then f j else e j\n⊢ digits_to_num e + (f i - e i) * 10 ^ ↑i = ∑ i, e i * 10 ^ ↑i + (f i - e i) * 10 ^ ↑i",
+            "endPos": {
+              "column": 106,
+              "line": 80
+            },
+            "fileName": "_ProofEval_c447d5928de6441b88e5169296201d8b.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 120,
+              "line": 65
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\ncase calc.step\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\nh₄ : ∀ (i : Fin 9), 7 ∣ digits_to_num e + (f i - e i) * 10 ^ ↑i\nh₆ : 7 ∣ ∑ i, (digits_to_num d + (e i - d i) * 10 ^ ↑i)\nh₇ : ∑ i, (digits_to_num d + (e i - d i) * 10 ^ ↑i) = 9 * digits_to_num d + ∑ i, (e i - d i) * 10 ^ ↑i\n⊢ digits_to_num e - digits_to_num d = ∑ i, e i * 10 ^ ↑i - ∑ i, d i * 10 ^ ↑i",
+            "endPos": {
+              "column": 36,
+              "line": 101
+            },
+            "fileName": "_ProofEval_c447d5928de6441b88e5169296201d8b.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 89,
+              "line": 91
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  8 * digits_to_num d + digits_to_num e\nin the target expression\n  7 ∣ 9 * digits_to_num d + (digits_to_num e - digits_to_num d)\n\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\nh₄ : ∀ (i : Fin 9), 7 ∣ digits_to_num e + (f i - e i) * 10 ^ ↑i\nh₆ : 7 ∣ 9 * digits_to_num d + (digits_to_num e - digits_to_num d)\nh₇ : ∑ i, (digits_to_num d + (e i - d i) * 10 ^ ↑i) = 9 * digits_to_num d + ∑ i, (e i - d i) * 10 ^ ↑i\nh₈ : ∑ i, (e i - d i) * 10 ^ ↑i = digits_to_num e - digits_to_num d\nh₉ : 8 * digits_to_num d + digits_to_num e = digits_to_num d + digits_to_num e + 7 * digits_to_num d\n⊢ 7 ∣ digits_to_num d + digits_to_num e",
+            "endPos": {
+              "column": 10,
+              "line": 104
+            },
+            "fileName": "_ProofEval_c447d5928de6441b88e5169296201d8b.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 104
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "unsolved goals\ncase calc.step\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\nh₄ : ∀ (i : Fin 9), 7 ∣ digits_to_num e + (f i - e i) * 10 ^ ↑i\nh₅ : 7 ∣ digits_to_num d + digits_to_num e\nh₇ : 7 ∣ ∑ i, (digits_to_num e + (f i - e i) * 10 ^ ↑i)\nh₈ : ∑ i, (digits_to_num e + (f i - e i) * 10 ^ ↑i) = 9 * digits_to_num e + ∑ i, (f i - e i) * 10 ^ ↑i\n⊢ digits_to_num f - digits_to_num e = ∑ i, f i * 10 ^ ↑i - ∑ i, e i * 10 ^ ↑i",
+            "endPos": {
+              "column": 36,
+              "line": 127
+            },
+            "fileName": "_ProofEval_c447d5928de6441b88e5169296201d8b.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "Tactic.unsolvedGoals",
+            "pos": {
+              "column": 89,
+              "line": 117
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  8 * digits_to_num e + digits_to_num f\nin the target expression\n  7 ∣ 9 * digits_to_num e + (digits_to_num f - digits_to_num e)\n\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\ndigits_to_num : (Fin 9 → ℤ) → ℤ\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\nhrelation :\n  ∀ (d e : Fin 9 → ℤ),\n    relation d e ↔\n      (∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n        ∀ (i : Fin 9), 7 ∣ digits_to_num fun j => if j = i then e j else d j\nd e f : Fin 9 → ℤ\nh : relation d e ∧ relation e f\nh₁ : relation d e\nh₂ : relation e f\nh₃ : ∀ (i : Fin 9), 7 ∣ digits_to_num d + (e i - d i) * 10 ^ ↑i\nh₄ : ∀ (i : Fin 9), 7 ∣ digits_to_num e + (f i - e i) * 10 ^ ↑i\nh₅ : 7 ∣ digits_to_num d + digits_to_num e\nh₇ : 7 ∣ 9 * digits_to_num e + (digits_to_num f - digits_to_num e)\nh₈ : ∑ i, (digits_to_num e + (f i - e i) * 10 ^ ↑i) = 9 * digits_to_num e + ∑ i, (f i - e i) * 10 ^ ↑i\nh₉ : ∑ i, (f i - e i) * 10 ^ ↑i = digits_to_num f - digits_to_num e\nh₁₀ : 8 * digits_to_num e + digits_to_num f = digits_to_num e + digits_to_num f + 7 * digits_to_num e\n⊢ 7 ∣ digits_to_num e + digits_to_num f",
+            "endPos": {
+              "column": 11,
+              "line": 130
+            },
+            "fileName": "_ProofEval_c447d5928de6441b88e5169296201d8b.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 130
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "No goals to be solved",
+            "endPos": {
+              "column": 15,
+              "line": 156
+            },
+            "fileName": "_ProofEval_c447d5928de6441b88e5169296201d8b.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 8,
+              "line": 156
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Type mismatch\n  h₈ i\nhas type\n  7 ∣ f i - d i\nbut is expected to have type\n  7 ∣ d i - f i",
+            "endPos": {
+              "column": 12,
+              "line": 166
+            },
+            "fileName": "_ProofEval_c447d5928de6441b88e5169296201d8b.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 2,
+              "line": 166
+            },
+            "severity": "error"
+          },
+          {
+            "caption": "",
+            "data": "Target declaration depends on sorryAx",
+            "endPos": {
+              "column": 12,
+              "line": 166
+            },
+            "fileName": "_ProofEval_c447d5928de6441b88e5169296201d8b.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "error"
+          },
+          {
+            "severity": "error",
+            "message": "Expected exactly one verified target heartbeat marker"
+          }
+        ],
+        "elapsed_seconds": 3.068726185709238,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.27.0",
+          "version": "v4.27.0",
+          "source_commit": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+          "toolchain": "leanprover/lean4:v4.27.0",
+          "compiler_version": "Lean (version 4.27.0, x86_64-unknown-linux-gnu, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)",
+          "dependencies": {
+            "mathlib": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+            "plausible": "009dc1e6f2feb2c96c081537d80a0905b2c6498f",
+            "LeanSearchClient": "5ce7f0a355f522a952a3d678d696bd563bb4fd28",
+            "importGraph": "8f497d55985a189cea8020d9dc51260af1e41ad2",
+            "proofwidgets": "c04225ee7c0585effbd933662b3151f01b600e40",
+            "aesop": "cb837cc26236ada03c81837bebe0acd9c70ced7d",
+            "Qq": "bd58c9efe2086d56ca361807014141a860ddbf8c",
+            "batteries": "b25b36a7caf8e237e7d1e6121543078a06777c8a",
+            "Cli": "55c37290ff6186e2e965d68cf853a57c0702db82"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "d263ada844fc6d044e312196f91387036cc2791f594b08f7db177d76bc8f52ae",
+            "lake-manifest.json": "c014b41406a35a3bbd3477abc9e8f5dff8af0b0c8795b1ed7bfe89e086f215d2"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 1
+        },
+        "cached": false,
+        "reference": {
+          "name": "putnam_1995_a3",
+          "version": "v4.27.0",
+          "status": "prepared",
+          "heartbeats": 14134.228,
+          "heartbeats_raw": 14134228,
+          "length": 4085,
+          "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+          "measured_at": "2026-10-02T15:12:41.578506+00:00",
+          "reference_code_sha256": "56dcc03e9f1d22a0655aeb46aa929c75efddb21f2fa73d7504b648792b6e8329",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.27.0",
+            "version": "v4.27.0",
+            "source_commit": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+            "toolchain": "leanprover/lean4:v4.27.0",
+            "compiler_version": "Lean (version 4.27.0, x86_64-unknown-linux-gnu, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)",
+            "dependencies": {
+              "mathlib": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+              "plausible": "009dc1e6f2feb2c96c081537d80a0905b2c6498f",
+              "LeanSearchClient": "5ce7f0a355f522a952a3d678d696bd563bb4fd28",
+              "importGraph": "8f497d55985a189cea8020d9dc51260af1e41ad2",
+              "proofwidgets": "c04225ee7c0585effbd933662b3151f01b600e40",
+              "aesop": "cb837cc26236ada03c81837bebe0acd9c70ced7d",
+              "Qq": "bd58c9efe2086d56ca361807014141a860ddbf8c",
+              "batteries": "b25b36a7caf8e237e7d1e6121543078a06777c8a",
+              "Cli": "55c37290ff6186e2e965d68cf853a57c0702db82"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "d263ada844fc6d044e312196f91387036cc2791f594b08f7db177d76bc8f52ae",
+              "lake-manifest.json": "c014b41406a35a3bbd3477abc9e8f5dff8af0b0c8795b1ed7bfe89e086f215d2"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": null
+      }
+    },
+    "diagnostics": [],
+    "scores": {
+      "length_reduction_pct": 0.0,
+      "heartbeat_reduction_pct": 0.0,
+      "compatibility_pct": 0.0,
+      "combined_pct": 0.0
+    }
+  }
+}

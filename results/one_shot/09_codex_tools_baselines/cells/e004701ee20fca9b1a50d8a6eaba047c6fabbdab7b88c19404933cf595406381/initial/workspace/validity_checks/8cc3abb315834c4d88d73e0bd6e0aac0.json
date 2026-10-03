@@ -1,0 +1,26 @@
+{
+  "code": "lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d}\n    {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d)\n    (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J)\n    (t : Time) (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -\n      𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n      𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n  have hEs : ∀ j, ContDiff ℝ 2 (fun y => A.electricField 𝓕.c t y j) :=\n    fun j => electricField_apply_contDiff_space (i := j) (hA.of_le (right_eq_inf.mp rfl)) t\n  have hEd : ∀ j k, Differentiable ℝ (∂[k] (fun y => A.electricField 𝓕.c t y j)) :=\n    fun j k => Space.deriv_differentiable (hEs j) k\n  have hBt : ∀ j, Differentiable ℝ\n      (fun s => ∂[j] (fun y => A.magneticFieldMatrix 𝓕.c s y (j, i)) x) :=\n    fun j => Space.space_deriv_differentiable_time (i := j)\n      (magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) (j, i)) x\n  have hJt : Differentiable ℝ (fun s => J.currentDensity 𝓕.c s x i) :=\n    LorentzCurrentDensity.currentDensity_apply_differentiable_time (hJ.differentiable (by simp)) x i\n  have hG : (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) =\n      𝓕.ε₀⁻¹ * ∂[i] (J.chargeDensity 𝓕.c t ·) x := by\n    have hg := congrArg (fun f : Space d → ℝ => ∂[i] f x)\n      (funext fun y => ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1)\n    simpa only [Space.div, Space.deriv_eq_fderiv_basis,\n      fderiv_fun_sum fun j _ => (hEd j j).differentiableAt, div_eq_mul_inv,\n      fderiv_mul_const (LorentzCurrentDensity.chargeDensity_differentiable_space\n        (hJ.differentiable (by simp)) t).differentiableAt,\n      FunLike.coe_sum, Finset.sum_apply, ContinuousLinearMap.smul_apply, smul_eq_mul] using hg\n  conv_lhs =>\n    enter [1]\n    change fun s => ∂ₜ (A.electricField 𝓕.c · x i) s\n    enter [s]\n    rw [Time.deriv_euclid (electricField_differentiable_time\n      (hA.of_le (right_eq_inf.mp rfl)) _),\n      time_deriv_electricField_of_isExtrema hA J hJ h]\n  rw [Time.deriv_eq,\n    fderiv_fun_sub ((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt\n      (hJt.const_mul _).differentiableAt,\n    fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt,\n    fderiv_const_mul hJt.differentiableAt,\n    fderiv_fun_sum fun j _ => (hBt j).differentiableAt]\n  simp only [FunLike.coe_sub, Pi.sub_apply, ContinuousLinearMap.smul_apply,\n    FunLike.coe_sum, Finset.sum_apply, smul_eq_mul, ← Time.deriv_eq]\n  conv_lhs =>\n    enter [1, 2, j]\n    rw [Space.time_deriv_comm_space_deriv\n      (magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) (j, i))]\n    enter [2, y]\n    rw [time_deriv_magneticFieldMatrix _ (hA.of_le (ENat.LEInfty.out))]\n  conv_lhs =>\n    enter [1, 2, j]\n    rw [Space.deriv_eq_fderiv_basis,\n      fderiv_fun_sub (hEd i j).differentiableAt (hEd j i).differentiableAt]\n    simp only [FunLike.coe_sub, Pi.sub_apply, ← Space.deriv_eq_fderiv_basis]\n    rw [Space.deriv_commute _ (hEs j)]\n  rw [Finset.sum_sub_distrib, hG, FreeSpace.c_sq]\n  field_simp\n  ring\n",
+  "feedback": {
+    "kind": "lean_correctness_feedback",
+    "status": "failed",
+    "primary_version": "v4.32.0",
+    "primary_passed": false,
+    "all_versions_passed": false,
+    "required_versions": [
+      "v4.32.0"
+    ],
+    "errors": [],
+    "versions": [
+      {
+        "version": "v4.32.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "Type mismatch: After simplification, term\n  hg\n has type\n  (fderiv ℝ (Space.div (electricField 𝓕.c A t)) x) (Space.basis i) =\n    𝓕.ε₀⁻¹ * (fderiv ℝ (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x) (Space.basis i)\nbut is expected to have type\n  ∑ x_1, (fderiv ℝ (Space.deriv x_1 fun x => (electricField 𝓕.c A t x).ofLp x_1) x) (Space.basis i) =\n    𝓕.ε₀⁻¹ * (fderiv ℝ (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x) (Space.basis i)",
+          "invalid 'ext' conv tactic, function or arrow expected\n  ∑ x_1, ∂ₜ (fun s => Space.deriv x_1 (fun y => magneticFieldMatrix 𝓕.c A s y (x_1, i)) x) t : ℝ"
+        ]
+      }
+    ],
+    "truncated": false
+  }
+}
