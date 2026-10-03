@@ -1,0 +1,40 @@
+{
+  "source_events": [
+    "results/one_shot/10_astra_low/cells/7dc584dc6a205c1594c4303180a8989dcded287924a6b90a44d1ff167f80d9c6/initial/events.jsonl"
+  ],
+  "commands": [
+    {
+      "round": 0,
+      "event_line": 4,
+      "id": "item_0",
+      "command": "/bin/bash -lc 'cat context.json'",
+      "exit_code": 0
+    },
+    {
+      "round": 0,
+      "event_line": 6,
+      "id": "item_1",
+      "command": "/bin/bash -lc \"grep -nE 'theorem (UpdateStatesDefined|UpdateStateDefined|updatedStatesInit|UpdateStateNotDef|InitStatesNotDefined)|def isDefined' /localhome/milikic/proof-reduction-competition/.proof-eval-projects/strata-v4.29.1/Strata/Languages/Core/StatementSemanticsProps.lean\"",
+      "exit_code": 0
+    },
+    {
+      "round": 0,
+      "event_line": 8,
+      "id": "item_2",
+      "command": "/bin/bash -lc \"sed -n '100,125p;150,175p;235,275p;365,395p;425,440p' /localhome/milikic/proof-reduction-competition/.proof-eval-projects/strata-v4.29.1/Strata/Languages/Core/StatementSemanticsProps.lean\"",
+      "exit_code": 0
+    },
+    {
+      "round": 0,
+      "event_line": 10,
+      "id": "item_3",
+      "command": "/bin/bash -lc \"cat > candidate.lean <<'EOF'\ntheorem InitsUpdatesComm\n  {P : PureExpr} {σ σ' σ'' : SemanticStore P}\n  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :\n  UpdateStates σ ks vs σ' →\n  InitStates σ' ks' vs' σ'' →\n  ∃ σ₁,\n    σ₁ = (updatedStates σ ks' vs') ∧\n    InitStates σ ks' vs' σ₁ ∧\n    UpdateStates σ₁ ks vs σ'' := by\n  intros Hup Hinit\n  exists (updatedStates σ ks' vs')\n  have Hk := UpdateStatesDefined Hup\n  have Hlen1 := InitStatesLength Hinit\n  induction Hup generalizing σ''\n  case update_none =>\n    refine ⟨rfl, updatedStatesInit Hlen1 (InitStatesNotDefined Hinit) (InitStatesNodup Hinit), ?_⟩\n    rw [← InitStatesUpdated Hinit]\n    constructor\n  case update_some σ x v σ₀ xs vs σ₁ Hup Hups ih =>\n    have Hb := updatedStatesInit Hlen1\n      (UpdateStateNotDefMonotone' (UpdateStatesNotDefMonotone' (InitStatesNotDefined Hinit) Hups) Hup)\n      (InitStatesNodup Hinit)\n    refine ⟨rfl, Hb, ?_⟩\n    apply UpdateStates.update_some (σ':=updatedStates σ₀ ks' vs')\n    · simp [UpdateStateUpdated Hup, updatedStates]\n      rw [← updatedStateComm']\n      · have Hdef := UpdateStateDefined' Hup\n        simp [isDefined, Option.isSome] at Hdef\n        split at Hdef <;> norm_cast\n        next val heq =>\n          exact updatedStateUpdate (InitStatesSomeMonotone heq Hb)\n      · rw [List.unzip_zip] <;> norm_cast\n        have Hnd := InitStatesNotDefined Hinit\n        simp only [isDefined] at *\n        intro Hin\n        specialize Hnd _ Hin\n        simp_all\n    · exact (ih Hinit (UpdateStatesDefined Hups)).2.2\nEOF\npython check_candidate.py candidate.lean\"",
+      "exit_code": 0,
+      "validity_passed": true
+    }
+  ],
+  "feedback_sequence": [
+    true
+  ],
+  "method_note": "Shell commands and visible correctness outcomes only; no reasoning text. rg/sed is a literal command-presence indicator, not a semantic retrieval score."
+}

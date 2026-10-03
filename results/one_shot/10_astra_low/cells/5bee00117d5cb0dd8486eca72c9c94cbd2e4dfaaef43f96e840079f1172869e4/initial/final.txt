@@ -1,0 +1,34 @@
+lemma fundamental_theorem_of_variational_calculus' {f : Y → V}
+    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]
+    [OpensMeasurableSpace Y]
+    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :
+    f = 0 := by
+  funext x₀
+  by_contra hx
+  have hp : 0 < ⟪f x₀, f x₀⟫_ℝ := by
+    apply (real_inner_self_pos (x := toL2 ℝ (f x₀))).2
+    intro h
+    exact hx (congrArg (fromL2 ℝ) h)
+  have hc : Continuous (fun x => ⟪f x, f x₀⟫_ℝ) :=
+    Continuous.inner' _ _ hf continuous_const
+  obtain ⟨δ, hδ, hball⟩ := Metric.isOpen_iff.mp (isOpen_lt continuous_const hc) x₀ hp
+  let φ : ContDiffBump x₀ := ⟨δ / 2, δ, half_pos hδ, half_lt_self hδ⟩
+  have ht : IsTestFunction (φ : Y → ℝ) := ⟨φ.contDiff, φ.hasCompactSupport⟩
+  have hs : Function.support (fun x => φ x * ⟪f x, f x₀⟫_ℝ) ⊆ Function.support φ := by
+    intro x hx hz
+    simp [hz] at hx
+  have hcont := ht.smooth.continuous.mul hc
+  have hi := hcont.integrable_of_hasCompactSupport (ht.supp.mono hs) (μ := μ)
+  have hn : ∀ x, 0 ≤ φ x * ⟪f x, f x₀⟫_ℝ := by
+    intro x
+    by_cases hx : x ∈ Function.support φ
+    · have hb : x ∈ Metric.ball x₀ δ := by
+        simpa only [ContDiffBump.support_eq] using hx
+      exact mul_nonneg φ.nonneg (le_of_lt (hball hb))
+    · simp only [Function.notMem_support.mp hx, zero_mul, le_refl]
+  have hpos : 0 < ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ :=
+    integral_pos_of_integrable_nonneg_nonzero hcont hi hn
+      (ne_of_gt (mul_pos (φ.pos_of_mem_ball (Metric.mem_ball_self φ.rOut_pos)) hp))
+  have hz := hg (fun x => φ x • f x₀) (IsTestFunction.smul_right ht contDiff_const)
+  simp only [inner_smul_right'] at hz
+  exact (ne_of_gt hpos) hz

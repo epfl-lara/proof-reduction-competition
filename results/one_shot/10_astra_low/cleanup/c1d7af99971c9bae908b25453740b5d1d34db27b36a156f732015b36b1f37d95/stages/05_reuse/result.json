@@ -1,0 +1,109 @@
+{
+  "name": "interleaved_affine_gaps_imply_tensor_gaps",
+  "source": "arklib",
+  "method": "reuse",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 55.58019216555802,
+      "heartbeat_reduction_pct": 47.65982996343199,
+      "compatibility_pct": 100.0,
+      "combined_pct": 67.74667404299667
+    },
+    "candidate": {
+      "length": 601,
+      "code_sha256": "d4d71aba7b6f27dc836b32700c24e1ea326185521ebdea4e3172c99e9fa453df"
+    },
+    "primary_version": "v4.31.0",
+    "per_version": {
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4818.077,
+        "heartbeat_reduction_pct": 47.65982996343199,
+        "cached": true,
+        "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+        "elapsed_seconds": 11.683994989842176,
+        "diagnostics": []
+      },
+      "v4.30.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4885.841,
+        "heartbeat_reduction_pct": 46.968786544264695,
+        "cached": true,
+        "environment_fingerprint": "554e1850835d469c72f5efbcce1fb186712bb08829fcd9e0fd75dee8a3bc2f6c",
+        "elapsed_seconds": 10.732413414865732,
+        "diagnostics": []
+      },
+      "v4.29.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 5438.742,
+        "heartbeat_reduction_pct": 47.160523045283796,
+        "cached": true,
+        "environment_fingerprint": "1ab71abdd0714f4a6c78175e8ab5280292bd128b28cdaaa5243d707457481218",
+        "elapsed_seconds": 13.67988588474691,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem interleaved_affine_gaps_imply_tensor_gaps\n    (hC_proximityGapAffineLines : e_ε_correlatedAgreementAffineLinesNat\n      (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n    (h_interleaved_gaps : ∀ m : ℕ, m ≥ 1 →\n      e_ε_correlatedAgreementAffineLinesNat (F := F)\n        (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC ^⋈ (Fin m)) e ε) :\n    ∀ (ϑ : ℕ), (hϑ_gt_0 : ϑ > 0) → δ_ε_multilinearCorrelatedAgreement_Nat (F := F) (A := A)\n      (ι := ι) (C := MC) (ϑ := ϑ) (e := e) (ε := ε) := by\n    classical\n    intro ϑ\n    induction ϑ with\n    | zero =>\n      intro u\n      contradiction\n    | succ ϑ_sub_1 ih =>\n      cases ϑ_sub_1 with\n      | zero =>\n        simp only [zero_add, gt_iff_lt, zero_lt_one, ModuleCode, forall_const]\n        intro u\n        let toAffineLineEval := multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u)\n        intro hprob_gt\n        simp_rw [toAffineLineEval] at hprob_gt\n        let prob_eq := prob_uniform_singleton_finFun_eq (F := F)\n          (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e)\n        simp_rw [prob_eq, Nat.cast_one, ENNReal.coe_one, one_mul] at hprob_gt\n        have h_correlated_agreement := hC_proximityGapAffineLines (u 0) (u 1) hprob_gt\n        simp only [jointProximityNat₂, Fin.isValue] at h_correlated_agreement\n        have h_u_eq: u = finMapTwoWords (u 0) (u 1) := by\n          funext rowIdx\n          match rowIdx with\n          | 0 => rfl\n          | 1 => rfl\n        rw [h_u_eq.symm] at h_correlated_agreement\n        exact h_correlated_agreement\n      | succ ϑ_sub_2 =>\n        intro hϑ_gt_0 u hP_multilinearCombine_close_gt\n        set U₀ : Fin (2 ^ (ϑ_sub_2 + 1)) → Word A ι :=\n          (splitHalfRowWiseInterleavedWords (ϑ := ϑ_sub_2 + 1) u).1\n        set U₁ : Fin (2 ^ (ϑ_sub_2 + 1)) → Word A ι :=\n          (splitHalfRowWiseInterleavedWords (ϑ := ϑ_sub_2 + 1) u).2\n        unfold jointProximityNat\n        simp only\n        have h_finsnoc_eq_r (r : Fin (ϑ_sub_2 + 1 + 1) → F) :\n            Fin.snoc (fun i : Fin (ϑ_sub_2 + 1) => r i.castSucc)\n              (r (Fin.last (ϑ_sub_2 + 1))) = r :=\n          Fin.snoc_init_self r\n        let P : F → (Fin (ϑ_sub_2 + 1) → F) → Prop := fun r_last r_init =>\n          Δ₀(multilinearCombine (u:=u) (r:=Fin.snoc r_init r_last), MC) ≤ e\n        let hP_split_r_last := prob_split_last_uniform_sampling_of_finFun\n          (ϑ := ϑ_sub_2 + 1) (F := F) (P := P)\n        unfold P at hP_split_r_last\n        simp_rw [h_finsnoc_eq_r] at hP_split_r_last\n        rw [hP_split_r_last] at hP_multilinearCombine_close_gt\n        let ϑ_pred := ϑ_sub_2 + 1\n        have multilinearCombine_snoc_eq_multilinearCombine_affine\n          (r_init : Fin ϑ_pred → F) (r_last : F) : multilinearCombine u (Fin.snoc r_init r_last) =\n            multilinearCombine (affineLineEvaluation U₀ U₁ r_last) r_init := by\n          rw [multilinearCombine_recursive_form]\n          simp only [Fin.snoc_last, Fin.init_snoc]\n          rfl\n        simp_rw [multilinearCombine_snoc_eq_multilinearCombine_affine]\n          at hP_multilinearCombine_close_gt\n        let R_star_set := R_star_tensor MC (m:=ϑ_pred) (e:=e) (ε:=ε) U₀ U₁\n        have h_prob_Rstar_gt_eps_div_q : Pr_{ let r ← $ᵖ F }[ r ∈ R_star_set ]\n          > (↑ε : ENNReal) / (Fintype.card F : ENNReal) := by\n          exact prob_R_star_gt_threshold (MC := MC) (ε := ε) (ϑ := ϑ_sub_2 + 1) (u := u)\n            (e := e) (hP_multilinearCombine_close_gt)\n        have h_line_close_to_C_m : ∀ (r : R_star_set),\n          jointProximityNat (u := affineLineEvaluation U₀ U₁ r.val) (e := e) (C := MC) := by\n          intro r_in_Rstar\n          apply correlatedAgreement_of_mem_R_star_tensor\n            (ih := fun u_prev => ih (by omega) u_prev) (u := u)\n        apply CA_split_rowwise_implies_CA (u := u) (e := e)\n        apply h_interleaved_gaps (2 ^ (ϑ_sub_2 + 1)) Nat.one_le_two_pow\n        apply lt_of_lt_of_le h_prob_Rstar_gt_eps_div_q\n        apply Pr_le_Pr_of_implies\n        intro r hr\n        exact h_line_close_to_C_m ⟨r, hr⟩",
+  "rounds": 1,
+  "attempts": 0,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 0,
+  "cache_hits": 0,
+  "elapsed_seconds": 0.393,
+  "stop_reason": "no_new_proposals",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 55.58019216555802,
+      "heartbeat_reduction_pct": 47.65982996343199,
+      "compatibility_pct": 100.0,
+      "combined_pct": 67.74667404299667
+    },
+    "candidate": {
+      "length": 601,
+      "code_sha256": "d4d71aba7b6f27dc836b32700c24e1ea326185521ebdea4e3172c99e9fa453df"
+    },
+    "primary_version": "v4.31.0",
+    "per_version": {
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4818.077,
+        "heartbeat_reduction_pct": 47.65982996343199,
+        "cached": true,
+        "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+        "elapsed_seconds": 11.683994989842176,
+        "diagnostics": []
+      },
+      "v4.30.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4885.841,
+        "heartbeat_reduction_pct": 46.968786544264695,
+        "cached": true,
+        "environment_fingerprint": "554e1850835d469c72f5efbcce1fb186712bb08829fcd9e0fd75dee8a3bc2f6c",
+        "elapsed_seconds": 10.732413414865732,
+        "diagnostics": []
+      },
+      "v4.29.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 5438.742,
+        "heartbeat_reduction_pct": 47.160523045283796,
+        "cached": true,
+        "environment_fingerprint": "1ab71abdd0714f4a6c78175e8ab5280292bd128b28cdaaa5243d707457481218",
+        "elapsed_seconds": 13.67988588474691,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": false
+}

@@ -1,0 +1,124 @@
+--- original.lean
++++ astra_max_deterministic.lean
+@@ -1,83 +1,47 @@
+ lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by
+   generalize eq : [] = Γ at der
+-  have der' : Typing Γ t τ := der
++  have der' := der
+   induction der <;> subst eq
+-  case var mem => grind
+-  case app t₁ _ _ t₂ l r ih_l ih_r =>
++  case var mem => cases mem
++  case abs => grind
++  case tabs => grind
++  case app l r ih_l ih_r =>
+     right
+-    cases ih_l rfl l with
+-    | inl val_l =>
+-        cases ih_r rfl r with
+-        | inl val_r =>
+-            have ⟨σ, t₁, eq⟩ := l.canonical_form_abs val_l
+-            exists t₁ ^ᵗᵗ t₂
+-            grind
+-        | inr red_r =>
+-            obtain ⟨t₂', _⟩ := red_r
+-            exists t₁.app t₂'
+-            grind
+-    | inr red_l =>
+-        obtain ⟨t₁', _⟩ := red_l
+-        exists t₁'.app t₂
+-        grind
+-  case tapp σ' der _ ih =>
++    rcases ih_l rfl l with v | ⟨_, h⟩
++    · rcases ih_r rfl r with w | ⟨_, h⟩
++      · obtain ⟨_, _, rfl⟩ := l.canonical_form_abs v
++        exact ⟨_, .abs v.lc w⟩
++      · exact ⟨_, .appᵣ v h⟩
++    · exact ⟨_, .appₗ r.wf.2.1 h⟩
++  case tapp der sub ih =>
+     right
+-    specialize ih rfl der
+-    cases ih with
+-    | inl val =>
+-        obtain ⟨_, t, _⟩ := der.canonical_form_tabs val
+-        exists t ^ᵗᵞ σ'
+-        grind
+-    | inr red =>
+-        obtain ⟨t', _⟩ := red
+-        exists .tapp t' σ'
+-        grind
+-  case let' t₁ σ t₂ τ L der _ ih _ =>
++    have lc := (Sub.wf _ _ _ sub).2.1.lc
++    rcases ih rfl der with v | ⟨_, h⟩
++    · obtain ⟨_, _, rfl⟩ := der.canonical_form_tabs v
++      exact ⟨_, .tabs v.lc lc⟩
++    · exact ⟨_, .tapp lc h⟩
++  case let' der _ ih _ =>
+     right
+-    cases ih rfl der with
+-    | inl _ =>
+-        exists t₂ ^ᵗᵗ t₁
+-        grind
+-    | inr red =>
+-        obtain ⟨t₁', _⟩ := red
+-        exists t₁'.let' t₂
+-        grind
++    have b := (body_let.mp der'.wf.2.1).2
++    rcases ih rfl der with v | ⟨_, h⟩
++    · exact ⟨_, .let_body v b⟩
++    · exact ⟨_, .let_bind h b⟩
+   case inl der _ ih =>
+-    cases (ih rfl der) with
+-    | inl val => grind
+-    | inr red =>
+-        right
+-        obtain ⟨t', _⟩ := red
+-        exists .inl t'
+-        grind
++    rcases ih rfl der with v | ⟨_, h⟩
++    · exact .inl (.inl v)
++    · exact .inr ⟨_, .inl h⟩
+   case inr der _ ih =>
+-    cases (ih rfl der) with
+-    | inl val => grind
+-    | inr red =>
+-        right
+-        obtain ⟨t', _⟩ := red
+-        exists .inr t'
+-        grind
+-  case case t₁ _ _ t₂ _ t₃ _ der _ _ ih _ _ =>
++    rcases ih rfl der with v | ⟨_, h⟩
++    · exact .inl (.inr v)
++    · exact .inr ⟨_, .inr h⟩
++  case case der _ _ ih _ _ =>
+     right
+-    cases ih rfl der with
+-    | inl val =>
+-        have ⟨t₁, lr⟩ := der.canonical_form_sum val
+-        cases lr <;> [exists t₂ ^ᵗᵗ t₁; exists t₃ ^ᵗᵗ t₁] <;> grind
+-    | inr red =>
+-        obtain ⟨t₁', _⟩ := red
+-        exists t₁'.case t₂ t₃
+-        grind
+-  case sub => grind
+-  case abs σ _ τ L _ _=>
+-    left
+-    constructor
+-    apply LC.abs L
+-    · grind only [→ wf, cases Term.LC]
+-    · grind only [→ wf]
+-  case tabs L _ _=>
+-    left
+-    constructor
+-    apply LC.tabs L
+-    · grind only [→ wf, cases Term.LC]
+-    · grind only [→ wf]
++    obtain ⟨_, b₂, b₃⟩ := body_case.mp der'.wf.2.1
++    rcases ih rfl der with v | ⟨_, h⟩
++    · obtain ⟨_, rfl | rfl⟩ := der.canonical_form_sum v
++      · cases v with
++        | inl v => exact ⟨_, .case_inl v b₂ b₃⟩
++      · cases v with
++        | inr v => exact ⟨_, .case_inr v b₂ b₃⟩
++    · exact ⟨_, .case h b₂ b₃⟩
++  case sub der _ ih => exact ih rfl der

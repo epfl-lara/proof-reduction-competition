@@ -33,6 +33,10 @@ claim the RCP output-token or temperature limits.
 The [Astra/low extension](10_astra_low/PROTOCOL.md) adds the requested reasoning
 comparison on the same two seeds and 15 problems, with exact initial-request
 parity except effort and separate per-problem low/max differences.
+The completed [Astra analysis](11_astra_analysis/README.md) compares all 120
+Astra/max, Astra/low, Luna/max and Luna/high cells. It separates deterministic
+cleanup from model gains, examines proof structure and source/debugging tool
+use, and saves proof diffs, case studies, figures and an offline evidence audit.
 
 [02_validity_repair](02_validity_repair/) adds the requested correctness-only
 debugging stage to saved proposals: up to three repair calls, stopping at the

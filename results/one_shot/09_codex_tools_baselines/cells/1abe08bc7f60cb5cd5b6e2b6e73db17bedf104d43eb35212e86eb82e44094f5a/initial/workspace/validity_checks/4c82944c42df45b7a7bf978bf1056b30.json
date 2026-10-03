@@ -1,0 +1,36 @@
+{
+  "code": "theorem putnam_1964_b2\n(S : Type*) [Fintype S] [Nonempty S]\n(P : Finset (Set S))\n(hPP : ∀ T ∈ P, ∀ U ∈ P, T ∩ U ≠ ∅)\n(hPS : ¬∃ T : Set S, T ∉ P ∧ (∀ U ∈ P, T ∩ U ≠ ∅))\n: (P.card = 2 ^ (Fintype.card S - 1)) := by\n  classical\n  have witness (A : Set S) (hA : A ∉ P) : ∃ U ∈ P, A ∩ U = ∅ := by\n    by_contra hn\n    apply hPS\n    refine ⟨A, hA, ?_⟩\n    intro U hU\n    intro he\n    exact hn ⟨U, hU, he⟩\n  have cover (A : Set S) : A ∈ P ∨ Aᶜ ∈ P := by\n    by_contra hn\n    have hA : A ∉ P := by aesop\n    have hAc : Aᶜ ∉ P := by aesop\n    obtain ⟨U, hU, hAU⟩ := witness A hA\n    obtain ⟨V, hV, hAV⟩ := witness Aᶜ hAc\n    have hdis : U ∩ V = ∅ := by\n      ext x\n      simp only [Set.mem_inter_iff, Set.mem_empty_iff_false, iff_false, not_and]\n      intro hxU hxV\n      have hxA : x ∉ A := by\n        intro hx\n        have : x ∈ A ∩ U := ⟨hx, hxU⟩\n        rw [hAU] at this\n        exact this\n      have hxAc : x ∈ Aᶜ := by simpa using hxA\n      have : x ∈ Aᶜ ∩ V := ⟨hxAc, hxV⟩\n      rw [hAV] at this\n      exact this\n    exact hPP U hU V hV (by simpa [hdis])\n  have noBoth (A : Set S) (hA : A ∈ P) : Aᶜ ∉ P := by\n    intro h\n    have := hPP A hA Aᶜ h\n    simpa using this\n  let Q : Finset (Set S) := Finset.univ \\ P\n  have hcard : P.card = Q.card := by\n    have himage : Q = P.image (fun A : Set S => Aᶜ) := by\n      ext A\n      simp only [Q, Finset.mem_sdiff, Finset.mem_univ, true_and,\n        Finset.mem_image]\n      constructor\n      · intro hA\n        obtain h | h := cover Aᶜ\n        · exact ⟨Aᶜ, h, by simp⟩\n        · exact False.elim (hA (by simpa using h))\n      · rintro ⟨B, hB, rfl⟩\n        exact noBoth B hB\n    rw [himage]\n    exact (Finset.card_image_iff.mpr (by\n      intro A hA B hB h\n      simpa using congrArg (fun X : Set S => Xᶜ) h)).symm\n  have htotal : P.card + Q.card = 2 ^ Fintype.card S := by\n    have hdis : Disjoint P Q := Finset.disjoint_left.mpr (by\n      intro A hA hAQ\n      exact (Finset.mem_sdiff.mp hAQ).2 hA)\n    have hunion : P ∪ Q = Finset.univ := by\n      ext A\n      simp only [Finset.mem_union, Finset.mem_sdiff, Finset.mem_univ, true_and]\n      constructor\n      · intro _; trivial\n      · intro _\n        obtain h | h := cover A\n        · exact Or.inl h\n        · right\n          refine ⟨trivial, ?_⟩\n          intro hA\n          exact noBoth A hA (by simpa using h)\n    rw [← Finset.card_union_of_disjoint hdis, hunion]\n    simp [Fintype.card_fun]\n  have hdouble : P.card * 2 = 2 ^ Fintype.card S := by omega\n  have hn : 0 < Fintype.card S := Fintype.card_pos\n  have hpow : 2 ^ (Fintype.card S - 1) * 2 = 2 ^ Fintype.card S := by\n    rw [← pow_succ, Nat.sub_add_cancel (by omega)]\n  omega\n",
+  "feedback": {
+    "kind": "lean_correctness_feedback",
+    "status": "failed",
+    "primary_version": "v4.25.0",
+    "primary_passed": false,
+    "all_versions_passed": false,
+    "required_versions": [
+      "v4.25.0",
+      "v4.26.0"
+    ],
+    "errors": [],
+    "versions": [
+      {
+        "version": "v4.25.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "Invalid `⟨...⟩` notation: The expected type\n  Quot.lift (fun l => A ∈ l) ⋯ Q.val\nis not an inductive type\n\nNote: This notation can only be used when the expected type is an inductive type with a single constructor",
+          "No goals to be solved"
+        ]
+      },
+      {
+        "version": "v4.26.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "Invalid `⟨...⟩` notation: The expected type\n  Quot.lift (fun l => A ∈ l) ⋯ Q.val\nis not an inductive type\n\nNote: This notation can only be used when the expected type is an inductive type with a single constructor",
+          "No goals to be solved"
+        ]
+      }
+    ],
+    "truncated": false
+  }
+}

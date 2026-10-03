@@ -1,0 +1,79 @@
+theorem putnam_1964_a4
+(u : ℕ → ℤ)
+(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)
+(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)
+: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by
+  obtain ⟨B, T, hB⟩ := boundedu
+  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))
+  have hfin : Set.Finite (Set.range f) := by
+    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by
+      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))
+      intro x hx
+      simp only [ge_iff_le, ne_eq, Set.mem_Icc, Finset.mem_Icc, Set.mem_setOf_eq] at hx ⊢
+      exact hx
+    apply hI.subset
+    rintro x ⟨n, rfl⟩
+    have h0 := hB n
+    have h1 := hB (n + 1)
+    have h2 := hB (n + 2)
+    have h3 := hB (n + 3)
+    simp only [Set.mem_Icc, Prod.le_def, f]
+    simp_all
+  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by
+    by_contra! h
+    have hinj : Function.Injective f := by
+      intro a b hab
+      by_cases h' : a = b
+      · exact h'
+      · have : a < b ∨ b < a := by omega
+        rcases this with hlt | hlt
+        · exact (h a b hlt hab).elim
+        · exact False.elim (h b a hlt hab.symm)
+    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)
+  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by
+    simpa [f, Prod.mk.injEq] using heq
+  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)
+      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))
+      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by
+    have ea := (hu a ha).1
+    have eb := (hu b hb).1
+    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]
+    exact_mod_cast er
+  have hseq : ∀ m, u (i + m) = u (j + m) := by
+    intro m
+    induction m using Nat.strong_induction_on with
+    | h m ih =>
+      by_cases h0 : m = 0
+      · subst m; simpa using heq.1
+      by_cases h1 : m = 1
+      · subst m; simpa using heq.2.1
+      by_cases h2 : m = 2
+      · subst m; simpa using heq.2.2.1
+      by_cases h3 : m = 3
+      · subst m; simpa using heq.2.2.2
+      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩
+      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by
+        have e1 : i + (k + 4) - 1 = i + (k + 3) := by omega
+        have e2 : j + (k + 4) - 1 = j + (k + 3) := by omega
+        rw [e1, e2]; exact ih (k + 3) (by omega)
+      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by
+        have e1 : i + (k + 4) - 2 = i + (k + 2) := by omega
+        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega
+        rw [e1, e2]; exact ih (k + 2) (by omega)
+      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by
+        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega
+        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega
+        rw [e1, e2]; exact ih (k + 1) (by omega)
+      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by
+        have e1 : i + (k + 4) - 4 = i + k := by omega
+        have e2 : j + (k + 4) - 4 = j + k := by omega
+        rw [e1, e2]; exact ih k (by omega)
+      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4
+  refine ⟨i, j - i, ?_, ?_⟩
+  · omega
+  · intro n hn
+    have h := hseq (n - i)
+    have e1 : i + (n - i) = n := by omega
+    have e2 : j + (n - i) = n + (j - i) := by omega
+    rw [e1, e2] at h
+    exact h.symm

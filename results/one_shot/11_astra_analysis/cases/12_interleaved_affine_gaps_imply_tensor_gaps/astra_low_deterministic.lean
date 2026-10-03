@@ -1,0 +1,78 @@
+theorem interleaved_affine_gaps_imply_tensor_gaps
+    (hC_proximityGapAffineLines : e_ε_correlatedAgreementAffineLinesNat
+      (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))
+    (h_interleaved_gaps : ∀ m : ℕ, m ≥ 1 →
+      e_ε_correlatedAgreementAffineLinesNat (F := F)
+        (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC ^⋈ (Fin m)) e ε) :
+    ∀ (ϑ : ℕ), (hϑ_gt_0 : ϑ > 0) → δ_ε_multilinearCorrelatedAgreement_Nat (F := F) (A := A)
+      (ι := ι) (C := MC) (ϑ := ϑ) (e := e) (ε := ε) := by
+    classical
+    intro ϑ
+    induction ϑ with
+    | zero =>
+      intro u
+      contradiction
+    | succ ϑ_sub_1 ih =>
+      cases ϑ_sub_1 with
+      | zero =>
+        simp only [zero_add, zero_lt_one, forall_const]
+        intro u
+        let toAffineLineEval := multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u)
+        intro hprob_gt
+        simp_rw [toAffineLineEval] at hprob_gt
+        let prob_eq := prob_uniform_singleton_finFun_eq (F := F)
+          (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e)
+        simp_rw [prob_eq, Nat.cast_one, ENNReal.coe_one, one_mul] at hprob_gt
+        have h_correlated_agreement := hC_proximityGapAffineLines (u 0) (u 1) hprob_gt
+        simp only [jointProximityNat₂] at h_correlated_agreement
+        have h_u_eq: u = finMapTwoWords (u 0) (u 1) := by
+          funext rowIdx
+          match rowIdx with
+          | 0 => rfl
+          | 1 => rfl
+        rw [h_u_eq.symm] at h_correlated_agreement
+        exact h_correlated_agreement
+      | succ ϑ_sub_2 =>
+        intro hϑ_gt_0 u hP_multilinearCombine_close_gt
+        set U₀ : Fin (2 ^ (ϑ_sub_2 + 1)) → Word A ι :=
+          (splitHalfRowWiseInterleavedWords (ϑ := ϑ_sub_2 + 1) u).1
+        set U₁ : Fin (2 ^ (ϑ_sub_2 + 1)) → Word A ι :=
+          (splitHalfRowWiseInterleavedWords (ϑ := ϑ_sub_2 + 1) u).2
+        unfold jointProximityNat
+        simp only
+        have h_finsnoc_eq_r (r : Fin (ϑ_sub_2 + 1 + 1) → F) :
+            Fin.snoc (fun i : Fin (ϑ_sub_2 + 1) => r i.castSucc)
+              (r (Fin.last (ϑ_sub_2 + 1))) = r :=
+          Fin.snoc_init_self r
+        let P : F → (Fin (ϑ_sub_2 + 1) → F) → Prop := fun r_last r_init =>
+          Δ₀(multilinearCombine (u:=u) (r:=Fin.snoc r_init r_last), MC) ≤ e
+        let hP_split_r_last := prob_split_last_uniform_sampling_of_finFun
+          (ϑ := ϑ_sub_2 + 1) (F := F) (P := P)
+        unfold P at hP_split_r_last
+        simp_rw [h_finsnoc_eq_r] at hP_split_r_last
+        rw [hP_split_r_last] at hP_multilinearCombine_close_gt
+        let ϑ_pred := ϑ_sub_2 + 1
+        have multilinearCombine_snoc_eq_multilinearCombine_affine
+          (r_init : Fin ϑ_pred → F) (r_last : F) : multilinearCombine u (Fin.snoc r_init r_last) =
+            multilinearCombine (affineLineEvaluation U₀ U₁ r_last) r_init := by
+          rw [multilinearCombine_recursive_form]
+          simp only [Fin.snoc_last, Fin.init_snoc]
+          rfl
+        simp_rw [multilinearCombine_snoc_eq_multilinearCombine_affine]
+          at hP_multilinearCombine_close_gt
+        let R_star_set := R_star_tensor MC (m:=ϑ_pred) (e:=e) (ε:=ε) U₀ U₁
+        have h_prob_Rstar_gt_eps_div_q : Pr_{ let r ← $ᵖ F }[ r ∈ R_star_set ]
+          > (↑ε : ENNReal) / (Fintype.card F : ENNReal) := by
+          exact prob_R_star_gt_threshold (MC := MC) (ε := ε) (ϑ := ϑ_sub_2 + 1) (u := u)
+            (e := e) (hP_multilinearCombine_close_gt)
+        have h_line_close_to_C_m : ∀ (r : R_star_set),
+          jointProximityNat (u := affineLineEvaluation U₀ U₁ r.val) (e := e) (C := MC) := by
+          intro r_in_Rstar
+          apply correlatedAgreement_of_mem_R_star_tensor
+            (ih := fun u_prev => ih (by omega) u_prev) (u := u)
+        apply CA_split_rowwise_implies_CA (u := u) (e := e)
+        apply h_interleaved_gaps (2 ^ (ϑ_sub_2 + 1)) Nat.one_le_two_pow
+        apply lt_of_lt_of_le h_prob_Rstar_gt_eps_div_q
+        apply Pr_le_Pr_of_implies
+        intro r hr
+        exact h_line_close_to_C_m ⟨r, hr⟩

@@ -1,0 +1,126 @@
+--- original.lean
++++ astra_low_deterministic.lean
+@@ -3,95 +3,33 @@
+   (Imperative.HasVarsPure.getVars (P:=Expression)
+     (substOld h2 (Lambda.LExpr.fvar m h1 ty) post)).Subset
+     (Imperative.HasVarsPure.getVars (P:=Expression) post ++ [h1]) := by
+-  induction post <;> simp [substOld]
+-  case fvar =>
+-    intros x Hin
+-    rename_i m name ty2
+-    simp at m
+-    simp at name
+-    simp at ty2
+-
+-    simp_all
+-  case op =>
+-    intros x Hin
+-    rename_i m name ty2
+-    simp at m
+-    simp at name
+-    simp at ty2
+-    simp_all
+-  case const =>
+-    intros x Hin
+-    rename_i m name
+-    simp at m
+-    simp_all
+-  case bvar =>
+-    intros x Hin
+-    rename_i m d
+-    simp at m
+-    simp_all
+-  case abs ih =>
+-    exact ih
+-  case ite cih tih eih =>
+-    simp [Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars] at *
+-    apply List.Subset.app
+-    . apply List.Subset.trans
+-      apply cih <;> assumption
+-      intros x Hin
+-      simp_all
+-      cases Hin <;> simp_all
+-    apply List.Subset.app
+-    . apply List.Subset.trans
+-      apply tih <;> assumption
+-      intros x Hin
+-      simp_all
+-      cases Hin <;> simp_all
+-    . apply List.Subset.trans
+-      apply eih <;> assumption
+-      intros x Hin
+-      simp_all
++  have join {a b c d : List Expression.Ident}
++      (ha : a.Subset (c ++ [h1])) (hb : b.Subset (d ++ [h1])) :
++      (a ++ b).Subset ((c ++ d) ++ [h1]) := by
++    intro x hx
++    apply List.mem_append.mpr
++    cases List.mem_append.mp hx with
++    | inl hx => cases List.mem_append.mp (ha hx) with
++      | inl hx => grind
++      | inr hx => exact Or.inr hx
++    | inr hx => cases List.mem_append.mp (hb hx) with
++      | inl hx => exact Or.inl (List.mem_append.mpr (Or.inr hx))
++      | inr hx => exact Or.inr hx
++  induction post <;>
++    simp only [Imperative.HasVarsPure.getVars, substOld] at *
++  case fvar => intro x hx; exact List.mem_append.mpr (Or.inl hx)
++  case op => exact List.Subset.empty
++  case const => exact List.nil_subset _
++  case bvar => exact List.nil_subset _
++  case abs ih => exact ih
++  case ite cih tih eih => exact join (join cih tih) eih
++  case quant trih eih => exact join trih eih
++  case eq ih1 ih2 => exact join ih1 ih2
+   case app ih1 ih2 =>
+     split
+-    . split
+-      . simp [Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars] at *
+-        intros x Hin
+-        simp_all
+-      . simp [Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars] at *
+-        intros x Hin
+-        simp_all
+-    . simp [Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars] at *
+-      apply List.Subset.app
+-      . apply List.Subset.trans
+-        apply ih1 <;> assumption
+-        intros x Hin
+-        simp_all
+-        cases Hin <;> simp_all
+-      . apply List.Subset.trans
+-        apply ih2 <;> assumption
+-        intros x Hin
+-        simp_all
+-  case quant trih eih =>
+-    simp [Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars] at *
+-    apply List.Subset.app
+-    . apply List.Subset.trans
+-      apply trih <;> assumption
+-      intros x Hin
+-      rename_i m1 k1 ty1 trigger1 e1
+-      have assoc := List.append_assoc (Lambda.LExpr.LExpr.getVars trigger1) (Lambda.LExpr.LExpr.getVars e1) [h1]
+-      simp_all
+-      cases Hin <;> simp_all
+-    . apply List.Subset.trans
+-      apply eih <;> assumption
+-      intros x Hin
+-      simp_all
+-  case eq ih1 ih2 =>
+-    simp [Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars] at *
+-    apply List.Subset.app
+-    . apply List.Subset.trans
+-      apply ih1 <;> assumption
+-      intros x Hin
+-      simp_all
+-      cases Hin <;> simp_all
+-    . apply List.Subset.trans
+-      apply ih2 <;> assumption
+-      intros x Hin
+-      simp_all
++    · split
++      · simp only [Lambda.LExpr.LExpr.getVars]
++        intro x hx
++        (expose_names; exact List.mem_cons_of_mem x_1 hx)
++      · simpa [Lambda.LExpr.LExpr.getVars] using ih2
++    · simpa only [Lambda.LExpr.LExpr.getVars] using join ih1 ih2

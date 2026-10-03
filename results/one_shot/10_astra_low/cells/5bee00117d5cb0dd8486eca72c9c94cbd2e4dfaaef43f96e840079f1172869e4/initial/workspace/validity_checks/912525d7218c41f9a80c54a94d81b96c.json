@@ -1,0 +1,23 @@
+{
+  "code": "lemma fundamental_theorem_of_variational_calculus' {f : Y → V}\n    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]\n    [OpensMeasurableSpace Y]\n    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :\n    f = 0 := by\n  funext x₀\n  by_contra hx\n  have hp : 0 < ⟪f x₀, f x₀⟫_ℝ := by\n    apply (real_inner_self_pos (x := toL2 ℝ (f x₀))).2\n    intro h\n    exact hx (congrArg (fromL2 ℝ) h)\n  have hc : Continuous (fun x => ⟪f x, f x₀⟫_ℝ) :=\n    Continuous.inner' _ _ hf continuous_const\n  obtain ⟨δ, hδ, hball⟩ := Metric.isOpen_iff.mp (isOpen_lt continuous_const hc) x₀ hp\n  let φ : ContDiffBump x₀ := ⟨δ / 2, δ, half_pos hδ, half_lt_self hδ⟩\n  have ht : IsTestFunction (φ : Y → ℝ) := ⟨φ.contDiff, φ.hasCompactSupport⟩\n  have hs : Function.support (fun x => φ x * ⟪f x, f x₀⟫_ℝ) ⊆ Function.support φ := by\n    intro x hx hz\n    simp [hz] at hx\n  have hcont := ht.smooth.continuous.mul hc\n  have hi := hcont.integrable_of_hasCompactSupport (ht.supp.mono hs) (μ := μ)\n  have hn : ∀ x, 0 ≤ φ x * ⟪f x, f x₀⟫_ℝ := by\n    intro x\n    by_cases hx : x ∈ Function.support φ\n    · have hb : x ∈ Metric.ball x₀ δ := by\n        simpa only [ContDiffBump.support_eq] using hx\n      exact mul_nonneg φ.nonneg (le_of_lt (hball hb))\n    · simp only [Function.notMem_support.mp hx, zero_mul, le_refl]\n  have hpos : 0 < ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ :=\n    integral_pos_of_integrable_nonneg_nonzero hcont hi hn\n      (ne_of_gt (mul_pos (φ.pos_of_mem_ball (Metric.mem_ball_self φ.rOut_pos)) hp))\n  have hz := hg (fun x => φ x • f x₀) (IsTestFunction.smul_right ht contDiff_const)\n  simp only [inner_smul_right'] at hz\n  exact (ne_of_gt hpos) hz\n",
+  "feedback": {
+    "kind": "lean_correctness_feedback",
+    "status": "valid",
+    "primary_version": "v4.32.0",
+    "primary_passed": true,
+    "all_versions_passed": true,
+    "required_versions": [
+      "v4.32.0"
+    ],
+    "errors": [],
+    "versions": [
+      {
+        "version": "v4.32.0",
+        "status": "passed",
+        "passed": true,
+        "errors": []
+      }
+    ],
+    "truncated": false
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "name": "Core.InitsUpdatesComm",
+  "source": "strata",
+  "method": "facts",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 17.85714285714286,
+      "heartbeat_reduction_pct": 46.54606264660058,
+      "compatibility_pct": 100.0,
+      "combined_pct": 54.80106850124781
+    },
+    "candidate": {
+      "length": 184,
+      "code_sha256": "483f19d73415319b955b158076ee82daae6352497ca1b03f4593f71e157ee365"
+    },
+    "primary_version": "v4.29.1",
+    "per_version": {
+      "v4.29.1": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 2273.652,
+        "heartbeat_reduction_pct": 46.54606264660058,
+        "cached": true,
+        "environment_fingerprint": "f335a0dac1b1d96e507ba2b426dca0f3b0a251550d19df160d2aeb228252ddcf",
+        "elapsed_seconds": 1.95484827645123,
+        "diagnostics": []
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1904.105,
+        "heartbeat_reduction_pct": 59.08589082551696,
+        "cached": true,
+        "environment_fingerprint": "8f388586ba7accfe9a32ff9627dbf5adf56214cc665a03da4f6a91a2a7739574",
+        "elapsed_seconds": 2.6269449945539236,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1746.415,
+        "heartbeat_reduction_pct": 62.65580706407328,
+        "cached": true,
+        "environment_fingerprint": "1a8f53d9ef6597e59d732b68310b09a673952277c2d77779e33c0c96670f4486",
+        "elapsed_seconds": 2.1287540774792433,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 17.85714285714286,
+      "heartbeat_reduction_pct": 46.54606264660058,
+      "compatibility_pct": 100.0,
+      "combined_pct": 54.80106850124781
+    },
+    "candidate": {
+      "length": 184,
+      "code_sha256": "483f19d73415319b955b158076ee82daae6352497ca1b03f4593f71e157ee365"
+    },
+    "primary_version": "v4.29.1",
+    "per_version": {
+      "v4.29.1": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 2273.652,
+        "heartbeat_reduction_pct": 46.54606264660058,
+        "cached": true,
+        "environment_fingerprint": "f335a0dac1b1d96e507ba2b426dca0f3b0a251550d19df160d2aeb228252ddcf",
+        "elapsed_seconds": 1.95484827645123,
+        "diagnostics": []
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1904.105,
+        "heartbeat_reduction_pct": 59.08589082551696,
+        "cached": true,
+        "environment_fingerprint": "8f388586ba7accfe9a32ff9627dbf5adf56214cc665a03da4f6a91a2a7739574",
+        "elapsed_seconds": 2.6269449945539236,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1746.415,
+        "heartbeat_reduction_pct": 62.65580706407328,
+        "cached": true,
+        "environment_fingerprint": "1a8f53d9ef6597e59d732b68310b09a673952277c2d77779e33c0c96670f4486",
+        "elapsed_seconds": 2.1287540774792433,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem InitsUpdatesComm\n  {P : PureExpr} {σ σ' σ'' : SemanticStore P}\n  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :\n  UpdateStates σ ks vs σ' →\n  InitStates σ' ks' vs' σ'' →\n  ∃ σ₁,\n    σ₁ = (updatedStates σ ks' vs') ∧\n    InitStates σ ks' vs' σ₁ ∧\n    UpdateStates σ₁ ks vs σ'' := by\n  intros Hup Hinit\n  exists (updatedStates σ ks' vs')\n  have Hk := UpdateStatesDefined Hup\n  have Hlen1 := InitStatesLength Hinit\n  induction Hup generalizing σ''\n  case update_none =>\n    refine ⟨rfl, updatedStatesInit Hlen1 (InitStatesNotDefined Hinit) (InitStatesNodup Hinit), ?_⟩\n    rw [← InitStatesUpdated Hinit]\n    constructor\n  case update_some σ x v σ₀ xs vs σ₁ Hup Hups ih =>\n    have Hb := updatedStatesInit Hlen1\n      (UpdateStateNotDefMonotone' (UpdateStatesNotDefMonotone' (InitStatesNotDefined Hinit) Hups) Hup)\n      (InitStatesNodup Hinit)\n    refine ⟨rfl, Hb, ?_⟩\n    apply UpdateStates.update_some (σ':=updatedStates σ₀ ks' vs')\n    · simp [UpdateStateUpdated Hup, updatedStates]\n      rw [← updatedStateComm']\n      · have Hdef := UpdateStateDefined' Hup\n        simp [isDefined, Option.isSome] at Hdef\n        split at Hdef <;> norm_cast\n        next val heq =>\n          exact updatedStateUpdate (InitStatesSomeMonotone heq Hb)\n      · rw [List.unzip_zip] <;> norm_cast\n        have Hnd := InitStatesNotDefined Hinit\n        simp only [isDefined] at *\n        intro Hin\n        specialize Hnd _ Hin\n        simp_all\n    · exact (ih Hinit (UpdateStatesDefined Hups)).2.2",
+  "initial_sha256": "483f19d73415319b955b158076ee82daae6352497ca1b03f4593f71e157ee365",
+  "rounds": 1,
+  "attempts": 6,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 6,
+  "cache_hits": 0,
+  "seen": [
+    "a2a2a2210e02ce92241b9ee2b407f90965120e9d6a9aaeacdb20c9dace828e7c",
+    "f5b9f875c2315ff6776777c6d19bdf71654637f8d1b7d61f404a2deaeb92864e",
+    "29d809e1b95049eeef64755b0fd870e335412f0c6d24bc149d289dbe8f1c93e4",
+    "9bc3c625ccc67c963e01c15f0fb4c33bb1ddb41ce7f923c127b4459fedf8491f",
+    "17f9922b4c9a58d749c38ebe455b3fdd81e3a1276a86eb2483861533efddf1cb",
+    "3a38cea5085e374d6389be2e62adc6bbdf88f7579e594d1d8b9abd14b788e3b7"
+  ],
+  "plan": null,
+  "elapsed_seconds": 14.626124761998653,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0
+}

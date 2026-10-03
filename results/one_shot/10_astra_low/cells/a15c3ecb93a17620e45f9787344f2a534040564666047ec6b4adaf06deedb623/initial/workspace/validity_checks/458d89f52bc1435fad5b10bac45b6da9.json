@@ -1,0 +1,37 @@
+{
+  "code": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  classical\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n+1), u (n+2), u (n+3))\n  have hf : Set.Finite (Set.range f) := by\n    obtain ⟨B, T, h⟩ := boundedu\n    apply (Set.finite_Icc (B,B,B,B) (T,T,T,T)).subset\n    rintro x ⟨n, rfl⟩\n    exact ⟨⟨(h n).1, (h (n+1)).1, (h (n+2)).1, (h (n+3)).1⟩,\n      ⟨(h n).2, (h (n+1)).2, (h (n+2)).2, (h (n+3)).2⟩⟩\n  have hp : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    apply Set.not_infinite.mpr hf\n    apply Set.infinite_range_of_injective\n    intro i j e\n    rcases lt_trichotomy i j with hij | hij | hij\n    · exact False.elim (h i j hij e)\n    · exact hij\n    · exact False.elim (h j i hij e.symm)\n  obtain ⟨i, j, hij, he⟩ := hp\n  have he' : u i = u j ∧ u (i+1) = u (j+1) ∧ u (i+2) = u (j+2) ∧ u (i+3) = u (j+3) := by\n    simpa only [f, Prod.mk.injEq] using he\n  have hall : ∀ m, u (i+m) = u (j+m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      match m with\n      | 0 => exact he'.1\n      | 1 => exact he'.2.1\n      | 2 => exact he'.2.2.1\n      | 3 => exact he'.2.2.2\n      | m+4 =>\n        have hi := (hu (i+(m+4)) (by omega)).1\n        have hj := (hu (j+(m+4)) (by omega)).1\n        have e1 : u (i+(m+4)-1) = u (j+(m+4)-1) := ih (m+3) (by omega)\n        have e2 : u (i+(m+4)-2) = u (j+(m+4)-2) := ih (m+2) (by omega)\n        have e3 : u (i+(m+4)-3) = u (j+(m+4)-3) := ih (m+1) (by omega)\n        have e4 : u (i+(m+4)-4) = u (j+(m+4)-4) := ih m (by omega)\n        rw [e1, e2, e3, e4] at hi\n        exact_mod_cast hi.trans hj.symm\n  refine ⟨i, j-i, by omega, ?_⟩\n  intro n hn\n  have h := (hall (n-i)).symm\n  have h1 : i+(n-i) = n := by omega\n  have h2 : j+(n-i) = n+(j-i) := by omega\n  simpa only [h1, h2] using h\n",
+  "feedback": {
+    "kind": "lean_correctness_feedback",
+    "status": "valid",
+    "primary_version": "v4.25.0",
+    "primary_passed": true,
+    "all_versions_passed": true,
+    "required_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "errors": [],
+    "versions": [
+      {
+        "version": "v4.25.0",
+        "status": "passed",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "version": "v4.26.0",
+        "status": "passed",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "version": "v4.27.0",
+        "status": "passed",
+        "passed": true,
+        "errors": []
+      }
+    ],
+    "truncated": false
+  }
+}

@@ -1,0 +1,40 @@
+open OldExpressions in
+theorem extractedOldExprInVars :
+  NormalizedOldExpr post →
+  (extractOldExprVars post).Subset
+  (Imperative.HasVarsPure.getVars post) := by
+  intro hn
+  induction hn <;> intro x hx
+  all_goals
+    simp [Imperative.HasVarsPure.getVars, extractOldExprVars,
+      Lambda.LExpr.LExpr.getVars] at hx ⊢
+  case abs ih => exact ih hx
+  case quant ihtr ihe =>
+    rcases hx with h | h
+    · exact Or.inl (by simpa [Imperative.HasVarsPure.getVars] using ihtr h)
+    · exact Or.inr (by simpa [Imperative.HasVarsPure.getVars] using ihe h)
+  case app hfn he hcond ihfn ihe =>
+    unfold extractOldExprVars at hx
+    split at hx
+    · simp [Lambda.LExpr.LExpr.getVars] at hx ⊢
+      exact hx
+    · next hfalse =>
+      exfalso
+      specialize hcond ?_
+      constructor
+      cases hcond
+      apply hfalse
+      rfl
+    · simp [Lambda.LExpr.LExpr.getVars] at hx ⊢
+      rcases hx with h | h
+      · exact Or.inl (by simpa [Imperative.HasVarsPure.getVars] using ihfn h)
+      · exact Or.inr (by simpa [Imperative.HasVarsPure.getVars] using ihe h)
+  case ite ihc iht ihe =>
+    rcases hx with h | h | h
+    · exact Or.inl (by simpa [Imperative.HasVarsPure.getVars] using ihc h)
+    · exact Or.inr (Or.inl (by simpa [Imperative.HasVarsPure.getVars] using iht h))
+    · exact Or.inr (Or.inr (by simpa [Imperative.HasVarsPure.getVars] using ihe h))
+  case eq ih1 ih2 =>
+    rcases hx with h | h
+    · exact Or.inl (by simpa [Imperative.HasVarsPure.getVars] using ih1 h)
+    · exact Or.inr (by simpa [Imperative.HasVarsPure.getVars] using ih2 h)

@@ -1,0 +1,109 @@
+{
+  "name": "putnam_1995_a3",
+  "source": "putnambench",
+  "method": "rw_min",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 87.49082007343941,
+      "heartbeat_reduction_pct": 80.9239727518339,
+      "compatibility_pct": 100.0,
+      "combined_pct": 89.47159760842443
+    },
+    "candidate": {
+      "length": 511,
+      "code_sha256": "b6789402f0c02af3ef60d77b302c0d5754b7610346d659935c06706d7b875357"
+    },
+    "primary_version": "v4.25.0",
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3425.627,
+        "heartbeat_reduction_pct": 80.9239727518339,
+        "cached": true,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "elapsed_seconds": 3.1735827643424273,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 2712.449,
+        "heartbeat_reduction_pct": 81.04709882749034,
+        "cached": true,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "elapsed_seconds": 3.067289385944605,
+        "diagnostics": []
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 2706.198,
+        "heartbeat_reduction_pct": 80.85358464572667,
+        "cached": true,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "elapsed_seconds": 3.093283172696829,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  have step (a b : Fin 9 → ℤ) (h : relation a b) (i : Fin 9) :\n      7 ∣ (b i - a i) * (10 : ℤ)^i.1 + digits_to_num a := by\n    have eqn : digits_to_num (fun j => if j = i then b j else a j) =\n        (b i - a i) * (10 : ℤ)^i.1 + digits_to_num a := by\n      rw [hdigits_to_num]\n      change (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ)^j.1) = _\n      calc\n        _ = ∑ j : Fin 9, ((if j = i then (b j - a j) * (10 : ℤ)^j.1 else 0) + a j * (10 : ℤ)^j.1) := by\n          apply Finset.sum_congr rfl\n          intro j _\n          split_ifs <;> ring\n        _ = _ := by simp only [Finset.sum_add_distrib, Finset.sum_ite_eq', Finset.mem_univ, if_true]\n    rw [← eqn]\n    exact ((hrelation a b).mp h).2 i\n  intro d e f h\n  have hd := step d e h.1\n  have he := step e f h.2\n  have hs : 7 ∣ digits_to_num e + digits_to_num d := by\n    have hh := Finset.dvd_sum (s := Finset.univ) (fun i _ => hd i)\n    have eqn : (∑ i : Fin 9, ((e i - d i) * (10 : ℤ)^i.1 + digits_to_num d)) =\n        digits_to_num e - digits_to_num d + 9 * digits_to_num d := by\n      simp only [Finset.sum_add_distrib, sub_mul, Finset.sum_sub_distrib,\n        Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul, Nat.cast_ofNat]\n      rw [hdigits_to_num]\n    rw [eqn] at hh\n    omega\n  intro i\n  have hm := dvd_sub (dvd_add (hd i) (he i)) hs\n  have eqn : ((e i - d i) * (10 : ℤ)^i.1 + digits_to_num d) +\n      ((f i - e i) * (10 : ℤ)^i.1 + digits_to_num e) -\n      (digits_to_num e + digits_to_num d) = (f i - d i) * (10 : ℤ)^i.1 := by ring\n  rw [eqn] at hm\n  have hn : ¬ (7 : ℤ) ∣ (10 : ℤ)^i.1 := by\n    intro hh\n    have hh' : (7 : ℕ) ∣ (10 : ℕ)^i.1 := by exact_mod_cast hh\n    have := Nat.Prime.dvd_of_dvd_pow (by norm_num : Nat.Prime 7) hh'\n    norm_num at this\n  have hf := ((Int.prime_iff_natAbs_prime.mpr (by decide) : Prime (7 : ℤ)).dvd_mul.mp hm).resolve_right hn\n  exact dvd_sub_comm.mp hf",
+  "rounds": 1,
+  "attempts": 5,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 5,
+  "cache_hits": 0,
+  "elapsed_seconds": 18.018,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 87.49082007343941,
+      "heartbeat_reduction_pct": 80.9239727518339,
+      "compatibility_pct": 100.0,
+      "combined_pct": 89.47159760842443
+    },
+    "candidate": {
+      "length": 511,
+      "code_sha256": "b6789402f0c02af3ef60d77b302c0d5754b7610346d659935c06706d7b875357"
+    },
+    "primary_version": "v4.25.0",
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3425.627,
+        "heartbeat_reduction_pct": 80.9239727518339,
+        "cached": true,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "elapsed_seconds": 3.1735827643424273,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 2712.449,
+        "heartbeat_reduction_pct": 81.04709882749034,
+        "cached": true,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "elapsed_seconds": 3.067289385944605,
+        "diagnostics": []
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 2706.198,
+        "heartbeat_reduction_pct": 80.85358464572667,
+        "cached": true,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "elapsed_seconds": 3.093283172696829,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": false
+}

@@ -61,19 +61,31 @@ required versions:
 | Deterministic seed, tools, deterministic cleanup | 26.856119% | 52.378611% | 100% | 59.744910% |
 
 The gains over D0 are **6.797306 pp** and **13.496788 pp**. The paired combined
-arm leads the pure arm by **6.699482 pp**. Luna/high is running, followed by
-medium. A shared scratch-file collision interrupted Luna's cleanup; the
+arm leads the pure arm by **6.699482 pp**. Luna/high has also completed both
+arms: **39.260352% original** and **50.579408% combined**, with 100%
+compatibility. Luna/medium continues separately. A shared scratch-file
+collision interrupted Luna's cleanup; the
 [recovery](09_codex_tools_baselines/recovery/README.md) keeps source projects
 read-only to subsequent tool processes and resumed saved work. No existing
 proposal was regenerated and cached references were preserved.
 
-The user's requested [Astra/low cohort](10_astra_low/README.md) runs alongside
-Luna, with the same 15 problems and two starting proofs. Its initial requests
-are checked against Astra/max for exact identity except reasoning effort.
-The first pair is retained when the controller expands to all 30 cells.
+The user's requested [Astra/low cohort](10_astra_low/README.md) has completed
+all 30 cells: **57.222638% original** and **60.719659% combined**, with 100%
+compatibility. Its initial requests are checked against Astra/max for exact
+identity except reasoning effort. The first pair was retained in the full cohort.
 Low uses the source-write protection introduced after historical Astra/max;
 this operational difference is recorded alongside the reasoning change.
-Full-benchmark low/max differences remain pending until an arm is complete.
+
+The [completed comparative analysis](11_astra_analysis/README.md) audits all
+120 cells across those four model/effort cohorts and saves detailed proof
+comparisons. Astra/max's main gains come from stronger library abstractions,
+induction on the right evidence, shared local lemmas and explicit constructors.
+Actual cleanup of its D0-seeded proposals adds only **0.331848 pp** to the
+mean; the rest of the 0.876872-point arm difference compares independent
+generations. Its original arm beats D0 on all 15 problems. Astra/max uses
+185,145 completion tokens and 58 internal validity checks across both arms,
+versus Luna/max's 476,952 tokens and 143 checks. More retries do not explain
+the stronger result. This analysis adds no model calls or Lean measurements.
 
 The first paired theorem, `CallElimCorrect.substOldPostSubset`, illustrates a
 substantial structural rewrite:
@@ -116,10 +128,10 @@ Do not infer hardware/model speed from summed request elapsed time.
 
 ## Next decisions, in order
 
-1. Finish Astra/low and the remaining Luna effort settings; compare them with the completed
-   Astra original/combined comparison. Compare absolute score, all-version validity, changed proofs,
-   tool/compiler calls and reported usage. Do not infer significance from a
-   single proof or from gains over different starting baselines.
+1. Finish Luna/medium independently; the completed Astra/max, Astra/low,
+   Luna/max and Luna/high comparison is now available. The next missing
+   deterministic ablation is cleanup of the saved Astra/max original-arm
+   proposals, requiring no new model generations or reference measurements.
 2. If the tools-enabled path remains effective, give one RCP model the same
    source-lookup and correctness tools in a separate controlled test. This is a
    more direct diagnosis than adding more generic prompt text. Keep the score
