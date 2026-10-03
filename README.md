@@ -118,6 +118,17 @@ uses the same 15 problems and both seeds. Run it with `python src/run_astra_low.
 or audit its saved evidence with `python src/run_astra_low.py --report-only`.
 Its initial requests match Astra/max except for reasoning effort.
 
+The [staged harness experiments](results/harness/README.md) add a structural
+strategy bank, named source/goal tools, and an optional score-feedback loop.
+The correctness-only stage tests Astra/low and Luna/max; the score stage also
+tests Astra/max and returns `(length reduction, heartbeat reduction,
+compatibility)` plus the combined score after each check. It retains the best
+proof passing every version and lets the agent continue without a fixed total
+attempt, token or wall-time budget. Run the staged controller with
+`python src/continue_agent_harness.py` only when no copy is already active.
+The [comparison report](results/harness/COMPARISON.md) separates full benchmark
+results from partial searches and improvements after the first valid proposal.
+
 ### Python and reward functions
 
 ```python
@@ -232,8 +243,11 @@ The model/context and correctness-repair additions also cover prompt isolation,
 goal/cost extraction, bounded debugging, first-valid stopping, no-resampling
 resume, pilot reuse, all-version cleanup eligibility, shared deterministic jobs,
 control comparisons and evidence/report arithmetic. The
-[latest offline validation](results/one_shot/10_astra_low/validation/offline_tests.json)
-records **475 passing tests, 102 passing subtests and three deselected live tests**.
+[latest offline validation](results/harness/validation/offline_tests.json)
+records **488 passing tests, 102 passing subtests and three deselected live tests**.
 It includes the admission gate, cleanup counterfactual analysis, effort probe,
 paired Codex inputs, source-write isolation, the host validity service, and
 localhost CLI request tests, including Astra/low, with no live model calls.
+The staged harness adds score-tuple semantics, best-proof retention, correctness
+feedback isolation, source-tool scope and exact model/effort/tool-mode routing
+through the installed CLI against a localhost test server.

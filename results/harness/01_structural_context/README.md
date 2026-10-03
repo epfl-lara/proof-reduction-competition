@@ -1,13 +1,13 @@
 # Structural context and correctness tools
 
-Updated 2026-10-03T21:07:22.922402+00:00. **partial**: 29/30 terminal cells.
+Updated 2026-10-03T21:10:35.579619+00:00. **complete**: 30/30 terminal cells.
 
 See [protocol](PROTOCOL.md). Scores are local warm-up results against fixed original references. Incomplete conditions have no full-benchmark mean.
 
 | Model | Effort | Terminal | Score | Historical original-arm score | Structural control score |
 | --- | --- | ---: | ---: | ---: | ---: |
 | gpt-6-astra | low | 15/15 | 59.407773% | 57.222638% | — |
-| gpt-6-luna | max | 14/15 | pending | 53.045428% | — |
+| gpt-6-luna | max | 15/15 | 52.740977% | 53.045428% | — |
 
 ## Completed cells
 
@@ -32,6 +32,7 @@ See [protocol](PROTOCOL.md). Scores are local warm-up results against fixed orig
 | Cslib.CCS.bisimilarity_congr_choice | gpt-6-astra / low | 72.778698% | +0.000000 pp | 1 |
 | Cslib.CCS.bisimilarity_congr_choice | gpt-6-luna / max | 73.313767% | -0.000181 pp | 1 |
 | Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius | gpt-6-astra / low | 39.738601% | +4.334796 pp | 3 |
+| Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius | gpt-6-luna / max | 35.310008% | -0.815646 pp | 5 |
 | Binius.BinaryBasefold.fold_advances_evaluation_poly | gpt-6-astra / low | 38.948583% | -9.058120 pp | 1 |
 | Binius.BinaryBasefold.fold_advances_evaluation_poly | gpt-6-luna / max | 52.372684% | +6.291879 pp | 3 |
 | interleaved_affine_gaps_imply_tensor_gaps | gpt-6-astra / low | 65.886938% | +20.436065 pp | 1 |
@@ -47,4 +48,3 @@ See [protocol](PROTOCOL.md). Scores are local warm-up results against fixed orig
 
 | Theorem | Model / effort | Checks | Best score so far |
 | --- | --- | ---: | ---: |
-| Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius | gpt-6-luna / max | 3 | 33.333333% |

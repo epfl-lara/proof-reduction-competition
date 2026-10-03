@@ -4,6 +4,9 @@
   and goal/cost-context ablations through RCP, one output per experimental cell.
 - [Codex agent baselines](one_shot/09_codex_tools_baselines/README.md): Astra and
   Luna with tools, paired original and deterministic seeds, and validity debugging.
+- [Structural context and score-feedback search](harness/README.md): revised
+  prompts and source/goal tools, followed by continued optimization with the
+  measured competition tuple; separate Astra/low, Astra/max and Luna/max results.
 
 - [Deterministic optimization](deterministic/): the complete warm-up portfolio,
   repeated sweeps, candidate proofs, rejected trials, audits and findings.

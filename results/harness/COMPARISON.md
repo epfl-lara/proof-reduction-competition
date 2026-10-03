@@ -1,13 +1,13 @@
 # Harness comparison snapshot
 
-Updated 2026-10-03T21:07:16.001320+00:00. Full means are shown only for complete conditions.
+Updated 2026-10-03T21:15:49.588645+00:00. Full means are shown only for complete conditions.
 
 | Stage | Model / effort | Terminal | Historical score | New score |
 | --- | --- | ---: | ---: | ---: |
 | correctness | gpt-6-astra / low | 15/15 | 57.222638% | 59.407773% |
-| correctness | gpt-6-luna / max | 14/15 | 53.045428% | pending |
+| correctness | gpt-6-luna / max | 15/15 | 53.045428% | 52.740977% |
 | score | gpt-6-astra / max | 0/15 | 78.093430% | pending |
-| score | gpt-6-astra / low | 0/15 | 57.222638% | pending |
+| score | gpt-6-astra / low | 1/15 | 57.222638% | pending |
 | score | gpt-6-luna / max | 0/15 | 53.045428% | pending |
 
 The two stages use independent generations. Stage 02 adds performance feedback and additional inference; this is not a budget-matched comparison.
