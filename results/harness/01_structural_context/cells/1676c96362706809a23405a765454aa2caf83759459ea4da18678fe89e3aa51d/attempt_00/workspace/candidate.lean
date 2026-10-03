@@ -1,0 +1,83 @@
+theorem putnam_1964_b2
+(S : Type*) [Fintype S] [Nonempty S]
+(P : Finset (Set S))
+(hPP : ∀ T ∈ P, ∀ U ∈ P, T ∩ U ≠ ∅)
+(hPS : ¬∃ T : Set S, T ∉ P ∧ (∀ U ∈ P, T ∩ U ≠ ∅))
+: (P.card = 2 ^ (Fintype.card S - 1)) := by
+  classical
+  have hcover : ∀ A : Set S, A ∈ P ∨ Aᶜ ∈ P := by
+    intro A
+    by_cases hA : A ∈ P
+    · exact Or.inl hA
+    · have hex : ∃ U, U ∈ P ∧ A ∩ U = ∅ := by
+        by_contra hn
+        apply hPS
+        refine ⟨A, hA, ?_⟩
+        intro U hU hz
+        exact hn ⟨U, hU, hz⟩
+      obtain ⟨U, hU, hzero⟩ := hex
+      have hUA : U ⊆ Aᶜ := by
+        intro x hx
+        by_contra hxNotAc
+        have hxA : x ∈ A := by simpa using hxNotAc
+        have hx' : x ∈ A ∩ U := ⟨hxA, hx⟩
+        rw [hzero] at hx'
+        simp at hx'
+      have hall : ∀ V ∈ P, Aᶜ ∩ V ≠ ∅ := by
+        intro V hV hz
+        have hVA : V ⊆ A := by
+          intro x hx
+          by_contra hxA
+          have hx' : x ∈ Aᶜ ∩ V := ⟨by simpa using hxA, hx⟩
+          rw [hz] at hx'
+          simp at hx'
+        have hzero' : U ∩ V = ∅ := by
+          ext x
+          simp only [Set.mem_inter_iff, Set.mem_empty_iff_false]
+          constructor
+          · rintro ⟨hxU, hxV⟩
+            have hx : x ∈ Aᶜ ∩ A := ⟨hUA hxU, hVA hxV⟩
+            simpa using hx
+          · intro h
+            exact False.elim h
+        exact (hPP U hU V hV) hzero'
+      apply Or.inr
+      by_contra hAc
+      exact hPS ⟨Aᶜ, hAc, hall⟩
+  have hnotboth : ∀ A : Set S, A ∈ P → Aᶜ ∉ P := by
+    intro A hA hAc
+    have hne := hPP A hA Aᶜ hAc
+    apply hne
+    ext x
+    simp
+  let Q : Finset (Set S) := Finset.univ \ P
+  have hcard : P.card = Q.card := by
+    refine Finset.card_bij' (fun A _ => Aᶜ) (fun A _ => Aᶜ) ?_ ?_ ?_ ?_
+    · intro A hA
+      simpa [Q] using hnotboth A hA
+    · intro A hA
+      have hn : A ∉ P := by simpa [Q] using hA
+      rcases hcover Aᶜ with hp | hp
+      · exact hp
+      · exact False.elim (hn (by simpa using hp))
+    · intro A hA
+      simp
+    · intro A hA
+      simp
+  have hd : Disjoint P Q := Finset.disjoint_left.mpr (by
+    intro A hA hAQ
+    exact (Finset.mem_sdiff.mp hAQ).2 hA)
+  have hUnion : P ∪ Q = Finset.univ := by
+    ext A
+    simp [Q]
+  have htotal : P.card + Q.card = 2 ^ Fintype.card S := by
+    calc
+      P.card + Q.card = (P ∪ Q).card := by rw [Finset.card_union_of_disjoint hd]
+      _ = Finset.univ.card := by rw [hUnion]
+      _ = 2 ^ Fintype.card S := by simp [Fintype.card_fun]
+  have hn : 0 < Fintype.card S := Fintype.card_pos_iff.mpr ‹Nonempty S›
+  have hpow : 2 ^ (Fintype.card S - 1) * 2 = 2 ^ Fintype.card S := by
+    rw [← pow_succ]
+    congr 1
+    omega
+  nlinarith [hcard, htotal, hpow]

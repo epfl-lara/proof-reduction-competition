@@ -1,0 +1,67 @@
+lemma fundamental_theorem_of_variational_calculus' {f : Y → V}
+    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]
+    [OpensMeasurableSpace Y]
+    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :
+    f = 0 := by
+  rw [funext_iff]
+  by_contra h₀
+  obtain ⟨x₀, hx₀⟩ := not_forall.mp h₀
+  simp at hx₀
+  have hself_nonneg : 0 ≤ ⟪f x₀, f x₀⟫_ℝ := by
+    simpa using (real_inner_self_nonneg' (x := f x₀))
+  have hself_ne : ⟪f x₀, f x₀⟫_ℝ ≠ 0 := by
+    intro h
+    exact hx₀ (inner_self_eq_zero'.mp h)
+  have hself_pos : 0 < ⟪f x₀, f x₀⟫_ℝ :=
+    lt_of_le_of_ne hself_nonneg (Ne.symm hself_ne)
+  have hinner_cont : Continuous (fun x => ⟪f x, f x₀⟫_ℝ) :=
+    Continuous.inner' (f : Y → V) (fun _ => f x₀) hf continuous_const
+  obtain ⟨δ, hδ_pos, hδ⟩ :=
+    Metric.continuousAt_iff.mp hinner_cont.continuousAt
+      (⟪f x₀, f x₀⟫_ℝ / 2) (half_pos hself_pos)
+  have inner_pos : ∀ x ∈ Metric.ball x₀ δ, 0 < ⟪f x, f x₀⟫_ℝ := by
+    intro x hx
+    have hd := hδ hx
+    have hd' : |⟪f x, f x₀⟫_ℝ - ⟪f x₀, f x₀⟫_ℝ| < ⟪f x₀, f x₀⟫_ℝ / 2 := by
+      simpa only [Real.dist_eq] using hd
+    linarith [abs_lt.mp hd']
+  have bump_exists : ∃ φ : Y → ℝ, IsTestFunction φ ∧ φ x₀ > 0 ∧
+      (∀ x ∈ Function.support φ, 0 ≤ φ x) ∧
+      Function.support φ ⊆ Metric.ball x₀ (δ / 2) ∧
+      (∀ x ∈ Metric.closedBall x₀ (δ / 4), 0 < φ x) := by
+    haveI : HasContDiffBump Y := hasContDiffBump_of_innerProductSpace Y
+    let φ₁ : ContDiffBump x₀ := ⟨δ / 4, δ / 2, by positivity, by linarith⟩
+    refine ⟨φ₁.toFun, ⟨φ₁.contDiff, φ₁.hasCompactSupport⟩,
+      φ₁.pos_of_mem_ball (Metric.mem_ball_self φ₁.rOut_pos), fun x _ => φ₁.nonneg,
+      by rw [ContDiffBump.support_eq], fun x hx => φ₁.pos_of_mem_ball ?_⟩
+    rw [Metric.mem_closedBall] at hx
+    exact Metric.mem_ball.mpr (lt_of_le_of_lt hx (by show δ / 4 < δ / 2; linarith))
+  obtain ⟨φ, hφ_test, hφ_pos_x₀, hφ_nonneg, hφ_support, hφ_pos⟩ := bump_exists
+  let g : Y → V := fun x => φ x • f x₀
+  have hg_test : IsTestFunction g := IsTestFunction.smul_right hφ_test contDiff_const
+  have key_integral := hg g hg_test
+  simp only [g, inner_smul_right'] at key_integral
+  have support_subset : Function.support φ ⊆ Metric.ball x₀ δ :=
+    hφ_support.trans (Metric.ball_subset_ball (by linarith))
+  have supp_subset : Function.support (fun x => φ x * ⟪f x, f x₀⟫_ℝ) ⊆ Function.support φ := by
+    intro x hprod hφ0
+    simp [hφ0] at hprod
+  have hprod_cont : Continuous (fun x => φ x * ⟪f x, f x₀⟫_ℝ) :=
+    (Continuous.mul hφ_test.smooth.continuous hinner_cont)
+  have integrable_prod : Integrable (fun x => φ x * ⟪f x, f x₀⟫_ℝ) μ :=
+    hprod_cont.integrable_of_hasCompactSupport (hφ_test.supp.mono supp_subset)
+  have h_nonneg : ∀ x, 0 ≤ φ x * ⟪f x, f x₀⟫_ℝ := by
+    intro x
+    by_cases hx : x ∈ Function.support φ
+    · exact mul_nonneg (hφ_nonneg x hx) (inner_pos x (support_subset hx)).le
+    · simp [Function.notMem_support.mp hx]
+  have key_zero : ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ = 0 := by
+    simpa using key_integral
+  have hzero_ae : (fun x => φ x * ⟪f x, f x₀⟫_ℝ) =ᵐ[μ] 0 :=
+    (MeasureTheory.integral_eq_zero_iff_of_nonneg h_nonneg integrable_prod).mp key_zero
+  have hzero : (fun x => φ x * ⟪f x, f x₀⟫_ℝ) = 0 :=
+    (Continuous.ae_eq_iff_eq μ hprod_cont continuous_const).mp hzero_ae
+  have hzero_at := congrFun hzero x₀
+  have hpos : 0 < φ x₀ * ⟪f x₀, f x₀⟫_ℝ := mul_pos hφ_pos_x₀ hself_pos
+  simp only [Pi.zero_apply] at hzero_at
+  linarith

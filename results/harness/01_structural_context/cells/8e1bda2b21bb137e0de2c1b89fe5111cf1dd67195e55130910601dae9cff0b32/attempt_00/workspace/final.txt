@@ -1,0 +1,48 @@
+open OldExpressions in
+theorem extractedOldExprInVars :
+  NormalizedOldExpr post →
+  (extractOldExprVars post).Subset
+  (Imperative.HasVarsPure.getVars post) := by
+  have appendSubset {a b c d : List Expression.Ident}
+      (ha : a.Subset c) (hb : b.Subset d) : (a ++ b).Subset (c ++ d) := by
+    intro x hx
+    simp only [List.mem_append] at hx ⊢
+    rcases hx with hx | hx
+    · exact Or.inl (ha hx)
+    · exact Or.inr (hb hx)
+  intro Hnorm
+  induction post
+  case const => simp [extractOldExprVars, Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars]
+  case op => simp [extractOldExprVars, Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars]
+  case bvar => simp [extractOldExprVars, Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars]
+  case fvar => simp [extractOldExprVars, Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars]
+  case app fn e ihfn ihe =>
+    unfold extractOldExprVars
+    split
+    · simp [Lambda.LExpr.LExpr.getVars]
+      intro x hx
+      exact hx
+    · next Hfalse =>
+      cases Hnorm with
+      | app H1 H2 Hn =>
+        have hfv := Hn (by constructor)
+        obtain ⟨v, ty, heq⟩ : ∃ v ty, e = Lambda.LExpr.fvar () v ty := by
+          cases hfv
+          exact ⟨_, _, rfl⟩
+        exfalso
+        exact Hfalse () v ty heq
+    · cases Hnorm with
+      | app H1 H2 Hn =>
+        exact appendSubset (ihfn H1) (ihe H2)
+  case abs ih =>
+    cases Hnorm with
+    | abs h => simpa [extractOldExprVars, Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars] using ih h
+  case quant trih eih =>
+    cases Hnorm with
+    | quant ht he => exact appendSubset (trih ht) (eih he)
+  case ite cih tih eih =>
+    cases Hnorm with
+    | ite hc ht he => exact appendSubset (appendSubset (cih hc) (tih ht)) (eih he)
+  case eq ih1 ih2 =>
+    cases Hnorm with
+    | eq h1 h2 => exact appendSubset (ih1 h1) (ih2 h2)

@@ -1,0 +1,31 @@
+{
+  "status": "received",
+  "content": "```lean\ntheorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  have hreplace (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ i.1 := by\n    rw [hdigits_to_num]\n    calc\n      ∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ j.1 =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ j.1 +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ j.1) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases h : j = i <;> simp [h] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ j.1) +\n          (b i - a i) * (10 : ℤ) ^ i.1 := by\n        rw [Finset.sum_add_distrib]\n        have hs : ∑ j : Fin 9, (if j = i then (b j - a j) else 0) *\n            (10 : ℤ) ^ j.1 = (b i - a i) * (10 : ℤ) ^ i.1 := by\n          simp [Finset.sum_ite_eq', Finset.mem_univ, i.is_lt]\n        rw [hs]\n  intro d e f h\n  have hdeRaw (i : Fin 9) :\n      7 ∣ digits_to_num (fun j : Fin 9 => if j = i then e j else d j) :=\n    ((hrelation d e).mp h.1).2 i\n  have hefRaw (i : Fin 9) :\n      7 ∣ digits_to_num (fun j : Fin 9 => if j = i then f j else e j) :=\n    ((hrelation e f).mp h.2).2 i\n  have hde (i : Fin 9) :\n      (7 : ℤ) ∣ (e i - d i) * (10 : ℤ) ^ i.1 + digits_to_num d := by\n    have hraw := hdeRaw i\n    rw [hreplace d e i] at hraw\n    simpa [add_comm] using hraw\n  have hef (i : Fin 9) :\n      (7 : ℤ) ∣ (f i - e i) * (10 : ℤ) ^ i.1 + digits_to_num e := by\n    have hraw := hefRaw i\n    rw [hreplace e f i] at hraw\n    simpa [add_comm] using hraw\n  have hsumdiff :\n      (∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ i.1) =\n        digits_to_num e - digits_to_num d := by\n    rw [hdigits_to_num]\n    rw [← Finset.sum_sub_distrib]\n    apply Finset.sum_congr rfl\n    intro i _\n    ring\n  have hsumid :\n      (∑ i : Fin 9, ((e i - d i) * (10 : ℤ) ^ i.1 + digits_to_num d)) =\n        digits_to_num e + 8 * digits_to_num d := by\n    rw [Finset.sum_add_distrib, hsumdiff]\n    simp [Finset.sum_const, Finset.card_fin] <;> ring\n  have hsumdvd :\n      (7 : ℤ) ∣ ∑ i : Fin 9, ((e i - d i) * (10 : ℤ) ^ i.1 + digits_to_num d) := by\n    apply Finset.dvd_sum\n    intro i _\n    exact hde i\n  have htotal : (7 : ℤ) ∣ digits_to_num e + digits_to_num d := by\n    have h₁ : (7 : ℤ) ∣ digits_to_num e + 8 * digits_to_num d := by\n      rw [← hsumid]\n      exact hsumdvd\n    have h₂ : (7 : ℤ) ∣ 7 * digits_to_num d := by\n      exact ⟨digits_to_num d, by ring⟩\n    have h₃ := dvd_sub h₁ h₂\n    convert h₃ using 1 <;> ring\n  have hprod (i : Fin 9) :\n      (7 : ℤ) ∣ (f i - d i) * (10 : ℤ) ^ i.1 := by\n    have h₁ : (7 : ℤ) ∣ (f i - e i) * (10 : ℤ) ^ i.1 - digits_to_num d := by\n      have h₂ := dvd_sub (hef i) htotal\n      convert h₂ using 1 <;> ring\n    have h₂ := dvd_add h₁ (hde i)\n    convert h₂ using 1 <;> ring\n  have hpow (i : Fin 9) : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ i.1 := by\n    intro hp\n    have hp' : (7 : ℕ) ∣ 10 ^ i.1 := by exact_mod_cast hp\n    have hp'' : (7 : ℕ) ∣ 10 := (by norm_num : Nat.Prime 7).dvd_of_dvd_pow hp'\n    norm_num at hp''\n  intro i\n  have h₁ : (7 : ℤ) ∣ f i - d i := by\n    rcases (Int.prime_iff_natAbs_prime.mpr (by decide)).dvd_mul.mp (hprod i) with h | h\n    · exact h\n    · exact False.elim (hpow i h)\n  have h₂ := dvd_neg.mpr h₁\n  convert h₂ using 1 <;> ring\n```",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 168208,
+    "completion_tokens": 10238,
+    "cached_input_tokens": 140032
+  },
+  "codex_usage": {
+    "input_tokens": 168208,
+    "cached_input_tokens": 140032,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 10238,
+    "reasoning_output_tokens": 6321
+  },
+  "completed_turns": 1,
+  "tool_items": 8,
+  "tool_item_types": [
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution"
+  ],
+  "elapsed_seconds": 229.10235224477947,
+  "finished_at": "2026-10-03T21:04:01.811093+00:00"
+}

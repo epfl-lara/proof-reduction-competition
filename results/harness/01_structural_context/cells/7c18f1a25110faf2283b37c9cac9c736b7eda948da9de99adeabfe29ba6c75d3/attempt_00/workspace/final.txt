@@ -1,0 +1,40 @@
+theorem InitsUpdatesComm
+  {P : PureExpr} {σ σ' σ'' : SemanticStore P}
+  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :
+  UpdateStates σ ks vs σ' →
+  InitStates σ' ks' vs' σ'' →
+  ∃ σ₁,
+    σ₁ = (updatedStates σ ks' vs') ∧
+    InitStates σ ks' vs' σ₁ ∧
+    UpdateStates σ₁ ks vs σ'' := by
+  intro Hup Hinit
+  let τ := updatedStates σ ks' vs'
+  have hlen := UpdateStatesLength Hup
+  have hlen' := InitStatesLength Hinit
+  have hinit : InitStates σ ks' vs' τ :=
+    updatedStatesInit hlen' (UpdateStatesNotDefMonotone' (InitStatesNotDefined Hinit) Hup)
+      (InitStatesNodup Hinit)
+  have hdefined : isDefined τ ks := by
+    dsimp [τ, updatedStates]
+    exact updatedStatesDefMonotone (UpdateStatesDefined' Hup)
+  have hdisjKeys : ks.Disjoint ks' := by
+    intro k hk hk'
+    have hd := UpdateStatesDefined Hup k hk
+    have hn := InitStatesNotDefined Hinit k hk'
+    simp [isDefined, hn] at hd
+  have hdisj : (ks.zip vs).unzip.1.Disjoint (ks'.zip vs').unzip.1 := by
+    rw [List.unzip_zip, List.unzip_zip] <;> simp_all
+  have hcomm := updatedStatesComm (σ:=σ) hdisj
+  have hupEq : σ' = updatedStates' σ (ks.zip vs) := UpdateStatesUpdated Hup
+  have hinitEq : σ'' = updatedStates' σ' (ks'.zip vs') := InitStatesUpdated Hinit
+  have hfinal : updatedStates τ ks vs = σ'' := by
+    calc
+      updatedStates τ ks vs =
+          updatedStates' (updatedStates' σ (ks'.zip vs')) (ks.zip vs) := rfl
+      _ = updatedStates' (updatedStates' σ (ks.zip vs)) (ks'.zip vs') := hcomm.symm
+      _ = σ'' := by
+        rw [← hupEq, ← hinitEq]
+  have hu : UpdateStates τ ks vs (updatedStates τ ks vs) :=
+    updatedStatesUpdate hlen hdefined
+  rw [hfinal] at hu
+  exact ⟨τ, rfl, hinit, hu⟩

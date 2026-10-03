@@ -1,0 +1,42 @@
+{
+  "status": "received",
+  "content": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => simp at mem\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, t₁, rfl⟩ := l.canonical_form_abs val_l\n            exact Or.inr ⟨t₁ ^ᵗᵗ t₂, Term.Red.abs l.wf.2.1 val_r⟩\n        | inr red_r =>\n            obtain ⟨t₂', h⟩ := red_r\n            exact Or.inr ⟨t₁.app t₂', Term.Red.appᵣ val_l h⟩\n    | inr red_l =>\n        obtain ⟨t₁', h⟩ := red_l\n        exact Or.inr ⟨t₁'.app t₂, Term.Red.appₗ r.wf.2.1 h⟩\n  case tapp σ' der sub ih =>\n    have hσ : σ'.LC := sub.wf.2.1.lc\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨σ, t', rfl⟩ := der.canonical_form_tabs val\n        exact Or.inr ⟨t' ^ᵗᵞ σ', Term.Red.tabs der.wf.2.1 hσ⟩\n    | inr red =>\n        obtain ⟨t', h⟩ := red\n        exact Or.inr ⟨.tapp t' σ', Term.Red.tapp hσ h⟩\n  case let' t₁ σ t₂ τ L der hbody ih ihbody =>\n    have hb : t₂.body := ⟨L, fun x hx => (hbody x hx).wf.2.1⟩\n    cases ih rfl der with\n    | inl val => exact Or.inr ⟨t₂ ^ᵗᵗ t₁, Term.Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', h⟩ := red\n        exact Or.inr ⟨t₁'.let' t₂, Term.Red.let_bind h hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => exact Or.inl (Term.Value.inl val)\n    | inr red =>\n        obtain ⟨t', h⟩ := red\n        exact Or.inr ⟨.inl t', Term.Red.inl h⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => exact Or.inl (Term.Value.inr val)\n    | inr red =>\n        obtain ⟨t', h⟩ := red\n        exact Or.inr ⟨.inr t', Term.Red.inr h⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, hu | hu⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact Or.inr ⟨t₂ ^ᵗᵗ u, Term.Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact Or.inr ⟨t₃ ^ᵗᵗ u, Term.Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨t₁', h⟩ := red\n        exact Or.inr ⟨t₁'.case t₂ t₃, Term.Red.case h hb₂ hb₃⟩\n  case sub => grind\n  case abs σ _ τ L _ _ =>\n    apply Or.inl\n    constructor\n    apply Term.LC.abs L\n    · grind only [→ wf, cases Term.LC]\n    · grind only [→ wf]\n  case tabs L _ _ =>\n    apply Or.inl\n    constructor\n    apply Term.LC.tabs L\n    · grind only [→ wf, cases Term.LC]\n    · grind only [→ wf]",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 426160,
+    "completion_tokens": 10534,
+    "cached_input_tokens": 371968
+  },
+  "codex_usage": {
+    "input_tokens": 426160,
+    "cached_input_tokens": 371968,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 10534,
+    "reasoning_output_tokens": 6879
+  },
+  "completed_turns": 1,
+  "tool_items": 19,
+  "tool_item_types": [
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution"
+  ],
+  "elapsed_seconds": 293.8292670119554,
+  "finished_at": "2026-10-03T20:51:33.002907+00:00"
+}

@@ -1,0 +1,50 @@
+theorem putnam_1964_b2
+(S : Type*) [Fintype S] [Nonempty S]
+(P : Finset (Set S))
+(hPP : ∀ T ∈ P, ∀ U ∈ P, T ∩ U ≠ ∅)
+(hPS : ¬∃ T : Set S, T ∉ P ∧ (∀ U ∈ P, T ∩ U ≠ ∅))
+: (P.card = 2 ^ (Fintype.card S - 1)) := by
+  classical
+  have maximal (A : Set S) (h : ∀ U ∈ P, A ∩ U ≠ ∅) : A ∈ P := by
+    by_contra hn
+    exact hPS ⟨A, hn, h⟩
+  have hc (A : Set S) : Aᶜ ∈ P ↔ A ∉ P := by
+    constructor
+    · intro h hA
+      exact hPP A hA Aᶜ h (Set.inter_compl_self A)
+    · intro hA
+      have hw : ∃ U ∈ P, A ∩ U = ∅ := by
+        by_contra! hn
+        exact hA (maximal A (fun U hU => (hn U hU).ne_empty))
+      obtain ⟨U, hU, hd⟩ := hw
+      apply maximal
+      intro V hV he
+      obtain ⟨x, hxU, hxV⟩ := Set.nonempty_iff_ne_empty.mpr (hPP U hU V hV)
+      have hxA : x ∉ A := by
+        intro hx
+        have : x ∈ A ∩ U := ⟨hx, hxU⟩
+        rw [hd] at this
+        exact this
+      have : x ∈ Aᶜ ∩ V := ⟨hxA, hxV⟩
+      rw [he] at this
+      exact this
+  have heq : P.card = (Finset.univ \ P).card := by
+    refine Finset.card_bij' (fun A _ => Aᶜ) (fun A _ => Aᶜ) ?_ ?_ ?_ ?_
+    · intro A hA
+      simp only [Finset.mem_sdiff, Finset.mem_univ, true_and]
+      exact fun h => (hc A).mp h hA
+    · intro A hA
+      exact (hc A).mpr (Finset.mem_sdiff.mp hA).2
+    · intro A hA
+      exact compl_compl A
+    · intro A hA
+      exact compl_compl A
+  have hsum := Finset.card_sdiff_add_card_eq_card (Finset.subset_univ P)
+  rw [← heq, Finset.card_univ, Fintype.card_set] at hsum
+  have hn : Fintype.card S - 1 + 1 = Fintype.card S := by
+    have := Fintype.card_pos (α := S)
+    omega
+  have hp : 2 ^ Fintype.card S = 2 ^ (Fintype.card S - 1) * 2 := by
+    conv_lhs => rw [← hn, pow_succ]
+  rw [hp] at hsum
+  omega

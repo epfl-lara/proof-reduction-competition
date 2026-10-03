@@ -1,0 +1,38 @@
+{
+  "status": "received",
+  "content": "theorem InitsUpdatesComm\n  {P : PureExpr} {σ σ' σ'' : SemanticStore P}\n  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :\n  UpdateStates σ ks vs σ' →\n  InitStates σ' ks' vs' σ'' →\n  ∃ σ₁,\n    σ₁ = (updatedStates σ ks' vs') ∧\n    InitStates σ ks' vs' σ₁ ∧\n    UpdateStates σ₁ ks vs σ'' := by\n  intro Hup Hinit\n  let τ := updatedStates σ ks' vs'\n  have hlen := UpdateStatesLength Hup\n  have hlen' := InitStatesLength Hinit\n  have hinit : InitStates σ ks' vs' τ :=\n    updatedStatesInit hlen' (UpdateStatesNotDefMonotone' (InitStatesNotDefined Hinit) Hup)\n      (InitStatesNodup Hinit)\n  have hdefined : isDefined τ ks := by\n    dsimp [τ, updatedStates]\n    exact updatedStatesDefMonotone (UpdateStatesDefined' Hup)\n  have hdisjKeys : ks.Disjoint ks' := by\n    intro k hk hk'\n    have hd := UpdateStatesDefined Hup k hk\n    have hn := InitStatesNotDefined Hinit k hk'\n    simp [isDefined, hn] at hd\n  have hdisj : (ks.zip vs).unzip.1.Disjoint (ks'.zip vs').unzip.1 := by\n    rw [List.unzip_zip, List.unzip_zip] <;> simp_all\n  have hcomm := updatedStatesComm (σ:=σ) hdisj\n  have hupEq : σ' = updatedStates' σ (ks.zip vs) := UpdateStatesUpdated Hup\n  have hinitEq : σ'' = updatedStates' σ' (ks'.zip vs') := InitStatesUpdated Hinit\n  have hfinal : updatedStates τ ks vs = σ'' := by\n    calc\n      updatedStates τ ks vs =\n          updatedStates' (updatedStates' σ (ks'.zip vs')) (ks.zip vs) := rfl\n      _ = updatedStates' (updatedStates' σ (ks.zip vs)) (ks'.zip vs') := hcomm.symm\n      _ = σ'' := by\n        rw [← hupEq, ← hinitEq]\n  have hu : UpdateStates τ ks vs (updatedStates τ ks vs) :=\n    updatedStatesUpdate hlen hdefined\n  rw [hfinal] at hu\n  exact ⟨τ, rfl, hinit, hu⟩",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 427657,
+    "completion_tokens": 8433,
+    "cached_input_tokens": 376064
+  },
+  "codex_usage": {
+    "input_tokens": 427657,
+    "cached_input_tokens": 376064,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 8433,
+    "reasoning_output_tokens": 5834
+  },
+  "completed_turns": 1,
+  "tool_items": 15,
+  "tool_item_types": [
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution"
+  ],
+  "elapsed_seconds": 187.39237693324685,
+  "finished_at": "2026-10-03T20:44:30.308790+00:00"
+}
