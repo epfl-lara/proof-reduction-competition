@@ -1,0 +1,70 @@
+theorem putnam_1964_a4
+(u : ℕ → ℤ)
+(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)
+(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)
+: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by
+  classical
+  obtain ⟨B, T, hB⟩ := boundedu
+  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))
+  have hf : Set.Finite (Set.range f) := by
+    have hsub : Set.range f ⊆ Set.Icc (B, B, B, B) (T, T, T, T) := by
+      intro x hx
+      rcases hx with ⟨n, rfl⟩
+      simp only [Set.mem_Icc, Prod.le_def]
+      exact ⟨(hB n).1, (hB (n + 1)).1, (hB (n + 2)).1, (hB (n + 3)).1,
+        (hB n).2, (hB (n + 1)).2, (hB (n + 2)).2, (hB (n + 3)).2⟩
+    exact Set.Finite.subset (Set.finite_Icc) hsub
+  have hrep : ∃ i j : ℕ, i < j ∧ f i = f j := by
+    by_contra! h
+    have hinj : Function.Injective f := by
+      intro i j hij
+      by_contra hne
+      rcases Nat.lt_or_gt_of_ne hne with hlt | hgt
+      · exact h i j hlt hij
+      · exact h j i hgt hij.symm
+    exact Set.not_infinite.mpr hf (Set.infinite_range_of_injective hinj)
+  obtain ⟨i, j, hij, hfj⟩ := hrep
+  have heq : ∀ m : ℕ, u (i + m) = u (j + m) := by
+    intro m
+    induction m using Nat.strong_induction_on with
+    | h m ih =>
+      match m with
+      | 0 =>
+          simpa [f] using congrArg (fun p : ℤ × ℤ × ℤ × ℤ => p.1) hfj
+      | 1 =>
+          have h := congrArg (fun p : ℤ × ℤ × ℤ × ℤ => p.2.1) hfj
+          simpa [f] using h
+      | 2 =>
+          have h := congrArg (fun p : ℤ × ℤ × ℤ × ℤ => p.2.2.1) hfj
+          simpa [f] using h
+      | 3 =>
+          have h := congrArg (fun p : ℤ × ℤ × ℤ × ℤ => p.2.2.2) hfj
+          simpa [f] using h
+      | m + 4 =>
+          have hi := hu (i + (m + 4)) (by omega)
+          have hj := hu (j + (m + 4)) (by omega)
+          have h1 := ih (m + 3) (by omega)
+          have h2 := ih (m + 2) (by omega)
+          have h3 := ih (m + 1) (by omega)
+          have h4 := ih m (by omega)
+          simp only [Nat.add_sub_cancel] at hi hj
+          have hval : (u (i + (m + 4)) : ℝ) = (u (j + (m + 4)) : ℝ) := by
+            rw [hi.1, hj.1]
+            rw [show i + (m + 4) - 1 = i + (m + 3) by omega,
+                show i + (m + 4) - 2 = i + (m + 2) by omega,
+                show i + (m + 4) - 3 = i + (m + 1) by omega,
+                show i + (m + 4) - 4 = i + m by omega,
+                show j + (m + 4) - 1 = j + (m + 3) by omega,
+                show j + (m + 4) - 2 = j + (m + 2) by omega,
+                show j + (m + 4) - 3 = j + (m + 1) by omega,
+                show j + (m + 4) - 4 = j + m by omega]
+            norm_cast
+            rw [h1, h2, h3, h4]
+          exact_mod_cast hval
+  refine ⟨i, j - i, by omega, ?_⟩
+  intro n hn
+  have h := heq (n - i)
+  have hleft : i + (n - i) = n := by omega
+  have hright : j + (n - i) = n + (j - i) := by omega
+  rw [hleft, hright] at h
+  exact h

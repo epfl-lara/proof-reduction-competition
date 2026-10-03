@@ -1,0 +1,80 @@
+Optimize this declaration.
+{
+  "name": "Core.InitsUpdatesComm",
+  "source": "strata",
+  "required_versions": [
+    {
+      "v4.29.1": "384e22374e0872095ad9c6f74c5998c09cfd93a9"
+    },
+    {
+      "v4.27.0": "4348c65a93a3b57b1a4541991ed2d2fcdd9fa35d"
+    },
+    {
+      "v4.26.0": "451e5f047bafa010d178856db76c00029bfa4d7f"
+    }
+  ],
+  "exact_statement": "theorem InitsUpdatesComm\n  {P : PureExpr} {σ σ' σ'' : SemanticStore P}\n  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :\n  UpdateStates σ ks vs σ' →\n  InitStates σ' ks' vs' σ'' →\n  ∃ σ₁,\n    σ₁ = (updatedStates σ ks' vs') ∧\n    InitStates σ ks' vs' σ₁ ∧\n    UpdateStates σ₁ ks vs σ''",
+  "reference_denominators": {
+    "tokens": 224,
+    "primary_heartbeats": 4253.479
+  },
+  "incumbent_scores": {
+    "length_reduction_pct": 0.8928571428571397,
+    "heartbeat_reduction_pct": 50.43741840502798,
+    "compatibility_pct": 100.0,
+    "combined_pct": 50.443425182628374
+  },
+  "preceding_source_excerpt": "by\n  intros Hinit\n  cases Hinit with\n  | update Hold HH Hsome =>\n  constructor\n  . assumption\n  . constructor\n\ntheorem InitStatesReadValues :\n  InitStates σ vs es σ' →\n  ReadValues σ' vs es := by\n  intros Hinit\n  induction Hinit\n  case init_none =>\n    constructor\n  case init_some x v σ₁ x' v' σ'' Hinit Hinits ih =>\n    constructor <;> try assumption\n    have Hrd : ReadValues σ'' [x] [v] := by\n      apply InitStatesReadValuesMonotone (σ:=σ₁)\n      apply InitStateReadValues <;> assumption\n      assumption\n    cases Hrd\n    assumption\n\ntheorem UpdateStatesReadValues :\n  vs.Nodup →\n  UpdateStates σ vs es σ' →\n  ReadValues σ' vs es := by\n  intros Hnd Hinit\n  induction Hinit\n  case update_none =>\n    constructor\n  case update_some x v σ₁ x' v' σ'' Hupdate Hupdates ih =>\n    constructor <;> try assumption\n    have Hrd : ReadValues σ'' [x] [v] := by\n      apply UpdateStatesReadValuesMonotone (σ:=σ₁)\n      exact Hnd\n      apply UpdateStateReadValues <;> assumption\n      assumption\n    cases Hrd\n    assumption\n    apply ih\n    simp_all\n\ntheorem InitVarsInitStates : InitVars σ vars σ' →\n  ∃ modvals, InitStates σ vars modvals σ' := by\n  intros Hinit\n  induction Hinit\n  case init_none =>\n    refine ⟨[], InitStates.init_none⟩\n  case init_some σ x v σ₁ xs σ'' Hup Hhav ih =>\n    cases ih with\n    | intro vs Hups =>\n    refine ⟨v::vs,?_⟩\n    constructor <;> assumption\n\ntheorem InitVarsReadValuesMonotone\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {ks vs' : List P.Ident} {vs : List P.Expr} :\n  ReadValues σ ks vs →\n  InitVars σ vs' σ' →\n  ReadValues σ' ks vs := by\n  intros Hdef Hinit\n  have Hinit' := InitVarsInitStates Hinit\n  cases Hinit' with\n  | intro es' Hinit' =>\n  exact InitStatesReadValuesMonotone Hdef Hinit'\n\ntheorem updatedStateComm\n  {P : PureExpr} {σ : SemanticStore P}\n  {k k' : P.Ident} {v v' : P.Expr} :\n  k ≠ k' →\n  updatedState (updatedState σ k v) k' v' =\n  updatedState (updatedState σ k' v') k v := by\n  intros Hne\n  funext x\n  unfold updatedState\n  by_cases Hxk' : x = k' <;> simp [Hxk']\n  intros Heq\n  by_cases Hxk : x = k <;> simp_all\n\ntheorem updatedStateComm'\n  {P : PureExpr} {σ : SemanticStore P}\n  {k : P.Ident} {v : P.Expr}\n  {kvs : List (P.Ident × P.Expr)} :\n  ¬ k ∈ kvs.unzip.1 →\n  (updatedState (updatedStates' σ kvs) k v) =\n  (updatedStates' (updatedState σ k v) kvs) := by\n  intros Hnd\n  induction kvs generalizing σ <;> simp [updatedStates']\n  case cons h t ih =>\n  rw [ih]\n  rw [updatedStateComm]\n  simp_all; exact fun a => Hnd.1 (Eq.symm a)\n  simp_all\n\ntheorem updatedStatesComm\n  {P : PureExpr} {σ : SemanticStore P}\n  {kvs kvs' : List (P.Ident × P.Expr)} :\n  kvs.unzip.1.Disjoint kvs'.unzip.1 →\n  updatedStates' (updatedStates' σ kvs) kvs' =\n  updatedStates' (updatedStates' σ kvs') kvs := by\n  intros Hnd\n  induction kvs generalizing kvs' σ <;> simp [updatedStates']\n  case cons h t ih =>\n  induction kvs' generalizing σ h <;> simp [updatedStates']\n  case cons h' t' ih' =>\n    rw [← ih']\n    rw [updatedStateComm]\n    rw [updatedStateComm']\n    . simp at Hnd\n      have Hnd' := List.Disjoint.symm Hnd\n      apply List.Disjoint_cons_head\n      apply List.Disjoint.mono_right _ Hnd'\n      simp_all\n    . intros Hin\n      simp_all [List.Disjoint]\n    . simp at *\n      refine List.Disjoint.mono_right ?_ Hnd\n      simp_all\n\ntheorem UpdateStateSomeMonotone\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {k' : P.Ident} {v' : P.Expr} {e : P.Expr} {v : P.Ident} :\n  v ≠ k' →\n  σ k' = some v' →\n  UpdateState P σ v e σ' →\n  σ' k' = some v' := by\n  intros Hne Hdef Heval\n  have Hrd : ReadValues σ [k'] [v'] := by\n    cases Heval with\n    | update Hold HH Hsome =>\n    constructor <;> simp_all\n    constructor\n  have Hrd2 : ReadValues σ' [k'] [v'] := by\n    apply UpdateStateReadValuesMonotone ?_ Hrd Heval\n    simp_all\n  cases Hrd2\n  assumption\n\ntheorem UpdateStatesSomeMonotone\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {k' : P.Ident} {v' : P.Expr}\n  {ks': List P.Ident} {vs': List P.Expr} :\n  ¬ k' ∈ ks' →\n  σ k' = some v' →\n  UpdateStates σ ks' vs' σ' →\n  σ' k' = some v' := by\n  intros Hnin Hsome Hinit\n  induction Hinit <;> try simp_all\n  next Hinit Hinits ih =>\n  apply ih\n  apply UpdateStateSomeMonotone ?_ Hsome Hinit\n  exact fun a => Hnin.1 (Eq.symm a)\n\ntheorem InitStateSomeMonotone\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {k' : P.Ident} {v' : P.Expr} {e : P.Expr} {v : P.Ident} :\n  σ k' = some v' →\n  InitState P σ v e σ' →\n  σ' k' = some v' := by\n  intros Hdef Heval\n  have Hrd : ReadValues σ [k'] [v'] := by\n    cases Heval with\n    | init Hold HH Hsome =>\n    constructor <;> simp_all\n    constructor\n  have Hrd2 : ReadValues σ' [k'] [v'] :=\n    InitStateReadValuesMonotone Hrd Heval\n  cases Hrd2\n  assumption\n\ntheorem InitStateSomeMonotone'\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {k' : P.Ident} {v' : P.Expr} {e : P.Expr} {v : P.Ident} :\n  k' ≠ v →\n  σ' k' = some v' →\n  InitState P σ v e σ' →\n  σ k' = some v' := by\n  intros Hne Hdef Heval\n  have Hrd : ReadValues σ [k'] [v'] := by\n    cases Heval with\n    | init Hold HH Hsome =>\n    constructor <;> simp_all\n    rw [← Hsome]\n    assumption\n    exact fun a => Hne (Eq.symm a)\n    constructor\n  have Hrd2 : ReadValues σ' [k'] [v'] :=\n    InitStateReadValuesMonotone Hrd Heval\n  cases Hrd\n  assumption\n\ntheorem InitStatesSomeMonotone\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {k' : P.Ident} {v' : P.Expr}\n  {ks': List P.Ident} {vs': List P.Expr} :\n  σ k' = some v' →\n  InitStates σ ks' vs' σ' →\n  σ' k' = some v' := by\n  intros Hsome Hinit\n  induction Hinit <;> try simp_all\n  next Hinit Hinits ih =>\n  apply ih\n  apply InitStateSomeMonotone Hsome Hinit\n\ntheorem InitStatesSomeMonotone'\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {k' : P.Ident} {v' : P.Expr}\n  {ks': List P.Ident} {vs': List P.Expr} :\n  ¬ k' ∈ ks' →\n  σ' k' = some v' →\n  InitStates σ ks' vs' σ' →\n  σ k' = some v' := by\n  intros Hnin Hsome Hinit\n  induction Hinit\n  case init_none => simp_all\n  case init_some Hinit Hinits ih =>\n  apply InitStateSomeMonotone' ?_ ?_ Hinit\n  . simp_all\n  . apply ih <;> simp_all\n\n",
+  "source_excerpt_note": "Read-only context preceding the declaration; may start mid-definition. It is not part of the requested output.",
+  "incumbent_declaration": "theorem InitsUpdatesComm\n  {P : PureExpr} {σ σ' σ'' : SemanticStore P}\n  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :\n  UpdateStates σ ks vs σ' →\n  InitStates σ' ks' vs' σ'' →\n  ∃ σ₁,\n    σ₁ = (updatedStates σ ks' vs') ∧\n    InitStates σ ks' vs' σ₁ ∧\n    UpdateStates σ₁ ks vs σ'' := by\n  intros Hup Hinit\n  exists (updatedStates σ ks' vs')\n  have Hk : (isDefined σ' ks) := UpdateStatesDefined Hup\n  have Hlen1 := InitStatesLength Hinit\n  have Hlen2 := UpdateStatesLength Hup\n  induction Hup generalizing σ''\n  case update_none =>\n    simp_all\n    apply And.intro\n    refine updatedStatesInit Hlen1 ?_ ?_\n    exact InitStatesNotDefined Hinit\n    exact InitStatesNodup Hinit\n    simp [InitStatesUpdated Hinit]\n    constructor\n  case update_some σ x v σ₀ xs vs σ₁ Hup Hups ih =>\n    refine ⟨rfl, ?_, ?_⟩\n    . apply updatedStatesInit Hlen1\n      apply UpdateStateNotDefMonotone' ?_ Hup\n      apply UpdateStatesNotDefMonotone' ?_ Hups\n      exact InitStatesNotDefined Hinit\n      exact InitStatesNodup Hinit\n    . apply UpdateStates.update_some (σ':=updatedStates σ₀ ks' vs')\n      . simp [UpdateStateUpdated Hup, updatedStates]\n        rw [← updatedStateComm']\n        . have Hdef := UpdateStateDefined' Hup\n          simp [isDefined, Option.isSome] at Hdef\n          split at Hdef <;> norm_cast\n          next val heq =>\n          apply updatedStateUpdate (v':=val)\n          apply InitStatesSomeMonotone heq\n          apply updatedStatesInit\n          . omega\n          . apply UpdateStateNotDefMonotone' ?_ Hup\n            apply UpdateStatesNotDefMonotone' ?_ Hups\n            apply InitStatesNotDefined Hinit\n          . exact InitStatesNodup Hinit\n        . rw [List.unzip_zip] <;> norm_cast\n          have Hnd := InitStatesNotDefined Hinit\n          simp only [isDefined] at *\n          apply Not.intro\n          intros Hin\n          specialize Hnd _ Hin\n          simp_all\n      . apply (ih Hinit ?_ ?_).2.2\n        . exact UpdateStatesDefined Hups <;> simp_all\n        . exact UpdateStatesLength Hups",
+  "strategy_cards": [
+    {
+      "id": "collapse_apply_exact",
+      "title": "Construct the proof directly",
+      "preconditions": [
+        "The subgoal proofs and their dependencies are known."
+      ],
+      "action": "Combine an apply/exact sequence into a lemma application, or constructor branches into an anonymous constructor.",
+      "failure_modes": [
+        "Dependent arguments may require annotations.",
+        "Implicit argument order need not match tactic subgoal order."
+      ]
+    },
+    {
+      "id": "guide_elaboration",
+      "title": "Give elaboration useful type information",
+      "preconditions": [
+        "Nested polymorphic applications or ambiguous coercions obscure the expected type."
+      ],
+      "action": "Use a typed local fact, explicit argument, or type ascription at the ambiguous application.",
+      "failure_modes": [
+        "Extra annotation increases source length.",
+        "Overspecified types can reduce version compatibility."
+      ]
+    },
+    {
+      "id": "consolidate_simpa",
+      "title": "Close with a nearby fact",
+      "preconditions": [
+        "A known fact matches the goal after the same simplifications."
+      ],
+      "action": "Use simpa with that fact and the necessary rules; use exact if simplification is unnecessary.",
+      "failure_modes": [
+        "Simplifying a fact differs from simplifying only the goal.",
+        "Broad simplification can change across versions."
+      ]
+    },
+    {
+      "id": "inline_single_use",
+      "title": "Inline a small local proof",
+      "preconditions": [
+        "The fact has one use and its expected type remains recoverable."
+      ],
+      "action": "Substitute the proof term at its use; keep a type annotation if needed.",
+      "failure_modes": [
+        "Context-sensitive tactics may lose useful hypotheses.",
+        "Repeated work or difficult inference can increase heartbeats."
+      ]
+    }
+  ]
+}
