@@ -1,5 +1,8 @@
 # One-shot model experiments
 
+The next [harness experiments](../harness/README.md) test revised structural
+context/tools and then iterative score feedback, preserving these baselines.
+
 Start with the [current findings](FINDINGS.md), including completed RCP conditions,
 the tools-enabled Codex comparison, and the credential/queue diagnosis. Historical
 interpretation snapshots below retain the counts and limitations known at their dates.

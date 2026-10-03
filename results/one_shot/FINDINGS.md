@@ -63,7 +63,8 @@ required versions:
 The gains over D0 are **6.797306 pp** and **13.496788 pp**. The paired combined
 arm leads the pure arm by **6.699482 pp**. Luna/high has also completed both
 arms: **39.260352% original** and **50.579408% combined**, with 100%
-compatibility. Luna/medium continues separately. A shared scratch-file
+compatibility. Luna/medium also completed: **33.523390% original** and
+**46.506915% combined**, with 100% compatibility. A shared scratch-file
 collision interrupted Luna's cleanup; the
 [recovery](09_codex_tools_baselines/recovery/README.md) keeps source projects
 read-only to subsequent tool processes and resumed saved work. No existing
@@ -128,11 +129,11 @@ Do not infer hardware/model speed from summed request elapsed time.
 
 ## Next decisions, in order
 
-1. Finish Luna/medium independently; the completed Astra/max, Astra/low,
-   Luna/max and Luna/high comparison is now available. The next missing
-   deterministic ablation is cleanup of the saved Astra/max original-arm
-   proposals, requiring no new model generations or reference measurements.
-2. If the tools-enabled path remains effective, give one RCP model the same
+1. The user has requested and launched the next [two-stage harness study](../harness/README.md):
+   improved structural prompts/context/tools on Astra/low and Luna/max, then
+   score-feedback search on Astra/max, Astra/low and Luna/max. Both start from
+   original proofs. Existing cohorts and their prompts remain frozen.
+2. Give one RCP model the same
    source-lookup and correctness tools in a separate controlled test. This is a
    more direct diagnosis than adding more generic prompt text. Keep the score
    objective, starting proofs and reference denominators fixed.

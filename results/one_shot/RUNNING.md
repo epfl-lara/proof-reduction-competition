@@ -1,5 +1,9 @@
 # Running experiment checkpoint
 
+**Superseded checkpoint:** all stage-09 and Astra/low cohorts have now finished.
+The active work is the [structural-context and score-search study](../harness/README.md).
+The historical checkpoint below retains its original date and counts.
+
 Saved at **2026-10-03T19:00:42+02:00 (Europe/Zurich)**. The controllers continue to update live reports.
 
 Qwen3.8 remains on hold at the user's request.
