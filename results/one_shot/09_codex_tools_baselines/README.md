@@ -1,6 +1,6 @@
 # Codex agent baseline results
 
-**partial**: 63/120 cells at 2026-10-03T16:23:55.509179+00:00.
+**partial**: 69/120 cells at 2026-10-03T16:59:35.348280+00:00.
 
 Tools are enabled. One optimization proposal, correctness-only debugging, and paired original/deterministic seeds. See [protocol](PROTOCOL.md).
 
@@ -10,10 +10,10 @@ All scores use fixed local original references. Original identity: 33.333333%; d
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | gpt-6-astra | max | deterministic | 15/15 | 15 | 15 | 78.970302% | +32.722180 pp |
 | gpt-6-astra | max | original | 15/15 | 15 | 15 | 78.093430% | +31.845308 pp |
-| gpt-6-luna | max | deterministic | 14/15 | 14 | 14 | pending | pending |
+| gpt-6-luna | max | deterministic | 15/15 | 15 | 15 | 59.744910% | +13.496788 pp |
 | gpt-6-luna | max | original | 15/15 | 12 | 15 | 53.045428% | +6.797306 pp |
-| gpt-6-luna | high | deterministic | 1/15 | 1 | 1 | pending | pending |
-| gpt-6-luna | high | original | 1/15 | 0 | 1 | pending | pending |
+| gpt-6-luna | high | deterministic | 3/15 | 3 | 3 | pending | pending |
+| gpt-6-luna | high | original | 4/15 | 3 | 4 | pending | pending |
 | gpt-6-luna | medium | deterministic | 1/15 | 1 | 1 | pending | pending |
 | gpt-6-luna | medium | original | 1/15 | 1 | 1 | pending | pending |
 
@@ -29,14 +29,19 @@ All scores use fixed local original references. Original identity: 33.333333%; d
 | `CallElimCorrect.substOldPostSubset` | gpt-6-luna / medium | original | 33.3333% | -4.0737 pp | 1 |
 | `CallElimCorrect.extractedOldExprInVars` | gpt-6-astra / max | deterministic | 62.0023% | +24.6067 pp | 2 |
 | `CallElimCorrect.extractedOldExprInVars` | gpt-6-astra / max | original | 73.2246% | +35.8290 pp | 2 |
+| `CallElimCorrect.extractedOldExprInVars` | gpt-6-luna / high | deterministic | 37.3956% | +0.0000 pp | 3 |
+| `CallElimCorrect.extractedOldExprInVars` | gpt-6-luna / high | original | 33.3333% | -4.0623 pp | 2 |
 | `CallElimCorrect.extractedOldExprInVars` | gpt-6-luna / max | deterministic | 54.2062% | +16.8106 pp | 13 |
 | `CallElimCorrect.extractedOldExprInVars` | gpt-6-luna / max | original | 49.7488% | +12.3532 pp | 7 |
 | `Core.InitsUpdatesComm` | gpt-6-astra / max | deterministic | 84.3934% | +33.9500 pp | 1 |
 | `Core.InitsUpdatesComm` | gpt-6-astra / max | original | 84.0575% | +33.6141 pp | 1 |
+| `Core.InitsUpdatesComm` | gpt-6-luna / high | deterministic | 53.2419% | +2.7985 pp | 3 |
+| `Core.InitsUpdatesComm` | gpt-6-luna / high | original | 33.7803% | -16.6631 pp | 5 |
 | `Core.InitsUpdatesComm` | gpt-6-luna / max | deterministic | 65.5010% | +15.0576 pp | 1 |
 | `Core.InitsUpdatesComm` | gpt-6-luna / max | original | 64.9968% | +14.5533 pp | 3 |
 | `fundamental_theorem_of_variational_calculus'` | gpt-6-astra / max | deterministic | 85.2217% | +41.7597 pp | 1 |
 | `fundamental_theorem_of_variational_calculus'` | gpt-6-astra / max | original | 85.3108% | +41.8489 pp | 1 |
+| `fundamental_theorem_of_variational_calculus'` | gpt-6-luna / high | original | 36.7562% | -6.7058 pp | 3 |
 | `fundamental_theorem_of_variational_calculus'` | gpt-6-luna / max | deterministic | 68.3862% | +24.9242 pp | 2 |
 | `fundamental_theorem_of_variational_calculus'` | gpt-6-luna / max | original | 37.4819% | -5.9801 pp | 2 |
 | `Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema` | gpt-6-astra / max | deterministic | 72.8283% | +25.6856 pp | 5 |
@@ -45,6 +50,7 @@ All scores use fixed local original references. Original identity: 33.333333%; d
 | `Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema` | gpt-6-luna / max | original | 33.8151% | -13.3276 pp | 3 |
 | `FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time` | gpt-6-astra / max | deterministic | 73.2223% | +32.6598 pp | 3 |
 | `FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time` | gpt-6-astra / max | original | 67.2208% | +26.6583 pp | 4 |
+| `FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time` | gpt-6-luna / max | deterministic | 43.1172% | +2.5546 pp | 15 |
 | `FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time` | gpt-6-luna / max | original | 39.0157% | -1.5468 pp | 7 |
 | `Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress` | gpt-6-astra / max | deterministic | 68.8351% | +34.7998 pp | 1 |
 | `Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress` | gpt-6-astra / max | original | 63.4856% | +29.4502 pp | 1 |

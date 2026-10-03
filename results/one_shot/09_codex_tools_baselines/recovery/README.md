@@ -62,3 +62,9 @@ The [post-recovery audit](validation/recovered_cleanup.json) now passes all ten
 cleanup methods, including six accepted transitions. It also confirms that all
 62 earlier terminal cells, all 67 earlier generations, all 53 cached reference
 files and the 36-file incident archive remain byte-unchanged.
+
+Luna/max subsequently completed all 30 cells. The
+[completion audit](validation/luna_max_complete.json) validates the first full
+source-protected model call and all ten cleanup methods for its proof, with all
+53 reference-cache files still unchanged. High and medium continue in the
+original controller; the new Astra/low cohort has its own controller.

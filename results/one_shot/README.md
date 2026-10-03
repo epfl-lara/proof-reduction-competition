@@ -30,6 +30,9 @@ The later [Codex agent comparison](09_codex_tools_baselines/PROTOCOL.md) tests
 Astra/max and Luna/max, high and medium with tools enabled, both with and without
 deterministic transforms. It uses separate inference accounting and does not
 claim the RCP output-token or temperature limits.
+The [Astra/low extension](10_astra_low/PROTOCOL.md) adds the requested reasoning
+comparison on the same two seeds and 15 problems, with exact initial-request
+parity except effort and separate per-problem low/max differences.
 
 [02_validity_repair](02_validity_repair/) adds the requested correctness-only
 debugging stage to saved proposals: up to three repair calls, stopping at the

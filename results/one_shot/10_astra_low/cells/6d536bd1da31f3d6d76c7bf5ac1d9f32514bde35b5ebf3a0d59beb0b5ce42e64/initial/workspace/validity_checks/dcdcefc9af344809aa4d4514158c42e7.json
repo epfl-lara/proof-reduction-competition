@@ -1,0 +1,23 @@
+{
+  "code": "open OldExpressions in\ntheorem substOldPostSubset:\n  (Imperative.HasVarsPure.getVars (P:=Expression)\n    (substOld h2 (Lambda.LExpr.fvar m h1 ty) post)).Subset\n    (Imperative.HasVarsPure.getVars (P:=Expression) post ++ [h1]) := by\n  have join {a b c d : List Expression.Ident}\n      (ha : a.Subset (c ++ [h1])) (hb : b.Subset (d ++ [h1])) :\n      (a ++ b).Subset ((c ++ d) ++ [h1]) := by\n    intro x hx\n    apply List.mem_append.mpr\n    cases List.mem_append.mp hx with\n    | inl hx => cases List.mem_append.mp (ha hx) with\n      | inl hx => exact Or.inl (List.mem_append.mpr (Or.inl hx))\n      | inr hx => exact Or.inr hx\n    | inr hx => cases List.mem_append.mp (hb hx) with\n      | inl hx => exact Or.inl (List.mem_append.mpr (Or.inr hx))\n      | inr hx => exact Or.inr hx\n  induction post <;>\n    simp only [substOld, Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars] at *\n  case fvar => intro x hx; exact List.mem_append.mpr (Or.inl hx)\n  case op => exact List.nil_subset _\n  case const => exact List.nil_subset _\n  case bvar => exact List.nil_subset _\n  case abs ih => exact ih\n  case ite cih tih eih => exact join (join cih tih) eih\n  case quant trih eih => exact join trih eih\n  case eq ih1 ih2 => exact join ih1 ih2\n  case app ih1 ih2 =>\n    split\n    · split\n      · simp [Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars]\n        intro x hx\n        simp_all\n      · simpa [Lambda.LExpr.LExpr.getVars] using ih2\n    · simpa only [Lambda.LExpr.LExpr.getVars] using join ih1 ih2\n",
+  "feedback": {
+    "kind": "lean_correctness_feedback",
+    "status": "valid",
+    "primary_version": "v4.26.0",
+    "primary_passed": true,
+    "all_versions_passed": true,
+    "required_versions": [
+      "v4.26.0"
+    ],
+    "errors": [],
+    "versions": [
+      {
+        "version": "v4.26.0",
+        "status": "passed",
+        "passed": true,
+        "errors": []
+      }
+    ],
+    "truncated": false
+  }
+}

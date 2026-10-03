@@ -113,6 +113,10 @@ audit and report saved results with `python src/report_codex_baselines.py`.
 The isolated launcher keeps shared Lean sources read-only to Codex tools while
 the host handles correctness checks. It preserves the frozen runner and recorded
 requests; see the [Luna recovery](results/one_shot/09_codex_tools_baselines/recovery/README.md).
+The separate [Astra/low comparison](results/one_shot/10_astra_low/README.md)
+uses the same 15 problems and both seeds. Run it with `python src/run_astra_low.py`
+or audit its saved evidence with `python src/run_astra_low.py --report-only`.
+Its initial requests match Astra/max except for reasoning effort.
 
 ### Python and reward functions
 
@@ -228,8 +232,8 @@ The model/context and correctness-repair additions also cover prompt isolation,
 goal/cost extraction, bounded debugging, first-valid stopping, no-resampling
 resume, pilot reuse, all-version cleanup eligibility, shared deterministic jobs,
 control comparisons and evidence/report arithmetic. The
-[latest offline validation](results/one_shot/09_codex_tools_baselines/recovery/validation/offline_tests.json)
-records **471 passing tests, 102 passing subtests and three deselected live tests**.
+[latest offline validation](results/one_shot/10_astra_low/validation/offline_tests.json)
+records **475 passing tests, 102 passing subtests and three deselected live tests**.
 It includes the admission gate, cleanup counterfactual analysis, effort probe,
 paired Codex inputs, source-write isolation, the host validity service, and
-localhost CLI request tests with no live model calls.
+localhost CLI request tests, including Astra/low, with no live model calls.

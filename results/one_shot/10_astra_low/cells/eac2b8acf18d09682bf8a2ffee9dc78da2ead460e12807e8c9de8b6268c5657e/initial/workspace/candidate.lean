@@ -1,0 +1,32 @@
+open OldExpressions in
+theorem substOldPostSubset:
+  (Imperative.HasVarsPure.getVars (P:=Expression)
+    (substOld h2 (Lambda.LExpr.fvar m h1 ty) post)).Subset
+    (Imperative.HasVarsPure.getVars (P:=Expression) post ++ [h1]) := by
+  have merge {a b c d : List Expression.Ident}
+      (ha : a.Subset (c ++ [h1])) (hb : b.Subset (d ++ [h1])) :
+      (a ++ b).Subset ((c ++ d) ++ [h1]) := by
+    intro x hx
+    rcases List.mem_append.mp hx with hx | hx
+    · rcases List.mem_append.mp (ha hx) with hx | hx
+      · exact List.mem_append_left _ (List.mem_append_left _ hx)
+      · exact List.mem_append_right _ hx
+    · rcases List.mem_append.mp (hb hx) with hx | hx
+      · exact List.mem_append_left _ (List.mem_append_right _ hx)
+      · exact List.mem_append_right _ hx
+  induction post <;> simp [substOld]
+  case app ih1 ih2 =>
+    split
+    · split <;>
+        simp [Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars] <;>
+        intro x hx <;> simp_all
+    · exact merge ih1 ih2
+  case ite cih tih eih =>
+    simpa only [Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars,
+      List.append_assoc] using merge cih (merge tih eih)
+  all_goals
+    simp only [Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars] at *
+    first
+    | assumption
+    | exact merge ‹_› ‹_›
+    | intro x hx; simp_all

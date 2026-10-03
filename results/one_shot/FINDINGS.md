@@ -52,10 +52,28 @@ pure arm by **0.876872 pp** on this warm-up. That small paired difference should
 be distinguished from both arms' large gains over D0. Completed condition
 submissions are available in the Codex results directory.
 
-Luna/max, high and medium follow under the same setup. A shared scratch-file
-collision interrupted Luna's cleanup; the [recovery](09_codex_tools_baselines/recovery/README.md)
-keeps source projects read-only to subsequent tool processes and resumes saved
-work. It does not regenerate existing proposals or alter cached references.
+Luna/max has completed all 30 cells, with all final proposals valid across the
+required versions:
+
+| Luna/max setup | Length reduction | Heartbeat reduction | Compatibility | Combined score |
+| --- | ---: | ---: | ---: | ---: |
+| Original proof, tools, no deterministic transforms | 17.113568% | 42.022715% | 100% | 53.045428% |
+| Deterministic seed, tools, deterministic cleanup | 26.856119% | 52.378611% | 100% | 59.744910% |
+
+The gains over D0 are **6.797306 pp** and **13.496788 pp**. The paired combined
+arm leads the pure arm by **6.699482 pp**. Luna/high is running, followed by
+medium. A shared scratch-file collision interrupted Luna's cleanup; the
+[recovery](09_codex_tools_baselines/recovery/README.md) keeps source projects
+read-only to subsequent tool processes and resumed saved work. No existing
+proposal was regenerated and cached references were preserved.
+
+The user's requested [Astra/low cohort](10_astra_low/README.md) runs alongside
+Luna, with the same 15 problems and two starting proofs. Its initial requests
+are checked against Astra/max for exact identity except reasoning effort.
+The first pair is retained when the controller expands to all 30 cells.
+Low uses the source-write protection introduced after historical Astra/max;
+this operational difference is recorded alongside the reasoning change.
+Full-benchmark low/max differences remain pending until an arm is complete.
 
 The first paired theorem, `CallElimCorrect.substOldPostSubset`, illustrates a
 substantial structural rewrite:
@@ -98,7 +116,7 @@ Do not infer hardware/model speed from summed request elapsed time.
 
 ## Next decisions, in order
 
-1. Finish the matched Luna effort settings and compare them with the completed
+1. Finish Astra/low and the remaining Luna effort settings; compare them with the completed
    Astra original/combined comparison. Compare absolute score, all-version validity, changed proofs,
    tool/compiler calls and reported usage. Do not infer significance from a
    single proof or from gains over different starting baselines.

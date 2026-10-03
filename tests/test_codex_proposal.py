@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import shutil
 import threading
+from contextlib import nullcontext
 
 import pytest
 
@@ -26,8 +27,8 @@ def test_command_rejects_substitution(tmp_path):
 
 
 @pytest.mark.skipif(shutil.which('codex') is None, reason='Codex CLI is not installed')
-@pytest.mark.parametrize('isolated', [False, True])
-def test_installed_cli_sends_exact_prompt_with_tools(tmp_path, isolated):
+@pytest.mark.parametrize('isolated,effort', [(False, 'max'), (True, 'max'), (True, 'low')])
+def test_installed_cli_sends_exact_prompt_with_tools(tmp_path, isolated, effort):
     """No remote model call: inspect the CLI's real HTTP body at localhost."""
     received = []
     final = "theorem x : True := by trivial"
@@ -65,8 +66,10 @@ def test_installed_cli_sends_exact_prompt_with_tools(tmp_path, isolated):
     (tmp_path / "system.txt").write_text(system)
     empty = tmp_path / "empty"
     empty.mkdir()
-    args = command(binary=cli_identity()["path"], workspace=empty, system_file=tmp_path / "system.txt",
-                   last_message=tmp_path / "final.txt", model="gpt-6-astra", effort="max")
+    from run_astra_low import cohort_context
+    with cohort_context() if effort == 'low' else nullcontext():
+        args = command(binary=cli_identity()["path"], workspace=empty, system_file=tmp_path / "system.txt",
+                       last_message=tmp_path / "final.txt", model="gpt-6-astra", effort=effort)
     overrides = {"model_provider": "local_test", "model_providers.local_test.name": "Local test only",
                  "model_providers.local_test.base_url": f"http://127.0.0.1:{server.server_port}/v1",
                  "model_providers.local_test.wire_api": "responses",
@@ -99,7 +102,7 @@ def test_installed_cli_sends_exact_prompt_with_tools(tmp_path, isolated):
     request = received[0]
     (tmp_path / "captured_request.json").write_text(json.dumps(request, indent=2))
     assert request["model"] == "gpt-6-astra"
-    assert request["reasoning"]["effort"] == "max"
+    assert request["reasoning"]["effort"] == effort
     assert request.get("tools") or any(item.get("tools") for item in request["input"])
     messages = [item for item in request["input"] if item.get("type") == "message"]
     assert len(messages) == 3, request["input"]
