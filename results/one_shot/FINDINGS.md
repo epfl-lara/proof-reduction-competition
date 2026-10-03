@@ -6,8 +6,9 @@ deterministic submission scored **46.34%**. Do not mix those denominators.
 
 ## Completed RCP conditions
 
-All five conditions for DeepSeek-V4.1-Flash and Qwen3.6-35B-A3B are complete.
-The Qwen3.5 continuation remains separate and unfinished at this snapshot.
+All five conditions for DeepSeek-V4.1-Flash, Qwen3.5-397B-A17B and
+Qwen3.6-35B-A3B are complete. The continuation's full saved-evidence audits
+passed for all 225 repaired and 225 combined cells.
 The following table chooses the best completed arm per model after observing
 the warm-up; it is not a held-out model ranking or a pooled proof portfolio.
 
@@ -15,6 +16,7 @@ the warm-up; it is not a held-out model ranking or a pooled proof portfolio.
 | --- | --- | ---: | ---: |
 | Deterministic D0 and repeated-cleanup control D1 | — | 46.248122% | — |
 | DeepSeek + validity repair + deterministic cleanup | cards | 48.656864% | +2.408742 pp |
+| Qwen3.5-397B + validity repair + deterministic cleanup | cards_goals_costs | 47.380404% | +1.132282 pp |
 | Qwen3.6-35B + validity repair + deterministic cleanup | plain | 46.396101% | +0.147979 pp |
 
 The strongest DeepSeek arm gains another **0.186763 pp** from cleanup beyond its
@@ -36,7 +38,24 @@ The requested Astra/max baseline keeps tools enabled for source inspection and
 Lean correctness checks. Its [live audited report](09_codex_tools_baselines/README.md)
 compares original and deterministic starting proofs with the same `cards` prompt.
 The pure arm has no deterministic transforms. The other arm includes cleanup.
-Luna/max, high and medium follow under the same setup.
+Astra has now completed all 30 cells, with every final proposal passing all
+required versions and improving its seed:
+
+| Astra/max setup | Length reduction | Heartbeat reduction | Compatibility | Combined score |
+| --- | ---: | ---: | ---: | ---: |
+| Original proof, tools, no deterministic transforms | 54.063917% | 80.216373% | 100% | 78.093430% |
+| Deterministic seed, tools, deterministic cleanup | 60.397601% | 76.513305% | 100% | 78.970302% |
+
+These are separate 15-problem conditions: gains over the same D0 baseline are
+**31.845308 pp** and **32.722180 pp**, respectively. The combined arm leads the
+pure arm by **0.876872 pp** on this warm-up. That small paired difference should
+be distinguished from both arms' large gains over D0. Completed condition
+submissions are available in the Codex results directory.
+
+Luna/max, high and medium follow under the same setup. A shared scratch-file
+collision interrupted Luna's cleanup; the [recovery](09_codex_tools_baselines/recovery/README.md)
+keeps source projects read-only to subsequent tool processes and resumes saved
+work. It does not regenerate existing proposals or alter cached references.
 
 The first paired theorem, `CallElimCorrect.substOldPostSubset`, illustrates a
 substantial structural rewrite:
@@ -79,8 +98,8 @@ Do not infer hardware/model speed from summed request elapsed time.
 
 ## Next decisions, in order
 
-1. Finish the Astra original/combined comparison and the matched Luna effort
-   settings. Compare absolute score, all-version validity, changed proofs,
+1. Finish the matched Luna effort settings and compare them with the completed
+   Astra original/combined comparison. Compare absolute score, all-version validity, changed proofs,
    tool/compiler calls and reported usage. Do not infer significance from a
    single proof or from gains over different starting baselines.
 2. If the tools-enabled path remains effective, give one RCP model the same

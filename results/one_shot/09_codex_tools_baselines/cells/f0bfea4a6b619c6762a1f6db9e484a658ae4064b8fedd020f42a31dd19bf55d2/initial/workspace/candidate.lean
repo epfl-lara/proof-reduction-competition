@@ -1,0 +1,74 @@
+theorem putnam_1964_a4
+(u : ℕ → ℤ)
+(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)
+(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)
+: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by
+  obtain ⟨B, T, hB⟩ := boundedu
+  classical
+  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))
+  have hsub : Set.range f ⊆ Set.Icc (B, B, B, B) (T, T, T, T) := by
+    rintro x ⟨n, rfl⟩
+    simp only [Set.mem_Icc, Prod.le_def]
+    exact ⟨⟨(hB n).1, (hB (n + 1)).1, (hB (n + 2)).1, (hB (n + 3)).1⟩,
+      ⟨(hB n).2, (hB (n + 1)).2, (hB (n + 2)).2, (hB (n + 3)).2⟩⟩
+  have hfin : (Set.range f).Finite := (Set.finite_Icc _ _).subset hsub
+  have hpair : ∃ i j, i < j ∧ f i = f j := by
+    by_contra! h
+    have hinj : Function.Injective f := by
+      intro a b hab
+      by_cases heq : a = b
+      · exact heq
+      · have hlt : a < b ∨ b < a := by omega
+        rcases hlt with hlt | hlt
+        · exact False.elim ((h a b hlt) hab)
+        · exact False.elim ((h b a hlt) hab.symm)
+    exact (Set.not_infinite.mpr hfin) (Set.infinite_range_of_injective hinj)
+  obtain ⟨i, j, hij, hfj⟩ := hpair
+  simp only [f, Prod.mk.injEq] at hfj
+  rcases hfj with ⟨h0, h1, h2, h3⟩
+  have hrec (k : ℕ) :
+      (u (k + 4) : ℝ) =
+        ((u (k + 3) : ℝ) + u (k + 2) + u (k + 1) * u k) /
+          ((u (k + 3) : ℝ) * u (k + 2) + u (k + 1) + u k) := by
+    have h := (hu (k + 4) (by omega)).1
+    have h1' : k + 4 - 1 = k + 3 := by omega
+    have h2' : k + 4 - 2 = k + 2 := by omega
+    have h3' : k + 4 - 3 = k + 1 := by omega
+    have h4' : k + 4 - 4 = k := by omega
+    simpa only [h1', h2', h3', h4'] using h
+  have htail : ∀ m : ℕ, u (i + m) = u (j + m) := by
+    intro m
+    induction m using Nat.strong_induction_on with
+    | h m ih =>
+      by_cases hsmall : m < 4
+      · interval_cases m <;> simp [h0, h1, h2, h3]
+      · let k := m - 4
+        have hm : m = k + 4 := by dsimp [k]; omega
+        rw [hm]
+        have e0 : u (i + k) = u (j + k) := ih k (by omega)
+        have e1 := ih (k + 1) (by omega)
+        have e2 := ih (k + 2) (by omega)
+        have e3 := ih (k + 3) (by omega)
+        have ei1 : i + (k + 1) = (i + k) + 1 := by omega
+        have ej1 : j + (k + 1) = (j + k) + 1 := by omega
+        have ei2 : i + (k + 2) = (i + k) + 2 := by omega
+        have ej2 : j + (k + 2) = (j + k) + 2 := by omega
+        have ei3 : i + (k + 3) = (i + k) + 3 := by omega
+        have ej3 : j + (k + 3) = (j + k) + 3 := by omega
+        rw [ei1, ej1] at e1
+        rw [ei2, ej2] at e2
+        rw [ei3, ej3] at e3
+        have hreal : (u ((i + k) + 4) : ℝ) = (u ((j + k) + 4) : ℝ) := by
+          rw [hrec (i + k), hrec (j + k)]
+          simp [e0, e1, e2, e3]
+        have ei4 : i + (k + 4) = (i + k) + 4 := by omega
+        have ej4 : j + (k + 4) = (j + k) + 4 := by omega
+        rw [ei4, ej4]
+        exact_mod_cast hreal
+  refine ⟨i, j - i, by omega, ?_⟩
+  intro n hn
+  have h := htail (n - i)
+  have hi : i + (n - i) = n := by omega
+  have hj : j + (n - i) = n + (j - i) := by omega
+  rw [hi, hj] at h
+  exact h.symm

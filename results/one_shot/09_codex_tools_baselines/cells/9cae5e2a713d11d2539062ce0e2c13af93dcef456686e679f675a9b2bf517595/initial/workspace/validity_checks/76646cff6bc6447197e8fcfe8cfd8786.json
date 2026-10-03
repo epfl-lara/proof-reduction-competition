@@ -1,0 +1,52 @@
+{
+  "code": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  induction der <;> subst eq\n  case var mem => simp at mem\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    rcases ih_l rfl l with val_l | ⟨u, red_l⟩\n    · rcases ih_r rfl r with val_r | ⟨v, red_r⟩\n      · obtain ⟨_, u, rfl⟩ := l.canonical_form_abs val_l\n        exact Or.inr ⟨u ^ᵗᵗ t₂, Red.abs val_l.lc val_r⟩\n      · exact Or.inr ⟨t₁.app v, Red.appᵣ val_l red_r⟩\n    · exact Or.inr ⟨u.app t₂, Red.appₗ r.wf.2.1 red_l⟩\n  case tapp σ' d sub ih =>\n    rcases ih rfl d with val | ⟨u, red⟩\n    · obtain ⟨_, u, rfl⟩ := d.canonical_form_tabs val\n      exact Or.inr ⟨u ^ᵗᵞ σ', Red.tabs val.lc sub.wf.2.1.lc⟩\n    · exact Or.inr ⟨.tapp u σ', Red.tapp sub.wf.2.1.lc red⟩\n  case let' t₁ σ t₂ τ L d body ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (body x hx).wf.2.1⟩\n    rcases ih rfl d with val | ⟨u, red⟩\n    · exact Or.inr ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    · exact Or.inr ⟨u.let' t₂, Red.let_bind red hb⟩\n  case inl d _ ih =>\n    rcases ih rfl d with val | ⟨u, red⟩\n    · exact Or.inl (.inl val)\n    · exact Or.inr ⟨.inl u, Red.inl red⟩\n  case inr d _ ih =>\n    rcases ih rfl d with val | ⟨u, red⟩\n    · exact Or.inl (.inr val)\n    · exact Or.inr ⟨.inr u, Red.inr red⟩\n  case case t₁ _ _ t₂ _ t₃ _ d body₂ body₃ ih _ _ =>\n    have h₂ : t₂.body := ⟨_, fun x hx => (body₂ x hx).wf.2.1⟩\n    have h₃ : t₃.body := ⟨_, fun x hx => (body₃ x hx).wf.2.1⟩\n    rcases ih rfl d with val | ⟨u, red⟩\n    · obtain ⟨s, h | h⟩ := d.canonical_form_sum val\n      · rw [h] at val\n        cases val with\n        | inl v => exact Or.inr ⟨t₂ ^ᵗᵗ s, Red.case_inl v h₂ h₃⟩\n      · rw [h] at val\n        cases val with\n        | inr v => exact Or.inr ⟨t₃ ^ᵗᵗ s, Red.case_inr v h₂ h₃⟩\n    · exact Or.inr ⟨u.case t₂ t₃, Red.case red h₂ h₃⟩\n  case sub => grind\n  case abs σ _ τ L _ _ =>\n    left\n    constructor\n    apply LC.abs L\n    · grind only [→ wf, cases Term.LC]\n    · grind only [→ wf]\n  case tabs L _ _ =>\n    left\n    constructor\n    apply LC.tabs L\n    · grind only [→ wf, cases Term.LC]\n    · grind only [→ wf]\n",
+  "feedback": {
+    "kind": "lean_correctness_feedback",
+    "status": "failed",
+    "primary_version": "v4.33.0-rc2",
+    "primary_passed": false,
+    "all_versions_passed": false,
+    "required_versions": [
+      "v4.33.0-rc2",
+      "v4.32.0",
+      "v4.31.0"
+    ],
+    "errors": [],
+    "versions": [
+      {
+        "version": "v4.33.0-rc2",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "Function expected at\n  ih_l rfl\nbut this term has type\n  t₁.Value ∨ ∃ t', t₁ ⭢βᵛ t'\n\nNote: Expected a function because this term is being applied to the argument\n  l",
+          "Tactic `rcases` failed: `x✝ : ?m.182` is not an inductive datatype",
+          "Function expected at\n  ih rfl\nbut this term has type\n  t₁✝.Value ∨ ∃ t', t₁✝ ⭢βᵛ t'\n\nNote: Expected a function because this term is being applied to the argument\n  d",
+          "Tactic `rcases` failed: `x✝ : ?m.190` is not an inductive datatype"
+        ]
+      },
+      {
+        "version": "v4.32.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "Function expected at\n  ih_l rfl\nbut this term has type\n  t₁.Value ∨ ∃ t', t₁ ⭢βᵛ t'\n\nNote: Expected a function because this term is being applied to the argument\n  l",
+          "Tactic `rcases` failed: `x✝ : ?m.182` is not an inductive datatype",
+          "Function expected at\n  ih rfl\nbut this term has type\n  t₁✝.Value ∨ ∃ t', t₁✝ ⭢βᵛ t'\n\nNote: Expected a function because this term is being applied to the argument\n  d",
+          "Tactic `rcases` failed: `x✝ : ?m.190` is not an inductive datatype"
+        ]
+      },
+      {
+        "version": "v4.31.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "Function expected at\n  ih_l rfl\nbut this term has type\n  t₁.Value ∨ ∃ t', t₁ ⭢βᵛ t'\n\nNote: Expected a function because this term is being applied to the argument\n  l",
+          "Tactic `rcases` failed: `x✝ : ?m.182` is not an inductive datatype",
+          "Function expected at\n  ih rfl\nbut this term has type\n  t₁✝.Value ∨ ∃ t', t₁✝ ⭢βᵛ t'\n\nNote: Expected a function because this term is being applied to the argument\n  d",
+          "Tactic `rcases` failed: `x✝ : ?m.190` is not an inductive datatype"
+        ]
+      }
+    ],
+    "truncated": true
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "code": "theorem InitsUpdatesComm\n  {P : PureExpr} {σ σ' σ'' : SemanticStore P}\n  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :\n  UpdateStates σ ks vs σ' →\n  InitStates σ' ks' vs' σ'' →\n  ∃ σ₁,\n    σ₁ = (updatedStates σ ks' vs') ∧\n    InitStates σ ks' vs' σ₁ ∧\n    UpdateStates σ₁ ks vs σ'' := by\n  intro Hup Hinit\n  refine ⟨updatedStates σ ks' vs', rfl, ?_, ?_⟩\n  · exact updatedStatesInit (InitStatesLength Hinit)\n      (UpdateStatesNotDefMonotone' (InitStatesNotDefined Hinit) Hup)\n      (InitStatesNodup Hinit)\n  · have Hdis : ks.Disjoint ks' := by\n      intro k hk hk'\n      have hdef := UpdateStatesDefined Hup k hk\n      have hnone := InitStatesNotDefined Hinit k hk'\n      simp [hnone] at hdef\n    have Hdis' : (ks.zip vs).unzip.1.Disjoint (ks'.zip vs').unzip.1 := by\n      simpa only [List.unzip_zip (UpdateStatesLength Hup),\n        List.unzip_zip (InitStatesLength Hinit)] using Hdis\n    have Hcomm : updatedStates (updatedStates σ ks vs) ks' vs' =\n        updatedStates (updatedStates σ ks' vs') ks vs := by\n      simpa [updatedStates] using (updatedStatesComm (σ:=σ) Hdis')\n    have Hdef : isDefined (updatedStates σ ks' vs') ks := by\n      unfold updatedStates\n      exact updatedStatesDefMonotone (UpdateStatesDefined' Hup)\n    have Hupd : UpdateStates (updatedStates σ ks' vs') ks vs\n        (updatedStates (updatedStates σ ks' vs') ks vs) :=\n      updatedStatesUpdate (UpdateStatesLength Hup) Hdef\n    have Hfinal : updatedStates (updatedStates σ ks' vs') ks vs = σ'' := by\n      rw [InitStatesUpdated Hinit, UpdateStatesUpdated Hup]\n      exact Hcomm.symm\n    exact Hfinal ▸ Hupd\n",
+  "feedback": {
+    "kind": "lean_correctness_feedback",
+    "status": "valid",
+    "primary_version": "v4.29.1",
+    "primary_passed": true,
+    "all_versions_passed": true,
+    "required_versions": [
+      "v4.29.1",
+      "v4.27.0",
+      "v4.26.0"
+    ],
+    "errors": [],
+    "versions": [
+      {
+        "version": "v4.29.1",
+        "status": "passed",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "version": "v4.27.0",
+        "status": "passed",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "version": "v4.26.0",
+        "status": "passed",
+        "passed": true,
+        "errors": []
+      }
+    ],
+    "truncated": false
+  }
+}

@@ -26,7 +26,8 @@ def test_command_rejects_substitution(tmp_path):
 
 
 @pytest.mark.skipif(shutil.which('codex') is None, reason='Codex CLI is not installed')
-def test_installed_cli_sends_exact_prompt_with_tools(tmp_path):
+@pytest.mark.parametrize('isolated', [False, True])
+def test_installed_cli_sends_exact_prompt_with_tools(tmp_path, isolated):
     """No remote model call: inspect the CLI's real HTTP body at localhost."""
     received = []
     final = "theorem x : True := by trivial"
@@ -73,6 +74,21 @@ def test_installed_cli_sends_exact_prompt_with_tools(tmp_path):
                  "model_providers.local_test.stream_max_retries": 0,
                  "features.enable_request_compression": False}
     args = args[:-1] + [v for k, value in overrides.items() for v in ("-c", k + "=" + json.dumps(value))] + ["-"]
+    if isolated:
+        from codex_readonly import abi_version
+        from run_codex_baselines_isolated import launch_command
+        try:
+            if abi_version() < 3:
+                pytest.skip('Landlock ABI >= 3 required')
+        except (OSError, RuntimeError) as exc:
+            pytest.skip(str(exc))
+        protected = tmp_path / 'readonly_source'
+        protected.mkdir()
+        # Keep outputs and writable cwd in one sibling, outside the protected tree.
+        (empty / 'system.txt').write_text(system)
+        args = [str(empty / 'final.txt') if value == str(tmp_path / 'final.txt') else
+                value.replace(str(tmp_path / 'system.txt'), str(empty / 'system.txt')) for value in args]
+        args = launch_command(args, empty, [protected])
     try:
         proc = subprocess.run(args, input=user, text=True, capture_output=True, timeout=30, cwd=empty)
     finally:
@@ -93,6 +109,6 @@ def test_installed_cli_sends_exact_prompt_with_tools(tmp_path):
     assert messages[1]["content"] == [{"type": "input_text", "text": TOOL_INSTRUCTIONS}]
     assert messages[2]["role"] == "user"
     assert messages[2]["content"] == [{"type": "input_text", "text": user}]
-    assert (tmp_path / "final.txt").read_text().strip() == final
+    assert ((empty if isolated else tmp_path) / "final.txt").read_text().strip() == final
     events = [json.loads(line) for line in proc.stdout.splitlines()]
     assert parse_events(events, final, 0)["status"] == "received"

@@ -1,0 +1,67 @@
+```lean
+theorem putnam_1964_b2
+(S : Type*) [Fintype S] [Nonempty S]
+(P : Finset (Set S))
+(hPP : ∀ T ∈ P, ∀ U ∈ P, T ∩ U ≠ ∅)
+(hPS : ¬∃ T : Set S, T ∉ P ∧ (∀ U ∈ P, T ∩ U ≠ ∅))
+: (P.card = 2 ^ (Fintype.card S - 1)) := by
+  classical
+  have h_alt : ∀ A : Set S, A ∉ P → Aᶜ ∈ P := by
+    intro A hA
+    have hbad : ¬ ∀ U ∈ P, (A ∩ U).Nonempty := by
+      intro hall
+      exact hPS ⟨A, hA, fun U hU => Set.nonempty_iff_ne_empty.mp (hall U hU)⟩
+    obtain ⟨U, hU, hAU⟩ : ∃ U ∈ P, A ∩ U = ∅ := by
+      by_contra h
+      push_neg at h
+      exact hbad h
+    by_contra hAc
+    apply hPS
+    refine ⟨Aᶜ, hAc, ?_⟩
+    intro V hV
+    by_contra hzero
+    have hUV : U ∩ V ≠ ∅ := hPP U hU V hV
+    apply hUV
+    ext x
+    constructor
+    · rintro ⟨hxU, hxV⟩
+      have hxA : x ∉ A := by
+        intro hx
+        have hxAU : x ∈ A ∩ U := by simp [hx, hxU]
+        rw [hAU] at hxAU
+        exact hxAU
+      have hxAV : x ∈ Aᶜ ∩ V := by simp [hxA, hxV]
+      rw [hzero] at hxAV
+      exact hxAV
+    · simp
+  have h_not_both : ∀ A : Set S, A ∈ P → Aᶜ ∉ P := by
+    intro A hA hAc
+    apply hPP A hA Aᶜ hAc
+    ext x
+    simp
+  let Q : Finset (Set S) := (Finset.univ : Finset (Set S)) \ P
+  have h_card : P.card = Q.card := by
+    exact Finset.card_bij' (fun A _ => Aᶜ) (fun A _ => Aᶜ)
+      (fun A hA => by
+        simp only [Q, Finset.mem_sdiff, Finset.mem_univ, true_and]
+        exact h_not_both A hA)
+      (fun A hA => h_alt A (Finset.mem_sdiff.mp hA).2)
+      (by intro A hA; simp)
+      (by intro A hA; simp)
+  have h_sum : P.card + Q.card = 2 ^ Fintype.card S := by
+    have h := Finset.card_sdiff_add_card_eq_card (Finset.subset_univ P)
+    change Q.card + P.card = (Finset.univ : Finset (Set S)).card at h
+    have hu : (Finset.univ : Finset (Set S)).card = 2 ^ Fintype.card S := by
+      simp only [Finset.card_univ, Fintype.card_set]
+    rw [hu] at h
+    omega
+  have hn : Fintype.card S - 1 + 1 = Fintype.card S := by
+    have hpos : 0 < Fintype.card S := by positivity
+    omega
+  have h_pow : 2 ^ (Fintype.card S - 1) * 2 = 2 ^ Fintype.card S := by
+    calc
+      2 ^ (Fintype.card S - 1) * 2 = 2 ^ (Fintype.card S - 1) * 2 ^ 1 := rfl
+      _ = 2 ^ ((Fintype.card S - 1) + 1) := by rw [← pow_add]
+      _ = 2 ^ Fintype.card S := by rw [hn]
+  omega
+```

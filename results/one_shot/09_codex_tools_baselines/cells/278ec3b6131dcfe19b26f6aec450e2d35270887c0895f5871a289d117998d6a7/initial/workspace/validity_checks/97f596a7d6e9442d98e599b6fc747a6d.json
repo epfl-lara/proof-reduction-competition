@@ -1,0 +1,52 @@
+{
+  "code": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  induction der <;> subst eq\n  case var => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, b, rfl⟩ := l.canonical_form_abs val_l\n            exact Or.inr ⟨b ^ᵗᵗ t₂, Red.abs l.wf.2.1 val_r⟩\n        | inr red_r =>\n            obtain ⟨t₂', red_r⟩ := red_r\n            exact Or.inr ⟨t₁.app t₂', Red.appᵣ val_l red_r⟩\n    | inr red_l =>\n        obtain ⟨t₁', red_l⟩ := red_l\n        exact Or.inr ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red_l⟩\n  case tapp σ' der _ ih =>\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨_, b, rfl⟩ := der.canonical_form_tabs val\n        exact Or.inr ⟨b ^ᵗᵞ σ', Red.tabs der.wf.2.1 (by grind)⟩\n    | inr red =>\n        obtain ⟨t', red⟩ := red\n        exact Or.inr ⟨.tapp t' σ', Red.tapp (by grind) red⟩\n  case let' t₁ σ t₂ τ L der _ ih _ =>\n    cases ih rfl der with\n    | inl val => exact Or.inr ⟨t₂ ^ᵗᵗ t₁, Red.let_body val (by grind)⟩\n    | inr red =>\n        obtain ⟨t₁', red⟩ := red\n        exact Or.inr ⟨t₁'.let' t₂, Red.let_bind red (by grind)⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => exact Or.inl (.inl val)\n    | inr red =>\n        obtain ⟨t', red⟩ := red\n        exact Or.inr ⟨.inl t', Red.inl red⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => exact Or.inl (.inr val)\n    | inr red =>\n        obtain ⟨t', red⟩ := red\n        exact Or.inr ⟨.inr t', Red.inr red⟩\n  case case t₁ _ _ t₂ _ t₃ _ der _ _ ih _ _ =>\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, lr⟩ := der.canonical_form_sum val\n        cases lr with\n        | inl eq =>\n            subst t₁\n            cases val with\n            | inl val_u => exact Or.inr ⟨t₂ ^ᵗᵗ u, Red.case_inl val_u (by grind) (by grind)⟩\n        | inr eq =>\n            subst t₁\n            cases val with\n            | inr val_u => exact Or.inr ⟨t₃ ^ᵗᵗ u, Red.case_inr val_u (by grind) (by grind)⟩\n    | inr red =>\n        obtain ⟨t₁', red⟩ := red\n        exact Or.inr ⟨t₁'.case t₂ t₃, Red.case red (by grind) (by grind)⟩\n  case sub => grind\n  case abs σ _ τ L _ _ =>\n    exact Or.inl (Value.abs (LC.abs L (by grind only [→ wf, cases Term.LC]) (by grind only [→ wf])))\n  case tabs L _ _ =>\n    exact Or.inl (Value.tabs (LC.tabs L (by grind only [→ wf, cases Term.LC]) (by grind only [→ wf])))\n",
+  "feedback": {
+    "kind": "lean_correctness_feedback",
+    "status": "failed",
+    "primary_version": "v4.33.0-rc2",
+    "primary_passed": false,
+    "all_versions_passed": false,
+    "required_versions": [
+      "v4.33.0-rc2",
+      "v4.32.0",
+      "v4.31.0"
+    ],
+    "errors": [],
+    "versions": [
+      {
+        "version": "v4.33.0-rc2",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "Function expected at\n  ih_l rfl\nbut this term has type\n  t₁.Value ∨ ∃ t', t₁ ⭢βᵛ t'\n\nNote: Expected a function because this term is being applied to the argument\n  l",
+          "Tactic `cases` failed: major premise type is not an inductive type\n  ?m.182\n\nExplanation: the `cases` tactic is for constructor-based reasoning as well as for applying custom cases principles with a 'using' clause or a registered '@[cases_eliminator]' theorem. The above type neither is an inductive type nor has a registered theorem.\n\nVar : Type u_1\ninst✝¹ : HasFresh Var\ninst✝ : DecidableEq Var\nt : Term Var\nτ : Ty Var\nΓ : List ((_ : Var) × Binding Var)\nt₁ : Term Var\nσ✝ τ✝ : Ty Var\nt₂ : Term Var\nl : Typing [] t₁ (σ✝.arrow τ✝)\nr : Typing [] t₂ σ✝\nih_l : [] = [] → t₁.Value ∨ ∃ t', t₁ ⭢βᵛ t'\nih_r : [] = [] → t₂.Value ∨ ∃ t', t₂ ⭢βᵛ t'\nx✝ : ?m.182\n⊢ (t₁.app t₂).Value ∨ ∃ t', t₁.app t₂ ⭢βᵛ t'",
+          "Function expected at\n  ih rfl\nbut this term has type\n  t₁✝.Value ∨ ∃ t', t₁✝ ⭢βᵛ t'\n\nNote: Expected a function because this term is being applied to the argument\n  der",
+          "Tactic `cases` failed: major premise type is not an inductive type\n  ?m.190\n\nExplanation: the `cases` tactic is for constructor-based reasoning as well as for applying custom cases principles with a 'using' clause or a registered '@[cases_eliminator]' theorem. The above type neither is an inductive type nor has a registered theorem.\n\nVar : Type u_1\ninst✝¹ : HasFresh Var\ninst✝ : DecidableEq Var\nt : Term Var\nτ : Ty Var\nΓ : List ((_ : Var) × Binding Var)\nt₁✝ : Term Var\nσ✝ τ✝ σ' : Ty Var\nder : Typing [] t₁✝ (σ✝.all τ✝)\na✝ : Sub [] σ' σ✝\nih : [] = [] → t₁✝.Value ∨ ∃ t', t₁✝ ⭢βᵛ t'\nx✝ : ?m.190\n⊢ (t₁✝.tapp σ').Value ∨ ∃ t', t₁✝.tapp σ' ⭢βᵛ t'"
+        ]
+      },
+      {
+        "version": "v4.32.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "Function expected at\n  ih_l rfl\nbut this term has type\n  t₁.Value ∨ ∃ t', t₁ ⭢βᵛ t'\n\nNote: Expected a function because this term is being applied to the argument\n  l",
+          "Tactic `cases` failed: major premise type is not an inductive type\n  ?m.182\n\nExplanation: the `cases` tactic is for constructor-based reasoning as well as for applying custom cases principles with a 'using' clause or a registered '@[cases_eliminator]' theorem. The above type neither is an inductive type nor has a registered theorem.\n\nVar : Type u_1\ninst✝¹ : HasFresh Var\ninst✝ : DecidableEq Var\nt : Term Var\nτ : Ty Var\nΓ : List ((_ : Var) × Binding Var)\nt₁ : Term Var\nσ✝ τ✝ : Ty Var\nt₂ : Term Var\nl : Typing [] t₁ (σ✝.arrow τ✝)\nr : Typing [] t₂ σ✝\nih_l : [] = [] → t₁.Value ∨ ∃ t', t₁ ⭢βᵛ t'\nih_r : [] = [] → t₂.Value ∨ ∃ t', t₂ ⭢βᵛ t'\nx✝ : ?m.182\n⊢ (t₁.app t₂).Value ∨ ∃ t', t₁.app t₂ ⭢βᵛ t'",
+          "Function expected at\n  ih rfl\nbut this term has type\n  t₁✝.Value ∨ ∃ t', t₁✝ ⭢βᵛ t'\n\nNote: Expected a function because this term is being applied to the argument\n  der",
+          "Tactic `cases` failed: major premise type is not an inductive type\n  ?m.190\n\nExplanation: the `cases` tactic is for constructor-based reasoning as well as for applying custom cases principles with a 'using' clause or a registered '@[cases_eliminator]' theorem. The above type neither is an inductive type nor has a registered theorem.\n\nVar : Type u_1\ninst✝¹ : HasFresh Var\ninst✝ : DecidableEq Var\nt : Term Var\nτ : Ty Var\nΓ : List ((_ : Var) × Binding Var)\nt₁✝ : Term Var\nσ✝ τ✝ σ' : Ty Var\nder : Typing [] t₁✝ (σ✝.all τ✝)\na✝ : Sub [] σ' σ✝\nih : [] = [] → t₁✝.Value ∨ ∃ t', t₁✝ ⭢βᵛ t'\nx✝ : ?m.190\n⊢ (t₁✝.tapp σ').Value ∨ ∃ t', t₁✝.tapp σ' ⭢βᵛ t'"
+        ]
+      },
+      {
+        "version": "v4.31.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "Function expected at\n  ih_l rfl\nbut this term has type\n  t₁.Value ∨ ∃ t', t₁ ⭢βᵛ t'\n\nNote: Expected a function because this term is being applied to the argument\n  l",
+          "Tactic `cases` failed: major premise type is not an inductive type\n  ?m.182\n\nExplanation: the `cases` tactic is for constructor-based reasoning as well as for applying custom cases principles with a 'using' clause or a registered '@[cases_eliminator]' theorem. The above type neither is an inductive type nor has a registered theorem.\n\nVar : Type u_1\ninst✝¹ : HasFresh Var\ninst✝ : DecidableEq Var\nt : Term Var\nτ : Ty Var\nΓ : List ((_ : Var) × Binding Var)\nt₁ : Term Var\nσ✝ τ✝ : Ty Var\nt₂ : Term Var\nl : Typing [] t₁ (σ✝.arrow τ✝)\nr : Typing [] t₂ σ✝\nih_l : [] = [] → t₁.Value ∨ ∃ t', t₁ ⭢βᵛ t'\nih_r : [] = [] → t₂.Value ∨ ∃ t', t₂ ⭢βᵛ t'\nx✝ : ?m.182\n⊢ (t₁.app t₂).Value ∨ ∃ t', t₁.app t₂ ⭢βᵛ t'",
+          "Function expected at\n  ih rfl\nbut this term has type\n  t₁✝.Value ∨ ∃ t', t₁✝ ⭢βᵛ t'\n\nNote: Expected a function because this term is being applied to the argument\n  der",
+          "Tactic `cases` failed: major premise type is not an inductive type\n  ?m.190\n\nExplanation: the `cases` tactic is for constructor-based reasoning as well as for applying custom cases principles with a 'using' clause or a registered '@[cases_eliminator]' theorem. The above type neither is an inductive type nor has a registered theorem.\n\nVar : Type u_1\ninst✝¹ : HasFresh Var\ninst✝ : DecidableEq Var\nt : Term Var\nτ : Ty Var\nΓ : List ((_ : Var) × Binding Var)\nt₁✝ : Term Var\nσ✝ τ✝ σ' : Ty Var\nder : Typing [] t₁✝ (σ✝.all τ✝)\na✝ : Sub [] σ' σ✝\nih : [] = [] → t₁✝.Value ∨ ∃ t', t₁✝ ⭢βᵛ t'\nx✝ : ?m.190\n⊢ (t₁✝.tapp σ').Value ∨ ∃ t', t₁✝.tapp σ' ⭢βᵛ t'"
+        ]
+      }
+    ],
+    "truncated": true
+  }
+}

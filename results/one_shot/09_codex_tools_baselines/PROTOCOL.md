@@ -1,5 +1,10 @@
 # Codex agent baselines
 
+Operational update: the [Luna recovery](recovery/README.md) adds read-only source
+projects and a host validity service for new calls after a shared scratch-file
+collision. Saved requests and the benchmark protocol below remain fixed; reports
+identify which calls used the new execution policy.
+
 The user requested Astra at **max reasoning**, with and without deterministic
 transforms, then Luna at **max, high, and medium**. A later clarification kept
 Codex tools enabled. This is an agent baseline with source inspection and Lean
@@ -49,8 +54,8 @@ automatically repeated. Seed order alternates by theorem; two workers run.
 
 ```bash
 conda activate af
-python src/run_codex_baselines.py --model gpt-6-astra --effort max
-python src/run_codex_baselines.py --model gpt-6-luna
+python src/run_codex_baselines_isolated.py --model gpt-6-astra --effort max
+python src/run_codex_baselines_isolated.py --model gpt-6-luna
 ```
 
 `--name`, `--model` and `--effort` schedule pending cells in the fixed manifest.

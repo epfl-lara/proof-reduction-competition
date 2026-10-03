@@ -1,0 +1,25 @@
+{
+  "code": "lemma fundamental_theorem_of_variational_calculus' {f : Y → V}\n    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]\n    [OpensMeasurableSpace Y]\n    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :\n    f = 0 := by\n  rw [funext_iff]\n  by_contra h\n  obtain ⟨x₀, hx₀⟩ := not_forall.mp h\n  simp at hx₀\n  let f₂ : Y → WithLp 2 V := toL2 ℝ ∘ f\n  let x₂ := f₂ x₀\n  have hx₂ : x₂ ≠ 0 := fun h => hx₀ (congrArg (fromL2 ℝ) h)\n  have hc : ContinuousAt f₂ x₀ := ((toL2 ℝ).continuous.comp hf).continuousAt\n  obtain ⟨δ, hδ, hball⟩ := Metric.continuousAt_iff.mp hc (‖x₂‖ / 2)\n    (by simpa [half_pos] using (norm_pos_iff.mpr hx₂))\n  have hi : ∀ x ∈ Metric.ball x₀ δ, 0 < (⟪f₂ x, x₂⟫_ℝ : ℝ) := by\n    intro x hx\n    have hclose : ‖f₂ x - x₂‖ < ‖x₂‖ / 2 := by\n      simpa [dist_eq_norm, x₂] using hball hx\n    have hs : ⟪x₂, x₂⟫_ℝ = ‖x₂‖ ^ 2 := real_inner_self_eq_norm_sq (x₂ : WithLp 2 V)\n    have hcauchy : -(‖f₂ x - x₂‖ * ‖x₂‖) ≤ ⟪f₂ x - x₂, x₂⟫_ℝ :=\n      neg_le_of_abs_le (abs_real_inner_le_norm _ _)\n    have hp : 0 < ‖x₂‖ := norm_pos_iff.mpr hx₂\n    have heq : ⟪f₂ x, x₂⟫_ℝ = ⟪x₂, x₂⟫_ℝ + ⟪f₂ x - x₂, x₂⟫_ℝ := by\n      rw [← inner_add_left]\n      simp\n    nlinarith [heq, hcauchy, hs, hclose, hp, mul_lt_mul_of_pos_right hclose hp]\n  have hip : ∀ x ∈ Metric.ball x₀ δ, 0 < ⟪f x, f x₀⟫_ℝ := fun x hx => hi x hx\n  have hb : ∃ φ : Y → ℝ, IsTestFunction φ ∧\n      (∀ x ∈ Function.support φ, 0 ≤ φ x) ∧\n      Function.support φ ⊆ Metric.ball x₀ (δ / 2) ∧\n      ∀ x ∈ Metric.closedBall x₀ (δ / 4), 0 < φ x := by\n    haveI : HasContDiffBump Y := hasContDiffBump_of_innerProductSpace Y\n    let b : ContDiffBump x₀ := ⟨δ / 4, δ / 2, by positivity, by linarith⟩\n    refine ⟨b.toFun, ⟨b.contDiff, b.hasCompactSupport⟩, (fun x _ => b.nonneg), ?_, ?_⟩\n    · rw [ContDiffBump.support_eq]\n    · intro x hx\n      apply b.pos_of_mem_ball\n      rw [Metric.mem_closedBall] at hx\n      exact Metric.mem_ball.mpr (lt_of_le_of_lt hx (by linarith))\n  obtain ⟨φ, hφ, hφ_nonneg, hφ_support, hφ_pos⟩ := hb\n  let g : Y → V := fun x => φ x • f x₀\n  have hgt : IsTestFunction g := IsTestFunction.smul_right hφ contDiff_const\n  have hzero := hg g hgt\n  simp only [g, inner_smul_right'] at hzero\n  have hsupport : Function.support φ ⊆ Metric.ball x₀ δ :=\n    hφ_support.trans (Metric.ball_subset_ball (by linarith))\n  have hinner : Continuous (fun x => ⟪f x, f x₀⟫_ℝ) :=\n    Continuous.inner' (f : Y → V) (fun _ => f x₀) hf continuous_const\n  have hint : Integrable (fun x => φ x * ⟪f x, f x₀⟫_ℝ) μ :=\n    (Continuous.mul hφ.smooth.continuous hinner).integrable_of_hasCompactSupport\n      hφ.supp.mul_right\n  have hn : ∀ x, 0 ≤ φ x * ⟪f x, f x₀⟫_ℝ := by\n    intro x\n    by_cases hx : x ∈ Function.support φ\n    · exact mul_nonneg (hφ_nonneg x hx) (hip x (hsupport hx)).le\n    · simp [Function.notMem_support.mp hx]\n  have hballpos : 0 < μ (Metric.ball x₀ (δ / 4)) :=\n    Metric.isOpen_ball.measure_pos μ (Metric.nonempty_ball.mpr (by linarith))\n  have hsupp : Metric.closedBall x₀ (δ / 4) ⊆\n      Function.support (fun x => φ x * ⟪f x, f x₀⟫_ℝ) := by\n    intro x hx\n    have hp := hφ_pos x hx\n    have hi := hip x (Metric.closedBall_subset_ball (by linarith) hx)\n    simp only [Function.support_mul, Set.mem_inter_iff, Function.mem_support, ne_eq]\n    exact ⟨by linarith, by linarith⟩\n  have hpos : 0 < ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ :=\n    (integral_pos_iff_support_of_nonneg hn hint).mpr\n      (lt_of_lt_of_le hballpos (measure_mono (Metric.ball_subset_closedBall.trans hsupp)))\n  linarith\n",
+  "feedback": {
+    "kind": "lean_correctness_feedback",
+    "status": "failed",
+    "primary_version": "v4.32.0",
+    "primary_passed": false,
+    "all_versions_passed": false,
+    "required_versions": [
+      "v4.32.0"
+    ],
+    "errors": [],
+    "versions": [
+      {
+        "version": "v4.32.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "linarith failed to find a contradiction\nV : Type u_2\ninst✝⁹ : NormedAddCommGroup V\ninst✝⁸ : NormedSpace ℝ V\ninst✝⁷ : InnerProductSpace' ℝ V\nY : Type u_1\ninst✝⁶ : NormedAddCommGroup Y\ninst✝⁵ : InnerProductSpace ℝ Y\ninst✝⁴ : FiniteDimensional ℝ Y\ninst✝³ : MeasurableSpace Y\nf : Y → V\nμ : Measure Y\ninst✝² : IsFiniteMeasureOnCompacts μ\ninst✝¹ : μ.IsOpenPosMeasure\ninst✝ : OpensMeasurableSpace Y\nhf : Continuous f\nhg : ∀ (g : Y → V), IsTestFunction g → ∫ (x : Y), ⟪f x, g x⟫_ℝ ∂μ = 0\nh : ¬∀ (x : Y), f x = 0 x\nx₀ : Y\nhx₀ : ¬f x₀ = 0\nf₂ : Y → WithLp 2 V := ⇑(toL2 ℝ) ∘ f\nx₂ : WithLp 2 V := f₂ x₀\nhx₂ : x₂ ≠ 0\nhc : ContinuousAt f₂ x₀\nδ : ℝ\nhδ : δ > 0\nhball : ∀ ⦃x : Y⦄, dist x x₀ < δ → dist (f₂ x) (f₂ x₀) < ‖x₂‖ / 2\nhi : ∀ x ∈ Metric.ball x₀ δ, 0 < ⟪f₂ x, x₂⟫_ℝ\nhip : ∀ x ∈ Metric.ball x₀ δ, 0 < ⟪f x, f x₀⟫_ℝ\nthis : HasContDiffBump Y\nb : ContDiffBump x₀ := { rIn := δ / 4, rOut := δ / 2, rIn_pos := ⋯, rIn_lt_rOut := ⋯ }\nx : Y\nhx : dist x x₀ ≤ δ / 4\na✝ : b.rOut ≤ δ / 4\n⊢ False\nfailed"
+        ]
+      }
+    ],
+    "truncated": false
+  }
+}

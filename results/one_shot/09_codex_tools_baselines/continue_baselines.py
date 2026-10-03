@@ -25,12 +25,14 @@ def main():
             raise RuntimeError('Astra pilot must finish and validate before scale-out')
         state_path = OUT / 'controller.json'
         state = json.loads(state_path.read_text()) if state_path.exists() else {'created_at': now(), 'steps': []}
+        state['status'] = 'running'
+        write_json(state_path, state)
         tasks = [('astra_full', ['--model', 'gpt-6-astra', '--effort', 'max']),
                  ('luna_first_pair_all_efforts', ['--model', 'gpt-6-luna', '--name', 'CallElimCorrect.substOldPostSubset'])]
         for label, tail in tasks:
             if any(s['label'] == label and s.get('returncode') == 0 for s in state['steps']):
                 continue
-            step = {'label': label, 'started_at': now(), 'command': [sys.executable, 'src/run_codex_baselines.py', *tail]}
+            step = {'label': label, 'started_at': now(), 'command': [sys.executable, 'src/run_codex_baselines_isolated.py', *tail]}
             state['steps'].append(step)
             state['status'] = 'running'
             write_json(state_path, state)
@@ -50,7 +52,6 @@ def main():
             label = 'luna_full_' + effort
             if any(s['label'] == label and s.get('returncode') == 0 for s in state['steps']):
                 continue
-            initial = [json.loads(p.read_text()) for p in (OUT / 'cells').glob('*/input.json')]
             selected = [p.parent / 'initial/generation.json' for p in (OUT / 'cells').glob('*/input.json')
                         if (v := json.loads(p.read_text()))['model'] == 'gpt-6-luna' and v['effort'] == effort
                         and v['name'] == 'CallElimCorrect.substOldPostSubset']
@@ -58,7 +59,7 @@ def main():
                 state['steps'].append({'label': label, 'status': 'not_expanded', 'reason': 'Pilot transport did not deliver two responses'})
                 write_json(state_path, state)
                 continue
-            cmd = [sys.executable, 'src/run_codex_baselines.py', '--model', 'gpt-6-luna', '--effort', effort]
+            cmd = [sys.executable, 'src/run_codex_baselines_isolated.py', '--model', 'gpt-6-luna', '--effort', effort]
             step = {'label': label, 'command': cmd, 'started_at': now()}
             state['steps'].append(step)
             with (OUT / (label + '.log')).open('a') as log:

@@ -1,0 +1,79 @@
+Optimize this declaration.
+{
+  "name": "Cslib.CCS.bisimilarity_congr_choice",
+  "source": "cslib",
+  "required_versions": [
+    {
+      "v4.33.0-rc2": "3aa9d4416c185e0b9faeb72bbd65abe85b95dbcc"
+    },
+    {
+      "v4.32.0": "197a7be621263b84c67ca4f803f69205b36d06df"
+    },
+    {
+      "v4.31.0": "8ea71c8df91acd63285515a04da952b23b78d266"
+    }
+  ],
+  "exact_statement": "theorem bisimilarity_congr_choice :\n    (p ~[lts (defs := defs)] q) → (choice p r) ~[lts (defs := defs)] (choice q r)",
+  "reference_denominators": {
+    "tokens": 251,
+    "primary_heartbeats": 3859.535
+  },
+  "incumbent_scores": {
+    "length_reduction_pct": 0.0,
+    "heartbeat_reduction_pct": -0.0007513858534702322,
+    "compatibility_pct": 100.0,
+    "combined_pct": 33.333082871382175
+  },
+  "preceding_source_excerpt": "p q r r' htr =>\n      exists p.par (q.par r')\n      grind\n    case com p q r μ p' μ' r' _ htr htr' =>\n      cases htr\n      case parL p' _ =>\n        use p'.par (q.par r')\n        grind\n      case parR q' _ =>\n        use p.par (q'.par r')\n        grind\n      case com => grind\n  case left.assoc =>\n    intro s2' htr\n    unfold lts at *\n    cases htr\n    case parR htr =>\n      cases htr\n      case parL p q r q' _ =>\n        exists (p.par q').par r\n        grind\n      case parR p q r r' _ =>\n        exists (p.par q).par r'\n        grind\n      case com p q r μ q' μ' r' _ htrp htrq =>\n        use (p.par q').par r'\n        grind\n    case parL p q r p' htr =>\n      exists (p'.par q).par r\n      grind\n    case com p q r μ p' μ' q' _ htr htr' =>\n      cases htr'\n      case parL q' _ =>\n        use (p'.par q').par r\n        grind\n      case parR r' _ =>\n        use (p'.par q).par r'\n        grind\n      case com => grind\n  all_goals grind\n\nprivate inductive ChoiceNil : Process Name Constant → Process Name Constant → Prop where\n  | nil : ChoiceNil (choice p nil) p\n  | id : ChoiceNil p p\n\n/-- P + 𝟎 ~ P -/\ntheorem bisimilarity_choice_nil : (choice p nil) ~[lts (defs := defs)] p := by\n  use ChoiceNil, ChoiceNil.nil\n  intro s1 s2 hr μ\n  apply And.intro <;> cases hr\n  case left.nil =>\n    unfold lts\n    grind [ChoiceNil]\n  case right.nil =>\n    intro s2' htr\n    exists s2'\n    constructor\n    · apply Tr.choiceL\n      assumption\n    · exact ChoiceNil.id\n  all_goals grind [ChoiceNil]\n\n@[local grind]\nprivate inductive ChoiceIdem : Process Name Constant → Process Name Constant → Prop where\n  | idem : ChoiceIdem (choice p p) p\n  | id : ChoiceIdem p p\n\n/-- P + P ~ P -/\ntheorem bisimilarity_choice_idem :\n    (choice p p) ~[lts (defs := defs)] p := by\n  exists ChoiceIdem\n  apply And.intro\n  case left => grind\n  case right =>\n    intro s1 s2 hr μ\n    apply And.intro <;> cases hr <;> unfold lts\n    case right.idem =>\n      intro s1' htr\n      exists s1'\n      grind\n    all_goals grind\n\nprivate inductive ChoiceComm : Process Name Constant → Process Name Constant → Prop where\n  | choiceComm : ChoiceComm (choice p q) (choice q p)\n  | bisim : (p ~[lts (defs := defs)] q) → ChoiceComm p q\n\nopen Bisimilarity in\n/-- P + Q ~ Q + P -/\ntheorem bisimilarity_choice_comm : (choice p q) ~[lts (defs := defs)] (choice q p) := by\n  exists @ChoiceComm Name Constant defs\n  repeat constructor\n  intro s1 s2 hr μ\n  cases hr\n  case choiceComm p q =>\n    constructor\n    case left =>\n      intro s1' htr\n      exists s1'\n      constructor\n      · unfold lts\n        cases htr with grind\n      · grind [HomBisimilarity.refl, ChoiceComm]\n    case right =>\n      intro s1' htr\n      exists s1'\n      constructor\n      · unfold lts\n        cases htr with grind\n      · grind [HomBisimilarity.refl, ChoiceComm]\n  case bisim h =>\n    grind [IsBisimulation, ChoiceComm]\n\nprivate inductive ChoiceAssoc : Process Name Constant → Process Name Constant → Prop where\n  | assoc : ChoiceAssoc (choice p (choice q r)) (choice (choice p q) r)\n  | id : ChoiceAssoc p p\n\n/-- P + (Q + R) ~ (P + Q) + R -/\ntheorem bisimilarity_choice_assoc :\n    (choice p (choice q r)) ~[lts (defs := defs)] (choice (choice p q) r) := by\n  use ChoiceAssoc, ChoiceAssoc.assoc\n  intro s1 s2 hr μ\n  apply And.intro <;> cases hr\n  case left.assoc p q r =>\n    intro s htr\n    refine ⟨s, ?_, ChoiceAssoc.id⟩\n    cases htr\n    case choiceL htr => apply Tr.choiceL; apply Tr.choiceL; assumption\n    case choiceR htr =>\n      cases htr\n      case choiceL htr => apply Tr.choiceL; apply Tr.choiceR; assumption\n      case choiceR htr => apply Tr.choiceR; assumption\n  case right.assoc p q r =>\n    intro s htr\n    refine ⟨s, ?_, ChoiceAssoc.id⟩\n    cases htr\n    case choiceL htr =>\n      cases htr\n      case choiceL htr => apply Tr.choiceL; assumption\n      case choiceR htr => apply Tr.choiceR; apply Tr.choiceL; assumption\n    case choiceR htr => apply Tr.choiceR; apply Tr.choiceR; assumption\n  all_goals grind [ChoiceAssoc.id]\n\n@[local grind]\nprivate inductive PreBisim : Process Name Constant → Process Name Constant → Prop where\n| pre : (p ~[lts (defs := defs)] q) → PreBisim (pre μ p) (pre μ q)\n| bisim : (p ~[lts (defs := defs)] q) → PreBisim p q\n\n/-- P ~ Q → μ.P ~ μ.Q -/\ntheorem bisimilarity_congr_pre :\n    (p ~[lts (defs := defs)] q) → (pre μ p) ~[lts (defs := defs)] (pre μ q) := by\n  intro hpq\n  exists @PreBisim _ _ defs\n  constructor\n  · grind\n  intro s1 s2 hr μ'\n  cases hr\n  case pre p' q' μ hbis =>\n    unfold lts\n    constructor <;> intro _ _ <;> [exists q'; exists p'] <;> grind\n  case bisim => grind [IsBisimulation, IsBisimulation.le_bisimilarity]\n\n@[local grind]\nprivate inductive ResBisim : Process Name Constant → Process Name Constant → Prop where\n| res : (p ~[lts (defs := defs)] q) → ResBisim (res a p) (res a q)\n-- | bisim : (p ~[lts (defs := defs)] q) → ResBisim p q\n\n/-- P ~ Q → (ν a) P ~ (ν a) Q -/\ntheorem bisimilarity_congr_res :\n    (p ~[lts (defs := defs)] q) → (res a p) ~[lts (defs := defs)] (res a q) := by\n  intro hpq\n  exists @ResBisim _ _ defs\n  constructor\n  · grind\n  intro s1 s2 hr μ'\n  cases hr\n  rename_i p q a h\n  constructor\n  case left =>\n    intro s1' htr\n    cases htr with | res _ _ htr =>\n    obtain ⟨q', _, bisim⟩ := h.follow_fst htr\n    exists res a q'\n    unfold lts at *\n    #adaptation_note\n    /-- A grind regression found moving to nightly-2026-03-31 (changes from lean#13166) -/\n    split_ands\n    · grind\n    · exact ResBisim.res bisim\n  case right =>\n    intro s2' htr\n    cases htr with | res _ _ htr =>\n    obtain ⟨p', _, bisim⟩ := h.follow_snd htr\n    exists res a p'\n    unfold lts at *\n    #adaptation_note\n    /-- A grind regression found moving to nightly-2026-03-31 (changes from lean#13166) -/\n    split_ands\n    · grind\n    · exact ResBisim.res bisim\n\nprivate inductive ChoiceBisim : Process Name Constant → Process Name Constant → Prop where\n| choice : (p ~[lts (defs := defs)] q) → ChoiceBisim (choice p r) (choice q r)\n| bisim : (p ~[lts (defs := defs)] q) → ChoiceBisim p q",
+  "source_excerpt_note": "Read-only context preceding the declaration; may start mid-definition. It is not part of the requested output.",
+  "incumbent_declaration": "theorem bisimilarity_congr_choice :\n    (p ~[lts (defs := defs)] q) → (choice p r) ~[lts (defs := defs)] (choice q r) := by\n  intro h\n  exists @ChoiceBisim _ _ defs\n  constructor\n  · constructor; assumption\n  intro s1 s2 r μ\n  constructor\n  case left =>\n    intro s1' htr\n    cases r\n    case choice p q r hbisim =>\n      obtain ⟨rel, hr, hb⟩ := hbisim\n      cases htr\n      case choiceL a b c htr =>\n        obtain ⟨s2', htr2, hr2⟩ := hb.follow_fst hr htr\n        exists s2'\n        constructor\n        · apply Tr.choiceL htr2\n        · constructor\n          apply hb.le_bisimilarity _ _ hr2\n      case choiceR a b c htr =>\n        exists s1'\n        constructor\n        · apply Tr.choiceR htr\n        · constructor\n          apply HomBisimilarity.refl\n    case bisim hbisim =>\n      obtain ⟨rel, hr, hb⟩ := hbisim\n      obtain ⟨s2', htr2, hr2⟩ := hb.follow_fst hr htr\n      exists s2'\n      constructor\n      · assumption\n      constructor\n      apply hb.le_bisimilarity _ _ hr2\n  case right =>\n    intro s2' htr\n    cases r\n    case choice p q r hbisim =>\n      obtain ⟨rel, hr, hb⟩ := hbisim\n      cases htr\n      case choiceL a b c htr =>\n        obtain ⟨s1', htr1, hr1⟩ := hb.follow_snd hr htr\n        exists s1'\n        constructor\n        · apply Tr.choiceL htr1\n        · constructor\n          apply hb.le_bisimilarity _ _ hr1\n      case choiceR a b c htr =>\n        exists s2'\n        constructor\n        · apply Tr.choiceR htr\n        · constructor\n          apply HomBisimilarity.refl\n    case bisim hbisim =>\n      obtain ⟨rel, hr, hb⟩ := hbisim\n      obtain ⟨s1', htr1, hr1⟩ := hb.follow_snd hr htr\n      exists s1'\n      constructor\n      · assumption\n      · constructor\n        apply hb.le_bisimilarity _ _ hr1",
+  "strategy_cards": [
+    {
+      "id": "collapse_apply_exact",
+      "title": "Construct the proof directly",
+      "preconditions": [
+        "The subgoal proofs and their dependencies are known."
+      ],
+      "action": "Combine an apply/exact sequence into a lemma application, or constructor branches into an anonymous constructor.",
+      "failure_modes": [
+        "Dependent arguments may require annotations.",
+        "Implicit argument order need not match tactic subgoal order."
+      ]
+    },
+    {
+      "id": "consolidate_simpa",
+      "title": "Close with a nearby fact",
+      "preconditions": [
+        "A known fact matches the goal after the same simplifications."
+      ],
+      "action": "Use simpa with that fact and the necessary rules; use exact if simplification is unnecessary.",
+      "failure_modes": [
+        "Simplifying a fact differs from simplifying only the goal.",
+        "Broad simplification can change across versions."
+      ]
+    },
+    {
+      "id": "eta_reduce",
+      "title": "Remove forwarding lambdas",
+      "preconditions": [
+        "A lambda only forwards its bound arguments in order."
+      ],
+      "action": "Replace the forwarding function by the function it calls when their types coincide.",
+      "failure_modes": [
+        "Coercions, dependent types, or instance arguments may require the lambda."
+      ]
+    },
+    {
+      "id": "share_local_work",
+      "title": "Reuse repeated work inside the proof",
+      "preconditions": [
+        "Several regions repeat the same derivation with compatible parameters."
+      ],
+      "action": "Prove a local fact or local parameterized helper once and reuse it within the unchanged declaration.",
+      "failure_modes": [
+        "Extra parameters and generality can increase elaboration.",
+        "Do not add a top-level helper or change the statement."
+      ]
+    }
+  ]
+}

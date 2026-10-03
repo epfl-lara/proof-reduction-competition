@@ -1,0 +1,87 @@
+{
+  "name": "fundamental_theorem_of_variational_calculus'",
+  "source": "physlib",
+  "method": "facts",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 43.71327849588719,
+      "heartbeat_reduction_pct": 59.48172653291708,
+      "compatibility_pct": 100.0,
+      "combined_pct": 67.73166834293475
+    },
+    "candidate": {
+      "length": 479,
+      "code_sha256": "d65c59818131eefa91badb22be86b13f31daa17d2aaee1b53d085f939d8803c6"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4842.678,
+        "heartbeat_reduction_pct": 59.48172653291708,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 1.5827982015907764,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 43.71327849588719,
+      "heartbeat_reduction_pct": 59.48172653291708,
+      "compatibility_pct": 100.0,
+      "combined_pct": 67.73166834293475
+    },
+    "candidate": {
+      "length": 479,
+      "code_sha256": "d65c59818131eefa91badb22be86b13f31daa17d2aaee1b53d085f939d8803c6"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4842.678,
+        "heartbeat_reduction_pct": 59.48172653291708,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 1.5827982015907764,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma fundamental_theorem_of_variational_calculus' {f : Y → V}\n    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]\n    [OpensMeasurableSpace Y]\n    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :\n    f = 0 := by\n  rw [funext_iff]\n  by_contra h\n  obtain ⟨x₀, hx₀⟩ := not_forall.mp h\n  simp at hx₀\n  have hs : 0 < ⟪f x₀, f x₀⟫_ℝ := by\n    have hn : ⟪f x₀, f x₀⟫_ℝ ≠ 0 := fun e => hx₀ (inner_self_eq_zero'.mp e)\n    exact lt_of_le_of_ne (by simpa using (real_inner_self_nonneg' (x := f x₀))) (Ne.symm hn)\n  have hc : Continuous (fun x => ⟪f x, f x₀⟫_ℝ) :=\n    Continuous.inner' f (fun _ => f x₀) hf continuous_const\n  obtain ⟨δ, hδ, hcont⟩ :=\n    Metric.continuousAt_iff.mp hc.continuousAt (⟪f x₀, f x₀⟫_ℝ / 2) (by positivity)\n  have hi : ∀ x ∈ Metric.ball x₀ δ, 0 < ⟪f x, f x₀⟫_ℝ := by\n    intro x hx\n    have hh := hcont (Metric.mem_ball.mp hx)\n    have hh' : |⟪f x, f x₀⟫_ℝ - ⟪f x₀, f x₀⟫_ℝ| < ⟪f x₀, f x₀⟫_ℝ / 2 := by\n      simpa only [Real.dist_eq] using hh\n    linarith [(abs_lt.mp hh').1]\n  have hb : ∃ φ : Y → ℝ, IsTestFunction φ ∧ φ x₀ > 0 ∧\n      (∀ x ∈ Function.support φ, 0 ≤ φ x) ∧\n      Function.support φ ⊆ Metric.ball x₀ (δ / 2) := by\n    haveI : HasContDiffBump Y := hasContDiffBump_of_innerProductSpace Y\n    let φ : ContDiffBump x₀ := ⟨δ / 4, δ / 2, by positivity, by linarith⟩\n    refine ⟨φ.toFun, ⟨φ.contDiff, φ.hasCompactSupport⟩,\n      φ.pos_of_mem_ball (Metric.mem_ball_self φ.rOut_pos), (fun _ _ => φ.nonneg), ?_⟩\n    rw [ContDiffBump.support_eq]\n  obtain ⟨φ, hφ, hφ₀, hφnonneg, hφsupp⟩ := hb\n  let g : Y → V := fun x => φ x • f x₀\n  have hgt : IsTestFunction g := IsTestFunction.smul_right hφ contDiff_const\n  have hzero := hg g hgt\n  simp only [g, inner_smul_right'] at hzero\n  have hsub : Function.support φ ⊆ Metric.ball x₀ δ :=\n    hφsupp.trans (Metric.ball_subset_ball (by linarith))\n  have hnonneg : ∀ x, 0 ≤ φ x * ⟪f x, f x₀⟫_ℝ := by\n    intro x\n    by_cases hx : x ∈ Function.support φ\n    · exact mul_nonneg (hφnonneg x hx) (hi x (hsub hx)).le\n    · simp [Function.notMem_support.mp hx]\n  have hpos : 0 < ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ :=\n    (Continuous.mul hφ.smooth.continuous hc).integral_pos_of_hasCompactSupport_nonneg_nonzero\n      hφ.supp.mul_right hnonneg (ne_of_gt (mul_pos hφ₀ hs))\n  linarith",
+  "initial_sha256": "d65c59818131eefa91badb22be86b13f31daa17d2aaee1b53d085f939d8803c6",
+  "rounds": 1,
+  "attempts": 15,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 15,
+  "cache_hits": 0,
+  "seen": [
+    "c82f8f09f6b21c4f9b2a5f84fc785e328623d40a038428c069cd887a125741d2",
+    "6e3deee52414f7066360ae0424b86a8d0c717fc0e5cef5ace304cd744bdc0286",
+    "c30896223e8e482c0daf7e31d4e530f52c132a2fd22e54896c287486ab51aaf1",
+    "34566d3c0f08e2088a1b392cc03e0e9e5501c0321eb5c1812d76f78cf951cb3c",
+    "2fb8c404d85cb5b468bd39baed460f91fa0fe50a672b16147abbaa64276dc233",
+    "a38955f8993eaf0dc8643837e10488067b38accf8880f419709b25d240a142fe",
+    "2419d3c0a70d95653dbb1a9f44b25e72bea309411cdb83af882145e855d7cbc2",
+    "fb724bcb8cc28072a4536c9413f203a56018b6c374b020671557f6b44d4b792b",
+    "7290b3f2c9329467361e62a3c0f592bf3dc5bf3552fabc0af0f529c72190a62d",
+    "ebe6821be8f9a93b44df1264fd26fabd08a57d3cb6b0925c493e53d5ad0ad1fe",
+    "02637c78b56eca28533e9b10c547c9d8449649f23b43d6ef940f91117f1ec4cf",
+    "9540d7f9ab479864c12492dc8cce3b3b9b3328e866c23f817e3629395885adf9",
+    "fbfa453bccd3bd4dba6f85aa84100213ccfdb661dc7eeda187b709c3761759b8",
+    "8d64e75e2ff3106ec5be4744b91578ddfc25e49e7d8003d985b12acdee69105f",
+    "03464d883a0a00792cc1b2fe9668b0c9dd9d940b0834c6c96bf36ee9c2791ab0"
+  ],
+  "plan": null,
+  "elapsed_seconds": 28.978206627070904,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0
+}

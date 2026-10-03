@@ -108,8 +108,11 @@ uses Astra/max and Luna/max, high and medium with tools for source inspection an
 Lean validation. It compares original proofs with deterministic preprocessing
 and cleanup using the same prompts and cached references. The CLI does not expose
 the RCP experiment's exact output-token and temperature controls. Run or resume
-with `python src/run_codex_baselines.py --model gpt-6-astra --effort max`;
+with `python src/run_codex_baselines_isolated.py --model gpt-6-astra --effort max`;
 audit and report saved results with `python src/report_codex_baselines.py`.
+The isolated launcher keeps shared Lean sources read-only to Codex tools while
+the host handles correctness checks. It preserves the frozen runner and recorded
+requests; see the [Luna recovery](results/one_shot/09_codex_tools_baselines/recovery/README.md).
 
 ### Python and reward functions
 
@@ -225,7 +228,8 @@ The model/context and correctness-repair additions also cover prompt isolation,
 goal/cost extraction, bounded debugging, first-valid stopping, no-resampling
 resume, pilot reuse, all-version cleanup eligibility, shared deterministic jobs,
 control comparisons and evidence/report arithmetic. The
-[latest offline validation](results/one_shot/09_codex_tools_baselines/validation/offline_tests.json)
-records **466 passing tests, 102 passing subtests and three deselected live tests**.
+[latest offline validation](results/one_shot/09_codex_tools_baselines/recovery/validation/offline_tests.json)
+records **471 passing tests, 102 passing subtests and three deselected live tests**.
 It includes the admission gate, cleanup counterfactual analysis, effort probe,
-paired Codex inputs, and a localhost CLI request test with no live model calls.
+paired Codex inputs, source-write isolation, the host validity service, and
+localhost CLI request tests with no live model calls.

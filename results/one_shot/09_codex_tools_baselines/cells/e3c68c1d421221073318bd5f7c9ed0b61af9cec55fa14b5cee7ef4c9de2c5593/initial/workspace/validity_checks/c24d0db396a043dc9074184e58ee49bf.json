@@ -1,0 +1,36 @@
+{
+  "code": "theorem putnam_1964_b2\n(S : Type*) [Fintype S] [Nonempty S]\n(P : Finset (Set S))\n(hPP : ∀ T ∈ P, ∀ U ∈ P, T ∩ U ≠ ∅)\n(hPS : ¬∃ T : Set S, T ∉ P ∧ (∀ U ∈ P, T ∩ U ≠ ∅))\n: (P.card = 2 ^ (Fintype.card S - 1)) := by\n  classical\n  have hup : ∀ {A B : Set S}, A ∈ P → A ⊆ B → B ∈ P := by\n    intro A B hA hAB\n    by_contra hB\n    apply hPS\n    refine ⟨B, hB, ?_⟩\n    intro U hU\n    have hx := Set.nonempty_iff_ne_empty.mpr (hPP A hA U hU)\n    rcases hx with ⟨x, hx⟩\n    apply Set.nonempty_iff_ne_empty.mp\n    exact ⟨x, Set.mem_inter_iff.mpr ⟨hAB (Set.mem_inter_iff.mp hx).1, (Set.mem_inter_iff.mp hx).2⟩⟩\n  have hcover : ∀ A : Set S, A ∈ P ∨ Aᶜ ∈ P := by\n    intro A\n    by_cases hA : A ∈ P\n    · exact Or.inl hA\n    · right\n      by_contra hAc\n      have he : ∃ U, U ∈ P ∧ A ∩ U = ∅ := by\n        by_contra hn\n        apply hPS\n        refine ⟨A, hA, ?_⟩\n        intro U hU\n        by_contra hne\n        exact hn ⟨U, hU, hne⟩\n      obtain ⟨U, hU, hdisj⟩ := he\n      apply hAc\n      apply hup hU\n      intro x hx\n      change x ∉ A\n      intro hxA\n      have h : x ∈ A ∩ U := Set.mem_inter_iff.mpr ⟨hxA, hx⟩\n      rw [hdisj] at h\n      exact h\n  have hnot : ∀ A : Set S, A ∈ P → Aᶜ ∉ P := by\n    intro A hA hAc\n    have hne := hPP A hA Aᶜ hAc\n    apply hne\n    ext x\n    simp\n  let Q : Finset (Set S) := Finset.univ \\ P\n  have hPQ : ∀ A : Set S, A ∈ P → Aᶜ ∈ Q := by\n    intro A hA\n    simp [Q, hnot A hA]\n  have hQP : ∀ A : Set S, A ∈ Q → Aᶜ ∈ P := by\n    intro A hA\n    have hAnot : A ∉ P := (Finset.mem_sdiff.mp hA).2\n    rcases hcover A with h | h\n    · exact (hAnot h).elim\n    · exact h\n  have hcard : P.card = Q.card :=\n    Finset.card_bij' (fun A _ => Aᶜ) (fun A _ => Aᶜ) hPQ hQP\n      (by intro A hA; simp) (by intro A hA; simp)\n  have hsum : Q.card + P.card = (Finset.univ : Finset (Set S)).card :=\n    Finset.card_sdiff_add_card_eq_card (Finset.subset_univ P)\n  have huniv : (Finset.univ : Finset (Set S)).card = 2 ^ Fintype.card S := by\n    simp [Fintype.card_fun]\n  have hmul : P.card * 2 = 2 ^ Fintype.card S := by\n    rw [← huniv, ← hcard] at hsum\n    omega\n  have hpos : 0 < Fintype.card S :=\n    Fintype.card_pos_iff.mpr ⟨Classical.choice ‹Nonempty S›⟩\n  have hpow : 2 ^ (Fintype.card S - 1) * 2 = 2 ^ Fintype.card S := by\n    calc\n      2 ^ (Fintype.card S - 1) * 2 = 2 ^ (Fintype.card S - 1) * 2 ^ 1 := by norm_num\n      _ = 2 ^ ((Fintype.card S - 1) + 1) := by rw [← pow_add]\n      _ = 2 ^ Fintype.card S := by congr 1 <;> omega\n  nlinarith\n",
+  "feedback": {
+    "kind": "lean_correctness_feedback",
+    "status": "failed",
+    "primary_version": "v4.25.0",
+    "primary_passed": false,
+    "all_versions_passed": false,
+    "required_versions": [
+      "v4.25.0",
+      "v4.26.0"
+    ],
+    "errors": [],
+    "versions": [
+      {
+        "version": "v4.25.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "Unknown constant `Set.mem_inter_iff.mpr`",
+          "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  2 ^ Fintype.card S\nin the target expression\n  Q.card + P.card = Finset.univ.card\n\nS : Type u_1\ninst✝¹ : Fintype S\ninst✝ : Nonempty S\nP : Finset (Set S)\nhPP : ∀ T ∈ P, ∀ U ∈ P, T ∩ U ≠ ∅\nhPS : ¬∃ T ∉ P, ∀ U ∈ P, T ∩ U ≠ ∅\nhup : ∀ {A B : Set S}, A ∈ P → A ⊆ B → B ∈ P\nhcover : ∀ (A : Set S), A ∈ P ∨ Aᶜ ∈ P\nhnot : ∀ A ∈ P, Aᶜ ∉ P\nQ : Finset (Set S) := Finset.univ \\ P\nhPQ : ∀ A ∈ P, Aᶜ ∈ Q\nhQP : ∀ A ∈ Q, Aᶜ ∈ P\nhcard : P.card = Q.card\nhsum : Q.card + P.card = Finset.univ.card\nhuniv : Finset.univ.card = 2 ^ Fintype.card S\n⊢ P.card * 2 = 2 ^ Fintype.card S"
+        ]
+      },
+      {
+        "version": "v4.26.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "Unknown constant `Set.mem_inter_iff.mpr`",
+          "Tactic `rewrite` failed: Did not find an occurrence of the pattern\n  2 ^ Fintype.card S\nin the target expression\n  Q.card + P.card = Finset.univ.card\n\nS : Type u_1\ninst✝¹ : Fintype S\ninst✝ : Nonempty S\nP : Finset (Set S)\nhPP : ∀ T ∈ P, ∀ U ∈ P, T ∩ U ≠ ∅\nhPS : ¬∃ T ∉ P, ∀ U ∈ P, T ∩ U ≠ ∅\nhup : ∀ {A B : Set S}, A ∈ P → A ⊆ B → B ∈ P\nhcover : ∀ (A : Set S), A ∈ P ∨ Aᶜ ∈ P\nhnot : ∀ A ∈ P, Aᶜ ∉ P\nQ : Finset (Set S) := Finset.univ \\ P\nhPQ : ∀ A ∈ P, Aᶜ ∈ Q\nhQP : ∀ A ∈ Q, Aᶜ ∈ P\nhcard : P.card = Q.card\nhsum : Q.card + P.card = Finset.univ.card\nhuniv : Finset.univ.card = 2 ^ Fintype.card S\n⊢ P.card * 2 = 2 ^ Fintype.card S"
+        ]
+      }
+    ],
+    "truncated": false
+  }
+}

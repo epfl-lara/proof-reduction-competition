@@ -1,0 +1,113 @@
+{
+  "name": "Core.InitsUpdatesComm",
+  "source": "strata",
+  "method": "simp",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 2.2321428571428603,
+      "heartbeat_reduction_pct": 92.25885445772742,
+      "compatibility_pct": 100.0,
+      "combined_pct": 64.83033243829009
+    },
+    "candidate": {
+      "length": 219,
+      "code_sha256": "1818c265608834823d5428e8320b987608cccdb0c0a6297cbc09fcf33f371d10"
+    },
+    "primary_version": "v4.29.1",
+    "per_version": {
+      "v4.29.1": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 329.268,
+        "heartbeat_reduction_pct": 92.25885445772742,
+        "cached": true,
+        "environment_fingerprint": "f335a0dac1b1d96e507ba2b426dca0f3b0a251550d19df160d2aeb228252ddcf",
+        "elapsed_seconds": 3.989966867491603,
+        "diagnostics": []
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 284.004,
+        "heartbeat_reduction_pct": 93.89751580821968,
+        "cached": true,
+        "environment_fingerprint": "8f388586ba7accfe9a32ff9627dbf5adf56214cc665a03da4f6a91a2a7739574",
+        "elapsed_seconds": 2.1193879693746567,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 261.595,
+        "heartbeat_reduction_pct": 94.40622409274214,
+        "cached": true,
+        "environment_fingerprint": "1a8f53d9ef6597e59d732b68310b09a673952277c2d77779e33c0c96670f4486",
+        "elapsed_seconds": 1.943632822483778,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 2.2321428571428603,
+      "heartbeat_reduction_pct": 92.25885445772742,
+      "compatibility_pct": 100.0,
+      "combined_pct": 64.83033243829009
+    },
+    "candidate": {
+      "length": 219,
+      "code_sha256": "1818c265608834823d5428e8320b987608cccdb0c0a6297cbc09fcf33f371d10"
+    },
+    "primary_version": "v4.29.1",
+    "per_version": {
+      "v4.29.1": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 329.268,
+        "heartbeat_reduction_pct": 92.25885445772742,
+        "cached": true,
+        "environment_fingerprint": "f335a0dac1b1d96e507ba2b426dca0f3b0a251550d19df160d2aeb228252ddcf",
+        "elapsed_seconds": 3.989966867491603,
+        "diagnostics": []
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 284.004,
+        "heartbeat_reduction_pct": 93.89751580821968,
+        "cached": true,
+        "environment_fingerprint": "8f388586ba7accfe9a32ff9627dbf5adf56214cc665a03da4f6a91a2a7739574",
+        "elapsed_seconds": 2.1193879693746567,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 261.595,
+        "heartbeat_reduction_pct": 94.40622409274214,
+        "cached": true,
+        "environment_fingerprint": "1a8f53d9ef6597e59d732b68310b09a673952277c2d77779e33c0c96670f4486",
+        "elapsed_seconds": 1.943632822483778,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem InitsUpdatesComm\n  {P : PureExpr} {σ σ' σ'' : SemanticStore P}\n  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :\n  UpdateStates σ ks vs σ' →\n  InitStates σ' ks' vs' σ'' →\n  ∃ σ₁,\n    σ₁ = (updatedStates σ ks' vs') ∧\n    InitStates σ ks' vs' σ₁ ∧\n    UpdateStates σ₁ ks vs σ'' := by\n  intro Hup Hinit\n  refine ⟨updatedStates σ ks' vs', rfl, ?_, ?_⟩\n  · exact updatedStatesInit (InitStatesLength Hinit)\n      (UpdateStatesNotDefMonotone' (InitStatesNotDefined Hinit) Hup)\n      (InitStatesNodup Hinit)\n  · have Hdis : ks.Disjoint ks' := by\n      intro k hk hk'\n      have hdef := UpdateStatesDefined Hup k hk\n      have hnone := InitStatesNotDefined Hinit k hk'\n      simp [hnone] at hdef\n    have Hdis' : (ks.zip vs).unzip.1.Disjoint (ks'.zip vs').unzip.1 := by\n      simpa only [List.unzip_zip (UpdateStatesLength Hup),\n        List.unzip_zip (InitStatesLength Hinit)] using Hdis\n    have Hcomm : updatedStates (updatedStates σ ks vs) ks' vs' =\n        updatedStates (updatedStates σ ks' vs') ks vs := by\n      simpa [updatedStates] using (updatedStatesComm (σ:=σ) Hdis')\n    have Hdef : isDefined (updatedStates σ ks' vs') ks := by\n      unfold updatedStates\n      exact updatedStatesDefMonotone (UpdateStatesDefined' Hup)\n    have Hupd : UpdateStates (updatedStates σ ks' vs') ks vs\n        (updatedStates (updatedStates σ ks' vs') ks vs) :=\n      updatedStatesUpdate (UpdateStatesLength Hup) Hdef\n    have Hfinal : updatedStates (updatedStates σ ks' vs') ks vs = σ'' := by\n      rw [InitStatesUpdated Hinit, UpdateStatesUpdated Hup]\n      exact Hcomm.symm\n    exact Hfinal ▸ Hupd",
+  "initial_sha256": "1818c265608834823d5428e8320b987608cccdb0c0a6297cbc09fcf33f371d10",
+  "rounds": 1,
+  "attempts": 1,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 2,
+  "lean_candidate_checks": 1,
+  "cache_hits": 0,
+  "seen": [
+    "27397dd608aeab973c5acfe490249400d0bacf71fb7ef0e964fd93cf00963a2f"
+  ],
+  "plan": null,
+  "elapsed_seconds": 3.238219302147627,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0
+}

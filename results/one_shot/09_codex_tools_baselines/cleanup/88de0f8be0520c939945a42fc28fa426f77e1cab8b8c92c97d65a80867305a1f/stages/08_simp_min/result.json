@@ -1,0 +1,69 @@
+{
+  "name": "fundamental_theorem_of_variational_calculus'",
+  "source": "physlib",
+  "method": "simp_min",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 44.18331374853114,
+      "heartbeat_reduction_pct": 60.975321199577934,
+      "compatibility_pct": 100.0,
+      "combined_pct": 68.38621164936968
+    },
+    "candidate": {
+      "length": 475,
+      "code_sha256": "a9000c1b717bd2974e871a7af98f2d7e77cdf5e485224f9d5542722a02019f1f"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4664.166,
+        "heartbeat_reduction_pct": 60.975321199577934,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 1.539108520373702,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma fundamental_theorem_of_variational_calculus' {f : Y → V}\n    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]\n    [OpensMeasurableSpace Y]\n    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :\n    f = 0 := by\n  rw [funext_iff]\n  by_contra h\n  obtain ⟨x₀, hx₀⟩ := not_forall.mp h\n  simp at hx₀\n  have hs : 0 < ⟪f x₀, f x₀⟫_ℝ := by\n    have hn : ⟪f x₀, f x₀⟫_ℝ ≠ 0 := fun e => hx₀ (inner_self_eq_zero'.mp e)\n    exact lt_of_le_of_ne (by simpa using (real_inner_self_nonneg' (x := f x₀))) (Ne.symm hn)\n  have hc : Continuous (fun x => ⟪f x, f x₀⟫_ℝ) :=\n    Continuous.inner' f (fun _ => f x₀) hf continuous_const\n  obtain ⟨δ, hδ, hcont⟩ :=\n    Metric.continuousAt_iff.mp hc.continuousAt (⟪f x₀, f x₀⟫_ℝ / 2) (by exact half_pos hs)\n  have hi : ∀ x ∈ Metric.ball x₀ δ, 0 < ⟪f x, f x₀⟫_ℝ := by\n    intro x hx\n    have hh := hcont (Metric.mem_ball.mp hx)\n    have hh' : |⟪f x, f x₀⟫_ℝ - ⟪f x₀, f x₀⟫_ℝ| < ⟪f x₀, f x₀⟫_ℝ / 2 := by assumption\n    linarith [(abs_lt.mp hh').1]\n  have hb : ∃ φ : Y → ℝ, IsTestFunction φ ∧ φ x₀ > 0 ∧\n      (∀ x ∈ Function.support φ, 0 ≤ φ x) ∧\n      Function.support φ ⊆ Metric.ball x₀ (δ / 2) := by\n    haveI : HasContDiffBump Y := hasContDiffBump_of_innerProductSpace Y\n    let φ : ContDiffBump x₀ := ⟨δ / 4, δ / 2, by positivity, by linarith⟩\n    refine ⟨φ.toFun, ⟨φ.contDiff, φ.hasCompactSupport⟩,\n      φ.pos_of_mem_ball (Metric.mem_ball_self φ.rOut_pos), (fun _ _ => φ.nonneg), ?_⟩\n    rw [ContDiffBump.support_eq]\n  obtain ⟨φ, hφ, hφ₀, hφnonneg, hφsupp⟩ := hb\n  let g : Y → V := fun x => φ x • f x₀\n  have hgt : IsTestFunction g := IsTestFunction.smul_right hφ contDiff_const\n  have hzero := hg g hgt\n  simp only [g, inner_smul_right'] at hzero\n  have hsub : Function.support φ ⊆ Metric.ball x₀ δ :=\n    hφsupp.trans (Metric.ball_subset_ball (by linarith))\n  have hnonneg : ∀ x, 0 ≤ φ x * ⟪f x, f x₀⟫_ℝ := by\n    intro x\n    by_cases hx : x ∈ Function.support φ\n    · exact mul_nonneg (hφnonneg x hx) (hi x (hsub hx)).le\n    · simp [Function.notMem_support.mp hx]\n  have hpos : 0 < ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ :=\n    (Continuous.mul hφ.smooth.continuous hc).integral_pos_of_hasCompactSupport_nonneg_nonzero\n      hφ.supp.mul_right hnonneg (ne_of_gt (mul_pos hφ₀ hs))\n  linarith",
+  "rounds": 1,
+  "attempts": 3,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 3,
+  "cache_hits": 0,
+  "elapsed_seconds": 7.566,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 44.18331374853114,
+      "heartbeat_reduction_pct": 60.975321199577934,
+      "compatibility_pct": 100.0,
+      "combined_pct": 68.38621164936968
+    },
+    "candidate": {
+      "length": 475,
+      "code_sha256": "a9000c1b717bd2974e871a7af98f2d7e77cdf5e485224f9d5542722a02019f1f"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4664.166,
+        "heartbeat_reduction_pct": 60.975321199577934,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 1.539108520373702,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": false
+}

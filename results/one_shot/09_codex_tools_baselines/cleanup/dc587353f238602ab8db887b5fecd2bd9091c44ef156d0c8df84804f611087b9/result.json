@@ -1,0 +1,1973 @@
+{
+  "name": "putnam_1964_a4",
+  "source": "putnambench",
+  "input_proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n  have hfin : Set.Finite (Set.range f) := by\n    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n      intro x hx\n      simp only [ge_iff_le, ne_eq, Set.mem_Icc, Finset.mem_Icc, Set.mem_setOf_eq] at hx ⊢\n      exact hx\n    apply hI.subset\n    rintro x ⟨n, rfl⟩\n    have h0 := hB n\n    have h1 := hB (n + 1)\n    have h2 := hB (n + 2)\n    have h3 := hB (n + 3)\n    simp only [Set.mem_Icc, Prod.le_def, f]\n    simp_all\n  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    have hinj : Function.Injective f := by\n      intro a b hab\n      by_cases h' : a = b\n      · exact h'\n      · have : a < b ∨ b < a := by omega\n        rcases this with hlt | hlt\n        · exact (h a b hlt hab).elim\n        · exact False.elim (h b a hlt hab.symm)\n    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)\n  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by\n    simpa [f, Prod.mk.injEq] using heq\n  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)\n      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))\n      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by\n    have ea := (hu a ha).1\n    have eb := (hu b hb).1\n    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]\n    exact_mod_cast er\n  have hseq : ∀ m, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases h0 : m = 0\n      · subst m; simpa using heq.1\n      by_cases h1 : m = 1\n      · subst m; simpa using heq.2.1\n      by_cases h2 : m = 2\n      · subst m; simpa using heq.2.2.1\n      by_cases h3 : m = 3\n      · subst m; simpa using heq.2.2.2\n      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by\n        have e1 : i + (k + 4) - 1 = i + (k + 3) := by omega\n        have e2 : j + (k + 4) - 1 = j + (k + 3) := by omega\n        rw [e1, e2]; exact ih (k + 3) (by omega)\n      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by\n        have e1 : i + (k + 4) - 2 = i + (k + 2) := by omega\n        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega\n        rw [e1, e2]; exact ih (k + 2) (by omega)\n      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by\n        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega\n        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega\n        rw [e1, e2]; exact ih (k + 1) (by omega)\n      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by\n        have e1 : i + (k + 4) - 4 = i + k := by omega\n        have e2 : j + (k + 4) - 4 = j + k := by omega\n        rw [e1, e2]; exact ih k (by omega)\n      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4\n  refine ⟨i, j - i, ?_, ?_⟩\n  · omega\n  · intro n hn\n    have h := hseq (n - i)\n    have e1 : i + (n - i) = n := by omega\n    have e2 : j + (n - i) = n + (j - i) := by omega\n    rw [e1, e2] at h\n    exact h.symm",
+  "input_proof_sha256": "9139b052689d43b71a830d2dd332e33974e764b628fba7433806233ea6dccc6c",
+  "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n  have hfin : Set.Finite (Set.range f) := by\n    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n      intro x hx\n      simp only [mem_Icc, Finset.mem_Icc, mem_setOf_eq] at hx ⊢\n      exact hx\n    apply hI.subset\n    rintro x ⟨n, rfl⟩\n    have h0 := hB n\n    \n    \n    \n    simp only [mem_Icc, Prod.le_def, f]\n    simp_all only [ge_iff_le, ne_eq, and_self]\n  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    have hinj : Function.Injective f := by\n      intro a b hab\n      by_cases h' : a = b\n      · exact h'\n      · have : a < b ∨ b < a := by omega\n        rcases this with hlt | hlt\n        · exact (h a b hlt hab).elim\n        · exact False.elim (h b a hlt hab.symm)\n    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)\n  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by\n    simpa [f, Prod.mk.injEq] using heq\n  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)\n      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))\n      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by\n    have ea := (hu a ha).1\n    have eb := (hu b hb).1\n    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]\n    exact_mod_cast er\n  have hseq : ∀ m, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases h0 : m = 0\n      · subst m; simpa using heq.1\n      by_cases h1 : m = 1\n      · subst m; simpa using heq.2.1\n      by_cases h2 : m = 2\n      · subst m; simpa using heq.2.2.1\n      by_cases h3 : m = 3\n      · subst m; simpa using heq.2.2.2\n      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by tauto\n      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by\n        have e1 : i + (k + 4) - 2 = i + (k + 2) := by exact rfl\n        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega\n        rw [e1, e2]; exact ih (k + 2) (by omega)\n      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by\n        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega\n        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega\n        rw [e1, e2]; exact ih (k + 1) (by omega)\n      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by\n        have e1 : i + (k + 4) - 4 = i + k := by omega\n        have e2 : j + (k + 4) - 4 = j + k := by omega\n        rw [e1, e2]; exact ih k (by omega)\n      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4\n  refine ⟨i, j - i, ?_, ?_⟩\n  · omega\n  · intro n hn\n    have h := hseq (n - i)\n    have e1 : i + (n - i) = n := by omega\n    have e2 : j + (n - i) = n + (j - i) := by omega\n    rw [e1, e2] at h\n    exact h.symm",
+  "initial_evaluation": {
+    "schema_version": 1,
+    "name": "putnam_1964_a4",
+    "status": "passed",
+    "primary_version": "v4.25.0",
+    "requested_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "all_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "measurement": "local_cached_reference",
+    "reference": {
+      "length": 1769,
+      "published_heartbeats": 111476
+    },
+    "candidate": {
+      "length": 1065,
+      "code_sha256": "9139b052689d43b71a830d2dd332e33974e764b628fba7433806233ea6dccc6c"
+    },
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 19171.217,
+        "heartbeats_raw": 19171217,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_471a8402671848e1bbfe1075dcff6406:19171217",
+            "endPos": {
+              "column": 16,
+              "line": 110
+            },
+            "fileName": "_ProofEval_471a8402671848e1bbfe1075dcff6406.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  ge_iff_le\n\nHint: Omit it from the simp argument list.\n  simp only [g̵e̵_̵i̵f̵f̵_̵l̵e̵,̵ ̵ne_eq, Set.mem_Icc, Finset.mem_Icc, Set.mem_setOf_eq] at hx ⊢\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 26,
+              "line": 43
+            },
+            "fileName": "_ProofEval_471a8402671848e1bbfe1075dcff6406.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 17,
+              "line": 43
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  ne_eq\n\nHint: Omit it from the simp argument list.\n  simp only [ge_iff_le, n̵e̵_̵e̵q̵,̵ ̵Set.mem_Icc, Finset.mem_Icc, Set.mem_setOf_eq] at hx ⊢\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 33,
+              "line": 43
+            },
+            "fileName": "_ProofEval_471a8402671848e1bbfe1075dcff6406.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 28,
+              "line": 43
+            },
+            "severity": "warning"
+          }
+        ],
+        "elapsed_seconds": 3.953424511477351,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "details": {
+          "project_dir": "/localhome/milikic/miniconda3/envs/af/lib/python3.12/site-packages/lean_interact/cache/tmp_projects/v4.25.0/76aa669ccf1d618b7aeaf5d9bbd93695de28133e652494bfb5552694c9715773",
+          "version": "v4.25.0",
+          "source_commit": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+          "toolchain": "leanprover/lean4:v4.25.0",
+          "compiler_version": "Lean (version 4.25.0, x86_64-unknown-linux-gnu, commit cdd38ac5115bdeec5f609e9126cce00f51ae88b3, Release)",
+          "dependencies": {
+            "mathlib": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+            "plausible": "2503bfb5e2d4d8202165f5bd2cc39e44a3be31c3",
+            "LeanSearchClient": "2ed4ba69b6127de8f5c2af83cccacd3c988b06bf",
+            "importGraph": "009064c21bad4d7f421f2901c5e817c8bf3468cb",
+            "proofwidgets": "e8ef4bdd7a23c3a37170fbd3fa7ee07ef2a54c2d",
+            "aesop": "26e4c7c0e63eb3e6cce3cf7faba27b8526ea8349",
+            "Qq": "2781d8ad404303b2fe03710ac7db946ddfe3539f",
+            "batteries": "5c78955e8375f872c085514cb521216bac1bda17",
+            "Cli": "1dae8b12f8ba27576ffe5ddee78bebf6458157b0"
+          },
+          "configuration_sha256": {
+            "lakefile.lean": "e499b310ac31f26e019ae07722d0f1ed974a783005724aef23305747d8faa89c",
+            "lake-manifest.json": "c40097fa28208b0451fe4a0471e1ca54f2a1308ffa116b5fde2407e5d330b2bb"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "putnam_1964_a4",
+          "version": "v4.25.0",
+          "status": "prepared",
+          "heartbeats": 141103.125,
+          "heartbeats_raw": 141103125,
+          "length": 1769,
+          "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+          "measured_at": "2026-10-02T15:11:28.576319+00:00",
+          "reference_code_sha256": "27b46ee810644ab2f6c3950cda14346274705204b619350947ad97d90e62b669",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/miniconda3/envs/af/lib/python3.12/site-packages/lean_interact/cache/tmp_projects/v4.25.0/76aa669ccf1d618b7aeaf5d9bbd93695de28133e652494bfb5552694c9715773",
+            "version": "v4.25.0",
+            "source_commit": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+            "toolchain": "leanprover/lean4:v4.25.0",
+            "compiler_version": "Lean (version 4.25.0, x86_64-unknown-linux-gnu, commit cdd38ac5115bdeec5f609e9126cce00f51ae88b3, Release)",
+            "dependencies": {
+              "mathlib": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+              "plausible": "2503bfb5e2d4d8202165f5bd2cc39e44a3be31c3",
+              "LeanSearchClient": "2ed4ba69b6127de8f5c2af83cccacd3c988b06bf",
+              "importGraph": "009064c21bad4d7f421f2901c5e817c8bf3468cb",
+              "proofwidgets": "e8ef4bdd7a23c3a37170fbd3fa7ee07ef2a54c2d",
+              "aesop": "26e4c7c0e63eb3e6cce3cf7faba27b8526ea8349",
+              "Qq": "2781d8ad404303b2fe03710ac7db946ddfe3539f",
+              "batteries": "5c78955e8375f872c085514cb521216bac1bda17",
+              "Cli": "1dae8b12f8ba27576ffe5ddee78bebf6458157b0"
+            },
+            "configuration_sha256": {
+              "lakefile.lean": "e499b310ac31f26e019ae07722d0f1ed974a783005724aef23305747d8faa89c",
+              "lake-manifest.json": "c40097fa28208b0451fe4a0471e1ca54f2a1308ffa116b5fde2407e5d330b2bb"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 86.41332925829957
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 15855.005,
+        "heartbeats_raw": 15855005,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_701f0573d4d64c6fa0afd247fb69cab1:15855005",
+            "endPos": {
+              "column": 16,
+              "line": 110
+            },
+            "fileName": "_ProofEval_701f0573d4d64c6fa0afd247fb69cab1.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  ge_iff_le\n\nHint: Omit it from the simp argument list.\n  simp only [g̵e̵_̵i̵f̵f̵_̵l̵e̵,̵ ̵ne_eq, Set.mem_Icc, Finset.mem_Icc, Set.mem_setOf_eq] at hx ⊢\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 26,
+              "line": 43
+            },
+            "fileName": "_ProofEval_701f0573d4d64c6fa0afd247fb69cab1.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 17,
+              "line": 43
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  ne_eq\n\nHint: Omit it from the simp argument list.\n  simp only [ge_iff_le, n̵e̵_̵e̵q̵,̵ ̵Set.mem_Icc, Finset.mem_Icc, Set.mem_setOf_eq] at hx ⊢\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 33,
+              "line": 43
+            },
+            "fileName": "_ProofEval_701f0573d4d64c6fa0afd247fb69cab1.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 28,
+              "line": 43
+            },
+            "severity": "warning"
+          }
+        ],
+        "elapsed_seconds": 3.7564457580447197,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.26.0",
+          "version": "v4.26.0",
+          "source_commit": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+          "toolchain": "leanprover/lean4:v4.26.0",
+          "compiler_version": "Lean (version 4.26.0, x86_64-unknown-linux-gnu, commit d8204c9fd894f91bbb2cdfec5912ec8196fd8562, Release)",
+          "dependencies": {
+            "mathlib": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+            "plausible": "160af9e8e7d4ae448f3c92edcc5b6a8522453f11",
+            "LeanSearchClient": "3591c3f664ac3719c4c86e4483e21e228707bfa2",
+            "importGraph": "e9f31324f15ead11048b1443e62c5deaddd055d2",
+            "proofwidgets": "b4fb2aa5290ebf61bc5f80a5375ba642f0a49192",
+            "aesop": "2f6d238744c4cb07fdc91240feaf5d4221a27931",
+            "Qq": "9312503909aa8e8bb392530145cc1677a6298574",
+            "batteries": "24241822ef9d3e7f6a3bcc53ad136e12663db8f3",
+            "Cli": "933fce7e893f65969714c60cdb4bd8376786044e"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "ac86bcf8e6bf878066a78d76ea8e25f120040ccfca9627f51c612823441e6601",
+            "lake-manifest.json": "dad3466bf41524af6ad1eb3764fd6b4c6953d12992c4b6346aa75ae8975a61bd"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "putnam_1964_a4",
+          "version": "v4.26.0",
+          "status": "prepared",
+          "heartbeats": 115713.286,
+          "heartbeats_raw": 115713286,
+          "length": 1769,
+          "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+          "measured_at": "2026-10-02T15:11:52.616173+00:00",
+          "reference_code_sha256": "27b46ee810644ab2f6c3950cda14346274705204b619350947ad97d90e62b669",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.26.0",
+            "version": "v4.26.0",
+            "source_commit": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+            "toolchain": "leanprover/lean4:v4.26.0",
+            "compiler_version": "Lean (version 4.26.0, x86_64-unknown-linux-gnu, commit d8204c9fd894f91bbb2cdfec5912ec8196fd8562, Release)",
+            "dependencies": {
+              "mathlib": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+              "plausible": "160af9e8e7d4ae448f3c92edcc5b6a8522453f11",
+              "LeanSearchClient": "3591c3f664ac3719c4c86e4483e21e228707bfa2",
+              "importGraph": "e9f31324f15ead11048b1443e62c5deaddd055d2",
+              "proofwidgets": "b4fb2aa5290ebf61bc5f80a5375ba642f0a49192",
+              "aesop": "2f6d238744c4cb07fdc91240feaf5d4221a27931",
+              "Qq": "9312503909aa8e8bb392530145cc1677a6298574",
+              "batteries": "24241822ef9d3e7f6a3bcc53ad136e12663db8f3",
+              "Cli": "933fce7e893f65969714c60cdb4bd8376786044e"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "ac86bcf8e6bf878066a78d76ea8e25f120040ccfca9627f51c612823441e6601",
+              "lake-manifest.json": "dad3466bf41524af6ad1eb3764fd6b4c6953d12992c4b6346aa75ae8975a61bd"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 86.29802544886678
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 15533.909,
+        "heartbeats_raw": 15533909,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_461545ca2e034fbaba21ea5ee0b2d7c2:15533909",
+            "endPos": {
+              "column": 16,
+              "line": 110
+            },
+            "fileName": "_ProofEval_461545ca2e034fbaba21ea5ee0b2d7c2.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  ge_iff_le\n\nHint: Omit it from the simp argument list.\n  simp only [g̵e̵_̵i̵f̵f̵_̵l̵e̵,̵ ̵ne_eq, Set.mem_Icc, Finset.mem_Icc, Set.mem_setOf_eq] at hx ⊢\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 26,
+              "line": 43
+            },
+            "fileName": "_ProofEval_461545ca2e034fbaba21ea5ee0b2d7c2.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 17,
+              "line": 43
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  ne_eq\n\nHint: Omit it from the simp argument list.\n  simp only [ge_iff_le, n̵e̵_̵e̵q̵,̵ ̵Set.mem_Icc, Finset.mem_Icc, Set.mem_setOf_eq] at hx ⊢\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 33,
+              "line": 43
+            },
+            "fileName": "_ProofEval_461545ca2e034fbaba21ea5ee0b2d7c2.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 28,
+              "line": 43
+            },
+            "severity": "warning"
+          }
+        ],
+        "elapsed_seconds": 4.9181255754083395,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.27.0",
+          "version": "v4.27.0",
+          "source_commit": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+          "toolchain": "leanprover/lean4:v4.27.0",
+          "compiler_version": "Lean (version 4.27.0, x86_64-unknown-linux-gnu, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)",
+          "dependencies": {
+            "mathlib": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+            "plausible": "009dc1e6f2feb2c96c081537d80a0905b2c6498f",
+            "LeanSearchClient": "5ce7f0a355f522a952a3d678d696bd563bb4fd28",
+            "importGraph": "8f497d55985a189cea8020d9dc51260af1e41ad2",
+            "proofwidgets": "c04225ee7c0585effbd933662b3151f01b600e40",
+            "aesop": "cb837cc26236ada03c81837bebe0acd9c70ced7d",
+            "Qq": "bd58c9efe2086d56ca361807014141a860ddbf8c",
+            "batteries": "b25b36a7caf8e237e7d1e6121543078a06777c8a",
+            "Cli": "55c37290ff6186e2e965d68cf853a57c0702db82"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "d263ada844fc6d044e312196f91387036cc2791f594b08f7db177d76bc8f52ae",
+            "lake-manifest.json": "c014b41406a35a3bbd3477abc9e8f5dff8af0b0c8795b1ed7bfe89e086f215d2"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "putnam_1964_a4",
+          "version": "v4.27.0",
+          "status": "prepared",
+          "heartbeats": 111517.663,
+          "heartbeats_raw": 111517663,
+          "length": 1769,
+          "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+          "measured_at": "2026-10-02T15:12:11.766632+00:00",
+          "reference_code_sha256": "27b46ee810644ab2f6c3950cda14346274705204b619350947ad97d90e62b669",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.27.0",
+            "version": "v4.27.0",
+            "source_commit": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+            "toolchain": "leanprover/lean4:v4.27.0",
+            "compiler_version": "Lean (version 4.27.0, x86_64-unknown-linux-gnu, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)",
+            "dependencies": {
+              "mathlib": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+              "plausible": "009dc1e6f2feb2c96c081537d80a0905b2c6498f",
+              "LeanSearchClient": "5ce7f0a355f522a952a3d678d696bd563bb4fd28",
+              "importGraph": "8f497d55985a189cea8020d9dc51260af1e41ad2",
+              "proofwidgets": "c04225ee7c0585effbd933662b3151f01b600e40",
+              "aesop": "cb837cc26236ada03c81837bebe0acd9c70ced7d",
+              "Qq": "bd58c9efe2086d56ca361807014141a860ddbf8c",
+              "batteries": "b25b36a7caf8e237e7d1e6121543078a06777c8a",
+              "Cli": "55c37290ff6186e2e965d68cf853a57c0702db82"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "d263ada844fc6d044e312196f91387036cc2791f594b08f7db177d76bc8f52ae",
+              "lake-manifest.json": "c014b41406a35a3bbd3477abc9e8f5dff8af0b0c8795b1ed7bfe89e086f215d2"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 86.07044966500061
+      }
+    },
+    "diagnostics": [],
+    "scores": {
+      "length_reduction_pct": 39.796495195025436,
+      "heartbeat_reduction_pct": 86.41332925829957,
+      "compatibility_pct": 100.0,
+      "combined_pct": 75.403274817775
+    }
+  },
+  "evaluation": {
+    "schema_version": 1,
+    "name": "putnam_1964_a4",
+    "status": "passed",
+    "primary_version": "v4.25.0",
+    "requested_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "all_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "measurement": "local_cached_reference",
+    "reference": {
+      "length": 1769,
+      "published_heartbeats": 111476
+    },
+    "candidate": {
+      "length": 980,
+      "code_sha256": "c0659998e36cd405cfaaa75b7a7f95b9bce3a7a319db4802312df935443a6129"
+    },
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 11739.488,
+        "heartbeats_raw": 11739488,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_e3cc3ee4841a4993aba20ae5e27eaf8f:11739488",
+            "endPos": {
+              "column": 16,
+              "line": 107
+            },
+            "fileName": "_ProofEval_e3cc3ee4841a4993aba20ae5e27eaf8f.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          }
+        ],
+        "elapsed_seconds": 3.6510479263961315,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "details": {
+          "project_dir": "/localhome/milikic/miniconda3/envs/af/lib/python3.12/site-packages/lean_interact/cache/tmp_projects/v4.25.0/76aa669ccf1d618b7aeaf5d9bbd93695de28133e652494bfb5552694c9715773",
+          "version": "v4.25.0",
+          "source_commit": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+          "toolchain": "leanprover/lean4:v4.25.0",
+          "compiler_version": "Lean (version 4.25.0, x86_64-unknown-linux-gnu, commit cdd38ac5115bdeec5f609e9126cce00f51ae88b3, Release)",
+          "dependencies": {
+            "mathlib": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+            "plausible": "2503bfb5e2d4d8202165f5bd2cc39e44a3be31c3",
+            "LeanSearchClient": "2ed4ba69b6127de8f5c2af83cccacd3c988b06bf",
+            "importGraph": "009064c21bad4d7f421f2901c5e817c8bf3468cb",
+            "proofwidgets": "e8ef4bdd7a23c3a37170fbd3fa7ee07ef2a54c2d",
+            "aesop": "26e4c7c0e63eb3e6cce3cf7faba27b8526ea8349",
+            "Qq": "2781d8ad404303b2fe03710ac7db946ddfe3539f",
+            "batteries": "5c78955e8375f872c085514cb521216bac1bda17",
+            "Cli": "1dae8b12f8ba27576ffe5ddee78bebf6458157b0"
+          },
+          "configuration_sha256": {
+            "lakefile.lean": "e499b310ac31f26e019ae07722d0f1ed974a783005724aef23305747d8faa89c",
+            "lake-manifest.json": "c40097fa28208b0451fe4a0471e1ca54f2a1308ffa116b5fde2407e5d330b2bb"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "putnam_1964_a4",
+          "version": "v4.25.0",
+          "status": "prepared",
+          "heartbeats": 141103.125,
+          "heartbeats_raw": 141103125,
+          "length": 1769,
+          "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+          "measured_at": "2026-10-02T15:11:28.576319+00:00",
+          "reference_code_sha256": "27b46ee810644ab2f6c3950cda14346274705204b619350947ad97d90e62b669",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/miniconda3/envs/af/lib/python3.12/site-packages/lean_interact/cache/tmp_projects/v4.25.0/76aa669ccf1d618b7aeaf5d9bbd93695de28133e652494bfb5552694c9715773",
+            "version": "v4.25.0",
+            "source_commit": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+            "toolchain": "leanprover/lean4:v4.25.0",
+            "compiler_version": "Lean (version 4.25.0, x86_64-unknown-linux-gnu, commit cdd38ac5115bdeec5f609e9126cce00f51ae88b3, Release)",
+            "dependencies": {
+              "mathlib": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+              "plausible": "2503bfb5e2d4d8202165f5bd2cc39e44a3be31c3",
+              "LeanSearchClient": "2ed4ba69b6127de8f5c2af83cccacd3c988b06bf",
+              "importGraph": "009064c21bad4d7f421f2901c5e817c8bf3468cb",
+              "proofwidgets": "e8ef4bdd7a23c3a37170fbd3fa7ee07ef2a54c2d",
+              "aesop": "26e4c7c0e63eb3e6cce3cf7faba27b8526ea8349",
+              "Qq": "2781d8ad404303b2fe03710ac7db946ddfe3539f",
+              "batteries": "5c78955e8375f872c085514cb521216bac1bda17",
+              "Cli": "1dae8b12f8ba27576ffe5ddee78bebf6458157b0"
+            },
+            "configuration_sha256": {
+              "lakefile.lean": "e499b310ac31f26e019ae07722d0f1ed974a783005724aef23305747d8faa89c",
+              "lake-manifest.json": "c40097fa28208b0451fe4a0471e1ca54f2a1308ffa116b5fde2407e5d330b2bb"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 91.68020694084557
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 9766.604,
+        "heartbeats_raw": 9766604,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_0d024928a4644daaa3ceed7d2837d32f:9766604",
+            "endPos": {
+              "column": 16,
+              "line": 107
+            },
+            "fileName": "_ProofEval_0d024928a4644daaa3ceed7d2837d32f.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          }
+        ],
+        "elapsed_seconds": 3.4345416091382504,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.26.0",
+          "version": "v4.26.0",
+          "source_commit": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+          "toolchain": "leanprover/lean4:v4.26.0",
+          "compiler_version": "Lean (version 4.26.0, x86_64-unknown-linux-gnu, commit d8204c9fd894f91bbb2cdfec5912ec8196fd8562, Release)",
+          "dependencies": {
+            "mathlib": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+            "plausible": "160af9e8e7d4ae448f3c92edcc5b6a8522453f11",
+            "LeanSearchClient": "3591c3f664ac3719c4c86e4483e21e228707bfa2",
+            "importGraph": "e9f31324f15ead11048b1443e62c5deaddd055d2",
+            "proofwidgets": "b4fb2aa5290ebf61bc5f80a5375ba642f0a49192",
+            "aesop": "2f6d238744c4cb07fdc91240feaf5d4221a27931",
+            "Qq": "9312503909aa8e8bb392530145cc1677a6298574",
+            "batteries": "24241822ef9d3e7f6a3bcc53ad136e12663db8f3",
+            "Cli": "933fce7e893f65969714c60cdb4bd8376786044e"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "ac86bcf8e6bf878066a78d76ea8e25f120040ccfca9627f51c612823441e6601",
+            "lake-manifest.json": "dad3466bf41524af6ad1eb3764fd6b4c6953d12992c4b6346aa75ae8975a61bd"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "putnam_1964_a4",
+          "version": "v4.26.0",
+          "status": "prepared",
+          "heartbeats": 115713.286,
+          "heartbeats_raw": 115713286,
+          "length": 1769,
+          "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+          "measured_at": "2026-10-02T15:11:52.616173+00:00",
+          "reference_code_sha256": "27b46ee810644ab2f6c3950cda14346274705204b619350947ad97d90e62b669",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.26.0",
+            "version": "v4.26.0",
+            "source_commit": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+            "toolchain": "leanprover/lean4:v4.26.0",
+            "compiler_version": "Lean (version 4.26.0, x86_64-unknown-linux-gnu, commit d8204c9fd894f91bbb2cdfec5912ec8196fd8562, Release)",
+            "dependencies": {
+              "mathlib": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+              "plausible": "160af9e8e7d4ae448f3c92edcc5b6a8522453f11",
+              "LeanSearchClient": "3591c3f664ac3719c4c86e4483e21e228707bfa2",
+              "importGraph": "e9f31324f15ead11048b1443e62c5deaddd055d2",
+              "proofwidgets": "b4fb2aa5290ebf61bc5f80a5375ba642f0a49192",
+              "aesop": "2f6d238744c4cb07fdc91240feaf5d4221a27931",
+              "Qq": "9312503909aa8e8bb392530145cc1677a6298574",
+              "batteries": "24241822ef9d3e7f6a3bcc53ad136e12663db8f3",
+              "Cli": "933fce7e893f65969714c60cdb4bd8376786044e"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "ac86bcf8e6bf878066a78d76ea8e25f120040ccfca9627f51c612823441e6601",
+              "lake-manifest.json": "dad3466bf41524af6ad1eb3764fd6b4c6953d12992c4b6346aa75ae8975a61bd"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 91.55965201783312
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 9593.127,
+        "heartbeats_raw": 9593127,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_bbaa4ec1b2de4dc29a441a8db5ba773c:9593127",
+            "endPos": {
+              "column": 16,
+              "line": 107
+            },
+            "fileName": "_ProofEval_bbaa4ec1b2de4dc29a441a8db5ba773c.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          }
+        ],
+        "elapsed_seconds": 3.47196333296597,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.27.0",
+          "version": "v4.27.0",
+          "source_commit": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+          "toolchain": "leanprover/lean4:v4.27.0",
+          "compiler_version": "Lean (version 4.27.0, x86_64-unknown-linux-gnu, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)",
+          "dependencies": {
+            "mathlib": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+            "plausible": "009dc1e6f2feb2c96c081537d80a0905b2c6498f",
+            "LeanSearchClient": "5ce7f0a355f522a952a3d678d696bd563bb4fd28",
+            "importGraph": "8f497d55985a189cea8020d9dc51260af1e41ad2",
+            "proofwidgets": "c04225ee7c0585effbd933662b3151f01b600e40",
+            "aesop": "cb837cc26236ada03c81837bebe0acd9c70ced7d",
+            "Qq": "bd58c9efe2086d56ca361807014141a860ddbf8c",
+            "batteries": "b25b36a7caf8e237e7d1e6121543078a06777c8a",
+            "Cli": "55c37290ff6186e2e965d68cf853a57c0702db82"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "d263ada844fc6d044e312196f91387036cc2791f594b08f7db177d76bc8f52ae",
+            "lake-manifest.json": "c014b41406a35a3bbd3477abc9e8f5dff8af0b0c8795b1ed7bfe89e086f215d2"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "putnam_1964_a4",
+          "version": "v4.27.0",
+          "status": "prepared",
+          "heartbeats": 111517.663,
+          "heartbeats_raw": 111517663,
+          "length": 1769,
+          "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+          "measured_at": "2026-10-02T15:12:11.766632+00:00",
+          "reference_code_sha256": "27b46ee810644ab2f6c3950cda14346274705204b619350947ad97d90e62b669",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.27.0",
+            "version": "v4.27.0",
+            "source_commit": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+            "toolchain": "leanprover/lean4:v4.27.0",
+            "compiler_version": "Lean (version 4.27.0, x86_64-unknown-linux-gnu, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)",
+            "dependencies": {
+              "mathlib": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+              "plausible": "009dc1e6f2feb2c96c081537d80a0905b2c6498f",
+              "LeanSearchClient": "5ce7f0a355f522a952a3d678d696bd563bb4fd28",
+              "importGraph": "8f497d55985a189cea8020d9dc51260af1e41ad2",
+              "proofwidgets": "c04225ee7c0585effbd933662b3151f01b600e40",
+              "aesop": "cb837cc26236ada03c81837bebe0acd9c70ced7d",
+              "Qq": "bd58c9efe2086d56ca361807014141a860ddbf8c",
+              "batteries": "b25b36a7caf8e237e7d1e6121543078a06777c8a",
+              "Cli": "55c37290ff6186e2e965d68cf853a57c0702db82"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "d263ada844fc6d044e312196f91387036cc2791f594b08f7db177d76bc8f52ae",
+              "lake-manifest.json": "c014b41406a35a3bbd3477abc9e8f5dff8af0b0c8795b1ed7bfe89e086f215d2"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 91.39766137315843
+      }
+    },
+    "diagnostics": [],
+    "scores": {
+      "length_reduction_pct": 44.601469756924814,
+      "heartbeat_reduction_pct": 91.68020694084557,
+      "compatibility_pct": 100.0,
+      "combined_pct": 78.7605588992568
+    }
+  },
+  "all_versions_valid": true,
+  "status": "complete",
+  "incomplete_methods": [],
+  "job_config_sha256": "78f7aaaa3197a97f9bd2a291288e0c8c3b9341115ea1f4b24b5a04f43683745d",
+  "stage_result_sha256": {
+    "stages/01_lint/result.json": "b9bd94132a43647eef77f97eb8d39484b2365f003fe687f75d41e5bd26d6711a",
+    "stages/02_simp/result.json": "3aff5cd983e9fd56efe473cf37fb4a20810e7d3534d74912f4798b7974e74cba",
+    "stages/03_wrappers/result.json": "ac6210bf3fcb1f3ef871609ff423336088f215e5134c7d66ea1da7e43ea82aca",
+    "stages/04_facts/result.json": "5c40b7b56a92399e40e42afea5ce4f841510771287114ed7ecd456f9c31572a9",
+    "stages/05_reuse/result.json": "b7ba5270554567a6cf650f051d9e80640ea19a3980bd8e716272cbf740f14354",
+    "stages/06_menu/result.json": "972344c8005585bdc6fd4834835069db10e4b51abfddaab38ed69ad566020450",
+    "stages/07_search/result.json": "74bef5e201c933967a622cceef907b4eff1a666aa62c19e45e8072d9159c880a",
+    "stages/08_simp_min/result.json": "9601b432d58bd62868a698b266553029a3be60e964e00b93449d80bf74bbaa8f",
+    "stages/09_arith_min/result.json": "eaa820c236c6f662f216e1685ed9289a206add9dbb15aaf9fc2ab045c09c95c2",
+    "stages/10_rw_min/result.json": "f3885e93bd13ec28c8cd2940cd140659070dc2ea79a07b3fabf247a24e7c5e28"
+  },
+  "stages": [
+    {
+      "name": "putnam_1964_a4",
+      "source": "putnambench",
+      "method": "lint",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 39.796495195025436,
+          "heartbeat_reduction_pct": 86.41332925829957,
+          "compatibility_pct": 100.0,
+          "combined_pct": 75.403274817775
+        },
+        "candidate": {
+          "length": 1065,
+          "code_sha256": "9139b052689d43b71a830d2dd332e33974e764b628fba7433806233ea6dccc6c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 19171.217,
+            "heartbeat_reduction_pct": 86.41332925829957,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.953424511477351,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 15855.005,
+            "heartbeat_reduction_pct": 86.29802544886678,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.7564457580447197,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 15533.909,
+            "heartbeat_reduction_pct": 86.07044966500061,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 4.9181255754083395,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n  have hfin : Set.Finite (Set.range f) := by\n    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n      intro x hx\n      simp only [ge_iff_le, ne_eq, Set.mem_Icc, Finset.mem_Icc, Set.mem_setOf_eq] at hx ⊢\n      exact hx\n    apply hI.subset\n    rintro x ⟨n, rfl⟩\n    have h0 := hB n\n    have h1 := hB (n + 1)\n    have h2 := hB (n + 2)\n    have h3 := hB (n + 3)\n    simp only [Set.mem_Icc, Prod.le_def, f]\n    simp_all\n  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    have hinj : Function.Injective f := by\n      intro a b hab\n      by_cases h' : a = b\n      · exact h'\n      · have : a < b ∨ b < a := by omega\n        rcases this with hlt | hlt\n        · exact (h a b hlt hab).elim\n        · exact False.elim (h b a hlt hab.symm)\n    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)\n  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by\n    simpa [f, Prod.mk.injEq] using heq\n  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)\n      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))\n      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by\n    have ea := (hu a ha).1\n    have eb := (hu b hb).1\n    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]\n    exact_mod_cast er\n  have hseq : ∀ m, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases h0 : m = 0\n      · subst m; simpa using heq.1\n      by_cases h1 : m = 1\n      · subst m; simpa using heq.2.1\n      by_cases h2 : m = 2\n      · subst m; simpa using heq.2.2.1\n      by_cases h3 : m = 3\n      · subst m; simpa using heq.2.2.2\n      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by\n        have e1 : i + (k + 4) - 1 = i + (k + 3) := by omega\n        have e2 : j + (k + 4) - 1 = j + (k + 3) := by omega\n        rw [e1, e2]; exact ih (k + 3) (by omega)\n      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by\n        have e1 : i + (k + 4) - 2 = i + (k + 2) := by omega\n        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega\n        rw [e1, e2]; exact ih (k + 2) (by omega)\n      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by\n        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega\n        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega\n        rw [e1, e2]; exact ih (k + 1) (by omega)\n      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by\n        have e1 : i + (k + 4) - 4 = i + k := by omega\n        have e2 : j + (k + 4) - 4 = j + k := by omega\n        rw [e1, e2]; exact ih k (by omega)\n      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4\n  refine ⟨i, j - i, ?_, ?_⟩\n  · omega\n  · intro n hn\n    have h := hseq (n - i)\n    have e1 : i + (n - i) = n := by omega\n    have e2 : j + (n - i) = n + (j - i) := by omega\n    rw [e1, e2] at h\n    exact h.symm",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 4.023,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 39.796495195025436,
+          "heartbeat_reduction_pct": 86.41332925829957,
+          "compatibility_pct": 100.0,
+          "combined_pct": 75.403274817775
+        },
+        "candidate": {
+          "length": 1065,
+          "code_sha256": "9139b052689d43b71a830d2dd332e33974e764b628fba7433806233ea6dccc6c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 19171.217,
+            "heartbeat_reduction_pct": 86.41332925829957,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.953424511477351,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 15855.005,
+            "heartbeat_reduction_pct": 86.29802544886678,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.7564457580447197,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 15533.909,
+            "heartbeat_reduction_pct": 86.07044966500061,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 4.9181255754083395,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "putnam_1964_a4",
+      "source": "putnambench",
+      "method": "simp",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 39.796495195025436,
+          "heartbeat_reduction_pct": 86.41332925829957,
+          "compatibility_pct": 100.0,
+          "combined_pct": 75.403274817775
+        },
+        "candidate": {
+          "length": 1065,
+          "code_sha256": "9139b052689d43b71a830d2dd332e33974e764b628fba7433806233ea6dccc6c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 19171.217,
+            "heartbeat_reduction_pct": 86.41332925829957,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.953424511477351,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 15855.005,
+            "heartbeat_reduction_pct": 86.29802544886678,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.7564457580447197,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 15533.909,
+            "heartbeat_reduction_pct": 86.07044966500061,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 4.9181255754083395,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n  have hfin : Set.Finite (Set.range f) := by\n    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n      intro x hx\n      simp only [mem_Icc, Finset.mem_Icc, mem_setOf_eq] at hx ⊢\n      exact hx\n    apply hI.subset\n    rintro x ⟨n, rfl⟩\n    have h0 := hB n\n    have h1 := hB (n + 1)\n    have h2 := hB (n + 2)\n    have h3 := hB (n + 3)\n    simp only [mem_Icc, Prod.le_def, f]\n    simp_all only [ge_iff_le, ne_eq, and_self]\n  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    have hinj : Function.Injective f := by\n      intro a b hab\n      by_cases h' : a = b\n      · exact h'\n      · have : a < b ∨ b < a := by omega\n        rcases this with hlt | hlt\n        · exact (h a b hlt hab).elim\n        · exact False.elim (h b a hlt hab.symm)\n    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)\n  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by\n    simpa [f, Prod.mk.injEq] using heq\n  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)\n      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))\n      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by\n    have ea := (hu a ha).1\n    have eb := (hu b hb).1\n    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]\n    exact_mod_cast er\n  have hseq : ∀ m, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases h0 : m = 0\n      · subst m; simpa using heq.1\n      by_cases h1 : m = 1\n      · subst m; simpa using heq.2.1\n      by_cases h2 : m = 2\n      · subst m; simpa using heq.2.2.1\n      by_cases h3 : m = 3\n      · subst m; simpa using heq.2.2.2\n      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by\n        have e1 : i + (k + 4) - 1 = i + (k + 3) := by omega\n        have e2 : j + (k + 4) - 1 = j + (k + 3) := by omega\n        rw [e1, e2]; exact ih (k + 3) (by omega)\n      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by\n        have e1 : i + (k + 4) - 2 = i + (k + 2) := by omega\n        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega\n        rw [e1, e2]; exact ih (k + 2) (by omega)\n      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by\n        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega\n        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega\n        rw [e1, e2]; exact ih (k + 1) (by omega)\n      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by\n        have e1 : i + (k + 4) - 4 = i + k := by omega\n        have e2 : j + (k + 4) - 4 = j + k := by omega\n        rw [e1, e2]; exact ih k (by omega)\n      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4\n  refine ⟨i, j - i, ?_, ?_⟩\n  · omega\n  · intro n hn\n    have h := hseq (n - i)\n    have e1 : i + (n - i) = n := by omega\n    have e2 : j + (n - i) = n + (j - i) := by omega\n    rw [e1, e2] at h\n    exact h.symm",
+      "rounds": 2,
+      "attempts": 1,
+      "accepted_edits": 3,
+      "accepted_transitions": 1,
+      "analysis_requests": 4,
+      "lean_candidate_checks": 3,
+      "cache_hits": 1,
+      "elapsed_seconds": 21.876,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 39.5703787450537,
+          "heartbeat_reduction_pct": 91.38062179700131,
+          "compatibility_pct": 100.0,
+          "combined_pct": 76.98366684735167
+        },
+        "candidate": {
+          "length": 1069,
+          "code_sha256": "e4b9371203cb545cb31e9e50e65659483ded98b877a7d8a6dbd485e79301a70c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 12162.212,
+            "heartbeat_reduction_pct": 91.38062179700131,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.627181379124522,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10198.063,
+            "heartbeat_reduction_pct": 91.18678299395975,
+            "cached": false,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.453078269958496,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10062.247,
+            "heartbeat_reduction_pct": 90.97699258636723,
+            "cached": false,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.4802818298339844,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": true
+    },
+    {
+      "name": "putnam_1964_a4",
+      "source": "putnambench",
+      "method": "wrappers",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 39.5703787450537,
+          "heartbeat_reduction_pct": 91.38062179700131,
+          "compatibility_pct": 100.0,
+          "combined_pct": 76.98366684735167
+        },
+        "candidate": {
+          "length": 1069,
+          "code_sha256": "e4b9371203cb545cb31e9e50e65659483ded98b877a7d8a6dbd485e79301a70c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 12162.212,
+            "heartbeat_reduction_pct": 91.38062179700131,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.627181379124522,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10198.063,
+            "heartbeat_reduction_pct": 91.18678299395975,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.453078269958496,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10062.247,
+            "heartbeat_reduction_pct": 90.97699258636723,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.4802818298339844,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n  have hfin : Set.Finite (Set.range f) := by\n    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n      intro x hx\n      simp only [mem_Icc, Finset.mem_Icc, mem_setOf_eq] at hx ⊢\n      exact hx\n    apply hI.subset\n    rintro x ⟨n, rfl⟩\n    have h0 := hB n\n    have h1 := hB (n + 1)\n    have h2 := hB (n + 2)\n    have h3 := hB (n + 3)\n    simp only [mem_Icc, Prod.le_def, f]\n    simp_all only [ge_iff_le, ne_eq, and_self]\n  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    have hinj : Function.Injective f := by\n      intro a b hab\n      by_cases h' : a = b\n      · exact h'\n      · have : a < b ∨ b < a := by omega\n        rcases this with hlt | hlt\n        · exact (h a b hlt hab).elim\n        · exact False.elim (h b a hlt hab.symm)\n    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)\n  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by\n    simpa [f, Prod.mk.injEq] using heq\n  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)\n      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))\n      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by\n    have ea := (hu a ha).1\n    have eb := (hu b hb).1\n    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]\n    exact_mod_cast er\n  have hseq : ∀ m, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases h0 : m = 0\n      · subst m; simpa using heq.1\n      by_cases h1 : m = 1\n      · subst m; simpa using heq.2.1\n      by_cases h2 : m = 2\n      · subst m; simpa using heq.2.2.1\n      by_cases h3 : m = 3\n      · subst m; simpa using heq.2.2.2\n      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by\n        have e1 : i + (k + 4) - 1 = i + (k + 3) := by omega\n        have e2 : j + (k + 4) - 1 = j + (k + 3) := by omega\n        rw [e1, e2]; exact ih (k + 3) (by omega)\n      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by\n        have e1 : i + (k + 4) - 2 = i + (k + 2) := by omega\n        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega\n        rw [e1, e2]; exact ih (k + 2) (by omega)\n      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by\n        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega\n        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega\n        rw [e1, e2]; exact ih (k + 1) (by omega)\n      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by\n        have e1 : i + (k + 4) - 4 = i + k := by omega\n        have e2 : j + (k + 4) - 4 = j + k := by omega\n        rw [e1, e2]; exact ih k (by omega)\n      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4\n  refine ⟨i, j - i, ?_, ?_⟩\n  · omega\n  · intro n hn\n    have h := hseq (n - i)\n    have e1 : i + (n - i) = n := by omega\n    have e2 : j + (n - i) = n + (j - i) := by omega\n    rw [e1, e2] at h\n    exact h.symm",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 0.268,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 39.5703787450537,
+          "heartbeat_reduction_pct": 91.38062179700131,
+          "compatibility_pct": 100.0,
+          "combined_pct": 76.98366684735167
+        },
+        "candidate": {
+          "length": 1069,
+          "code_sha256": "e4b9371203cb545cb31e9e50e65659483ded98b877a7d8a6dbd485e79301a70c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 12162.212,
+            "heartbeat_reduction_pct": 91.38062179700131,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.627181379124522,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10198.063,
+            "heartbeat_reduction_pct": 91.18678299395975,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.453078269958496,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10062.247,
+            "heartbeat_reduction_pct": 90.97699258636723,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.4802818298339844,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "putnam_1964_a4",
+      "source": "putnambench",
+      "method": "facts",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 39.5703787450537,
+          "heartbeat_reduction_pct": 91.38062179700131,
+          "compatibility_pct": 100.0,
+          "combined_pct": 76.98366684735167
+        },
+        "candidate": {
+          "length": 1069,
+          "code_sha256": "e4b9371203cb545cb31e9e50e65659483ded98b877a7d8a6dbd485e79301a70c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 12162.212,
+            "heartbeat_reduction_pct": 91.38062179700131,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.627181379124522,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10198.063,
+            "heartbeat_reduction_pct": 91.18678299395975,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.453078269958496,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10062.247,
+            "heartbeat_reduction_pct": 90.97699258636723,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.4802818298339844,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n  have hfin : Set.Finite (Set.range f) := by\n    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n      intro x hx\n      simp only [mem_Icc, Finset.mem_Icc, mem_setOf_eq] at hx ⊢\n      exact hx\n    apply hI.subset\n    rintro x ⟨n, rfl⟩\n    have h0 := hB n\n    \n    \n    \n    simp only [mem_Icc, Prod.le_def, f]\n    simp_all only [ge_iff_le, ne_eq, and_self]\n  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    have hinj : Function.Injective f := by\n      intro a b hab\n      by_cases h' : a = b\n      · exact h'\n      · have : a < b ∨ b < a := by omega\n        rcases this with hlt | hlt\n        · exact (h a b hlt hab).elim\n        · exact False.elim (h b a hlt hab.symm)\n    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)\n  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by\n    simpa [f, Prod.mk.injEq] using heq\n  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)\n      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))\n      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by\n    have ea := (hu a ha).1\n    have eb := (hu b hb).1\n    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]\n    exact_mod_cast er\n  have hseq : ∀ m, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases h0 : m = 0\n      · subst m; simpa using heq.1\n      by_cases h1 : m = 1\n      · subst m; simpa using heq.2.1\n      by_cases h2 : m = 2\n      · subst m; simpa using heq.2.2.1\n      by_cases h3 : m = 3\n      · subst m; simpa using heq.2.2.2\n      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by\n        have e1 : i + (k + 4) - 1 = i + (k + 3) := by omega\n        have e2 : j + (k + 4) - 1 = j + (k + 3) := by omega\n        rw [e1, e2]; exact ih (k + 3) (by omega)\n      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by\n        have e1 : i + (k + 4) - 2 = i + (k + 2) := by omega\n        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega\n        rw [e1, e2]; exact ih (k + 2) (by omega)\n      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by\n        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega\n        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega\n        rw [e1, e2]; exact ih (k + 1) (by omega)\n      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by\n        have e1 : i + (k + 4) - 4 = i + k := by omega\n        have e2 : j + (k + 4) - 4 = j + k := by omega\n        rw [e1, e2]; exact ih k (by omega)\n      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4\n  refine ⟨i, j - i, ?_, ?_⟩\n  · omega\n  · intro n hn\n    have h := hseq (n - i)\n    have e1 : i + (n - i) = n := by omega\n    have e2 : j + (n - i) = n + (j - i) := by omega\n    rw [e1, e2] at h\n    exact h.symm",
+      "rounds": 3,
+      "attempts": 4,
+      "accepted_edits": 3,
+      "accepted_transitions": 3,
+      "analysis_requests": 3,
+      "lean_candidate_checks": 10,
+      "cache_hits": 3,
+      "elapsed_seconds": 43.493,
+      "stop_reason": "round_limit",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 41.096664782362915,
+          "heartbeat_reduction_pct": 91.47556795783225,
+          "compatibility_pct": 100.0,
+          "combined_pct": 77.52407758006505
+        },
+        "candidate": {
+          "length": 1042,
+          "code_sha256": "0b07f196d4ca16388597b40a4f639c979bb40912c1c49ba82e25e3b29849bd4e"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 12028.24,
+            "heartbeat_reduction_pct": 91.47556795783225,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.5931214913725853,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10093.752,
+            "heartbeat_reduction_pct": 91.2769290814194,
+            "cached": false,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.4386618323624134,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9958.689,
+            "heartbeat_reduction_pct": 91.06985500583885,
+            "cached": false,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.407775951549411,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": true
+    },
+    {
+      "name": "putnam_1964_a4",
+      "source": "putnambench",
+      "method": "reuse",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 41.096664782362915,
+          "heartbeat_reduction_pct": 91.47556795783225,
+          "compatibility_pct": 100.0,
+          "combined_pct": 77.52407758006505
+        },
+        "candidate": {
+          "length": 1042,
+          "code_sha256": "0b07f196d4ca16388597b40a4f639c979bb40912c1c49ba82e25e3b29849bd4e"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 12028.24,
+            "heartbeat_reduction_pct": 91.47556795783225,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.5931214913725853,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10093.752,
+            "heartbeat_reduction_pct": 91.2769290814194,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.4386618323624134,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9958.689,
+            "heartbeat_reduction_pct": 91.06985500583885,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.407775951549411,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n  have hfin : Set.Finite (Set.range f) := by\n    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n      intro x hx\n      simp only [mem_Icc, Finset.mem_Icc, mem_setOf_eq] at hx ⊢\n      exact hx\n    apply hI.subset\n    rintro x ⟨n, rfl⟩\n    have h0 := hB n\n    \n    \n    \n    simp only [mem_Icc, Prod.le_def, f]\n    simp_all only [ge_iff_le, ne_eq, and_self]\n  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    have hinj : Function.Injective f := by\n      intro a b hab\n      by_cases h' : a = b\n      · exact h'\n      · have : a < b ∨ b < a := by omega\n        rcases this with hlt | hlt\n        · exact (h a b hlt hab).elim\n        · exact False.elim (h b a hlt hab.symm)\n    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)\n  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by\n    simpa [f, Prod.mk.injEq] using heq\n  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)\n      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))\n      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by\n    have ea := (hu a ha).1\n    have eb := (hu b hb).1\n    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]\n    exact_mod_cast er\n  have hseq : ∀ m, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases h0 : m = 0\n      · subst m; simpa using heq.1\n      by_cases h1 : m = 1\n      · subst m; simpa using heq.2.1\n      by_cases h2 : m = 2\n      · subst m; simpa using heq.2.2.1\n      by_cases h3 : m = 3\n      · subst m; simpa using heq.2.2.2\n      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by\n        have e1 : i + (k + 4) - 1 = i + (k + 3) := by omega\n        have e2 : j + (k + 4) - 1 = j + (k + 3) := by omega\n        rw [e1, e2]; exact ih (k + 3) (by omega)\n      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by\n        have e1 : i + (k + 4) - 2 = i + (k + 2) := by omega\n        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega\n        rw [e1, e2]; exact ih (k + 2) (by omega)\n      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by\n        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega\n        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega\n        rw [e1, e2]; exact ih (k + 1) (by omega)\n      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by\n        have e1 : i + (k + 4) - 4 = i + k := by omega\n        have e2 : j + (k + 4) - 4 = j + k := by omega\n        rw [e1, e2]; exact ih k (by omega)\n      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4\n  refine ⟨i, j - i, ?_, ?_⟩\n  · omega\n  · intro n hn\n    have h := hseq (n - i)\n    have e1 : i + (n - i) = n := by omega\n    have e2 : j + (n - i) = n + (j - i) := by omega\n    rw [e1, e2] at h\n    exact h.symm",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 3.668,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 41.096664782362915,
+          "heartbeat_reduction_pct": 91.47556795783225,
+          "compatibility_pct": 100.0,
+          "combined_pct": 77.52407758006505
+        },
+        "candidate": {
+          "length": 1042,
+          "code_sha256": "0b07f196d4ca16388597b40a4f639c979bb40912c1c49ba82e25e3b29849bd4e"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 12028.24,
+            "heartbeat_reduction_pct": 91.47556795783225,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.5931214913725853,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10093.752,
+            "heartbeat_reduction_pct": 91.2769290814194,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.4386618323624134,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9958.689,
+            "heartbeat_reduction_pct": 91.06985500583885,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.407775951549411,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "putnam_1964_a4",
+      "source": "putnambench",
+      "method": "menu",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 41.096664782362915,
+          "heartbeat_reduction_pct": 91.47556795783225,
+          "compatibility_pct": 100.0,
+          "combined_pct": 77.52407758006505
+        },
+        "candidate": {
+          "length": 1042,
+          "code_sha256": "0b07f196d4ca16388597b40a4f639c979bb40912c1c49ba82e25e3b29849bd4e"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 12028.24,
+            "heartbeat_reduction_pct": 91.47556795783225,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.5931214913725853,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10093.752,
+            "heartbeat_reduction_pct": 91.2769290814194,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.4386618323624134,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9958.689,
+            "heartbeat_reduction_pct": 91.06985500583885,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.407775951549411,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n  have hfin : Set.Finite (Set.range f) := by\n    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n      intro x hx\n      simp only [mem_Icc, Finset.mem_Icc, mem_setOf_eq] at hx ⊢\n      exact hx\n    apply hI.subset\n    rintro x ⟨n, rfl⟩\n    have h0 := hB n\n    \n    \n    \n    simp only [mem_Icc, Prod.le_def, f]\n    simp_all only [ge_iff_le, ne_eq, and_self]\n  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    have hinj : Function.Injective f := by\n      intro a b hab\n      by_cases h' : a = b\n      · exact h'\n      · have : a < b ∨ b < a := by omega\n        rcases this with hlt | hlt\n        · exact (h a b hlt hab).elim\n        · exact False.elim (h b a hlt hab.symm)\n    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)\n  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by\n    simpa [f, Prod.mk.injEq] using heq\n  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)\n      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))\n      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by\n    have ea := (hu a ha).1\n    have eb := (hu b hb).1\n    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]\n    exact_mod_cast er\n  have hseq : ∀ m, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases h0 : m = 0\n      · subst m; simpa using heq.1\n      by_cases h1 : m = 1\n      · subst m; simpa using heq.2.1\n      by_cases h2 : m = 2\n      · subst m; simpa using heq.2.2.1\n      by_cases h3 : m = 3\n      · subst m; simpa using heq.2.2.2\n      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by tauto\n      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by\n        have e1 : i + (k + 4) - 2 = i + (k + 2) := by omega\n        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega\n        rw [e1, e2]; exact ih (k + 2) (by omega)\n      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by\n        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega\n        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega\n        rw [e1, e2]; exact ih (k + 1) (by omega)\n      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by\n        have e1 : i + (k + 4) - 4 = i + k := by omega\n        have e2 : j + (k + 4) - 4 = j + k := by omega\n        rw [e1, e2]; exact ih k (by omega)\n      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4\n  refine ⟨i, j - i, ?_, ?_⟩\n  · omega\n  · intro n hn\n    have h := hseq (n - i)\n    have e1 : i + (n - i) = n := by omega\n    have e2 : j + (n - i) = n + (j - i) := by omega\n    rw [e1, e2] at h\n    exact h.symm",
+      "rounds": 3,
+      "attempts": 12,
+      "accepted_edits": 1,
+      "accepted_transitions": 1,
+      "analysis_requests": 6,
+      "lean_candidate_checks": 22,
+      "cache_hits": 5,
+      "elapsed_seconds": 114.961,
+      "stop_reason": "round_limit",
+      "site_offset": 6,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 44.657998869417746,
+          "heartbeat_reduction_pct": 91.2963118286714,
+          "compatibility_pct": 100.0,
+          "combined_pct": 78.65143689936305
+        },
+        "candidate": {
+          "length": 979,
+          "code_sha256": "46303206c1817217dccc8e693ba4fa00aec55e6df03b7b57dfdbaa8fb91a817c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 12281.176,
+            "heartbeat_reduction_pct": 91.2963118286714,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.572285160422325,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10243.146,
+            "heartbeat_reduction_pct": 91.14782204007238,
+            "cached": false,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.451720140874386,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10065.079,
+            "heartbeat_reduction_pct": 90.9744530783433,
+            "cached": false,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.3929496947675943,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": true
+    },
+    {
+      "name": "putnam_1964_a4",
+      "source": "putnambench",
+      "method": "search",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 44.657998869417746,
+          "heartbeat_reduction_pct": 91.2963118286714,
+          "compatibility_pct": 100.0,
+          "combined_pct": 78.65143689936305
+        },
+        "candidate": {
+          "length": 979,
+          "code_sha256": "46303206c1817217dccc8e693ba4fa00aec55e6df03b7b57dfdbaa8fb91a817c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 12281.176,
+            "heartbeat_reduction_pct": 91.2963118286714,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.572285160422325,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10243.146,
+            "heartbeat_reduction_pct": 91.14782204007238,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.451720140874386,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 10065.079,
+            "heartbeat_reduction_pct": 90.9744530783433,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.3929496947675943,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n  have hfin : Set.Finite (Set.range f) := by\n    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n      intro x hx\n      simp only [mem_Icc, Finset.mem_Icc, mem_setOf_eq] at hx ⊢\n      exact hx\n    apply hI.subset\n    rintro x ⟨n, rfl⟩\n    have h0 := hB n\n    \n    \n    \n    simp only [mem_Icc, Prod.le_def, f]\n    simp_all only [ge_iff_le, ne_eq, and_self]\n  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    have hinj : Function.Injective f := by\n      intro a b hab\n      by_cases h' : a = b\n      · exact h'\n      · have : a < b ∨ b < a := by omega\n        rcases this with hlt | hlt\n        · exact (h a b hlt hab).elim\n        · exact False.elim (h b a hlt hab.symm)\n    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)\n  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by\n    simpa [f, Prod.mk.injEq] using heq\n  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)\n      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))\n      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by\n    have ea := (hu a ha).1\n    have eb := (hu b hb).1\n    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]\n    exact_mod_cast er\n  have hseq : ∀ m, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases h0 : m = 0\n      · subst m; simpa using heq.1\n      by_cases h1 : m = 1\n      · subst m; simpa using heq.2.1\n      by_cases h2 : m = 2\n      · subst m; simpa using heq.2.2.1\n      by_cases h3 : m = 3\n      · subst m; simpa using heq.2.2.2\n      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by tauto\n      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by\n        have e1 : i + (k + 4) - 2 = i + (k + 2) := by exact rfl\n        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega\n        rw [e1, e2]; exact ih (k + 2) (by omega)\n      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by\n        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega\n        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega\n        rw [e1, e2]; exact ih (k + 1) (by omega)\n      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by\n        have e1 : i + (k + 4) - 4 = i + k := by omega\n        have e2 : j + (k + 4) - 4 = j + k := by omega\n        rw [e1, e2]; exact ih k (by omega)\n      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4\n  refine ⟨i, j - i, ?_, ?_⟩\n  · omega\n  · intro n hn\n    have h := hseq (n - i)\n    have e1 : i + (n - i) = n := by omega\n    have e2 : j + (n - i) = n + (j - i) := by omega\n    rw [e1, e2] at h\n    exact h.symm",
+      "rounds": 3,
+      "attempts": 5,
+      "accepted_edits": 1,
+      "accepted_transitions": 1,
+      "analysis_requests": 6,
+      "lean_candidate_checks": 7,
+      "cache_hits": 1,
+      "elapsed_seconds": 102.11,
+      "stop_reason": "round_limit",
+      "site_offset": 6,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 44.601469756924814,
+          "heartbeat_reduction_pct": 91.68020694084557,
+          "compatibility_pct": 100.0,
+          "combined_pct": 78.7605588992568
+        },
+        "candidate": {
+          "length": 980,
+          "code_sha256": "c0659998e36cd405cfaaa75b7a7f95b9bce3a7a319db4802312df935443a6129"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 11739.488,
+            "heartbeat_reduction_pct": 91.68020694084557,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.6510479263961315,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9766.604,
+            "heartbeat_reduction_pct": 91.55965201783312,
+            "cached": false,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.4345416091382504,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9593.127,
+            "heartbeat_reduction_pct": 91.39766137315843,
+            "cached": false,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.47196333296597,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": true
+    },
+    {
+      "name": "putnam_1964_a4",
+      "source": "putnambench",
+      "method": "simp_min",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 44.601469756924814,
+          "heartbeat_reduction_pct": 91.68020694084557,
+          "compatibility_pct": 100.0,
+          "combined_pct": 78.7605588992568
+        },
+        "candidate": {
+          "length": 980,
+          "code_sha256": "c0659998e36cd405cfaaa75b7a7f95b9bce3a7a319db4802312df935443a6129"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 11739.488,
+            "heartbeat_reduction_pct": 91.68020694084557,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.6510479263961315,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9766.604,
+            "heartbeat_reduction_pct": 91.55965201783312,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.4345416091382504,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9593.127,
+            "heartbeat_reduction_pct": 91.39766137315843,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.47196333296597,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n  have hfin : Set.Finite (Set.range f) := by\n    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n      intro x hx\n      simp only [mem_Icc, Finset.mem_Icc, mem_setOf_eq] at hx ⊢\n      exact hx\n    apply hI.subset\n    rintro x ⟨n, rfl⟩\n    have h0 := hB n\n    \n    \n    \n    simp only [mem_Icc, Prod.le_def, f]\n    simp_all only [ge_iff_le, ne_eq, and_self]\n  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    have hinj : Function.Injective f := by\n      intro a b hab\n      by_cases h' : a = b\n      · exact h'\n      · have : a < b ∨ b < a := by omega\n        rcases this with hlt | hlt\n        · exact (h a b hlt hab).elim\n        · exact False.elim (h b a hlt hab.symm)\n    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)\n  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by\n    simpa [f, Prod.mk.injEq] using heq\n  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)\n      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))\n      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by\n    have ea := (hu a ha).1\n    have eb := (hu b hb).1\n    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]\n    exact_mod_cast er\n  have hseq : ∀ m, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases h0 : m = 0\n      · subst m; simpa using heq.1\n      by_cases h1 : m = 1\n      · subst m; simpa using heq.2.1\n      by_cases h2 : m = 2\n      · subst m; simpa using heq.2.2.1\n      by_cases h3 : m = 3\n      · subst m; simpa using heq.2.2.2\n      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by tauto\n      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by\n        have e1 : i + (k + 4) - 2 = i + (k + 2) := by exact rfl\n        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega\n        rw [e1, e2]; exact ih (k + 2) (by omega)\n      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by\n        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega\n        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega\n        rw [e1, e2]; exact ih (k + 1) (by omega)\n      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by\n        have e1 : i + (k + 4) - 4 = i + k := by omega\n        have e2 : j + (k + 4) - 4 = j + k := by omega\n        rw [e1, e2]; exact ih k (by omega)\n      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4\n  refine ⟨i, j - i, ?_, ?_⟩\n  · omega\n  · intro n hn\n    have h := hseq (n - i)\n    have e1 : i + (n - i) = n := by omega\n    have e2 : j + (n - i) = n + (j - i) := by omega\n    rw [e1, e2] at h\n    exact h.symm",
+      "rounds": 1,
+      "attempts": 15,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 15,
+      "cache_hits": 0,
+      "elapsed_seconds": 55.447,
+      "stop_reason": "no_improving_proposal",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 44.601469756924814,
+          "heartbeat_reduction_pct": 91.68020694084557,
+          "compatibility_pct": 100.0,
+          "combined_pct": 78.7605588992568
+        },
+        "candidate": {
+          "length": 980,
+          "code_sha256": "c0659998e36cd405cfaaa75b7a7f95b9bce3a7a319db4802312df935443a6129"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 11739.488,
+            "heartbeat_reduction_pct": 91.68020694084557,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.6510479263961315,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9766.604,
+            "heartbeat_reduction_pct": 91.55965201783312,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.4345416091382504,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9593.127,
+            "heartbeat_reduction_pct": 91.39766137315843,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.47196333296597,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "putnam_1964_a4",
+      "source": "putnambench",
+      "method": "arith_min",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 44.601469756924814,
+          "heartbeat_reduction_pct": 91.68020694084557,
+          "compatibility_pct": 100.0,
+          "combined_pct": 78.7605588992568
+        },
+        "candidate": {
+          "length": 980,
+          "code_sha256": "c0659998e36cd405cfaaa75b7a7f95b9bce3a7a319db4802312df935443a6129"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 11739.488,
+            "heartbeat_reduction_pct": 91.68020694084557,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.6510479263961315,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9766.604,
+            "heartbeat_reduction_pct": 91.55965201783312,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.4345416091382504,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9593.127,
+            "heartbeat_reduction_pct": 91.39766137315843,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.47196333296597,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n  have hfin : Set.Finite (Set.range f) := by\n    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n      intro x hx\n      simp only [mem_Icc, Finset.mem_Icc, mem_setOf_eq] at hx ⊢\n      exact hx\n    apply hI.subset\n    rintro x ⟨n, rfl⟩\n    have h0 := hB n\n    \n    \n    \n    simp only [mem_Icc, Prod.le_def, f]\n    simp_all only [ge_iff_le, ne_eq, and_self]\n  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    have hinj : Function.Injective f := by\n      intro a b hab\n      by_cases h' : a = b\n      · exact h'\n      · have : a < b ∨ b < a := by omega\n        rcases this with hlt | hlt\n        · exact (h a b hlt hab).elim\n        · exact False.elim (h b a hlt hab.symm)\n    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)\n  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by\n    simpa [f, Prod.mk.injEq] using heq\n  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)\n      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))\n      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by\n    have ea := (hu a ha).1\n    have eb := (hu b hb).1\n    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]\n    exact_mod_cast er\n  have hseq : ∀ m, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases h0 : m = 0\n      · subst m; simpa using heq.1\n      by_cases h1 : m = 1\n      · subst m; simpa using heq.2.1\n      by_cases h2 : m = 2\n      · subst m; simpa using heq.2.2.1\n      by_cases h3 : m = 3\n      · subst m; simpa using heq.2.2.2\n      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by tauto\n      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by\n        have e1 : i + (k + 4) - 2 = i + (k + 2) := by exact rfl\n        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega\n        rw [e1, e2]; exact ih (k + 2) (by omega)\n      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by\n        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega\n        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega\n        rw [e1, e2]; exact ih (k + 1) (by omega)\n      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by\n        have e1 : i + (k + 4) - 4 = i + k := by omega\n        have e2 : j + (k + 4) - 4 = j + k := by omega\n        rw [e1, e2]; exact ih k (by omega)\n      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4\n  refine ⟨i, j - i, ?_, ?_⟩\n  · omega\n  · intro n hn\n    have h := hseq (n - i)\n    have e1 : i + (n - i) = n := by omega\n    have e2 : j + (n - i) = n + (j - i) := by omega\n    rw [e1, e2] at h\n    exact h.symm",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 0.274,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 44.601469756924814,
+          "heartbeat_reduction_pct": 91.68020694084557,
+          "compatibility_pct": 100.0,
+          "combined_pct": 78.7605588992568
+        },
+        "candidate": {
+          "length": 980,
+          "code_sha256": "c0659998e36cd405cfaaa75b7a7f95b9bce3a7a319db4802312df935443a6129"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 11739.488,
+            "heartbeat_reduction_pct": 91.68020694084557,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.6510479263961315,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9766.604,
+            "heartbeat_reduction_pct": 91.55965201783312,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.4345416091382504,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9593.127,
+            "heartbeat_reduction_pct": 91.39766137315843,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.47196333296597,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "putnam_1964_a4",
+      "source": "putnambench",
+      "method": "rw_min",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 44.601469756924814,
+          "heartbeat_reduction_pct": 91.68020694084557,
+          "compatibility_pct": 100.0,
+          "combined_pct": 78.7605588992568
+        },
+        "candidate": {
+          "length": 980,
+          "code_sha256": "c0659998e36cd405cfaaa75b7a7f95b9bce3a7a319db4802312df935443a6129"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 11739.488,
+            "heartbeat_reduction_pct": 91.68020694084557,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.6510479263961315,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9766.604,
+            "heartbeat_reduction_pct": 91.55965201783312,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.4345416091382504,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9593.127,
+            "heartbeat_reduction_pct": 91.39766137315843,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.47196333296597,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let f : ℕ → ℤ × ℤ × ℤ × ℤ := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n  have hfin : Set.Finite (Set.range f) := by\n    have hI : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n      apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n      intro x hx\n      simp only [mem_Icc, Finset.mem_Icc, mem_setOf_eq] at hx ⊢\n      exact hx\n    apply hI.subset\n    rintro x ⟨n, rfl⟩\n    have h0 := hB n\n    \n    \n    \n    simp only [mem_Icc, Prod.le_def, f]\n    simp_all only [ge_iff_le, ne_eq, and_self]\n  obtain ⟨i, j, hij, heq⟩ : ∃ i j, i < j ∧ f i = f j := by\n    by_contra! h\n    have hinj : Function.Injective f := by\n      intro a b hab\n      by_cases h' : a = b\n      · exact h'\n      · have : a < b ∨ b < a := by omega\n        rcases this with hlt | hlt\n        · exact (h a b hlt hab).elim\n        · exact False.elim (h b a hlt hab.symm)\n    exact hfin.not_infinite (Set.infinite_range_of_injective hinj)\n  have heq : u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3) := by\n    simpa [f, Prod.mk.injEq] using heq\n  have hstep (a b : ℕ) (ha : 4 ≤ a) (hb : 4 ≤ b)\n      (h1 : u (a - 1) = u (b - 1)) (h2 : u (a - 2) = u (b - 2))\n      (h3 : u (a - 3) = u (b - 3)) (h4 : u (a - 4) = u (b - 4)) : u a = u b := by\n    have ea := (hu a ha).1\n    have eb := (hu b hb).1\n    have er : (u a : ℝ) = u b := by rw [ea, eb, h1, h2, h3, h4]\n    exact_mod_cast er\n  have hseq : ∀ m, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases h0 : m = 0\n      · subst m; simpa using heq.1\n      by_cases h1 : m = 1\n      · subst m; simpa using heq.2.1\n      by_cases h2 : m = 2\n      · subst m; simpa using heq.2.2.1\n      by_cases h3 : m = 3\n      · subst m; simpa using heq.2.2.2\n      obtain ⟨k, rfl⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n      have p1 : u (i + (k + 4) - 1) = u (j + (k + 4) - 1) := by tauto\n      have p2 : u (i + (k + 4) - 2) = u (j + (k + 4) - 2) := by\n        have e1 : i + (k + 4) - 2 = i + (k + 2) := by exact rfl\n        have e2 : j + (k + 4) - 2 = j + (k + 2) := by omega\n        rw [e1, e2]; exact ih (k + 2) (by omega)\n      have p3 : u (i + (k + 4) - 3) = u (j + (k + 4) - 3) := by\n        have e1 : i + (k + 4) - 3 = i + (k + 1) := by omega\n        have e2 : j + (k + 4) - 3 = j + (k + 1) := by omega\n        rw [e1, e2]; exact ih (k + 1) (by omega)\n      have p4 : u (i + (k + 4) - 4) = u (j + (k + 4) - 4) := by\n        have e1 : i + (k + 4) - 4 = i + k := by omega\n        have e2 : j + (k + 4) - 4 = j + k := by omega\n        rw [e1, e2]; exact ih k (by omega)\n      exact hstep (i + (k + 4)) (j + (k + 4)) (by omega) (by omega) p1 p2 p3 p4\n  refine ⟨i, j - i, ?_, ?_⟩\n  · omega\n  · intro n hn\n    have h := hseq (n - i)\n    have e1 : i + (n - i) = n := by omega\n    have e2 : j + (n - i) = n + (j - i) := by omega\n    rw [e1, e2] at h\n    exact h.symm",
+      "rounds": 1,
+      "attempts": 23,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 23,
+      "cache_hits": 0,
+      "elapsed_seconds": 85.646,
+      "stop_reason": "no_improving_proposal",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 44.601469756924814,
+          "heartbeat_reduction_pct": 91.68020694084557,
+          "compatibility_pct": 100.0,
+          "combined_pct": 78.7605588992568
+        },
+        "candidate": {
+          "length": 980,
+          "code_sha256": "c0659998e36cd405cfaaa75b7a7f95b9bce3a7a319db4802312df935443a6129"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 11739.488,
+            "heartbeat_reduction_pct": 91.68020694084557,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.6510479263961315,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9766.604,
+            "heartbeat_reduction_pct": 91.55965201783312,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.4345416091382504,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 9593.127,
+            "heartbeat_reduction_pct": 91.39766137315843,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.47196333296597,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    }
+  ],
+  "counters": {
+    "attempts": 60,
+    "analysis_requests": 25,
+    "lean_candidate_checks": 80,
+    "cache_hits": 10,
+    "accepted_transitions": 6,
+    "elapsed_seconds": 431.766
+  },
+  "verification_accounting": "Optimizer counters exclude initial/final whole-proof validation; these checks use the existing evaluator cache.",
+  "changed": true
+}

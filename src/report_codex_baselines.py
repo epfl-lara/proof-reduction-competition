@@ -15,6 +15,7 @@ from run_combined_matrix import require_valid, select_cell
 from run_deterministic import digest, write_json
 from run_repair_matrix import check_references
 from run_validity_repair import build_repair_messages, required_versions, now
+from run_codex_baselines_isolated import EXECUTION_FILES
 from validity_feedback import all_versions_passed, build_validity_feedback
 
 
@@ -56,6 +57,7 @@ def audit_and_report(output):
         repair = read(path.parent / 'repair_result.json')
         require(repair == record['repair'], 'Repair result changed')
         previous = None
+        isolated_calls = 0
         for i in range(repair['round_count'] + 1):
             stage = path.parent / ('initial' if i == 0 else f'repair_{i:02d}')
             trial = read(stage / 'result.json')
@@ -64,6 +66,20 @@ def audit_and_report(output):
             sent = read(stage / 'request.json')
             require(sent['messages'] == expected_messages and sent['model'] == model and sent['reasoning_effort'] == effort and sent['cli'] == config['cli'], 'Model/effort/prompt identity changed')
             require(read(stage / 'generation.json') == trial['generation'], 'Saved generation changed')
+            envelope_path = stage / 'execution_envelope.json'
+            if envelope_path.exists():
+                envelope = read(envelope_path)
+                require(envelope['policy'] == 'readonly_sources_host_validity', 'Unknown tool isolation policy')
+                require(set(envelope['code_sha256']) == set(EXECUTION_FILES), 'Execution adapter file set changed')
+                require(all(digest(ROOT / p) == h for p, h in envelope['code_sha256'].items()), 'Execution adapter changed')
+                require(envelope['request_sha256'] == digest(stage / 'request.json'), 'Isolated request changed')
+                require(envelope['protected_projects'] == list(sent['tool_context']['source_projects'].values()), 'Protected projects changed')
+                require(digest(stage / 'workspace/check_candidate.py') == digest(ROOT / 'src/codex_validity_client.py'), 'Validity client changed')
+                argv = read(stage / 'command.json')['argv']
+                require(argv[1] == str(ROOT / 'src/codex_readonly.py') and '--' in argv, 'Missing write-restriction launcher')
+                inner = argv[argv.index('--') + 1:]
+                require(inner[0] == config['cli']['path'] and inner[1] == 'exec', 'Inner Codex command changed')
+                isolated_calls += 1
             if previous:
                 require(not all_versions_passed(previous['evaluation'], required_versions(pack)), 'Continued past first valid proposal')
             if trial['evaluation']['status'] == 'passed':
@@ -110,6 +126,7 @@ def audit_and_report(output):
             'initial_valid': repair['initial_valid'], 'final_valid': repair['final_valid'],
             'returned_seed': repair['returned_incumbent'], 'outer_repairs': repair['round_count'],
             'codex_tool_items': sum(g.get('tool_items', 0) for g in generations), 'validity_tool_checks': len(checks),
+            'isolated_calls': isolated_calls,
             'known_completion_tokens': sum((g.get('usage') or {}).get('completion_tokens') or 0 for g in generations),
             'unknown_usage_calls': sum(not g.get('usage') or g['usage'].get('completion_tokens') is None for g in generations)})
         records.append(record)
@@ -138,7 +155,8 @@ def audit_and_report(output):
     lines += ['', '| Problem | Model / effort | Seed | Selected score | Gain over D0 | Tool checks |', '| --- | --- | --- | ---: | ---: | ---: |']
     for row in sorted(per_case, key=lambda r: (config['names'].index(r['name']), r['model'], r['effort'], r['seed'])):
         lines.append(f"| `{row['name']}` | {row['model']} / {row['effort']} | {row['seed']} | {row['selected_score']:.4f}% | {row['gain_over_d0_pp']:+.4f} pp | {row['validity_tool_checks']} |")
-    lines += ['', 'Usage and tool counts in [per_problem.csv](per_problem.csv) cover terminal cells only. Pending work and excluded pilot usage are additional; unknown usage is never zero. The full report is [report.json](report.json).', '']
+    lines += ['', 'New calls after the [Luna recovery](recovery/README.md) keep source projects read-only and route validity checks through the host. Prompts and scoring stay fixed; `isolated_calls` records the execution-policy change.', '',
+              'Usage and tool counts in [per_problem.csv](per_problem.csv) cover terminal cells only. Pending work and excluded pilot usage are additional; unknown usage is never zero. The full report is [report.json](report.json).', '']
     (output / 'README.md').write_text('\n'.join(lines))
     write_json(output / 'report.json', report)
     if per_case:

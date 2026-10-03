@@ -1,0 +1,56 @@
+{
+  "code": "theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by\n  classical\n  let C := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩\n  let d := fiberwiseDistance 𝔽q β i steps h_i_add_steps f\n  let d_i := BBF_CodeDistance ℓ 𝓡 ⟨i, by omega⟩\n  let d_next := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩\n  obtain ⟨g, _, hg⟩ := Nat.sInf_mem\n    (show ((fun g : C => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard)\n      '' Set.univ).Nonempty from Set.image_nonempty.mpr Set.univ_nonempty)\n  let Y := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g\n  change Y.ncard = d at hg\n  let F := qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps)\n    (h_i_add_steps := by apply Nat.lt_add_of_pos_right_of_le; omega)\n  have hcount : hammingDist f g ≤ d * 2 ^ steps := by\n    rw [← hg, Set.ncard_eq_toFinset_card']\n    calc\n      _ ≤ (Finset.image₂ F Y.toFinset Finset.univ).card := by\n        apply Finset.card_le_card\n        intro x hx\n        refine Finset.mem_image₂.mpr\n          ⟨iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n            ?_, _, Finset.mem_univ _, ?_⟩\n        · exact Set.mem_toFinset.mpr ⟨x, rfl, (Finset.mem_filter.mp hx).2⟩\n        · exact (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps\n            x _).mp rfl\n      _ ≤ _ := by\n        simpa only [Finset.card_univ, Fintype.card_fin] using\n          Finset.card_image₂_le F Y.toFinset Finset.univ\n  have hfw : 2 * d ≤ d_next - 1 :=\n    Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt)\n  have halg : (d_next - 1) * 2 ^ steps = d_i - 1 := by\n    dsimp only [d_next, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n    rw [Nat.sub_mul, ← Nat.pow_add, ← Nat.pow_add,\n      show ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - ↑i by omega,\n      show ℓ - (↑i + steps) + steps = ℓ - ↑i by omega]\n  have hnat : 2 * hammingDist f g < d_i := by\n    apply Nat.lt_of_le_pred (h := by dsimp only [d_i, BBF_CodeDistance]; omega)\n    calc\n      _ ≤ 2 * (d * 2 ^ steps) := Nat.mul_le_mul_left 2 hcount\n      _ = (2 * d) * 2 ^ steps := (Nat.mul_assoc _ _ _).symm\n      _ ≤ (d_next - 1) * 2 ^ steps := Nat.mul_le_mul_right _ hfw\n      _ = _ := halg\n  unfold hammingClose\n  refine (mul_le_mul_left' (Code.distFromCode_le_dist_to_mem f g g.property)\n    (2 : ℕ∞)).trans_lt ?_\n  exact ENat.coe_lt_coe.mpr hnat\n",
+  "feedback": {
+    "kind": "lean_correctness_feedback",
+    "status": "failed",
+    "primary_version": "v4.31.0",
+    "primary_passed": false,
+    "all_versions_passed": false,
+    "required_versions": [
+      "v4.31.0",
+      "v4.30.0",
+      "v4.29.0",
+      "v4.28.0"
+    ],
+    "errors": [],
+    "versions": [
+      {
+        "version": "v4.31.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "failed to synthesize\n  NeZero ?m.264\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.",
+          "unsolved goals\nr : ℕ\ninst✝⁹ : NeZero r\nL : Type\ninst✝⁸ : Field L\ninst✝⁷ : Fintype L\ninst✝⁶ : DecidableEq L\n𝔽q : Type\ninst✝⁵ : Field 𝔽q\ninst✝⁴ : Fintype 𝔽q\ninst✝³ : DecidableEq 𝔽q\nh_Fq_char_prime : Fact (Nat.Prime (ringChar 𝔽q))\nhF₂ : Fact (Fintype.card 𝔽q = 2)\ninst✝² : Algebra 𝔽q L\nβ : Fin r → L\nhβ_lin_indep : Fact (LinearIndependent 𝔽q β)\nh_β₀_eq_1 : Fact (β 0 = 1)\nℓ 𝓡 : ℕ\ninst✝¹ : NeZero 𝓡\nh_ℓ_add_R_rate : ℓ + 𝓡 < r\ni : Fin ℓ\nsteps : ℕ\ninst✝ : NeZero steps\nh_i_add_steps : ↑i + steps ≤ ℓ\nf : OracleFunction 𝔽q β ⟨↑i, ⋯⟩\nh_fw_dist_lt : fiberwiseClose 𝔽q β i steps h_i_add_steps f\nC : Submodule L (↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨↑⟨↑i, ⋯⟩, ⋯⟩) → L) := BBF_Code 𝔽q β ⟨↑i, ⋯⟩\nd : ℕ := fiberwiseDistance 𝔽q β i steps h_i_add_steps f\nd_i : ℕ := BBF_CodeDistance ℓ 𝓡 ⟨↑i, ⋯⟩\nd_next : ℕ := BBF_CodeDistance ℓ 𝓡 ⟨↑i + steps, ⋯⟩\ng : ↥C\nleft✝ : g ∈ Set.univ\nY : Set ↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨↑i + steps, ⋯⟩) := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f ↑g\nhg : Y.ncard = d\n⊢ hammingClose 𝔽q β ⟨↑i, ⋯⟩ f"
+        ]
+      },
+      {
+        "version": "v4.30.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "failed to synthesize\n  NeZero ?m.266\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.",
+          "unsolved goals\nr : ℕ\ninst✝⁹ : NeZero r\nL : Type\ninst✝⁸ : Field L\ninst✝⁷ : Fintype L\ninst✝⁶ : DecidableEq L\n𝔽q : Type\ninst✝⁵ : Field 𝔽q\ninst✝⁴ : Fintype 𝔽q\ninst✝³ : DecidableEq 𝔽q\nh_Fq_char_prime : Fact (Nat.Prime (ringChar 𝔽q))\nhF₂ : Fact (Fintype.card 𝔽q = 2)\ninst✝² : Algebra 𝔽q L\nβ : Fin r → L\nhβ_lin_indep : Fact (LinearIndependent 𝔽q β)\nh_β₀_eq_1 : Fact (β 0 = 1)\nℓ 𝓡 : ℕ\ninst✝¹ : NeZero 𝓡\nh_ℓ_add_R_rate : ℓ + 𝓡 < r\ni : Fin ℓ\nsteps : ℕ\ninst✝ : NeZero steps\nh_i_add_steps : ↑i + steps ≤ ℓ\nf : OracleFunction 𝔽q β ⟨↑i, ⋯⟩\nh_fw_dist_lt : fiberwiseClose 𝔽q β i steps h_i_add_steps f\nC : Submodule L (↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨↑⟨↑i, ⋯⟩, ⋯⟩) → L) := BBF_Code 𝔽q β ⟨↑i, ⋯⟩\nd : ℕ := fiberwiseDistance 𝔽q β i steps h_i_add_steps f\nd_i : ℕ := BBF_CodeDistance ℓ 𝓡 ⟨↑i, ⋯⟩\nd_next : ℕ := BBF_CodeDistance ℓ 𝓡 ⟨↑i + steps, ⋯⟩\ng : ↥C\nleft✝ : g ∈ Set.univ\nY : Set ↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨↑i + steps, ⋯⟩) := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f ↑g\nhg : Y.ncard = d\n⊢ hammingClose 𝔽q β ⟨↑i, ⋯⟩ f"
+        ]
+      },
+      {
+        "version": "v4.29.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "failed to synthesize\n  NeZero ?m.265\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.",
+          "unsolved goals\nr : ℕ\ninst✝⁹ : NeZero r\nL : Type\ninst✝⁸ : Field L\ninst✝⁷ : Fintype L\ninst✝⁶ : DecidableEq L\n𝔽q : Type\ninst✝⁵ : Field 𝔽q\ninst✝⁴ : Fintype 𝔽q\ninst✝³ : DecidableEq 𝔽q\nh_Fq_char_prime : Fact (Nat.Prime (ringChar 𝔽q))\nhF₂ : Fact (Fintype.card 𝔽q = 2)\ninst✝² : Algebra 𝔽q L\nβ : Fin r → L\nhβ_lin_indep : Fact (LinearIndependent 𝔽q β)\nh_β₀_eq_1 : Fact (β 0 = 1)\nℓ 𝓡 : ℕ\ninst✝¹ : NeZero 𝓡\nh_ℓ_add_R_rate : ℓ + 𝓡 < r\ni : Fin ℓ\nsteps : ℕ\ninst✝ : NeZero steps\nh_i_add_steps : ↑i + steps ≤ ℓ\nf : OracleFunction 𝔽q β ⟨↑i, ⋯⟩\nh_fw_dist_lt : fiberwiseClose 𝔽q β i steps h_i_add_steps f\nC : Submodule L (↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨↑⟨↑i, ⋯⟩, ⋯⟩) → L) := BBF_Code 𝔽q β ⟨↑i, ⋯⟩\nd : ℕ := fiberwiseDistance 𝔽q β i steps h_i_add_steps f\nd_i : ℕ := BBF_CodeDistance ℓ 𝓡 ⟨↑i, ⋯⟩\nd_next : ℕ := BBF_CodeDistance ℓ 𝓡 ⟨↑i + steps, ⋯⟩\ng : ↥C\nleft✝ : g ∈ Set.univ\nY : Set ↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨↑i + steps, ⋯⟩) := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f ↑g\nhg : Y.ncard = d\n⊢ hammingClose 𝔽q β ⟨↑i, ⋯⟩ f"
+        ]
+      },
+      {
+        "version": "v4.28.0",
+        "status": "failed",
+        "passed": false,
+        "errors": [
+          "failed to synthesize\n  NeZero ?m.265\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command.",
+          "unsolved goals\nr : ℕ\ninst✝⁹ : NeZero r\nL : Type\ninst✝⁸ : Field L\ninst✝⁷ : Fintype L\ninst✝⁶ : DecidableEq L\n𝔽q : Type\ninst✝⁵ : Field 𝔽q\ninst✝⁴ : Fintype 𝔽q\ninst✝³ : DecidableEq 𝔽q\nh_Fq_char_prime : Fact (Nat.Prime (ringChar 𝔽q))\nhF₂ : Fact (Fintype.card 𝔽q = 2)\ninst✝² : Algebra 𝔽q L\nβ : Fin r → L\nhβ_lin_indep : Fact (LinearIndependent 𝔽q β)\nh_β₀_eq_1 : Fact (β 0 = 1)\nℓ 𝓡 : ℕ\ninst✝¹ : NeZero 𝓡\nh_ℓ_add_R_rate : ℓ + 𝓡 < r\ni : Fin ℓ\nsteps : ℕ\ninst✝ : NeZero steps\nh_i_add_steps : ↑i + steps ≤ ℓ\nf : OracleFunction 𝔽q β ⟨↑i, ⋯⟩\nh_fw_dist_lt : fiberwiseClose 𝔽q β i steps h_i_add_steps f\nC : Submodule L (↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨↑⟨↑i, ⋯⟩, ⋯⟩) → L) := BBF_Code 𝔽q β ⟨↑i, ⋯⟩\nd : ℕ := fiberwiseDistance 𝔽q β i steps h_i_add_steps f\nd_i : ℕ := BBF_CodeDistance ℓ 𝓡 ⟨↑i, ⋯⟩\nd_next : ℕ := BBF_CodeDistance ℓ 𝓡 ⟨↑i + steps, ⋯⟩\ng : ↥C\nleft✝ : g ∈ Set.univ\nY : Set ↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨↑i + steps, ⋯⟩) := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f ↑g\nhg : Y.ncard = d\n⊢ hammingClose 𝔽q β ⟨↑i, ⋯⟩ f"
+        ]
+      }
+    ],
+    "truncated": false
+  }
+}

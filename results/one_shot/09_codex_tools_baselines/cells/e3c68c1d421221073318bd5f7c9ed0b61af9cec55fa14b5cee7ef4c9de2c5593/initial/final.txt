@@ -1,0 +1,75 @@
+```lean
+theorem putnam_1964_b2
+(S : Type*) [Fintype S] [Nonempty S]
+(P : Finset (Set S))
+(hPP : ∀ T ∈ P, ∀ U ∈ P, T ∩ U ≠ ∅)
+(hPS : ¬∃ T : Set S, T ∉ P ∧ (∀ U ∈ P, T ∩ U ≠ ∅))
+: (P.card = 2 ^ (Fintype.card S - 1)) := by
+  classical
+  have hup : ∀ {A B : Set S}, A ∈ P → A ⊆ B → B ∈ P := by
+    intro A B hA hAB
+    by_contra hB
+    apply hPS
+    refine ⟨B, hB, ?_⟩
+    intro U hU
+    have hx := Set.nonempty_iff_ne_empty.mpr (hPP A hA U hU)
+    rcases hx with ⟨x, hx⟩
+    have hx' := (Set.mem_inter_iff x A U).mp hx
+    exact ⟨x, Set.mem_inter (hAB hx'.1) hx'.2⟩
+  have hcover : ∀ A : Set S, A ∈ P ∨ Aᶜ ∈ P := by
+    intro A
+    by_cases hA : A ∈ P
+    · exact Or.inl hA
+    · right
+      by_contra hAc
+      have he : ∃ U, U ∈ P ∧ A ∩ U = ∅ := by
+        by_contra hn
+        apply hPS
+        refine ⟨A, hA, ?_⟩
+        intro U hU
+        by_contra hne
+        exact hn ⟨U, hU, hne⟩
+      obtain ⟨U, hU, hdisj⟩ := he
+      apply hAc
+      apply hup hU
+      intro x hx
+      change x ∉ A
+      intro hxA
+      have h : x ∈ A ∩ U := Set.mem_inter hxA hx
+      rw [hdisj] at h
+      exact h
+  have hnot : ∀ A : Set S, A ∈ P → Aᶜ ∉ P := by
+    intro A hA hAc
+    have hne := hPP A hA Aᶜ hAc
+    apply hne
+    ext x
+    simp
+  let Q : Finset (Set S) := Finset.univ \ P
+  have hPQ : ∀ A : Set S, A ∈ P → Aᶜ ∈ Q := by
+    intro A hA
+    simp [Q, hnot A hA]
+  have hQP : ∀ A : Set S, A ∈ Q → Aᶜ ∈ P := by
+    intro A hA
+    have hAnot : A ∉ P := (Finset.mem_sdiff.mp hA).2
+    rcases hcover A with h | h
+    · exact (hAnot h).elim
+    · exact h
+  have hcard : P.card = Q.card :=
+    Finset.card_bij' (fun A _ => Aᶜ) (fun A _ => Aᶜ) hPQ hQP
+      (by intro A hA; simp) (by intro A hA; simp)
+  have hsum : Q.card + P.card = (Finset.univ : Finset (Set S)).card :=
+    Finset.card_sdiff_add_card_eq_card (Finset.subset_univ P)
+  have huniv : (Finset.univ : Finset (Set S)).card = 2 ^ Fintype.card S := by
+    simp [Fintype.card_fun]
+  have hmul : P.card * 2 = 2 ^ Fintype.card S := by
+    rw [huniv, ← hcard] at hsum
+    omega
+  have hpos : 0 < Fintype.card S :=
+    Fintype.card_pos_iff.mpr ⟨Classical.choice ‹Nonempty S›⟩
+  have hpow : 2 ^ (Fintype.card S - 1) * 2 = 2 ^ Fintype.card S := by
+    calc
+      2 ^ (Fintype.card S - 1) * 2 = 2 ^ (Fintype.card S - 1) * 2 ^ 1 := by norm_num
+      _ = 2 ^ ((Fintype.card S - 1) + 1) := by rw [← pow_add]
+      _ = 2 ^ Fintype.card S := by congr 1 <;> omega
+  nlinarith
+```

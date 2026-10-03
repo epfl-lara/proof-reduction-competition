@@ -1,6 +1,6 @@
 # Full-matrix correctness-only repair
 
-**running**: 209/225 cells complete; 225/225 initial proposals available.
+**complete**: 225/225 cells complete; 225/225 initial proposals available.
 
 The full model × context × theorem cohort was declared before repair outcomes. Each cell reuses its original proposal and receives at most three correctness-only repair requests. Empty original responses are not regenerated. The first proof passing every required version stops repair, irrespective of score.
 

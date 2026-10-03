@@ -1,0 +1,46 @@
+lemma fundamental_theorem_of_variational_calculus' {f : Y → V}
+    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]
+    [OpensMeasurableSpace Y]
+    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :
+    f = 0 := by
+  rw [funext_iff]
+  by_contra h
+  obtain ⟨x₀, hx₀⟩ := not_forall.mp h
+  simp at hx₀
+  have hs : 0 < ⟪f x₀, f x₀⟫_ℝ := by
+    have hn : ⟪f x₀, f x₀⟫_ℝ ≠ 0 := fun e => hx₀ (inner_self_eq_zero'.mp e)
+    exact lt_of_le_of_ne (by simpa using (real_inner_self_nonneg' (x := f x₀))) (Ne.symm hn)
+  have hc : Continuous (fun x => ⟪f x, f x₀⟫_ℝ) :=
+    Continuous.inner' f (fun _ => f x₀) hf continuous_const
+  obtain ⟨δ, hδ, hcont⟩ :=
+    Metric.continuousAt_iff.mp hc.continuousAt (⟪f x₀, f x₀⟫_ℝ / 2) (by positivity)
+  have hi : ∀ x ∈ Metric.ball x₀ δ, 0 < ⟪f x, f x₀⟫_ℝ := by
+    intro x hx
+    have hh := hcont (Metric.mem_ball.mp hx)
+    have hh' : |⟪f x, f x₀⟫_ℝ - ⟪f x₀, f x₀⟫_ℝ| < ⟪f x₀, f x₀⟫_ℝ / 2 := by
+      simpa only [Real.dist_eq] using hh
+    linarith [(abs_lt.mp hh').1]
+  have hb : ∃ φ : Y → ℝ, IsTestFunction φ ∧ φ x₀ > 0 ∧
+      (∀ x ∈ Function.support φ, 0 ≤ φ x) ∧
+      Function.support φ ⊆ Metric.ball x₀ (δ / 2) := by
+    haveI : HasContDiffBump Y := hasContDiffBump_of_innerProductSpace Y
+    let φ : ContDiffBump x₀ := ⟨δ / 4, δ / 2, by positivity, by linarith⟩
+    refine ⟨φ.toFun, ⟨φ.contDiff, φ.hasCompactSupport⟩,
+      φ.pos_of_mem_ball (Metric.mem_ball_self φ.rOut_pos), (fun _ _ => φ.nonneg), ?_⟩
+    rw [ContDiffBump.support_eq]
+  obtain ⟨φ, hφ, hφ₀, hφnonneg, hφsupp⟩ := hb
+  let g : Y → V := fun x => φ x • f x₀
+  have hgt : IsTestFunction g := IsTestFunction.smul_right hφ contDiff_const
+  have hzero := hg g hgt
+  simp only [g, inner_smul_right'] at hzero
+  have hsub : Function.support φ ⊆ Metric.ball x₀ δ :=
+    hφsupp.trans (Metric.ball_subset_ball (by linarith))
+  have hnonneg : ∀ x, 0 ≤ φ x * ⟪f x, f x₀⟫_ℝ := by
+    intro x
+    by_cases hx : x ∈ Function.support φ
+    · exact mul_nonneg (hφnonneg x hx) (hi x (hsub hx)).le
+    · simp [Function.notMem_support.mp hx]
+  have hpos : 0 < ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ :=
+    (Continuous.mul hφ.smooth.continuous hc).integral_pos_of_hasCompactSupport_nonneg_nonzero
+      hφ.supp.mul_right hnonneg (ne_of_gt (mul_pos hφ₀ hs))
+  linarith
