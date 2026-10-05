@@ -8,7 +8,7 @@ APIs; no library imports an experiment driver. Historical studies stay in
 | --- | --- | --- |
 | `verification` | Pinned Lean compilation, token counts, cached references, goal observations | `Evaluator`, `check_references` |
 | `optimization` | Parsed proof edits, tactic discovery, minimization, bounded cleanup, generic deterministic batches | `Budget`, `optimize`, `cleanup_proof`, `BatchConfig`, `run_batch` |
-| `providers` | Codex transport/isolation, RCP client, terminal usage, price estimates | `codex.generate`, `RCPClient`, `CostConfig` |
+| `providers` | Native agent CLIs, durable execution/isolation, terminal usage, price estimates | `codex.generate`, `lemex.generate`, `claude.generate`, `CostConfig` |
 | `harness` | Prompt/context policy, tool sessions, one-theorem search, batch coordination and reports | `ProofSession`, `ProofToolService`, `RunConfig`, `run` |
 | `benchmark` | Explicit project setup and one-time reference processing | `process_benchmark` |
 | `evidence` | Atomic artifacts, stable hashes and saved-evidence audits | `write_json`, `fingerprint`, `audit` |
@@ -17,10 +17,12 @@ APIs; no library imports an experiment driver. Historical studies stay in
 `harness/search.py` owns one theorem's model request and final cleanup.
 `harness/runner.py` owns concurrency and the complete declared cohort.
 `harness/agent.py` supplies prompt policy and the tool service to the general
-Codex transport. Provider code does not import the harness or decide which proof
+native agent executor. Provider code does not import the harness or decide which proof
 wins. The host-owned `ProofSession` makes that decision from evaluator results.
-RCP remains a separate chat transport; the current live tool-agent runner uses
-Codex. A custom agent implementation can be passed as `run_cell(..., generator=...)`.
+`providers/execution.py` owns durable execution; the three provider adapters own
+command construction, authentication and event decoding. Codex and Lemex share
+the Responses command builder. A custom agent implementation can be passed as
+`run_cell(..., generator=...)`. The former direct RCP chat client is removed.
 
 ## Verification and training rewards
 
@@ -75,6 +77,14 @@ and `incumbent` evaluation including references, and `source_context`. The defau
 uses the already frozen warm-up packs. Pass another directory with `base=...` or
 `--base` for another prepared batch; references are still required in the cache.
 
+Set `provider="lemex"` or `provider="claude"` to select a native CLI. Omitted
+conditions default to DeepSeek V4.1 Flash/high or Opus 5.5/max respectively;
+Codex defaults remain Sol 6.1/max and Astra/max. Only the active `score_edges`
+policy can be launched. Historical modes remain readable by the evidence auditor.
+The canonical prompt and bank retain the revised V2 bytes. Provider wrapper
+instructions may describe a different command working directory; they do not
+change the mathematical task, context, score or proof-selection policy.
+
 `ProofSession(folder, pack, evaluator, "score_edges", seed=..., cleanup=...)` is
 the tool API used by the host. `dispatch()` accepts these exact JSON operations:
 
@@ -106,7 +116,7 @@ original or saved deterministic proof.
 
 ## Providers and costs
 
-Codex transport accepts exact `model`, `effort`, prompt messages, tool
+Native transports accept exact `model`, `effort`, prompt messages, tool
 instructions, a session, a tool-service factory, and pinned CLI identity.
 `harness.agent.generate` supplies that wiring for search. Requests, started
 markers, CLI events and terminal responses are durable. An interrupted started
@@ -115,20 +125,46 @@ Codex's CLI does not provide this experiment with a hard output-token cap or
 temperature control. The active configurations are Sol 6.1/max and Astra/max.
 
 ```python
-from proof_eval import RCPClient
-from proof_eval.providers.costs import CostConfig, estimate_codex_cost
+from proof_eval.providers.costs import CostConfig, estimate_token_cost
 
-client = RCPClient(env_path=".env")  # Explicit construction reads credentials.
-# client.create_chat_completion(...) dispatches an RCP request only when called.
-cost = estimate_codex_cost(CostConfig("gpt-6.1-sol", "max"), saved_codex_usage)
+cost = estimate_token_cost(CostConfig("gpt-6.1-sol", "max"), saved_token_usage)
+# The same API accepts claude-opus-5-5/max.
 ```
 
-`estimate_configuration()` reprices complete saved traces as a scenario.
-`generations_cost()` includes every attempt; missing usage remains unknown.
-`proof-harness estimate` records scenarios before any model or Lean calls.
-Standard/short-context API-equivalent pricing is not a Codex invoice. The $3
-competition limit applies per problem. Current comparison runs report costs
-without imposing a stopping budget.
+`estimate_configuration()` reprices complete saved traces as a scenario;
+`proof-harness estimate --provider claude` works before model or Lean calls.
+`generations_cost()` includes every attempt. Missing usage remains unknown.
+Codex prices remain the pinned 2026-10-04 list-price assumptions. Opus 5.5 rates
+verified on 2026-10-05 are $4 input / $20 output per million, $0.20 cache reads,
+$5 five-minute writes and $8 one-hour writes, from
+[Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing).
+Claude terminal records preserve `modelUsage` and `total_cost_usd`; the reported
+all-model CLI estimate is used for observed totals, with independent aggregate
+repricing shown separately. This is not a subscription invoice. The exact
+DeepSeek gateway price is unverified and remains unknown rather than borrowing
+another model's rate. The $3 limit applies to each problem; these comparisons
+report it without a stopping budget.
+
+Lemex uses its installed model catalog, pinned by hash, and an explicit Responses
+endpoint. Set `LEMEX_API_KEY`/`LEMEX_BASE_URL`, or reuse literal gateway credentials
+from the existing `.env`; credentials go only into the child environment. The
+host takes a shared filesystem admission slot for each native Lemex session,
+conservatively limiting all concurrent batches on this machine to five sessions.
+Other machines or clients using the same key must respect the same shared limit.
+No sampling temperature is sent: there is no old 0.3 setting or 32K output cap.
+The gateway's effective default temperature is not independently verified.
+
+Claude launches from the repository, with its normal settings/login discovery,
+using the exact `claude-opus-5-5` model and `max` effort. It receives an isolated
+writable workspace and explicit tool-client paths. Built-in file tools and
+approved proof-client/read-only shell commands are available. `dontAsk` plus
+`--permission-prompts none` prevents unattended permission waits. There is no
+permission bypass, bare mode, fallback model, turn limit or dollar stopping limit.
+Unrelated MCP servers are excluded for this matched benchmark. Linux Landlock
+protects source projects and the host evidence regardless of CLI permissions.
+Terminal `is_error`, subtype, actual model, permission denials, session ID, usage
+and cost are preserved and checked; denied tools or an unavailable model leave
+an incomplete outcome. See [headless Claude Code](https://code.claude.com/docs/en/headless).
 
 ## Artifacts and resuming
 
@@ -164,7 +200,7 @@ one `{"name": ..., "proof": "complete declaration"}` object per line.
 | `src/run_agent_harness.py` | `proof-harness run/prepare/estimate/report` |
 | `src/audit_agent_harness.py` | `proof-harness audit` |
 | `src/continue_agent_harness.py` | `proof-harness run --pilot` |
-| `src/rcp.py` | `rcp-chat`, or public `RCPClient` |
+| `src/rcp.py` | retired; native Lemex via `proof-harness --provider lemex` |
 
 Other one-shot, repair, per-model and analysis drivers are retired. Their saved
 results remain readable; recover their code from `bfb2ade6` when historical

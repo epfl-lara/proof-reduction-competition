@@ -1,4 +1,4 @@
-"""Codex executable identity and terminal event parsing."""
+"""Executable identities and Codex-compatible terminal event parsing."""
 
 import hashlib
 import shutil
@@ -20,8 +20,8 @@ DISABLED = (
 )
 
 
-def cli_identity():
-    binary = Path(shutil.which("codex") or "codex").resolve(strict=True)
+def cli_identity(name: str = "codex") -> dict:
+    binary = Path(shutil.which(name) or name).resolve(strict=True)
     return {
         "path": str(binary),
         "sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
@@ -65,6 +65,7 @@ def parse_events(events, final, returncode):
             "cached_input_tokens": usage.get("cached_input_tokens"),
         },
         "codex_usage": usage,
+        "token_usage": usage,
         "completed_turns": 1,
         "tool_items": len(tools),
         "tool_item_types": [t.get("type") for t in tools],

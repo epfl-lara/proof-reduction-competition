@@ -1,4 +1,4 @@
-"""Codex token-cost estimates at public API list prices (not subscription bills).
+"""Native-agent token-cost estimates (never subscription bills or invoices).
 
 Use ``estimate_codex_cost`` on one Responses request or aggregated Codex usage;
 the caller must select the context band for aggregates. Reprice saved runs with
@@ -24,6 +24,10 @@ RATES = {
 SOURCES = {
     model: "https://developers.openai.com/api/docs/models/" + model for model in RATES
 }
+CLAUDE_MODEL = "claude-opus-5-5"
+CLAUDE_RATES = (4.0, 0.20, 5.0, 20.0)
+CLAUDE_SOURCE = "https://platform.claude.com/docs/en/about-claude/pricing"
+UNPRICED_MODELS = {"deepseek-ai/DeepSeek-V4.1-Flash"}
 TIERS = {"standard": 1.0, "fast": 2.0, "flex": 0.5, "batch": 0.5}
 USAGE_FIELDS = (
     "input_tokens",
@@ -43,7 +47,7 @@ class CostConfig:
     regional_processing: bool = False
 
     def __post_init__(self):
-        if self.model not in RATES:
+        if self.model not in {*RATES, CLAUDE_MODEL, *UNPRICED_MODELS}:
             raise ValueError("No verified price for exact model: " + self.model)
         if self.reasoning_effort not in ("low", "medium", "high", "xhigh", "max"):
             raise ValueError("Unsupported reasoning effort")
@@ -51,9 +55,42 @@ class CostConfig:
             raise ValueError("Unknown service tier or context band")
         if type(self.regional_processing) is not bool:
             raise ValueError("regional_processing must be boolean")
+        if self.model == CLAUDE_MODEL and (
+            self.service_tier == "flex" or self.regional_processing
+        ):
+            raise ValueError("Claude flex/regional pricing is not verified")
 
 
-def rate_card():
+def rate_card(provider: str = "codex") -> dict:
+    # Preserve the existing Codex card byte-for-byte for historical audits.
+    if provider == "claude":
+        return {
+            "verified_at": "2026-10-05",
+            "currency": "USD",
+            "unit": "per_million_tokens",
+            "rates": {
+                CLAUDE_MODEL: dict(
+                    zip(
+                        ("input", "cached_input", "cache_write", "output"), CLAUDE_RATES
+                    )
+                )
+            },
+            "cache_write_1h": 8.0,
+            "sources": {CLAUDE_MODEL: CLAUDE_SOURCE},
+            "basis": "Public rates for independent estimates; Claude Code reports an all-model client-side estimate.",
+        }
+    if provider == "lemex":
+        return {
+            "verified_at": "2026-10-05",
+            "currency": "USD",
+            "unit": "per_million_tokens",
+            "rates": {},
+            "sources": {},
+            "unpriced_models": sorted(UNPRICED_MODELS),
+            "reason": "No verified price for this exact gateway model. Usage is recorded; price remains unknown.",
+        }
+    if provider != "codex":
+        raise ValueError("Unknown cost provider: " + provider)
     return {
         "verified_at": RATE_CARD_DATE,
         "currency": "USD",
@@ -92,9 +129,10 @@ def _parts(config, usage, *, all_uncached_are_writes=False, long_context=False):
     multiplier = Decimal(str(TIERS[config.service_tier])) * (
         Decimal("1.1") if config.regional_processing else 1
     )
-    prices = [Decimal(str(r)) * multiplier for r in RATES[config.model]]
+    raw_rates = CLAUDE_RATES if config.model == CLAUDE_MODEL else RATES[config.model]
+    prices = [Decimal(str(r)) * multiplier for r in raw_rates]
     long_context = long_context or config.context_band == "long"
-    if long_context:
+    if long_context and config.model != CLAUDE_MODEL:
         prices = [p * (Decimal("1.5") if i == 3 else 2) for i, p in enumerate(prices)]
     reads, writes = usage["cached_input_tokens"], usage["cache_write_input_tokens"]
     ordinary = usage["input_tokens"] - reads - writes
@@ -131,7 +169,19 @@ def estimate_codex_cost(
         or budget_usd <= 0
     ):
         raise ValueError("Budget must be positive and finite")
-    if scope == "request":
+    if config.model in UNPRICED_MODELS:
+        return {
+            "status": "unknown_price",
+            "basis": "public_api_equivalent",
+            "configuration": asdict(config),
+            "usage": usage,
+            "usage_scope": scope,
+            "total_usd": None,
+            "budget_usd": budget_usd,
+            "over_budget_at_assumed_rates": None,
+            "reason": "No verified price for exact model: " + config.model,
+        }
+    if scope == "request" and config.model != CLAUDE_MODEL:
         config = CostConfig(
             **{
                 **asdict(config),
@@ -144,8 +194,12 @@ def estimate_codex_cost(
         "status": "estimated",
         "basis": "public_api_equivalent",
         "configuration": asdict(config),
-        "rate_card_date": RATE_CARD_DATE,
-        "source": SOURCES[config.model],
+        "rate_card_date": (
+            "2026-10-05" if config.model == CLAUDE_MODEL else RATE_CARD_DATE
+        ),
+        "source": (
+            CLAUDE_SOURCE if config.model == CLAUDE_MODEL else SOURCES[config.model]
+        ),
         "usage": usage,
         "usage_scope": scope,
         "breakdown_usd": parts,
@@ -175,7 +229,7 @@ def generations_cost(config: CostConfig, generations, *, budget_usd=3.0):
     unknown = []
     for i, generation in enumerate(generations):
         try:
-            usage = _usage(generation.get("codex_usage"))
+            usage = _usage(generation.get("token_usage", generation.get("codex_usage")))
         except ValueError:
             unknown.append(i)
             continue
@@ -190,7 +244,54 @@ def generations_cost(config: CostConfig, generations, *, budget_usd=3.0):
             "unknown_attempt_indices": unknown,
             "over_budget_at_assumed_rates": None,
         }
+    if config.model == CLAUDE_MODEL and all(
+        g.get("provider") == "claude" for g in generations
+    ):
+        # The native CLI includes any helper models. Do not charge aggregate
+        # auxiliary usage at Opus prices, nor infer a subscription invoice.
+        reported = [g.get("cli_cost_usd") for g in generations]
+        if any(
+            type(c) not in (float, int) or not isfinite(c) or c < 0 for c in reported
+        ):
+            return {
+                "status": "unknown_cost",
+                "total_usd": None,
+                "known_usage_estimate": known,
+                "unknown_attempt_indices": [],
+                "over_budget_at_assumed_rates": None,
+                "reason": "Claude Code omitted its all-model cost estimate",
+            }
+        total = sum(reported)
+        return {
+            "status": "estimated",
+            "basis": "claude_code_api_equivalent_estimate",
+            "configuration": asdict(config),
+            "source": CLAUDE_SOURCE,
+            "rate_card_date": "2026-10-05",
+            "usage": totals,
+            "total_usd": total,
+            "budget_usd": budget_usd,
+            "over_budget_at_assumed_rates": total > budget_usd + 1e-12,
+            "remaining_usd_at_assumed_rates": budget_usd - total,
+            "attempts": len(generations),
+            "unknown_attempt_indices": [],
+            "aggregate_usage_at_opus_list_rates": known,
+            "model_usage": [
+                g.get("claude_result", {}).get("modelUsage", {}) for g in generations
+            ],
+            "assumptions": [
+                "Claude Code's reported cost is a client-side API-equivalent estimate, not an invoice.",
+                "All reported attempts and auxiliary models are included in the CLI estimate.",
+                "The independent aggregate repricing assumes Opus and five-minute cache writes; inspect modelUsage for auxiliary models.",
+                "Input tokens include cache reads/writes; reasoning is already included in output.",
+            ],
+        }
     return {**known, "attempts": len(generations), "unknown_attempt_indices": []}
+
+
+def estimate_token_cost(config: CostConfig, usage: dict, **kwargs) -> dict:
+    """Provider-neutral spelling of the public token-pricing API."""
+    return estimate_codex_cost(config, usage, **kwargs)
 
 
 def summarize_costs(problems, *, budget_usd=3.0):

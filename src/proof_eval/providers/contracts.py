@@ -24,4 +24,5 @@ class AgentGenerator(Protocol):
         session: ToolSession,
         context: dict,
         expected_cli: dict,
+        provider: str = "codex",
     ) -> dict: ...

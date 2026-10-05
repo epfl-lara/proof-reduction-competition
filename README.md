@@ -31,6 +31,29 @@ proof-harness audit --output results/harness/my_sol_run
 
 Omit `--condition` to run both active models, or specify `gpt-6-astra:max` for the SOTA condition. Score search has no imposed total token, attempt or wall-time cap. Costs are reported per problem using recorded usage and explicit API-equivalent assumptions; the competition's $3 cap is not enforced by these comparison runs.
 
+There is one active task policy: [refactor_system.md](prompts/refactor_system.md)
+and its five-card [strategy bank](prompts/strategy_bank.json), preserving the
+revised V2 contents used for the recent Sol runs. There is no prompt-version or
+search-mode selector. All providers use score feedback and cleanup at the edges.
+
+Native Lemex and Claude Code run the same task with their own shell/edit tools:
+
+```bash
+# DeepSeek: existing .env gateway key is passed only to the Lemex child.
+proof-harness run --provider lemex --pilot --workers 5 \
+  --output results/harness/my_deepseek_run
+
+# Sign in with `claude auth login` first. Exact Opus 5.5/max, no fallback.
+proof-harness run --provider claude --pilot --workers 5 \
+  --output results/harness/my_opus_run
+```
+
+Lemex defaults to `deepseek-ai/DeepSeek-V4.1-Flash/high`. The direct RCP chat
+client and its temperature/output-cap settings are retired. Native Lemex sends
+no temperature override; the gateway's effective default is not exposed by the
+CLI. Claude uses `claude-opus-5-5/max`, with normal project configuration and
+authentication discovery. Each provider has separate output and usage evidence.
+
 Every completed condition exports `conditions/MODEL__EFFORT/selected_candidates.jsonl`, with one complete declaration per benchmark ID in the organizer's submission format. Invalid or regressive attempts preserve the best proof passing every required version. In-loop deterministic cleanup is retired.
 
 ## APIs and code organization
@@ -76,6 +99,6 @@ The generic deterministic API accepts a new competition batch with explicit path
 - [Sol configuration results and submission](results/harness/05_model_config/README.md): the pre-refactor Sol/max result was 87.342215% combined with 100% compatibility.
 - [Refactor validation and fresh Sol replicate](results/harness/06_refactor_regression/COMPARISON.md): 86.575834% combined, 100% compatibility, 36/36 passing versions; the earlier stronger submission is preserved.
 - [related_work](related_work/README.md): literature, papers and research proposals.
-- [prompts](prompts): versioned prompts and strategy bank.
+- [prompts](prompts): the one active revised task policy and strategy bank.
 
 Historical study drivers and their dedicated tests were retired during the package cleanup. Their result evidence remains unchanged, and their original sources are saved in Git checkpoint `bfb2ade6` and content-addressed audit snapshots. Current experiments use the maintained APIs and commands above.

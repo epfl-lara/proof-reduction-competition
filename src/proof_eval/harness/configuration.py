@@ -10,7 +10,7 @@ from proof_eval.evidence.io import digest, fingerprint, read, write_json
 from proof_eval.optimization.cleanup import BUDGET, METHODS
 from proof_eval.paths import PACKAGE, ROOT, SNAPSHOTS
 from proof_eval.providers.costs import CostConfig, estimate_configuration, rate_card
-from proof_eval.providers.events import cli_identity
+from proof_eval.providers.registry import DEFAULT_CONDITIONS, adapter, validate
 from proof_eval.verification.feedback import all_versions_passed
 from proof_eval.verification.references import (
     check_references,
@@ -37,7 +37,7 @@ CONDITIONS = {
 CONDITIONS.update(
     {mode: list(CONDITIONS["score"]) for mode in ("score_edges", "score_each")}
 )
-RUN_MODES = ("correctness", "score", "score_edges")
+RUN_MODES = ("score_edges",)
 DEFAULT_MODE = "score_edges"
 DEFAULT_OUTPUT = ROOT / "results/harness/06_refactor_regression"
 DETERMINISTIC_MODES = ("score_edges",)
@@ -45,8 +45,8 @@ CONDITIONS["model_config"] = [("gpt-6.1-sol", "max"), ("gpt-6-astra", "max")]
 ACTIVE_CONDITIONS = [("gpt-6.1-sol", "max"), ("gpt-6-astra", "max")]
 
 PROMPT_FILES = (
-    "prompts/agent_refactor_system_v2.md",
-    "prompts/structural_strategy_bank_v2.json",
+    "prompts/refactor_system.md",
+    "prompts/strategy_bank.json",
 )
 
 
@@ -130,7 +130,7 @@ def starting_point(pack, mode):
     return pack["row"]["src"], original
 
 
-def preflight_costs(conditions):
+def preflight_costs(conditions, provider="codex"):
     """No model calls or Lean measurements; use complete saved stage-03 traces."""
     source = OUTPUTS["score_edges"]
     source_config = read(source / "config.json")
@@ -152,7 +152,7 @@ def preflight_costs(conditions):
                 raise ValueError("Cost scenario needs a complete source cohort")
             scenarios.append(estimate_configuration(CostConfig(model, effort), group))
     return {
-        "rate_card": rate_card(),
+        "rate_card": rate_card(provider),
         "scenarios": scenarios,
         "source_result_sha256": {str(p.relative_to(ROOT)): digest(p) for p in paths},
         "budget_policy": "Report the $3 cap per problem; no stopping rule is imposed in this configuration comparison.",
@@ -160,16 +160,23 @@ def preflight_costs(conditions):
     }
 
 
-def prepare(output, mode, packs, conditions=None, *, base_directory=BASE, paths=None):
+def prepare(
+    output,
+    mode,
+    packs,
+    conditions=None,
+    *,
+    base_directory=BASE,
+    paths=None,
+    provider="codex",
+):
     if mode not in RUN_MODES:
         raise ValueError("Unsupported or retired search mode: " + mode)
-    conditions = conditions or ACTIVE_CONDITIONS
+    conditions = conditions or DEFAULT_CONDITIONS[provider]
     if len({tuple(c) for c in conditions}) != len(conditions):
         raise ValueError("Duplicate model conditions")
-    for model, effort in conditions:
-        if (model, effort) not in ACTIVE_CONDITIONS:
-            raise ValueError("Unsupported model/effort condition")
-    costs = preflight_costs(conditions)
+    validate(provider, conditions)
+    costs = preflight_costs(conditions, provider)
     base_directory = base_directory.resolve()
     base = read(base_directory / "config.json")
     if len(packs) != len(base["names"]) or set(packs) != set(base["names"]):
@@ -179,7 +186,8 @@ def prepare(output, mode, packs, conditions=None, *, base_directory=BASE, paths=
     for relative, expected in base["code_sha256"].items():
         _implementation(relative, expected, ROOT, SNAPSHOTS, "frozen input preparation")
     config = {
-        "schema_version": 1,
+        "schema_version": 2,
+        "provider": provider,
         "mode": mode,
         "names": base["names"],
         "conditions": [list(c) for c in conditions],
@@ -194,7 +202,7 @@ def prepare(output, mode, packs, conditions=None, *, base_directory=BASE, paths=
         "base_config_sha256": digest(base_directory / "config.json"),
         "dataset_sha256": base["dataset_sha256"],
         "environment_config_sha256": base["environment_config_sha256"],
-        "cli": cli_identity(),
+        "cli": adapter(provider).cli_identity(),
         "selection_margin_pp": 0.05,
         "deterministic_cleanup": mode in DETERMINISTIC_MODES,
         "candidate_feedback": mode,
@@ -218,7 +226,7 @@ def prepare(output, mode, packs, conditions=None, *, base_directory=BASE, paths=
         },
         "budget_usd_per_problem": 3.0,
         "budget_enforced": False,
-        "rate_card": rate_card(),
+        "rate_card": rate_card(provider),
     }
     config.update(paths or {})
     if mode in DETERMINISTIC_MODES:

@@ -128,7 +128,9 @@ def _report(output, config):
         )
         result["conditions"].append(summary)
         if complete:
-            destination = output / "conditions" / (model + "__" + effort)
+            destination = (
+                output / "conditions" / (model.replace("/", "__") + "__" + effort)
+            )
             destination.mkdir(parents=True, exist_ok=True)
             ordered = sorted(group, key=lambda r: config["names"].index(r["name"]))
             (destination / "selected_candidates.jsonl").write_text(

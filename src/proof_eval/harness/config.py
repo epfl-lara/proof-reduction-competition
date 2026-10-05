@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Literal
 
 from proof_eval.paths import ROOT
+from proof_eval.providers.registry import DEFAULT_CONDITIONS, validate
 
 from .configuration import (
-    ACTIVE_CONDITIONS,
     BASE,
     DEFAULT_MODE,
     DEFAULT_OUTPUT,
@@ -20,7 +20,8 @@ from .configuration import (
 @dataclass(frozen=True)
 class RunConfig:
     output: Path = DEFAULT_OUTPUT
-    conditions: tuple[tuple[str, str], ...] = tuple(ACTIVE_CONDITIONS)
+    conditions: tuple[tuple[str, str], ...] | None = None
+    provider: Literal["codex", "lemex", "claude"] = "codex"
     names: tuple[str, ...] = ()
     mode: str = DEFAULT_MODE
     workers: int = 5
@@ -35,6 +36,13 @@ class RunConfig:
     pilot: bool = False
 
     def __post_init__(self):
+        if self.conditions is None:
+            try:
+                object.__setattr__(
+                    self, "conditions", DEFAULT_CONDITIONS[self.provider]
+                )
+            except KeyError:
+                raise ValueError("Unknown agent provider: " + self.provider) from None
         if self.mode not in RUN_MODES:
             raise ValueError("Unsupported or retired search mode: " + self.mode)
         if type(self.workers) is not int or self.workers < 1:
@@ -43,7 +51,8 @@ class RunConfig:
             raise ValueError("Unknown harness action")
         if not self.conditions or len(set(self.conditions)) != len(self.conditions):
             raise ValueError("Specify nonempty, unique model conditions")
-        if any(c not in ACTIVE_CONDITIONS for c in self.conditions):
-            raise ValueError("Active conditions are Sol 6.1/max and Astra/max")
+        validate(self.provider, self.conditions)
+        if self.provider == "lemex" and self.workers > 5:
+            raise ValueError("Lemex permits at most five simultaneous gateway sessions")
         if len(set(self.names)) != len(self.names):
             raise ValueError("Duplicate theorem selection")

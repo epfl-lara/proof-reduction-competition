@@ -1,4 +1,4 @@
-"""Versioned model instructions and context; no other condition's solutions."""
+"""One revised task policy and strategy context; no other condition's solutions."""
 
 import json
 
@@ -88,14 +88,12 @@ def messages(pack, seed=None):
         },
         "preceding_source_excerpt": pack["source_context"],
         "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
-        "structural_strategy_cards": read(
-            ROOT / "prompts/structural_strategy_bank_v2.json"
-        )["cards"],
+        "structural_strategy_cards": read(ROOT / "prompts/strategy_bank.json")["cards"],
     }
     return [
         {
             "role": "system",
-            "content": (ROOT / "prompts/agent_refactor_system_v2.md").read_text(),
+            "content": (ROOT / "prompts/refactor_system.md").read_text(),
         },
         {
             "role": "user",

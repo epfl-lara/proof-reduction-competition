@@ -13,7 +13,7 @@ from proof_eval.harness.config import RunConfig
 from proof_eval.harness.configuration import load_inputs, starting_point
 from proof_eval.harness.prompts import messages, tool_instructions
 from proof_eval.paths import PACKAGE, ROOT
-from proof_eval.providers import codex
+from proof_eval.providers import codex, execution
 
 
 def test_measurement_source_still_matches_every_saved_reference():
@@ -76,7 +76,7 @@ def test_started_codex_request_is_never_resampled(tmp_path, monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError("An indeterminate request must not launch another process")
 
-    monkeypatch.setattr(codex.subprocess, "Popen", forbidden)
+    monkeypatch.setattr(execution.subprocess, "Popen", forbidden)
     (tmp_path / "request_started.json").write_text("{}")
     arguments = dict(
         folder=tmp_path,

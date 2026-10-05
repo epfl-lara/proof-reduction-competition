@@ -85,18 +85,18 @@ def main():
     os.execvp(command[0], command)
 
 
-def launch_command(command, folder, protected):
+def launch_command(command, folder, protected, *, runtime_paths=None):
     folder = Path(folder).resolve()
     temporary = folder / "runtime_tmp"
     temporary.mkdir(exist_ok=True)
     # Preserve the user's existing Codex authentication/runtime location.
     # Source projects are never among the writable roots.
-    writable = [
-        folder,
-        Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))),
-        Path.home() / ".cache",
-        Path("/dev/null"),
-    ]
+    runtime_paths = (
+        [Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex")))]
+        if runtime_paths is None
+        else runtime_paths
+    )
+    writable = [folder, *runtime_paths, Path.home() / ".cache", Path("/dev/null")]
     arguments = [sys.executable, str(Path(__file__).resolve())]
     for path in writable:
         if path.exists():

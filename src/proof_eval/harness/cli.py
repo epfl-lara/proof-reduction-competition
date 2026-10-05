@@ -7,15 +7,13 @@ import json
 from pathlib import Path
 
 from proof_eval.evidence.io import read, write_json
+from proof_eval.providers.registry import DEFAULT_CONDITIONS
 
 from .audit import audit
 from .config import RunConfig
 from .configuration import (
-    ACTIVE_CONDITIONS,
     BASE,
-    DEFAULT_MODE,
     DEFAULT_OUTPUT,
-    RUN_MODES,
 )
 from .reporting import report
 from .runner import run
@@ -29,12 +27,14 @@ def main(argv=None) -> int:
         sub.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
         if action in ("report", "audit"):
             continue
-        sub.add_argument("--mode", choices=RUN_MODES, default=DEFAULT_MODE)
+        sub.add_argument(
+            "--provider", choices=tuple(DEFAULT_CONDITIONS), default="codex"
+        )
         sub.add_argument(
             "--condition",
             action="append",
             metavar="MODEL:EFFORT",
-            help="Repeat for each condition; defaults to Sol 6.1/max and Astra/max",
+            help="Repeat MODEL:EFFORT; defaults to the selected provider's active conditions",
         )
         if action == "estimate":
             continue
@@ -68,12 +68,12 @@ def main(argv=None) -> int:
             conditions = (
                 tuple(tuple(c.split(":")) for c in args.condition)
                 if args.condition
-                else tuple(ACTIVE_CONDITIONS)
+                else DEFAULT_CONDITIONS[args.provider]
             )
             fields = {
                 key: getattr(args, key)
                 for key in (
-                    "mode",
+                    "provider",
                     "workers",
                     "base",
                     "dataset",

@@ -4,6 +4,10 @@ This repository optimizes Lean proofs for Lean Refactor Arena. Read `README.md`
 and `docs/ARCHITECTURE.md` before changing the runtime. The active model conditions
 are **gpt-6.1-sol/max** and **gpt-6-astra/max**. The default search uses the revised
 prompt, score feedback, and deterministic cleanup at the beginning and end.
+There is one canonical prompt in `prompts/refactor_system.md`, with the revised
+V2 five-card context in `prompts/strategy_bank.json`. Provider probes use native
+Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high`) and Claude Code
+(`claude-opus-5-5/max`), keeping the same task and host proof tools.
 
 ## Organize code by responsibility
 
@@ -56,6 +60,13 @@ prompt, score feedback, and deterministic cleanup at the beginning and end.
   estimates, not Codex invoices. The closed-track cap applies to **each problem**;
   missing usage stays unknown. RCP permits at most five simultaneous requests
   across the key; do not put credentials in results, logs, or Git.
+- Use the native provider adapters and shared durable executor. The direct RCP
+  chat client is retired. Leave native sampling defaults alone; do not invent a
+  CLI temperature flag or claim that an unobserved gateway default equals 1.
+- Never substitute another Claude model/effort after an authentication or model
+  failure. Inspect the terminal result and actual model, not just the exit code.
+  Claude's reported cost is a client-side API estimate, not an invoice. Keep
+  unknown gateway prices unknown.
 
 ## Check quality before handing off
 

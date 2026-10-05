@@ -1,6 +1,6 @@
 # Proof-state and tactic-cost context
 
-The first model experiment observes the **exact supplied incumbent** before requesting one complete proof. It supplies a bounded set of goal states and, in a separate ablation, measurements of existing tactic calls. It never puts newly discovered replacements or results from another model arm into this context.
+The historical one-shot ablation observed the **exact supplied incumbent** before requesting one complete proof. The active native-agent harness obtains goals on demand through `python tools.py goals candidate.lean`; see [ARCHITECTURE.md](ARCHITECTURE.md). The diagnostic producer below remains available for offline context studies. It supplies a bounded set of goal states and, in a separate ablation, measurements of existing tactic calls. It never puts newly discovered replacements or results from another model arm into this context.
 
 ## What the harness can call
 

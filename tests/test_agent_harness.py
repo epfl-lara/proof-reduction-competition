@@ -15,6 +15,7 @@ from proof_eval.harness.configuration import load_inputs
 from proof_eval.harness.prompts import messages, tool_instructions
 from proof_eval.harness.service import ProofToolService
 from proof_eval.harness.session import ProofSession
+from proof_eval.providers import lemex
 from proof_eval.providers.events import cli_identity, parse_events
 
 ORIGINAL = "theorem x : True := by trivial"
@@ -306,7 +307,7 @@ def test_retired_mode_cannot_start_a_session_or_transport(make_session, tmp_path
         text=True,
         capture_output=True,
     )
-    assert proc.returncode == 2 and "invalid choice" in proc.stderr
+    assert proc.returncode == 2 and "unrecognized arguments" in proc.stderr
 
 
 def test_cleanup_cache_identity_and_original_reference_reuse(
@@ -625,6 +626,7 @@ def test_runner_repairs_or_searches_and_resume_does_not_regenerate(
         ("gpt-6-luna", "max", "score_edges"),
         ("gpt-6.1-sol", "max", "score_edges"),
         ("gpt-6-astra", "high", "score_edges"),
+        (lemex.MODEL, "high", "score_edges"),
     ],
 )
 def test_real_cli_request_preserves_requested_model_effort_and_mode(
@@ -702,14 +704,30 @@ def test_real_cli_request_preserves_requested_model_effort_and_mode(
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     (tmp_path / "system.txt").write_text("Exact structural benchmark system")
-    args = command(
-        binary=cli_identity()["path"],
+    if model == lemex.MODEL and shutil.which("lemex") is None:
+        pytest.skip("Installed Lemex CLI unavailable")
+    catalog = Path.home() / ".lemex/models.json"
+    if model == lemex.MODEL and not catalog.exists():
+        pytest.skip("Lemex model catalog unavailable")
+    builder = lemex.command if model == lemex.MODEL else command
+    extra = (
+        {
+            "catalog": catalog,
+            "base_url": f"http://127.0.0.1:{server.server_port}/v1",
+            "instructions": tool_instructions(mode),
+        }
+        if model == lemex.MODEL
+        else {}
+    )
+    args = builder(
+        binary=cli_identity("lemex" if model == lemex.MODEL else "codex")["path"],
         workspace=tmp_path,
         system_file=tmp_path / "system.txt",
         last_message=tmp_path / "final.txt",
         model=model,
         effort=effort,
         mode=mode,
+        **extra,
     )
     overrides = {
         "model_provider": "local_test",
@@ -718,6 +736,7 @@ def test_real_cli_request_preserves_requested_model_effort_and_mode(
         "model_providers.local_test.wire_api": "responses",
         "model_providers.local_test.request_max_retries": 0,
         "model_providers.local_test.stream_max_retries": 0,
+        "model_providers.local_test.requires_openai_auth": False,
         "features.enable_request_compression": False,
     }
     args = (
@@ -745,9 +764,14 @@ def test_real_cli_request_preserves_requested_model_effort_and_mode(
     assert len(received) == 1
     request = received[0]
     assert request["model"] == model and request["reasoning"]["effort"] == effort
+    assert "temperature" not in request
     assert request.get("tools") or any(item.get("tools") for item in request["input"])
     sent = [item for item in request["input"] if item.get("type") == "message"]
-    assert [m["content"][0]["text"] for m in sent] == [
+    # Lemex sends the system policy as Responses.instructions; Codex currently
+    # sends it as the first input message. The task text must be identical.
+    prompt_texts = [request["instructions"]] if request.get("instructions") else []
+    prompt_texts += [m["content"][0]["text"] for m in sent]
+    assert prompt_texts == [
         "Exact structural benchmark system",
         tool_instructions(mode),
         "Exact task context",

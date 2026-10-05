@@ -31,7 +31,7 @@ def run(args: RunConfig) -> dict:
             return report(output, read(output / "config.json"))
         conditions = list(args.conditions)
         if args.action == "estimate":
-            result = preflight_costs(conditions)
+            result = preflight_costs(conditions, args.provider)
             write_json(output / "cost_estimate.json", result)
             return result
         packs = load_inputs(Path(args.base).resolve())
@@ -40,6 +40,7 @@ def run(args: RunConfig) -> dict:
             args.mode,
             packs,
             conditions=conditions,
+            provider=args.provider,
             base_directory=Path(args.base).resolve(),
             paths={
                 "dataset_path": str(Path(args.dataset).resolve()),

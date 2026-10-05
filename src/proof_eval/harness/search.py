@@ -130,6 +130,7 @@ def run_cell(
                 session=session,
                 context=context,
                 expected_cli=config["cli"],
+                provider=config.get("provider", "codex"),
             )
             generations.append(generation)
             if generation["status"] != "received":
@@ -198,6 +199,7 @@ def run_cell(
                     "combined_pct"
                 ]
         result = {
+            "provider": config.get("provider", "codex"),
             "name": pack["name"],
             "model": model,
             "effort": effort,

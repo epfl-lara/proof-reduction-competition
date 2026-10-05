@@ -11,7 +11,9 @@ from proof_eval.evidence.io import digest, read, write_json
 from proof_eval.harness.session import code_identity
 from proof_eval.paths import ROOT
 from proof_eval.protocol import FIELDS, fingerprint
+from proof_eval.providers import claude
 from proof_eval.providers.costs import CostConfig, generations_cost, rate_card
+from proof_eval.providers.events import parse_events
 from proof_eval.verification.feedback import all_versions_passed
 
 
@@ -35,7 +37,11 @@ def audit(output: Path) -> dict:
             str("Saved harness evidence is inconsistent at audit line 22"),
         )
         _require(
-            (costs["rate_card"] == config["rate_card"] == rate_card()),
+            (
+                costs["rate_card"]
+                == config["rate_card"]
+                == rate_card(config.get("provider", "codex"))
+            ),
             str("Saved harness evidence is inconsistent at audit line 23"),
         )
         for rel, expected in costs["source_result_sha256"].items():
@@ -491,6 +497,11 @@ def audit(output: Path) -> dict:
                 str("Saved harness evidence is inconsistent at audit line 304"),
             )
             _require(
+                req.get("provider", "codex") == config.get("provider", "codex"),
+                "Request provider differs from its frozen configuration",
+            )
+            _require(req["cli"] == config["cli"], "Request CLI identity changed")
+            _require(
                 (req["messages"][0] == inp["messages"][0]),
                 str("Saved harness evidence is inconsistent at audit line 305"),
             )
@@ -520,13 +531,39 @@ def audit(output: Path) -> dict:
                         json.loads(line)
                         for line in (folder / "events.jsonl").read_text().splitlines()
                     ]
-                    usage = [
-                        e["usage"] for e in events if e.get("type") == "turn.completed"
-                    ]
-                    _require(
-                        (len(usage) == 1 and gen["codex_usage"] == usage[0]),
-                        str("Saved harness evidence is inconsistent at audit line 322"),
-                    )
+                    if config.get("provider", "codex") == "claude":
+                        parsed = claude.parse_events(
+                            events,
+                            gen["content"],
+                            gen["returncode"],
+                            model=req["model"],
+                        )
+                        for field in (
+                            "status",
+                            "actual_model",
+                            "session_id",
+                            "claude_result",
+                            "claude_usage",
+                            "token_usage",
+                            "cli_cost_usd",
+                            "permission_denials",
+                        ):
+                            _require(
+                                parsed[field] == gen[field],
+                                "Claude terminal evidence changed: " + field,
+                            )
+                    else:
+                        parsed = parse_events(events, gen["content"], 0)
+                        _require(
+                            parsed["status"] == "received"
+                            and parsed["codex_usage"] == gen["codex_usage"],
+                            "Responses CLI terminal usage changed",
+                        )
+                        if "token_usage" in gen:
+                            _require(
+                                parsed["token_usage"] == gen["token_usage"],
+                                "Normalized token usage changed",
+                            )
             if config["mode"] == "correctness":
                 for line in (folder / "events.jsonl").read_text().splitlines():
                     event = json.loads(line)
