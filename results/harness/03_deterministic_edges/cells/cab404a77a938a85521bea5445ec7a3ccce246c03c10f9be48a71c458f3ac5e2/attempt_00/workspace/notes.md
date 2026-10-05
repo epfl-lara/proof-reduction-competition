@@ -1,0 +1,17 @@
+# Refactor notes
+- Seed: 222 tokens, ~2108 heartbeats, score 50.4434 (provided).
+- A1: replace induction with updatedStatesInit + updatedStatesUpdate, commute zipped updates using updatedStatesComm, disjoint from defined/undefined. All versions pass; 93 tokens, 290.825 heartbeats, score 83.8816. Saved as best.
+- A2: focused `simp only` replaces two initial rewrites/unfold; all versions pass. 94 tokens, 257.168 HB, 83.99655. Best.
+- A3: inline length/undefined hypotheses. Valid, same 94 tokens, 257.957 HB, 83.99037 (slightly regressive).
+- A4: discharge disjoint contradiction with `simpa` after rewriting the absent key. Valid on all; 90 tokens, 252.254 HB, score 84.63030. Best.
+- A5: omit `updatedStates` unfolding and use combined rw. Invalid: rewrite cannot match updatedStates' through updatedStates under default rw transparency.
+- A6: use equality ▸ transport without unfolding. Invalid: uninstantiated equality does not match expected result type.
+- A7: length/unzip normalization with `simp only` rather than `rw`; all versions pass, 91 tokens, 214.93 HB, 84.77399. Best.
+- A8: let simp discharge unzip_zip length conditions via existing equality rules. All versions pass; 89 tokens, 230.253 HB, 84.95152. Best.
+- A9: first normalizer can use plain simp at negligible extra HB; 88 tokens, 230.594 HB, 85.09766. All valid; best.
+- A10: eliminate impossible `false = true` via cases on transported definedness; 86 tokens, 232.042 HB, 85.38393. All valid; best.
+- A11: plain simp for zip normalization; 85 tokens, 233.572 HB, 85.52075. All valid; best.
+- A12: after unfolding, equality transport `▸` can infer commutation arguments and avoids rewrite overhead. Valid, 85 tokens, 200.486 HB, 85.78004. Best.
+- A13: orient commutation directly rather than adding Eq.symm (disjoint arguments reversed). Valid; 82 tokens, 198.868 HB, 86.23915. Best.
+- A14: replace first simp with two equality transports and unfold. Valid but regressive: 82 tokens, 207.208 HB, 86.17379. Retain A13.
+- Stopping: bulk commutation removes the induction entirely; tried explicit/conditional normalization, contradiction terms, casts, and inlining. Remaining local alternatives have no clear expected score benefit.

@@ -1,0 +1,111 @@
+{
+  "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+  "source": "cslib",
+  "method": "rw_min",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 27.20588235294118,
+      "heartbeat_reduction_pct": 94.89228122402169,
+      "compatibility_pct": 100.0,
+      "combined_pct": 74.03272119232095
+    },
+    "candidate": {
+      "length": 297,
+      "code_sha256": "83d234a4d0ab55fe3f8d83cd408ef7dd9e68a38747d7953258bbbc2a43e8d881"
+    },
+    "primary_version": "v4.33.0-rc2",
+    "per_version": {
+      "v4.33.0-rc2": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3056.131,
+        "heartbeat_reduction_pct": 94.89228122402169,
+        "cached": true,
+        "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+        "elapsed_seconds": 3.247894175350666,
+        "diagnostics": []
+      },
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3769.834,
+        "heartbeat_reduction_pct": 93.91596430886185,
+        "cached": true,
+        "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+        "elapsed_seconds": 3.4879276249557734,
+        "diagnostics": []
+      },
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3769.784,
+        "heartbeat_reduction_pct": 93.91516835781144,
+        "cached": true,
+        "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+        "elapsed_seconds": 3.613969910889864,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 27.20588235294118,
+      "heartbeat_reduction_pct": 94.89228122402169,
+      "compatibility_pct": 100.0,
+      "combined_pct": 74.03272119232095
+    },
+    "candidate": {
+      "length": 297,
+      "code_sha256": "83d234a4d0ab55fe3f8d83cd408ef7dd9e68a38747d7953258bbbc2a43e8d881"
+    },
+    "primary_version": "v4.33.0-rc2",
+    "per_version": {
+      "v4.33.0-rc2": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3056.131,
+        "heartbeat_reduction_pct": 94.89228122402169,
+        "cached": true,
+        "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+        "elapsed_seconds": 3.247894175350666,
+        "diagnostics": []
+      },
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3769.834,
+        "heartbeat_reduction_pct": 93.91596430886185,
+        "cached": true,
+        "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+        "elapsed_seconds": 3.4879276249557734,
+        "diagnostics": []
+      },
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3769.784,
+        "heartbeat_reduction_pct": 93.91516835781144,
+        "cached": true,
+        "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+        "elapsed_seconds": 3.613969910889864,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have lc := der.wf.2.1\n  induction der <;> subst eq\n  case app l r ih_l ih_r =>\n    right\n    rcases ih_l rfl l.wf.2.1 with v | ⟨u, h⟩\n    · rcases ih_r rfl r.wf.2.1 with w | ⟨u, h⟩\n      · obtain ⟨_, _, rfl⟩ := l.canonical_form_abs v\n        exact ⟨_, Red.abs v.lc w⟩\n      · exact ⟨_, Red.appᵣ v h⟩\n    · exact ⟨_, Red.appₗ r.wf.2.1 h⟩\n  case tapp der sub ih =>\n    right\n    cases lc with\n    | tapp lc ty =>\n      rcases ih rfl lc with v | ⟨u, h⟩\n      · obtain ⟨_, _, rfl⟩ := der.canonical_form_tabs v\n        exact ⟨_, Red.tabs v.lc ty⟩\n      · exact ⟨_, Red.tapp ty h⟩\n  case let' der _ ih _ =>\n    obtain ⟨lc, body⟩ := body_let.mp lc\n    right\n    rcases ih rfl lc with v | ⟨u, h⟩\n    · exact ⟨_, Red.let_body v body⟩\n    · exact ⟨_, Red.let_bind h body⟩\n  case case der _ _ ih _ _ =>\n    obtain ⟨lc, b, c⟩ := body_case.mp lc\n    right\n    rcases ih rfl lc with v | ⟨u, h⟩\n    · obtain ⟨u, h | h⟩ := der.canonical_form_sum v\n      · subst h; cases v with | inl v => exact ⟨_, Red.case_inl v b c⟩\n      · subst h; cases v with | inr v => exact ⟨_, Red.case_inr v b c⟩\n    · exact ⟨_, Red.case h b c⟩\n  all_goals grind [→ Red.inl, → Red.inr]",
+  "initial_sha256": "83d234a4d0ab55fe3f8d83cd408ef7dd9e68a38747d7953258bbbc2a43e8d881",
+  "rounds": 1,
+  "attempts": 0,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 0,
+  "cache_hits": 0,
+  "seen": [],
+  "plan": null,
+  "elapsed_seconds": 0.26396992802619934,
+  "stop_reason": "no_new_proposals",
+  "site_offset": 0
+}

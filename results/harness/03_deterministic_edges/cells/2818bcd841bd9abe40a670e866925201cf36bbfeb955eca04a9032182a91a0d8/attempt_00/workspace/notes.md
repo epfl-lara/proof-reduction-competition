@@ -1,0 +1,22 @@
+- Shared update-minus-base identity; sum all first-relation constraints; coprime cancellation of 10^i. First attempt failed due to unspecified power exponent.
+- Explicit exponent repaired: all versions valid, 230 tokens, 3326.315 heartbeats, score 91.948883.
+- Replace first omega with rw/cancellation: 238 tokens, 2695.727 heartbeats, score 93.054106 (better).
+- Replace final omega-divisibility with dvd_sub/dvd_add and ring: 252 tokens, 1752.790 heartbeats, score 94.690154 (better).
+- Final equality via sub_mul/omega instead of ring: valid but regresses to 255 tokens, 2222.625 heartbeats, score 93.793563.
+- First helper via convert and sub_eq_iff_eq_add (no named update identity): 208 tokens, 1753.063 heartbeats, score 95.048684 (better).
+- Final equality via abel after simp reversing Int.nsmul_eq_mul failed: inverse simp did not recognize literal multiples. Try explicit numeral instantiations.
+- Explicit numeral instances of reverse Int.nsmul_eq_mul also failed to rewrite; retain ring for final equality.
+- Substitution of digits_to_num alternative first had malformed leftover rewrite from editing; removed it.
+- Substituting digits_to_num to use explicit sums: valid, 218 tokens, 1892.014 heartbeats, score 94.709163 (worse).
+- Final equality sub_mul/clear hs/omega: valid but 213 tokens, 2358.587 heartbeats, score 93.883906; ring remains better.
+- Combine numeric-sum rewrites into preceding simp only: 204 tokens, 1685.657 heartbeats, score 95.206444 (better).
+- Use Fintype.sum_ite_eq' and Fin.sum_const directly: 196 tokens, 1659.506 heartbeats, score 95.320265 (better).
+- Explicit rfl for Bezout coefficients: valid, 195 tokens, 1675.926 heartbeats, score 95.297946 (slightly worse than decide).
+- Preserve 9•D and 7•D and use sub_mul/abel: valid, 211 tokens, 1793.869 heartbeats, score 94.948460 (worse).
+- Explicit divisor witness for 7*D: valid, 194 tokens, 1654.444 heartbeats, score 95.345981. Tiny improvement was not accepted_as_best (saved best stays attempt 12).
+- Replace hsum simp only with rw: valid, 193 tokens, 1704.834 heartbeats, score 95.260606 (worse).
+- Infer helper array arguments from relation evidence; retain explicit 7*D witness: 183 tokens, 1647.029 heartbeats, score 95.449504 (accepted best).
+- Focus first rewrite on unfolding numeric representation and moving subtraction into sum before simplification: 185 tokens, 1572.280 heartbeats, score 95.571934 (better).
+- Explicit final sub_mul before ring: valid, 188 tokens, 1670.216 heartbeats, score 95.365664 (worse).
+- Generalize power to arbitrary integer weight before final ring: valid, 194 tokens, 1560.719 heartbeats, score 95.519954 (worse overall).
+- Stop: shared sum-update calculation and explicit divisibility combination remove all duplicated arguments. Specialized finite-sum lemmas and targeted unfolding improved further. Remaining tested arithmetic/representation alternatives regress overall; select saved best (attempt 18).

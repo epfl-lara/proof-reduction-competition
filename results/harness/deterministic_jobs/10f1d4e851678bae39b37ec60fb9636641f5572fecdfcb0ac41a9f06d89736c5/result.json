@@ -1,0 +1,1871 @@
+{
+  "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+  "source": "cslib",
+  "input_proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    exact Or.inl (Value.abs (Typing.wf (Typing.abs L h)).2.1)\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+  "input_proof_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1",
+  "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    grind\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+  "initial_evaluation": {
+    "schema_version": 1,
+    "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+    "status": "passed",
+    "primary_version": "v4.33.0-rc2",
+    "requested_versions": [
+      "v4.33.0-rc2",
+      "v4.32.0",
+      "v4.31.0"
+    ],
+    "all_versions": [
+      "v4.33.0-rc2",
+      "v4.32.0",
+      "v4.31.0"
+    ],
+    "measurement": "local_cached_reference",
+    "reference": {
+      "length": 408,
+      "published_heartbeats": 59830
+    },
+    "candidate": {
+      "length": 538,
+      "code_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1"
+    },
+    "per_version": {
+      "v4.33.0-rc2": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1240.203,
+        "heartbeats_raw": 1240203,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_93a63c1291254baf800539ffcaffbe2e:1240203",
+            "endPos": {
+              "column": 63,
+              "line": 170
+            },
+            "fileName": "_ProofEval_93a63c1291254baf800539ffcaffbe2e.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 96
+            },
+            "severity": "information"
+          }
+        ],
+        "elapsed_seconds": 4.721298532560468,
+        "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/cslib-v4.33.0-rc2",
+          "version": "v4.33.0-rc2",
+          "source_commit": "3aa9d4416c185e0b9faeb72bbd65abe85b95dbcc",
+          "toolchain": "leanprover/lean4:v4.33.0-rc2",
+          "compiler_version": "Lean (version 4.33.0-rc2, x86_64-unknown-linux-gnu, commit d8b18978322de05a8f3dba51ef03cf5461676c17, Release)",
+          "dependencies": {
+            "mathlib": "51e6992efd06126df61a496bebf8f49482a4e129",
+            "plausible": "123d15766ba49356c02ebad2a4462dfe12d79899",
+            "LeanSearchClient": "f5c090429dff3cf66cb65562526c9ea6e8edfbcb",
+            "importGraph": "bb3469a87774349fe01898d8bf2fc6a1ce6411ca",
+            "proofwidgets": "222c58dad7706a6e7cae46c0edd65ea881d3ee27",
+            "aesop": "7db8190085343afde2f5d2cdcc9bac719b6ec02c",
+            "Qq": "ef42f8944eaf5b6cbfbe75d1917d824c7dd6cf33",
+            "batteries": "76e1c118b0700b4ceafe99532e887d6431625e1a",
+            "Cli": "1319485273bf87833fa472afbcefdedecb16b45f"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "cd9af19b2790317a5bbb4a7c0d6a7a63d5e624dc264e99fcbcaaa2ea36b178e7",
+            "lake-manifest.json": "c5acf9a59cf6956eb89589ff09b6a35adbc79fb220886f61442fe02d8b21aae0"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "full_file_replacement",
+          "candidate_start_line": 97,
+          "original_file_path": "Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Safety.lean",
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+          "version": "v4.33.0-rc2",
+          "status": "prepared",
+          "heartbeats": 59833.58,
+          "heartbeats_raw": 59833580,
+          "length": 408,
+          "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+          "measured_at": "2026-10-02T15:20:05.147113+00:00",
+          "reference_code_sha256": "e8b89255b06b284c8a4f4ba9a140c458d8c4640f63014c9c0037585855039be7",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/cslib-v4.33.0-rc2",
+            "version": "v4.33.0-rc2",
+            "source_commit": "3aa9d4416c185e0b9faeb72bbd65abe85b95dbcc",
+            "toolchain": "leanprover/lean4:v4.33.0-rc2",
+            "compiler_version": "Lean (version 4.33.0-rc2, x86_64-unknown-linux-gnu, commit d8b18978322de05a8f3dba51ef03cf5461676c17, Release)",
+            "dependencies": {
+              "mathlib": "51e6992efd06126df61a496bebf8f49482a4e129",
+              "plausible": "123d15766ba49356c02ebad2a4462dfe12d79899",
+              "LeanSearchClient": "f5c090429dff3cf66cb65562526c9ea6e8edfbcb",
+              "importGraph": "bb3469a87774349fe01898d8bf2fc6a1ce6411ca",
+              "proofwidgets": "222c58dad7706a6e7cae46c0edd65ea881d3ee27",
+              "aesop": "7db8190085343afde2f5d2cdcc9bac719b6ec02c",
+              "Qq": "ef42f8944eaf5b6cbfbe75d1917d824c7dd6cf33",
+              "batteries": "76e1c118b0700b4ceafe99532e887d6431625e1a",
+              "Cli": "1319485273bf87833fa472afbcefdedecb16b45f"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "cd9af19b2790317a5bbb4a7c0d6a7a63d5e624dc264e99fcbcaaa2ea36b178e7",
+              "lake-manifest.json": "c5acf9a59cf6956eb89589ff09b6a35adbc79fb220886f61442fe02d8b21aae0"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "full_file_replacement",
+            "candidate_start_line": 97,
+            "original_file_path": "Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Safety.lean",
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 97.9272458709641
+      },
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1390.574,
+        "heartbeats_raw": 1390574,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_6305f7be278643b1b9162c0ee0609355:1390574",
+            "endPos": {
+              "column": 63,
+              "line": 170
+            },
+            "fileName": "_ProofEval_6305f7be278643b1b9162c0ee0609355.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 96
+            },
+            "severity": "information"
+          }
+        ],
+        "elapsed_seconds": 4.755738427862525,
+        "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/cslib-v4.32.0",
+          "version": "v4.32.0",
+          "source_commit": "197a7be621263b84c67ca4f803f69205b36d06df",
+          "toolchain": "leanprover/lean4:v4.32.0",
+          "compiler_version": "Lean (version 4.32.0, x86_64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)",
+          "dependencies": {
+            "mathlib": "81a5d257c8e410db227a6665ed08f64fea08e997",
+            "plausible": "e12c1910fe855cbfc38803cd4e55543906d5fa62",
+            "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+            "importGraph": "7e9612bf0b9ee66db3cb5b9988a35afc706f5a12",
+            "proofwidgets": "6e311e2a844da9b2cc3971187df2fe0066947b93",
+            "aesop": "a7dbf0c63b694e47f425f3dcddbc0e178bb432d3",
+            "Qq": "38d591e778f100aec9762bb582f9c7f55f50e9dc",
+            "batteries": "023ce7d62a0531e22a5331e20b587817a80d49ff",
+            "Cli": "88679d088c9720c27ebdf2ba4dafe17341747f94"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "e0412daf10ba26001d837b14f8809f34b5fc0a15bcfbf2ee9349d3e670615e86",
+            "lake-manifest.json": "ceba7d0fee50fcc84cb20db139450ffc9dbd9dfe343333409b2085f8d6776115"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "full_file_replacement",
+          "candidate_start_line": 97,
+          "original_file_path": "Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Safety.lean",
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+          "version": "v4.32.0",
+          "status": "prepared",
+          "heartbeats": 61962.72,
+          "heartbeats_raw": 61962720,
+          "length": 408,
+          "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+          "measured_at": "2026-10-02T15:10:46.594990+00:00",
+          "reference_code_sha256": "e8b89255b06b284c8a4f4ba9a140c458d8c4640f63014c9c0037585855039be7",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/cslib-v4.32.0",
+            "version": "v4.32.0",
+            "source_commit": "197a7be621263b84c67ca4f803f69205b36d06df",
+            "toolchain": "leanprover/lean4:v4.32.0",
+            "compiler_version": "Lean (version 4.32.0, x86_64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)",
+            "dependencies": {
+              "mathlib": "81a5d257c8e410db227a6665ed08f64fea08e997",
+              "plausible": "e12c1910fe855cbfc38803cd4e55543906d5fa62",
+              "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+              "importGraph": "7e9612bf0b9ee66db3cb5b9988a35afc706f5a12",
+              "proofwidgets": "6e311e2a844da9b2cc3971187df2fe0066947b93",
+              "aesop": "a7dbf0c63b694e47f425f3dcddbc0e178bb432d3",
+              "Qq": "38d591e778f100aec9762bb582f9c7f55f50e9dc",
+              "batteries": "023ce7d62a0531e22a5331e20b587817a80d49ff",
+              "Cli": "88679d088c9720c27ebdf2ba4dafe17341747f94"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "e0412daf10ba26001d837b14f8809f34b5fc0a15bcfbf2ee9349d3e670615e86",
+              "lake-manifest.json": "ceba7d0fee50fcc84cb20db139450ffc9dbd9dfe343333409b2085f8d6776115"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "full_file_replacement",
+            "candidate_start_line": 97,
+            "original_file_path": "Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Safety.lean",
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 97.75578928749415
+      },
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1389.638,
+        "heartbeats_raw": 1389638,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_ac8c6fe54b5c4d3eb8f5659eeb9d7d3a:1389638",
+            "endPos": {
+              "column": 63,
+              "line": 170
+            },
+            "fileName": "_ProofEval_ac8c6fe54b5c4d3eb8f5659eeb9d7d3a.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 96
+            },
+            "severity": "information"
+          }
+        ],
+        "elapsed_seconds": 4.748874474316835,
+        "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/cslib-v4.31.0",
+          "version": "v4.31.0",
+          "source_commit": "8ea71c8df91acd63285515a04da952b23b78d266",
+          "toolchain": "leanprover/lean4:v4.31.0",
+          "compiler_version": "Lean (version 4.31.0, x86_64-unknown-linux-gnu, commit 68218e876d2a38b1985b8590fff244a83c321783, Release)",
+          "dependencies": {
+            "mathlib": "fabf563a7c95a166b8d7b6efca11c8b4dc9d911f",
+            "plausible": "63045536fe95024e6c18fc7b48e03f506701c5bc",
+            "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+            "importGraph": "5c7542ed018c78194f1e2b903eaf6a792b74c03d",
+            "proofwidgets": "24b0d9dc081c5423f8eec7e866c441e5184f29d9",
+            "aesop": "e3cb2f741431ce31bf73549fb52316a57368b06f",
+            "Qq": "f46324995fca5f0483b742e4eb4daec7f4ee50d2",
+            "batteries": "fa08db58b30eb033edcdab331bba000827f9f785",
+            "Cli": "92564e5770e4d09f2d86dfbf8ada1e9c715b384c"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "0d236bf0f173fa7ef490605a32f9d5cc3cf1b214a34a02f7919af37ad4d20c54",
+            "lake-manifest.json": "c192257881ee32336e32f1e5ebc660f8890bbefaba391f1b360f961a033fba32"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "full_file_replacement",
+          "candidate_start_line": 97,
+          "original_file_path": "Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Safety.lean",
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+          "version": "v4.31.0",
+          "status": "prepared",
+          "heartbeats": 61953.793,
+          "heartbeats_raw": 61953793,
+          "length": 408,
+          "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+          "measured_at": "2026-10-02T15:10:55.058815+00:00",
+          "reference_code_sha256": "e8b89255b06b284c8a4f4ba9a140c458d8c4640f63014c9c0037585855039be7",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/cslib-v4.31.0",
+            "version": "v4.31.0",
+            "source_commit": "8ea71c8df91acd63285515a04da952b23b78d266",
+            "toolchain": "leanprover/lean4:v4.31.0",
+            "compiler_version": "Lean (version 4.31.0, x86_64-unknown-linux-gnu, commit 68218e876d2a38b1985b8590fff244a83c321783, Release)",
+            "dependencies": {
+              "mathlib": "fabf563a7c95a166b8d7b6efca11c8b4dc9d911f",
+              "plausible": "63045536fe95024e6c18fc7b48e03f506701c5bc",
+              "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+              "importGraph": "5c7542ed018c78194f1e2b903eaf6a792b74c03d",
+              "proofwidgets": "24b0d9dc081c5423f8eec7e866c441e5184f29d9",
+              "aesop": "e3cb2f741431ce31bf73549fb52316a57368b06f",
+              "Qq": "f46324995fca5f0483b742e4eb4daec7f4ee50d2",
+              "batteries": "fa08db58b30eb033edcdab331bba000827f9f785",
+              "Cli": "92564e5770e4d09f2d86dfbf8ada1e9c715b384c"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "0d236bf0f173fa7ef490605a32f9d5cc3cf1b214a34a02f7919af37ad4d20c54",
+              "lake-manifest.json": "c192257881ee32336e32f1e5ebc660f8890bbefaba391f1b360f961a033fba32"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "full_file_replacement",
+            "candidate_start_line": 97,
+            "original_file_path": "Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Safety.lean",
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 97.75697671973046
+      }
+    },
+    "diagnostics": [],
+    "scores": {
+      "length_reduction_pct": -31.862745098039213,
+      "heartbeat_reduction_pct": 97.9272458709641,
+      "compatibility_pct": 100.0,
+      "combined_pct": 55.354833590974955
+    }
+  },
+  "evaluation": {
+    "schema_version": 1,
+    "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+    "status": "passed",
+    "primary_version": "v4.33.0-rc2",
+    "requested_versions": [
+      "v4.33.0-rc2",
+      "v4.32.0",
+      "v4.31.0"
+    ],
+    "all_versions": [
+      "v4.33.0-rc2",
+      "v4.32.0",
+      "v4.31.0"
+    ],
+    "measurement": "local_cached_reference",
+    "reference": {
+      "length": 408,
+      "published_heartbeats": 59830
+    },
+    "candidate": {
+      "length": 525,
+      "code_sha256": "81f7bc4f89b09dbd08f90d593ae2e3709a88577959beb9f3d518ffb1509c1a97"
+    },
+    "per_version": {
+      "v4.33.0-rc2": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1326.674,
+        "heartbeats_raw": 1326674,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_ee6cf0421ea84ee29712e34c0e56ff59:1326674",
+            "endPos": {
+              "column": 63,
+              "line": 170
+            },
+            "fileName": "_ProofEval_ee6cf0421ea84ee29712e34c0e56ff59.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 96
+            },
+            "severity": "information"
+          }
+        ],
+        "elapsed_seconds": 3.266833459958434,
+        "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/cslib-v4.33.0-rc2",
+          "version": "v4.33.0-rc2",
+          "source_commit": "3aa9d4416c185e0b9faeb72bbd65abe85b95dbcc",
+          "toolchain": "leanprover/lean4:v4.33.0-rc2",
+          "compiler_version": "Lean (version 4.33.0-rc2, x86_64-unknown-linux-gnu, commit d8b18978322de05a8f3dba51ef03cf5461676c17, Release)",
+          "dependencies": {
+            "mathlib": "51e6992efd06126df61a496bebf8f49482a4e129",
+            "plausible": "123d15766ba49356c02ebad2a4462dfe12d79899",
+            "LeanSearchClient": "f5c090429dff3cf66cb65562526c9ea6e8edfbcb",
+            "importGraph": "bb3469a87774349fe01898d8bf2fc6a1ce6411ca",
+            "proofwidgets": "222c58dad7706a6e7cae46c0edd65ea881d3ee27",
+            "aesop": "7db8190085343afde2f5d2cdcc9bac719b6ec02c",
+            "Qq": "ef42f8944eaf5b6cbfbe75d1917d824c7dd6cf33",
+            "batteries": "76e1c118b0700b4ceafe99532e887d6431625e1a",
+            "Cli": "1319485273bf87833fa472afbcefdedecb16b45f"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "cd9af19b2790317a5bbb4a7c0d6a7a63d5e624dc264e99fcbcaaa2ea36b178e7",
+            "lake-manifest.json": "c5acf9a59cf6956eb89589ff09b6a35adbc79fb220886f61442fe02d8b21aae0"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "full_file_replacement",
+          "candidate_start_line": 97,
+          "original_file_path": "Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Safety.lean",
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+          "version": "v4.33.0-rc2",
+          "status": "prepared",
+          "heartbeats": 59833.58,
+          "heartbeats_raw": 59833580,
+          "length": 408,
+          "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+          "measured_at": "2026-10-02T15:20:05.147113+00:00",
+          "reference_code_sha256": "e8b89255b06b284c8a4f4ba9a140c458d8c4640f63014c9c0037585855039be7",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/cslib-v4.33.0-rc2",
+            "version": "v4.33.0-rc2",
+            "source_commit": "3aa9d4416c185e0b9faeb72bbd65abe85b95dbcc",
+            "toolchain": "leanprover/lean4:v4.33.0-rc2",
+            "compiler_version": "Lean (version 4.33.0-rc2, x86_64-unknown-linux-gnu, commit d8b18978322de05a8f3dba51ef03cf5461676c17, Release)",
+            "dependencies": {
+              "mathlib": "51e6992efd06126df61a496bebf8f49482a4e129",
+              "plausible": "123d15766ba49356c02ebad2a4462dfe12d79899",
+              "LeanSearchClient": "f5c090429dff3cf66cb65562526c9ea6e8edfbcb",
+              "importGraph": "bb3469a87774349fe01898d8bf2fc6a1ce6411ca",
+              "proofwidgets": "222c58dad7706a6e7cae46c0edd65ea881d3ee27",
+              "aesop": "7db8190085343afde2f5d2cdcc9bac719b6ec02c",
+              "Qq": "ef42f8944eaf5b6cbfbe75d1917d824c7dd6cf33",
+              "batteries": "76e1c118b0700b4ceafe99532e887d6431625e1a",
+              "Cli": "1319485273bf87833fa472afbcefdedecb16b45f"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "cd9af19b2790317a5bbb4a7c0d6a7a63d5e624dc264e99fcbcaaa2ea36b178e7",
+              "lake-manifest.json": "c5acf9a59cf6956eb89589ff09b6a35adbc79fb220886f61442fe02d8b21aae0"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "full_file_replacement",
+            "candidate_start_line": 97,
+            "original_file_path": "Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Safety.lean",
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 97.7827266895947
+      },
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1483.056,
+        "heartbeats_raw": 1483056,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_fce3badb7fed4fe8b9595a2aa9cffbf6:1483056",
+            "endPos": {
+              "column": 63,
+              "line": 170
+            },
+            "fileName": "_ProofEval_fce3badb7fed4fe8b9595a2aa9cffbf6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 96
+            },
+            "severity": "information"
+          }
+        ],
+        "elapsed_seconds": 3.6288119181990623,
+        "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/cslib-v4.32.0",
+          "version": "v4.32.0",
+          "source_commit": "197a7be621263b84c67ca4f803f69205b36d06df",
+          "toolchain": "leanprover/lean4:v4.32.0",
+          "compiler_version": "Lean (version 4.32.0, x86_64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)",
+          "dependencies": {
+            "mathlib": "81a5d257c8e410db227a6665ed08f64fea08e997",
+            "plausible": "e12c1910fe855cbfc38803cd4e55543906d5fa62",
+            "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+            "importGraph": "7e9612bf0b9ee66db3cb5b9988a35afc706f5a12",
+            "proofwidgets": "6e311e2a844da9b2cc3971187df2fe0066947b93",
+            "aesop": "a7dbf0c63b694e47f425f3dcddbc0e178bb432d3",
+            "Qq": "38d591e778f100aec9762bb582f9c7f55f50e9dc",
+            "batteries": "023ce7d62a0531e22a5331e20b587817a80d49ff",
+            "Cli": "88679d088c9720c27ebdf2ba4dafe17341747f94"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "e0412daf10ba26001d837b14f8809f34b5fc0a15bcfbf2ee9349d3e670615e86",
+            "lake-manifest.json": "ceba7d0fee50fcc84cb20db139450ffc9dbd9dfe343333409b2085f8d6776115"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "full_file_replacement",
+          "candidate_start_line": 97,
+          "original_file_path": "Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Safety.lean",
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+          "version": "v4.32.0",
+          "status": "prepared",
+          "heartbeats": 61962.72,
+          "heartbeats_raw": 61962720,
+          "length": 408,
+          "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+          "measured_at": "2026-10-02T15:10:46.594990+00:00",
+          "reference_code_sha256": "e8b89255b06b284c8a4f4ba9a140c458d8c4640f63014c9c0037585855039be7",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/cslib-v4.32.0",
+            "version": "v4.32.0",
+            "source_commit": "197a7be621263b84c67ca4f803f69205b36d06df",
+            "toolchain": "leanprover/lean4:v4.32.0",
+            "compiler_version": "Lean (version 4.32.0, x86_64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)",
+            "dependencies": {
+              "mathlib": "81a5d257c8e410db227a6665ed08f64fea08e997",
+              "plausible": "e12c1910fe855cbfc38803cd4e55543906d5fa62",
+              "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+              "importGraph": "7e9612bf0b9ee66db3cb5b9988a35afc706f5a12",
+              "proofwidgets": "6e311e2a844da9b2cc3971187df2fe0066947b93",
+              "aesop": "a7dbf0c63b694e47f425f3dcddbc0e178bb432d3",
+              "Qq": "38d591e778f100aec9762bb582f9c7f55f50e9dc",
+              "batteries": "023ce7d62a0531e22a5331e20b587817a80d49ff",
+              "Cli": "88679d088c9720c27ebdf2ba4dafe17341747f94"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "e0412daf10ba26001d837b14f8809f34b5fc0a15bcfbf2ee9349d3e670615e86",
+              "lake-manifest.json": "ceba7d0fee50fcc84cb20db139450ffc9dbd9dfe343333409b2085f8d6776115"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "full_file_replacement",
+            "candidate_start_line": 97,
+            "original_file_path": "Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Safety.lean",
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 97.60653502622222
+      },
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1482.099,
+        "heartbeats_raw": 1482099,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_7b1481fe7a0d4e16abd2161afdc963dd:1482099",
+            "endPos": {
+              "column": 63,
+              "line": 170
+            },
+            "fileName": "_ProofEval_7b1481fe7a0d4e16abd2161afdc963dd.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 96
+            },
+            "severity": "information"
+          }
+        ],
+        "elapsed_seconds": 3.701102163642645,
+        "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/cslib-v4.31.0",
+          "version": "v4.31.0",
+          "source_commit": "8ea71c8df91acd63285515a04da952b23b78d266",
+          "toolchain": "leanprover/lean4:v4.31.0",
+          "compiler_version": "Lean (version 4.31.0, x86_64-unknown-linux-gnu, commit 68218e876d2a38b1985b8590fff244a83c321783, Release)",
+          "dependencies": {
+            "mathlib": "fabf563a7c95a166b8d7b6efca11c8b4dc9d911f",
+            "plausible": "63045536fe95024e6c18fc7b48e03f506701c5bc",
+            "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+            "importGraph": "5c7542ed018c78194f1e2b903eaf6a792b74c03d",
+            "proofwidgets": "24b0d9dc081c5423f8eec7e866c441e5184f29d9",
+            "aesop": "e3cb2f741431ce31bf73549fb52316a57368b06f",
+            "Qq": "f46324995fca5f0483b742e4eb4daec7f4ee50d2",
+            "batteries": "fa08db58b30eb033edcdab331bba000827f9f785",
+            "Cli": "92564e5770e4d09f2d86dfbf8ada1e9c715b384c"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "0d236bf0f173fa7ef490605a32f9d5cc3cf1b214a34a02f7919af37ad4d20c54",
+            "lake-manifest.json": "c192257881ee32336e32f1e5ebc660f8890bbefaba391f1b360f961a033fba32"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "full_file_replacement",
+          "candidate_start_line": 97,
+          "original_file_path": "Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Safety.lean",
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+          "version": "v4.31.0",
+          "status": "prepared",
+          "heartbeats": 61953.793,
+          "heartbeats_raw": 61953793,
+          "length": 408,
+          "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+          "measured_at": "2026-10-02T15:10:55.058815+00:00",
+          "reference_code_sha256": "e8b89255b06b284c8a4f4ba9a140c458d8c4640f63014c9c0037585855039be7",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/cslib-v4.31.0",
+            "version": "v4.31.0",
+            "source_commit": "8ea71c8df91acd63285515a04da952b23b78d266",
+            "toolchain": "leanprover/lean4:v4.31.0",
+            "compiler_version": "Lean (version 4.31.0, x86_64-unknown-linux-gnu, commit 68218e876d2a38b1985b8590fff244a83c321783, Release)",
+            "dependencies": {
+              "mathlib": "fabf563a7c95a166b8d7b6efca11c8b4dc9d911f",
+              "plausible": "63045536fe95024e6c18fc7b48e03f506701c5bc",
+              "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+              "importGraph": "5c7542ed018c78194f1e2b903eaf6a792b74c03d",
+              "proofwidgets": "24b0d9dc081c5423f8eec7e866c441e5184f29d9",
+              "aesop": "e3cb2f741431ce31bf73549fb52316a57368b06f",
+              "Qq": "f46324995fca5f0483b742e4eb4daec7f4ee50d2",
+              "batteries": "fa08db58b30eb033edcdab331bba000827f9f785",
+              "Cli": "92564e5770e4d09f2d86dfbf8ada1e9c715b384c"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "0d236bf0f173fa7ef490605a32f9d5cc3cf1b214a34a02f7919af37ad4d20c54",
+              "lake-manifest.json": "c192257881ee32336e32f1e5ebc660f8890bbefaba391f1b360f961a033fba32"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "full_file_replacement",
+            "candidate_start_line": 97,
+            "original_file_path": "Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Safety.lean",
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 97.6077348484539
+      }
+    },
+    "diagnostics": [],
+    "scores": {
+      "length_reduction_pct": -28.676470588235304,
+      "heartbeat_reduction_pct": 97.7827266895947,
+      "compatibility_pct": 100.0,
+      "combined_pct": 56.36875203378647
+    }
+  },
+  "all_versions_valid": true,
+  "status": "complete",
+  "incomplete_methods": [],
+  "job_config_sha256": "57b3c6b731fa33b2419772735d098ca195efb7a20df1cb4b7bd805cf30c81dec",
+  "stage_result_sha256": {
+    "stages/01_lint/result.json": "9642b6435d8bd43a52ca0239c09f4cbd510f142961e4d664e5c957377d789bb8",
+    "stages/02_simp/result.json": "e271fe9bed19a090ac7cadd08e356218a56a6752b4f9be900f802b088a041ac0",
+    "stages/03_wrappers/result.json": "a541c614e62354ce1b7555bf676fc7917daa2c71ebff1cfa40c9c20e5b2a2ec5",
+    "stages/04_facts/result.json": "5171ed0faf4db8ae4fcac768a26a5aab0b2231095816116067c8226e10c9a692",
+    "stages/05_reuse/result.json": "08fe2ffb434fe5f93079434a35026ad623952310972780711276eb417ee54989",
+    "stages/06_menu/result.json": "79b41b44cfb07582cd390e39fd3aa71dd10a75b171bf2cae952e77cc0128284c",
+    "stages/07_search/result.json": "2ccfaee9f0e5cbd698a92488882650db835caed1e7c736d29b84a5f3ef79e24b",
+    "stages/08_simp_min/result.json": "44334c280a6dbcd407a72a53de80ba446beb9bd0816ae6b341083c7e117503bd",
+    "stages/09_arith_min/result.json": "ef754619ad9cd2ee6e8563aed29175b03c1660b832496191a399493f58d47c2c",
+    "stages/10_rw_min/result.json": "d9b42ba72ff98fec351698589335b957329c9eebeb21b1ca2b579efd00fb9888"
+  },
+  "stages": [
+    {
+      "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+      "source": "cslib",
+      "method": "lint",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -31.862745098039213,
+          "heartbeat_reduction_pct": 97.9272458709641,
+          "compatibility_pct": 100.0,
+          "combined_pct": 55.354833590974955
+        },
+        "candidate": {
+          "length": 538,
+          "code_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1240.203,
+            "heartbeat_reduction_pct": 97.9272458709641,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 4.721298532560468,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1390.574,
+            "heartbeat_reduction_pct": 97.75578928749415,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 4.755738427862525,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1389.638,
+            "heartbeat_reduction_pct": 97.75697671973046,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 4.748874474316835,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    exact Or.inl (Value.abs (Typing.wf (Typing.abs L h)).2.1)\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 3.532,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -31.862745098039213,
+          "heartbeat_reduction_pct": 97.9272458709641,
+          "compatibility_pct": 100.0,
+          "combined_pct": 55.354833590974955
+        },
+        "candidate": {
+          "length": 538,
+          "code_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1240.203,
+            "heartbeat_reduction_pct": 97.9272458709641,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 4.721298532560468,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1390.574,
+            "heartbeat_reduction_pct": 97.75578928749415,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 4.755738427862525,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1389.638,
+            "heartbeat_reduction_pct": 97.75697671973046,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 4.748874474316835,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+      "source": "cslib",
+      "method": "simp",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -31.862745098039213,
+          "heartbeat_reduction_pct": 97.9272458709641,
+          "compatibility_pct": 100.0,
+          "combined_pct": 55.354833590974955
+        },
+        "candidate": {
+          "length": 538,
+          "code_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1240.203,
+            "heartbeat_reduction_pct": 97.9272458709641,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 4.721298532560468,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1390.574,
+            "heartbeat_reduction_pct": 97.75578928749415,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 4.755738427862525,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1389.638,
+            "heartbeat_reduction_pct": 97.75697671973046,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 4.748874474316835,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    exact Or.inl (Value.abs (Typing.wf (Typing.abs L h)).2.1)\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 0.472,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -31.862745098039213,
+          "heartbeat_reduction_pct": 97.9272458709641,
+          "compatibility_pct": 100.0,
+          "combined_pct": 55.354833590974955
+        },
+        "candidate": {
+          "length": 538,
+          "code_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1240.203,
+            "heartbeat_reduction_pct": 97.9272458709641,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 4.721298532560468,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1390.574,
+            "heartbeat_reduction_pct": 97.75578928749415,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 4.755738427862525,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1389.638,
+            "heartbeat_reduction_pct": 97.75697671973046,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 4.748874474316835,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+      "source": "cslib",
+      "method": "wrappers",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -31.862745098039213,
+          "heartbeat_reduction_pct": 97.9272458709641,
+          "compatibility_pct": 100.0,
+          "combined_pct": 55.354833590974955
+        },
+        "candidate": {
+          "length": 538,
+          "code_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1240.203,
+            "heartbeat_reduction_pct": 97.9272458709641,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 4.721298532560468,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1390.574,
+            "heartbeat_reduction_pct": 97.75578928749415,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 4.755738427862525,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1389.638,
+            "heartbeat_reduction_pct": 97.75697671973046,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 4.748874474316835,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    exact Or.inl (Value.abs (Typing.wf (Typing.abs L h)).2.1)\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 0.298,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -31.862745098039213,
+          "heartbeat_reduction_pct": 97.9272458709641,
+          "compatibility_pct": 100.0,
+          "combined_pct": 55.354833590974955
+        },
+        "candidate": {
+          "length": 538,
+          "code_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1240.203,
+            "heartbeat_reduction_pct": 97.9272458709641,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 4.721298532560468,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1390.574,
+            "heartbeat_reduction_pct": 97.75578928749415,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 4.755738427862525,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1389.638,
+            "heartbeat_reduction_pct": 97.75697671973046,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 4.748874474316835,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+      "source": "cslib",
+      "method": "facts",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -31.862745098039213,
+          "heartbeat_reduction_pct": 97.9272458709641,
+          "compatibility_pct": 100.0,
+          "combined_pct": 55.354833590974955
+        },
+        "candidate": {
+          "length": 538,
+          "code_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1240.203,
+            "heartbeat_reduction_pct": 97.9272458709641,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 4.721298532560468,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1390.574,
+            "heartbeat_reduction_pct": 97.75578928749415,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 4.755738427862525,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1389.638,
+            "heartbeat_reduction_pct": 97.75697671973046,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 4.748874474316835,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    exact Or.inl (Value.abs (Typing.wf (Typing.abs L h)).2.1)\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+      "rounds": 1,
+      "attempts": 6,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 6,
+      "cache_hits": 0,
+      "elapsed_seconds": 22.786,
+      "stop_reason": "no_improving_proposal",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -31.862745098039213,
+          "heartbeat_reduction_pct": 97.9272458709641,
+          "compatibility_pct": 100.0,
+          "combined_pct": 55.354833590974955
+        },
+        "candidate": {
+          "length": 538,
+          "code_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1240.203,
+            "heartbeat_reduction_pct": 97.9272458709641,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 4.721298532560468,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1390.574,
+            "heartbeat_reduction_pct": 97.75578928749415,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 4.755738427862525,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1389.638,
+            "heartbeat_reduction_pct": 97.75697671973046,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 4.748874474316835,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+      "source": "cslib",
+      "method": "reuse",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -31.862745098039213,
+          "heartbeat_reduction_pct": 97.9272458709641,
+          "compatibility_pct": 100.0,
+          "combined_pct": 55.354833590974955
+        },
+        "candidate": {
+          "length": 538,
+          "code_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1240.203,
+            "heartbeat_reduction_pct": 97.9272458709641,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 4.721298532560468,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1390.574,
+            "heartbeat_reduction_pct": 97.75578928749415,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 4.755738427862525,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1389.638,
+            "heartbeat_reduction_pct": 97.75697671973046,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 4.748874474316835,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    exact Or.inl (Value.abs (Typing.wf (Typing.abs L h)).2.1)\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 0.307,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -31.862745098039213,
+          "heartbeat_reduction_pct": 97.9272458709641,
+          "compatibility_pct": 100.0,
+          "combined_pct": 55.354833590974955
+        },
+        "candidate": {
+          "length": 538,
+          "code_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1240.203,
+            "heartbeat_reduction_pct": 97.9272458709641,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 4.721298532560468,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1390.574,
+            "heartbeat_reduction_pct": 97.75578928749415,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 4.755738427862525,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1389.638,
+            "heartbeat_reduction_pct": 97.75697671973046,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 4.748874474316835,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+      "source": "cslib",
+      "method": "menu",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -31.862745098039213,
+          "heartbeat_reduction_pct": 97.9272458709641,
+          "compatibility_pct": 100.0,
+          "combined_pct": 55.354833590974955
+        },
+        "candidate": {
+          "length": 538,
+          "code_sha256": "d4f5fabea38a333823fe3eb9e3cdd1ff752435fc18949c7a5847865fd1eabad1"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1240.203,
+            "heartbeat_reduction_pct": 97.9272458709641,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 4.721298532560468,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1390.574,
+            "heartbeat_reduction_pct": 97.75578928749415,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 4.755738427862525,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1389.638,
+            "heartbeat_reduction_pct": 97.75697671973046,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 4.748874474316835,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    grind\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+      "rounds": 3,
+      "attempts": 14,
+      "accepted_edits": 1,
+      "accepted_transitions": 1,
+      "analysis_requests": 6,
+      "lean_candidate_checks": 18,
+      "cache_hits": 2,
+      "elapsed_seconds": 88.746,
+      "stop_reason": "round_limit",
+      "site_offset": 6,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -28.676470588235304,
+          "heartbeat_reduction_pct": 97.7827266895947,
+          "compatibility_pct": 100.0,
+          "combined_pct": 56.36875203378647
+        },
+        "candidate": {
+          "length": 525,
+          "code_sha256": "81f7bc4f89b09dbd08f90d593ae2e3709a88577959beb9f3d518ffb1509c1a97"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1326.674,
+            "heartbeat_reduction_pct": 97.7827266895947,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 3.266833459958434,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1483.056,
+            "heartbeat_reduction_pct": 97.60653502622222,
+            "cached": false,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 3.6288119181990623,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1482.099,
+            "heartbeat_reduction_pct": 97.6077348484539,
+            "cached": false,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 3.701102163642645,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": true
+    },
+    {
+      "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+      "source": "cslib",
+      "method": "search",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -28.676470588235304,
+          "heartbeat_reduction_pct": 97.7827266895947,
+          "compatibility_pct": 100.0,
+          "combined_pct": 56.36875203378647
+        },
+        "candidate": {
+          "length": 525,
+          "code_sha256": "81f7bc4f89b09dbd08f90d593ae2e3709a88577959beb9f3d518ffb1509c1a97"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1326.674,
+            "heartbeat_reduction_pct": 97.7827266895947,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 3.266833459958434,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1483.056,
+            "heartbeat_reduction_pct": 97.60653502622222,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 3.6288119181990623,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1482.099,
+            "heartbeat_reduction_pct": 97.6077348484539,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 3.701102163642645,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    grind\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+      "rounds": 3,
+      "attempts": 1,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 6,
+      "lean_candidate_checks": 1,
+      "cache_hits": 0,
+      "elapsed_seconds": 27.688,
+      "stop_reason": "round_limit",
+      "site_offset": 18,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -28.676470588235304,
+          "heartbeat_reduction_pct": 97.7827266895947,
+          "compatibility_pct": 100.0,
+          "combined_pct": 56.36875203378647
+        },
+        "candidate": {
+          "length": 525,
+          "code_sha256": "81f7bc4f89b09dbd08f90d593ae2e3709a88577959beb9f3d518ffb1509c1a97"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1326.674,
+            "heartbeat_reduction_pct": 97.7827266895947,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 3.266833459958434,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1483.056,
+            "heartbeat_reduction_pct": 97.60653502622222,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 3.6288119181990623,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1482.099,
+            "heartbeat_reduction_pct": 97.6077348484539,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 3.701102163642645,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+      "source": "cslib",
+      "method": "simp_min",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -28.676470588235304,
+          "heartbeat_reduction_pct": 97.7827266895947,
+          "compatibility_pct": 100.0,
+          "combined_pct": 56.36875203378647
+        },
+        "candidate": {
+          "length": 525,
+          "code_sha256": "81f7bc4f89b09dbd08f90d593ae2e3709a88577959beb9f3d518ffb1509c1a97"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1326.674,
+            "heartbeat_reduction_pct": 97.7827266895947,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 3.266833459958434,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1483.056,
+            "heartbeat_reduction_pct": 97.60653502622222,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 3.6288119181990623,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1482.099,
+            "heartbeat_reduction_pct": 97.6077348484539,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 3.701102163642645,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    grind\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 0.278,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -28.676470588235304,
+          "heartbeat_reduction_pct": 97.7827266895947,
+          "compatibility_pct": 100.0,
+          "combined_pct": 56.36875203378647
+        },
+        "candidate": {
+          "length": 525,
+          "code_sha256": "81f7bc4f89b09dbd08f90d593ae2e3709a88577959beb9f3d518ffb1509c1a97"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1326.674,
+            "heartbeat_reduction_pct": 97.7827266895947,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 3.266833459958434,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1483.056,
+            "heartbeat_reduction_pct": 97.60653502622222,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 3.6288119181990623,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1482.099,
+            "heartbeat_reduction_pct": 97.6077348484539,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 3.701102163642645,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+      "source": "cslib",
+      "method": "arith_min",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -28.676470588235304,
+          "heartbeat_reduction_pct": 97.7827266895947,
+          "compatibility_pct": 100.0,
+          "combined_pct": 56.36875203378647
+        },
+        "candidate": {
+          "length": 525,
+          "code_sha256": "81f7bc4f89b09dbd08f90d593ae2e3709a88577959beb9f3d518ffb1509c1a97"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1326.674,
+            "heartbeat_reduction_pct": 97.7827266895947,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 3.266833459958434,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1483.056,
+            "heartbeat_reduction_pct": 97.60653502622222,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 3.6288119181990623,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1482.099,
+            "heartbeat_reduction_pct": 97.6077348484539,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 3.701102163642645,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    grind\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 0.287,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -28.676470588235304,
+          "heartbeat_reduction_pct": 97.7827266895947,
+          "compatibility_pct": 100.0,
+          "combined_pct": 56.36875203378647
+        },
+        "candidate": {
+          "length": 525,
+          "code_sha256": "81f7bc4f89b09dbd08f90d593ae2e3709a88577959beb9f3d518ffb1509c1a97"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1326.674,
+            "heartbeat_reduction_pct": 97.7827266895947,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 3.266833459958434,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1483.056,
+            "heartbeat_reduction_pct": 97.60653502622222,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 3.6288119181990623,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1482.099,
+            "heartbeat_reduction_pct": 97.6077348484539,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 3.701102163642645,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+      "source": "cslib",
+      "method": "rw_min",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -28.676470588235304,
+          "heartbeat_reduction_pct": 97.7827266895947,
+          "compatibility_pct": 100.0,
+          "combined_pct": 56.36875203378647
+        },
+        "candidate": {
+          "length": 525,
+          "code_sha256": "81f7bc4f89b09dbd08f90d593ae2e3709a88577959beb9f3d518ffb1509c1a97"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1326.674,
+            "heartbeat_reduction_pct": 97.7827266895947,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 3.266833459958434,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1483.056,
+            "heartbeat_reduction_pct": 97.60653502622222,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 3.6288119181990623,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1482.099,
+            "heartbeat_reduction_pct": 97.6077348484539,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 3.701102163642645,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    grind\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 0.288,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": -28.676470588235304,
+          "heartbeat_reduction_pct": 97.7827266895947,
+          "compatibility_pct": 100.0,
+          "combined_pct": 56.36875203378647
+        },
+        "candidate": {
+          "length": 525,
+          "code_sha256": "81f7bc4f89b09dbd08f90d593ae2e3709a88577959beb9f3d518ffb1509c1a97"
+        },
+        "primary_version": "v4.33.0-rc2",
+        "per_version": {
+          "v4.33.0-rc2": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1326.674,
+            "heartbeat_reduction_pct": 97.7827266895947,
+            "cached": true,
+            "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+            "elapsed_seconds": 3.266833459958434,
+            "diagnostics": []
+          },
+          "v4.32.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1483.056,
+            "heartbeat_reduction_pct": 97.60653502622222,
+            "cached": true,
+            "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+            "elapsed_seconds": 3.6288119181990623,
+            "diagnostics": []
+          },
+          "v4.31.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 1482.099,
+            "heartbeat_reduction_pct": 97.6077348484539,
+            "cached": true,
+            "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+            "elapsed_seconds": 3.701102163642645,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    }
+  ],
+  "counters": {
+    "attempts": 21,
+    "analysis_requests": 20,
+    "lean_candidate_checks": 25,
+    "cache_hits": 2,
+    "accepted_transitions": 1,
+    "elapsed_seconds": 144.682
+  },
+  "verification_accounting": "Optimizer counters exclude initial/final whole-proof validation; these checks use the existing evaluator cache.",
+  "changed": true
+}

@@ -1,0 +1,89 @@
+{
+  "name": "fundamental_theorem_of_variational_calculus'",
+  "source": "physlib",
+  "method": "facts",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 47.23854289071681,
+      "heartbeat_reduction_pct": 62.59354105983874,
+      "compatibility_pct": 100.0,
+      "combined_pct": 69.94402798351852
+    },
+    "candidate": {
+      "length": 449,
+      "code_sha256": "991ec3207c19e6bb1ffea0db528d3b8a024d94709a9a7aaea203fa8e771d2a28"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4470.759,
+        "heartbeat_reduction_pct": 62.59354105983874,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 1.577757678925991,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 47.23854289071681,
+      "heartbeat_reduction_pct": 62.59354105983874,
+      "compatibility_pct": 100.0,
+      "combined_pct": 69.94402798351852
+    },
+    "candidate": {
+      "length": 449,
+      "code_sha256": "991ec3207c19e6bb1ffea0db528d3b8a024d94709a9a7aaea203fa8e771d2a28"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4470.759,
+        "heartbeat_reduction_pct": 62.59354105983874,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 1.577757678925991,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma fundamental_theorem_of_variational_calculus' {f : Y → V}\n    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]\n    [OpensMeasurableSpace Y]\n    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :\n    f = 0 := by\n  rw [funext_iff]\n  by_contra! h\n  obtain ⟨x₀, hx0⟩ := h\n  let q : Y → ℝ := fun x => ⟪f x, f x₀⟫_ℝ\n  have hq0 : 0 < q x₀ := by\n    dsimp [q]\n    exact lt_of_le_of_ne real_inner_self_nonneg'\n      (Ne.symm (by simpa [inner_self_eq_zero'] using hx0))\n  have hcont : Continuous q :=\n    Continuous.inner' f (fun _ => f x₀) hf continuous_const\n  obtain ⟨δ, hδpos, hδ⟩ :=\n    Metric.continuousAt_iff.mp hcont.continuousAt (q x₀ / 2) (by positivity)\n  have hpos : ∀ x ∈ Metric.ball x₀ δ, 0 < q x := by\n    intro x hx\n    have hc := hδ (Metric.mem_ball.mp hx)\n    rw [Real.dist_eq] at hc\n    dsimp [q]\n    linarith only [hq0, (abs_lt.mp hc).1]\n  haveI : HasContDiffBump Y := hasContDiffBump_of_innerProductSpace Y\n  let φ1 : ContDiffBump x₀ := ⟨δ / 2, δ, by positivity, by linarith⟩\n  let φ : Y → ℝ := φ1.toFun\n  have hφ_testfun : IsTestFunction φ := ⟨φ1.contDiff, φ1.hasCompactSupport⟩\n  have hφ_support_subset : Function.support φ ⊆ Metric.ball x₀ δ := by\n    change Function.support φ1.toFun ⊆ _\n    rw [ContDiffBump.support_eq]\n  have key_integral := hg (fun x => φ x • f x₀)\n    (IsTestFunction.smul_right hφ_testfun contDiff_const)\n  simp only [inner_smul_right'] at key_integral\n  have integrable_prod : Integrable (fun x => φ x * q x) μ :=\n    (Continuous.mul hφ_testfun.smooth.continuous hcont).integrable_of_hasCompactSupport\n      hφ_testfun.supp.mul_right\n  have h_nonneg : ∀ x, 0 ≤ φ x * q x := by\n    intro x\n    by_cases hx : x ∈ Function.support φ\n    · exact mul_nonneg φ1.nonneg (hpos x (hφ_support_subset hx)).le\n    · simp [Function.notMem_support.mp hx]\n  have hμ : 0 < μ (Metric.ball x₀ (δ/2)) :=\n    Metric.isOpen_ball.measure_pos μ (Metric.nonempty_ball.mpr (by positivity))\n  have ball_subset_support : Metric.ball x₀ (δ/2) ⊆\n      Function.support (fun x => φ x * q x) := by\n    intro x hx\n    have hxδ : x ∈ Metric.ball x₀ δ := Metric.ball_subset_ball (by linarith) hx\n    simp only [Function.support_mul, Set.mem_inter_iff, Function.mem_support]\n    exact ⟨ne_of_gt (φ1.pos_of_mem_ball hxδ), ne_of_gt (hpos x hxδ)⟩\n  have integral_pos : 0 < ∫ x, φ x * q x ∂μ :=\n    (integral_pos_iff_support_of_nonneg h_nonneg integrable_prod).mpr\n      (lt_of_lt_of_le hμ (measure_mono ball_subset_support))\n  change (∫ x, φ x * q x ∂μ) = 0 at key_integral\n  simpa [key_integral] using integral_pos",
+  "initial_sha256": "991ec3207c19e6bb1ffea0db528d3b8a024d94709a9a7aaea203fa8e771d2a28",
+  "rounds": 1,
+  "attempts": 17,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 17,
+  "cache_hits": 0,
+  "seen": [
+    "a858a73826c3fff19239b87d04d9d949110ff0a10d869076925acba7ac33a297",
+    "99b07654c97f2ff94fa3cc3735327092d78c19b12e3a5398c3e1ea55804d6f51",
+    "6630ffb9e7cad4c639cb3b0088a8ff655b2e4df2a9d82d1bfef11fb3b315cf33",
+    "b5d3413c9798be9f6e475fa5dc5d990b3a32cec6c730778eb274f56bdec5a37d",
+    "34729afc8d9beb3a61e5164ff274736522b287da12832fd2904443d1b36fcdaa",
+    "4225d8a6b914d429c8e396bc303d264e165311ff45d2f0fd1f65a069b282ec55",
+    "56f1871c09df4308e7aeb8ca248d56b8d562b74e1db8a099ff8eb214fde0a03e",
+    "d2685132124d910cdf567b79ce806c02d50e63671d6414a065151dbdc37a22c8",
+    "7c070d613280b01442b2fc1692d7c320f6293b6473bc35803f661f622e70960b",
+    "ab52801df64860c9f7f9dc56b62a3bf0a6852bd784234efbeaf64950d6f0ceae",
+    "6c522a1e43981d6f3562646da68a8a64a9f3b01e9e5c12b1fae43fab62cacd46",
+    "db7112714e6695dec80a0ef028f3d3b66c646659488a9fdd44bd9c2d3ab1b871",
+    "a2ca843c36fc1df5c05e89f82c1cbf5814eeec6da76478771a8a87ea6de0e0db",
+    "914684cdc3b4fff768228cbac6ff834f1e834682ffc3f565f411d673d4c5a7bf",
+    "31845ef96603132434fadc883075192cecdf65984cf2af9062654b82bc3fcb38",
+    "0b6621cddbdd193ee7eb381b79a5cce72f9d885f4dad1cf7262a24790068df5f",
+    "0dbd18972b9138495645b0a48cd376bed2d295592b9b4767af291674afa511fd"
+  ],
+  "plan": null,
+  "elapsed_seconds": 32.17533746547997,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0
+}

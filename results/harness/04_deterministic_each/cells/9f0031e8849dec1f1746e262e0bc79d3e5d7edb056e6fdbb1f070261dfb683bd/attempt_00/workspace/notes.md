@@ -1,0 +1,12 @@
+- Scalar continuous inner-product function gives positive neighborhood directly; use a ContDiffBump with radii r/2,r and continuous compact-support integral positivity instead of quantitative Cauchy--Schwarz / closed-ball measure arguments.
+- First check failed only because Continuous.inner' needed explicit 𝕜 := ℝ.
+- With annotation: valid, 210 tokens, 2081.99 heartbeats, S=85.9677722. Deterministic cleanup requested.
+- Inlining hpos/nonneg/test proofs without annotations: .mul returns a pointwise function. Needed Pi.mul_apply / Pi.zero_apply. Valid 176 tokens, 2595.3 hb, S=85.867932 (slightly worse); deterministic unchanged.
+- Continuous.fun_mul removes the pointwise-product rewriting; Pi.zero_apply still needed. Valid 169 tokens, 2579.252 hb, S=86.186876. Cleanup pending.
+- Candidates to investigate: existing exists_contDiff_tsupport_subset instead of explicit bump; move integral equality before positivity to pin elaboration types.
+- Generic exists_contDiff_tsupport_subset avoids explicit ball/bump. The ∞ notation is unavailable in this context; using n := ⊤ fixes parsing. Valid 172 tokens, 1767.453 hb, S=88.333452; deterministic unchanged.
+- Order-based reduction to positive self inner product, mul_nonneg_iff_pos_imp_nonneg for nonnegativity, and explicit mul_ne_zero at center: valid 153 tokens, 1901.673 hb, S=88.703339. Cleanup pending.
+- change at point + direct test constructor + combined final exact regressed: 156 tokens, 2615.517 hb, S=86.594939; deterministic unchanged.
+- Replacing product nonnegativity characterization with explicit cases on φ y = 0 needed simp for beta-reduction. Valid 166 tokens, 1761.606 hb, S=88.584777 (slightly worse); deterministic unchanged.
+- Replacing open-set construction by ContinuousAt.preimage_mem_nhds (Ioi_mem_nhds hp): valid 151 tokens, 1906.56 hb, S=88.768048; deterministic unchanged. Selected best.
+- Stopping: main quantitative, support-measure, and explicit-bump blocks have been eliminated. Alternative term/case elaborations were compared; remaining speculative local edits have little expected gain.

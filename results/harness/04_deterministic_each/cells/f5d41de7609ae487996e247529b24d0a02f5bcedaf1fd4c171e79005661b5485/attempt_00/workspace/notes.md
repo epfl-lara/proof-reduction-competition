@@ -1,0 +1,17 @@
+# Optimization notes
+- Initial structural rewrite: one shared replacement-sum identity, sum all first-relation congruences, subtract, then cancel coprime power. All 3 versions pass; 309 tokens, 2446.159 heartbeats, score 92.9380. Cleanup pending.
+- Source search for v4.25.0 returned no matches; v4.26.0 dependency source search works. Coprime basic/pow signatures inspected.
+- First cleanup: removed Int scalar-normalization simp lemmas; 305 tokens, 2433.134 heartbeats, score 92.9948.
+- Second proposal: derive replacement identity by sum subtraction; use omega for modular algebra. Valid all versions, 225 tokens, 2903.917 heartbeats, score 92.7737 (slightly worse); cleanup pending.
+- Second cleanup: no change.
+- Third proposal keeps digits_to_num opaque rather than substituting a reducible sum. Valid all versions, 210 tokens, 2734.509 heartbeats, score 93.2106. Only modest runtime reduction. Cleanup pending; next idea: exact divisibility algebra, avoid omega's modular search.
+- Third cleanup: no change.
+- Fourth proposal: explicit divisibility witnesses and numeric omega equality; closed coprime certificate via rfl. Valid all versions, 243 tokens, 2763.461 heartbeats, score 92.8876 (worse). This suggests modular omega search is not the main cost. Next: restrict sum-subtraction rewrite to one rw instead of a global simp rule.
+- Fourth cleanup uses linarith for the witness equality: 242 tokens, 2629.825 heartbeats, score 93.1438; still below third.
+- Fifth proposal: focused sum-subtraction rw, exact additive cancellation of the two congruences, omega only for aggregate congruence. Valid all versions, 236 tokens, 2369.315 heartbeats, score 93.6763. Cleanup pending.
+- Fifth cleanup: no change.
+- Sixth proposal: generic unweighted replacement-sum helper, explicit power exponent at cancellation. Valid all versions, 285 tokens, 2403.329 heartbeats, score 93.2133 (worse). Extra abstraction does not pay for itself. Will retain compact helper; remaining test is explicit exponent plus a direct aggregate divisibility identity.
+- Sixth cleanup: no change.
+- Seventh proposal removes the explicit aggregate change and gives the cancellation exponent. Failed because omega treated integer nsmul as an atom.
+- Repair normalizes nsmul in the existing simp call. All versions pass: 219 tokens, 2241.275 heartbeats, score 94.0527. This is the best manual proof; final cleanup pending. Structural, witness, modular-omega, generic-helper, and focused-rewrite alternatives have been compared; further changes appear marginal.
+- Final cleanup: unchanged, score 94.0527. Stopping after seven proposals (one repaired failure); extra generic abstraction and explicit witnesses were measured and did not improve the selected focused proof.

@@ -1,0 +1,71 @@
+{
+  "name": "FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time",
+  "source": "physlib",
+  "method": "reuse",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 57.518488085456035,
+      "heartbeat_reduction_pct": 74.83044915219762,
+      "compatibility_pct": 100.0,
+      "combined_pct": 77.44964574588455
+    },
+    "candidate": {
+      "length": 517,
+      "code_sha256": "20670b4234dcff5aa8655df0706a67c2d6aafaee5573acd684d613e04276b333"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 10585.892,
+        "heartbeat_reduction_pct": 74.83044915219762,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 3.9358502253890038,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 57.518488085456035,
+      "heartbeat_reduction_pct": 74.83044915219762,
+      "compatibility_pct": 100.0,
+      "combined_pct": 77.44964574588455
+    },
+    "candidate": {
+      "length": 517,
+      "code_sha256": "20670b4234dcff5aa8655df0706a67c2d6aafaee5573acd684d613e04276b333"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 10585.892,
+        "heartbeat_reduction_pct": 74.83044915219762,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 3.9358502253890038,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp}\n    (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * b) =\n    ι ([ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by\n  let c := [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF\n  change ((mulLinearMap ∘ₗ mulLinearMap.flip c).compr₂\n      (ι.toLinearMap ∘ₗ timeOrderF)) a b =\n    (mulLinearMap.compr₂ (ι.toLinearMap ∘ₗ mulLinearMap c ∘ₗ timeOrderF)) a b\n  refine LinearMap.congr_fun (LinearMap.congr_fun\n    (LinearMap.ext_basis ofCrAnListFBasis ofCrAnListFBasis fun φs' φs => ?_) a) b\n  change ι 𝓣ᶠ(ofCrAnListFBasis φs' * c * ofCrAnListFBasis φs) =\n    ι (c * 𝓣ᶠ(ofCrAnListFBasis φs' * ofCrAnListFBasis φs))\n  simp only [ofListBasis_eq_ofList, map_mul]\n  obtain ⟨l1, l2, hs⟩ : ∃ l1 l2 : List 𝓕.CrAnFieldOp, ∀ l,\n      (∀ x ∈ l, crAnTimeOrderRel φ x ∧ crAnTimeOrderRel x φ) →\n      crAnTimeOrderList (φs' ++ l ++ φs) = l1 ++ l ++ l2 := by\n    refine ⟨\n      List.takeWhile (fun x => ¬ crAnTimeOrderRel φ x) (crAnTimeOrderList (φs' ++ φs)) ++\n        List.filter (fun x => crAnTimeOrderRel φ x ∧ crAnTimeOrderRel x φ) φs',\n      List.filter (fun x => crAnTimeOrderRel φ x ∧ crAnTimeOrderRel x φ) φs ++\n        List.filter (fun x => crAnTimeOrderRel φ x ∧ ¬ crAnTimeOrderRel x φ)\n          (crAnTimeOrderList (φs' ++ φs)), fun l h => ?_⟩\n    exact (insertionSort_of_eq_list 𝓕.crAnTimeOrderRel φ φs' l φs h).trans\n      (List.append_assoc _ _ _)\n  have h12 := hs [φ, ψ] (by simp [hφψ, hψφ])\n  have h21 := hs [ψ, φ] (by simp [hφψ, hψφ])\n  have h0 := hs [] (by simp)\n  simp only [List.append_nil] at h0\n  have hc := superCommuteF_ofCrAnListF_ofCrAnListF [φ] [ψ]\n  simp only [ofCrAnListF_singleton, List.singleton_append] at hc\n  trans crAnTimeOrderSign (φs' ++ [φ, ψ] ++ φs) •\n    (ι (ofCrAnListF l1) * ι c * ι (ofCrAnListF l2))\n  all_goals dsimp only [c]\n  · conv_lhs =>\n      rw [hc]\n      simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc,\n        ← ofCrAnListF_append, map_sub, map_smul, timeOrderF_ofCrAnListF, h12, h21]\n    simp only [hc, ofCrAnListF_append, map_mul, map_sub, map_smul,\n      mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, smul_sub]\n    simp only [List.append_assoc, List.cons_append,\n      crAnTimeOrderSign_swap_eq_time hφψ hψφ]\n    rw [smul_comm]\n  · rw [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ),\n      mul_assoc, ← map_mul, ← ofCrAnListF_append, ← h0]\n    simp only [List.append_assoc, List.cons_append, List.nil_append]\n    by_cases hq : (𝓕 |>ₛ φ) = (𝓕 |>ₛ ψ)\n    · rw [crAnTimeOrderSign, Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ hq.symm,\n        ← crAnTimeOrderSign, ← ofCrAnListF_append, timeOrderF_ofCrAnListF]\n      simp only [map_smul, Algebra.mul_smul_comm]\n    · simp only [ι_superCommuteF_of_diff_statistic hq, zero_mul, smul_zero]",
+  "initial_sha256": "20670b4234dcff5aa8655df0706a67c2d6aafaee5573acd684d613e04276b333",
+  "rounds": 1,
+  "attempts": 0,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 0,
+  "cache_hits": 0,
+  "seen": [],
+  "plan": null,
+  "elapsed_seconds": 0.17595991678535938,
+  "stop_reason": "no_new_proposals",
+  "site_offset": 0
+}

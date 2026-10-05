@@ -1,0 +1,22 @@
+- Attempt 1: evidence induction, explicit S witnesses/constructors, no recursion or grind. Valid all versions; 358 tokens, 379.319 kHB, score 61.5443.
+- Attempt 2: shared reflexive-case tactic (263 tokens); invalid due to nested `by` error recovery inside `try`. Repair by using `refine` followed by tactics.
+- Attempt 3: repair `try` succeeded, but case binders reordered by dependent elimination. Name induction data before second cases.
+- Attempt 4: named par variables before elimination; shared reflexive constructor tactic. Valid all; 258 tokens, 485.501 kHB, score 67.1770.
+- Attempt 5: combine symmetric branches (191 tokens); failed since `symm` tactic lacks registered Join lemma. Generic `apply symm` uses Join's symmetric instance instead.
+- Attempt 6: shared symmetry via `apply symm`. Valid all; 192 tokens, 492.027 kHB, score 72.4252.
+- Attempt 7: retain original reduction to solve reflexive cases without constructor search. Extra induction hypothesis argument required for retained proof.
+- Attempt 8: added required IH arguments to retained-proof approach. Valid all but regressive: 208 tokens, 792.474 kHB, score 63.8789. Revert.
+- Attempt 9: select reflexive/diagonal cases explicitly, clear unused par IHs, invert I evidence directly. Valid all; 215 tokens, 404.572 kHB, score 72.6478.
+- Attempt 10: detect refl branches using `all_goals try (case refl => ...)`; valid, 214 tokens / 420.954 kHB / 72.3352. Worse than explicit tags.
+- Attempt 11: induction on source syntax instead of reduction evidence; valid all, but worse (260 tokens, 559.136 kHB, score 65.2398).
+- Attempt 12: direct recursive theorem calls in par/par, rather than evidence induction. Valid but worse (209 tokens, 773.901 kHB, score 64.2443). Evidence induction is preferable.
+- Attempt 13: retain extracted equality and rewrite instead of `rcases ... rfl`; valid but worse (223 tokens, 435.741 kHB, score 71.2419).
+- Attempt 14: direct K evidence inversion plus multi-rcases; failed due unsupported multi-argument rcases syntax. Restore separate destructuring for next check.
+- Attempt 15: direct K evidence inversion repaired. Valid but regressive (226 tokens, 485.748 kHB, score 69.7919). Keep Ka_irreducible.
+- Attempt 16: merge explicit reflexive and diagonal cases into one constructor block, introduce second proof after induction. Valid all; 206 tokens, 407.552 kHB, score 73.3131.
+- Attempt 17: solve only the seven easy remaining cases at the end, avoiding all their explicit tags and any failed proof search. Valid all; 192 tokens, 407.285 kHB, score 74.4662.
+- Attempt 18: remove unused-IH clears and restore early second-proof intro. Valid all; 186 tokens, 406.874 kHB, score 74.9675.
+- Attempt 19: match proof terms for irreducibility and IH witnesses. Failed because equality patterns `rfl` cannot eliminate the free head index. Repair with explicit equality transport.
+- Attempt 20: explicit match/equality-transport terms. Valid but slower (196 tokens, 583.730 kHB, score 69.8891). Revert equality transports; test only the nondependent IH match.
+- Attempt 21: nondependent match just for the two recursive join witnesses. Valid but regressive (188 tokens, 452.443 kHB, score 73.7062).
+- Selected attempt 18: evidence induction, shared symmetric nontrivial cases, helper irreducibility witnesses, and trivial cases discharged last. Best all-version score 74.9675; no remaining concrete change expected to justify further attempts.

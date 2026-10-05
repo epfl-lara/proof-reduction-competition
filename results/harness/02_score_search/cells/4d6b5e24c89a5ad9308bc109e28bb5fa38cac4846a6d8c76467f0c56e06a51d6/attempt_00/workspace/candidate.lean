@@ -1,0 +1,50 @@
+lemma fundamental_theorem_of_variational_calculus' {f : Y → V}
+    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]
+    [OpensMeasurableSpace Y]
+    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :
+    f = 0 := by
+  funext x₀
+  by_contra hx₀
+  let q : Y → ℝ := fun x => ⟪f x, f x₀⟫_ℝ
+  have hself : 0 < q x₀ := by
+    obtain ⟨c, _, hc, _, hbound⟩ :=
+      InnerProductSpace'.inner_top_equiv_norm (𝕜 := ℝ) (E := V)
+    have hle : c * ‖f x₀‖ ^ 2 ≤ q x₀ := by
+      simpa only [q, smul_eq_mul, RCLike.re_to_real] using (hbound (f x₀)).1
+    exact (mul_pos hc (sq_pos_of_pos (norm_pos_iff.mpr hx₀))).trans_le hle
+  have hcont : Continuous q :=
+    Continuous.inner' (f : Y → V) (fun _ => f x₀) hf continuous_const
+  have hopen : IsOpen {x | 0 < q x} := isOpen_Ioi.preimage hcont
+  obtain ⟨δ, hδpos, hδ⟩ := Metric.isOpen_iff.mp hopen x₀ hself
+  have hqpos : ∀ x ∈ Metric.ball x₀ δ, 0 < q x := fun x hx => hδ hx
+  haveI : HasContDiffBump Y := hasContDiffBump_of_innerProductSpace Y
+  let b : ContDiffBump x₀ := ⟨δ / 2, δ, by positivity, by linarith⟩
+  let φ : Y → ℝ := b.toFun
+  have hφt : IsTestFunction φ := ⟨b.contDiff, b.hasCompactSupport⟩
+  let g : Y → V := fun x => φ x • f x₀
+  have hgt : IsTestFunction g := IsTestFunction.smul_right hφt contDiff_const
+  have hzero := hg g hgt
+  simp only [g, inner_smul_right'] at hzero
+  have hsupp : Function.support φ ⊆ Metric.ball x₀ δ := by
+    rw [ContDiffBump.support_eq]
+  have hint : Integrable (fun x => φ x * q x) μ :=
+    (Continuous.mul hφt.smooth.continuous hcont).integrable_of_hasCompactSupport
+      hφt.supp.mul_right
+  have hnonneg : ∀ x, 0 ≤ φ x * q x := by
+    intro x
+    by_cases hx : x ∈ Function.support φ
+    · exact mul_nonneg (b.nonneg) (hqpos x (hsupp hx)).le
+    · simp [Function.notMem_support.mp hx]
+  have hμball : 0 < μ (Metric.ball x₀ (δ / 2)) :=
+    Metric.isOpen_ball.measure_pos μ (Metric.nonempty_ball.mpr (by linarith))
+  have hsubset : Metric.ball x₀ (δ / 2) ⊆ Function.support (fun x => φ x * q x) := by
+    intro x hx
+    have hφx : φ x = 1 :=
+      b.one_of_mem_closedBall (Metric.ball_subset_closedBall hx)
+    have hqx := hqpos x (Metric.ball_subset_ball (by linarith) hx)
+    simp only [Function.support_mul, Set.mem_inter_iff, Function.mem_support, ne_eq]
+    exact ⟨by simp [hφx], hqx.ne.symm⟩
+  have hpos : 0 < ∫ x, φ x * q x ∂μ :=
+    (integral_pos_iff_support_of_nonneg hnonneg hint).mpr
+      (lt_of_lt_of_le hμball (measure_mono hsubset))
+  exact (ne_of_gt hpos) hzero

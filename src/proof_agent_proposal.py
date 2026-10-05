@@ -22,7 +22,8 @@ from run_deterministic import write_json
 from run_validity_repair import now
 
 ROOT = Path(__file__).resolve().parent.parent
-MODELS = {'gpt-6-astra': {'max', 'low'}, 'gpt-6-luna': {'max'}}
+MODELS = {'gpt-6-astra': {'max', 'high', 'low'}, 'gpt-6-luna': {'max'},
+          'gpt-6.1-sol': {'max'}}
 COMMON_TOOLS = """Use the supplied tools with `python tools.py ...` in your workspace:
   search 'literal symbol or mathematical property' [--version VERSION] [--limit 30]
   outline relative/source/File.lean [--version VERSION]
@@ -71,11 +72,20 @@ then finish with a short stopping reason and return that exact declaration.
 
 
 def tool_instructions(mode):
+    if mode == 'score_edges':
+        common = COMMON_TOOLS.replace('The original seed is already validated and measured.',
+                                     'The supplied seed is already validated and measured.')
+        placement = '''The harness selected the better all-version-valid original or deterministic
+seed before your call and will apply the fixed deterministic portfolio to your
+best checked proof after your call. Reference denominators remain the original.
+'''
+        placement += 'Deterministic cleanup is performed only before and after model search; no in-loop deterministic tool is available.\n'
+        return common + '\n' + MODE_TOOLS['score'] + '\n' + placement
     return COMMON_TOOLS + '\n' + MODE_TOOLS[mode]
 
 
 def command(*, binary, workspace, system_file, last_message, model, effort, mode):
-    if model not in MODELS or effort not in MODELS[model] or mode not in MODE_TOOLS:
+    if model not in MODELS or effort not in MODELS[model] or mode not in (*MODE_TOOLS, 'score_edges'):
         raise ValueError('Unsupported model, effort or experiment mode')
     settings = {
         'model_reasoning_effort': effort, 'model_reasoning_summary': 'none',
@@ -127,7 +137,7 @@ def generate(*, folder, messages, model, effort, mode, session, context, expecte
         workspace.mkdir(exist_ok=True)
         write_json(workspace / 'context.json', context)
         (workspace / 'tools.py').write_text((ROOT / 'src/proof_agent_client.py').read_text())
-        (workspace / 'candidate.lean').write_text(session.row['src'])
+        (workspace / 'candidate.lean').write_text(session.seed_code)
         (folder / 'system.txt').write_text(messages[0]['content'])
         (folder / 'prompt.txt').write_text(messages[1]['content'])
         base = command(binary=identity['path'], workspace=workspace, system_file=folder / 'system.txt',

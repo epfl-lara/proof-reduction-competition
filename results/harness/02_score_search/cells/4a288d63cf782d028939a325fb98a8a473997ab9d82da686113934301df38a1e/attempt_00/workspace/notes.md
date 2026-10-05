@@ -1,0 +1,15 @@
+- Attempt 1: replace induction with updatedStatesComm, invariant lemmas, and updatedStatesInit/Update. All versions valid; 91 tokens, 286.319 heartbeats, score 84.21453.
+- Attempt 2: combine rewrites in simp only, directly simpa for defined/undefined contradiction. All versions valid; 88 tokens, 251.177 heartbeats, score 84.93636.
+- Attempt 3: inline length facts. Valid but regressive (90 tokens, 252.525 heartbeats, score 84.62817); keep attempt 2.
+- Attempt 4: omit explicit unfolding in combined rw; invalid because rw does not match updatedStates' through updatedStates.
+- Attempt 5: erw instead of rw still does not match updatedStates' through updatedStates; invalid.
+- Attempt 6: direct uninstantiated equality transport after rewriting state equalities fails to infer zipped lists/motive.
+- Attempt 7: merged final simpa with commutation hole does not infer the new zipped update list/commutation premise; invalid.
+- Attempt 8: explicit Option.isSome_iff_ne_none contradiction. Valid, regressive: 90 tokens, 256.28 heartbeats, score 84.59875.
+- Attempt 9: cache InitStatesNotDefined. Valid, slight regression: 89 tokens, 251.506 heartbeats, score 84.78497.
+- Attempt 10: normalize before direct equality transport. All versions valid; 88 tokens, 218.357 heartbeats, score 85.19356 (new best).
+- Attempt 11: drop .symm on transport. Transport works but infers reversed disjointness; remaining contradiction arguments need exchanging.
+- Attempt 12: use forward transport with reversed disjointness. All versions valid; 85 tokens, 216.726 heartbeats, score 85.65277 (new best).
+- Attempt 13: eliminate final-store equalities with cases and unfold once. All versions valid; 82 tokens, 234.396 heartbeats, score 85.96072 (new best).
+- Attempt 14: perform equality elimination immediately after introductions. Valid but slightly regressive: 82 tokens, 237.036 heartbeats, score 85.94003. Keep attempt 13.
+- Stopping: the whole update induction is eliminated; tested normalization/transport forms and invariant caching. Remaining ideas add annotations or repeat unsuccessful implicit inference, without a concrete expected score gain.

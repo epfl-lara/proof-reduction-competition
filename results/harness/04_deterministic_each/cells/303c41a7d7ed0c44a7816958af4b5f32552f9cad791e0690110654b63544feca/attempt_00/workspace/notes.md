@@ -1,0 +1,12 @@
+- Seed: score 50.4434, 222 tokens, ~2108 primary heartbeats.
+- Direct use of updatedStatesComm + updatedStatesInit/Update replaces all induction: valid all versions; score 82.11176, 96 tokens, 459.698 heartbeats. Lengths provide unzip_zip; defined/undefined keys prove disjoint.
+- Investigating shorter explicit Option.isSome_iff_ne_none application for disjointness and combining equality/definition rewrites.
+- Deterministic cleanup of first proof replaced contradiction by simp_all; score 82.9200, 96 tokens, 356.560 heartbeats.
+- Option.isSome_iff_ne_none.mp directly discharges disjointness; inferred witness via rfl. All-version valid, score 84.3331, 90 tokens, 290.179 heartbeats.
+- Inline lengths/undefined hypothesis and omit unfolding: invalid (rw cannot see updatedStates' under updatedStates).
+- Reinsert unfold after inlining: valid, regressive 83.8769 (93 tokens, 291.428 heartbeats). Keep shared haves from 84.3331 proof.
+- Omitting unfold via erw also invalid; rewrite matching does not expose updatedStates'. Direct commutation ▸ cast with implicit parameters invalid as well.
+- Replaced equality rewrites/unfold with simp only; disjointness via simpa. All-version valid, score 84.7848 (89 tokens, 251.525 heartbeats).
+- Inline only undefinedness; simp only for unzip equalities. Valid all versions, score 85.0768 (89 tokens, 214.272 heartbeats).
+- Replacing central rw by rewrite removes futile reflexivity attempt: valid all versions, score 85.3933 (89 tokens, 173.879 heartbeats).
+- Replaced remaining preparatory simp only calls with rewrite (plus unfold for updatedStates). All-version valid, score 85.7717 (87 tokens, 163.576 heartbeats). Central mathematical reduction is now just updatedStatesComm; remaining operations supply its necessary lengths and disjointness.

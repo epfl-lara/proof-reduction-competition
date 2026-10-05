@@ -1,0 +1,14 @@
+theorem putnam_1964_b2
+(S : Type*) [Fintype S] [Nonempty S]
+(P : Finset (Set S))
+(hPP : ∀ T ∈ P, ∀ U ∈ P, T ∩ U ≠ ∅)
+(hPS : ¬∃ T : Set S, T ∉ P ∧ (∀ U ∈ P, T ∩ U ≠ ∅))
+: (P.card = 2 ^ (Fintype.card S - 1)) := by
+  classical
+  apply Nat.eq_of_mul_eq_mul_left Nat.two_pos
+  rw [mul_pow_sub_one (Fintype.card_ne_zero), ← Fintype.card_set]
+  refine (Set.Intersecting.is_max_iff_card_eq
+    (fun A hA B hB h => hPP A hA B hB h.inter_eq)).mp ?_
+  exact fun Q hQ hPQ => Finset.Subset.antisymm hPQ fun A hA =>
+    Classical.byContradiction fun hn =>
+      hPS ⟨A, hn, fun U hU he => hQ hA (hPQ hU) (disjoint_iff.mpr he)⟩

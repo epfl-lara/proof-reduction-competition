@@ -1,0 +1,23 @@
+- Induction on NormalizedOldExpr avoids separately destructing normalization. Initial simp_all with `.Subset` failed (append simplification uses notation `⊆`); application extractor requires `unfold` before `split`.
+- v2 change to `⊆`, evidence induction, simp_all: valid, 54 tokens, 2454.354 hb, S=61.5673.
+- v3 use simp [*, definitions] instead of simp_all: valid, 59 tokens, 1916.045 hb, S=67.4676.
+- v4 explicit evidence induction with local append-subset helper: valid, 142 tokens, 425.640 hb, S=73.4197.
+- v5 focused simp only on list subset composition: valid, 82 tokens, 1603.730 hb, S=67.8729 (regressive).
+- v6 stronger Sublist via List.Sublist.subset and append: valid, 93 tokens, 355.716 hb, S=81.6410.
+- v7/v8 replace explicit routine branches with repeat first/assumption/nil_sublist/append. `case app` tag fails after repeat; `next` works. Valid, 51 tokens, 502.798 hb, S=86.1301.
+- v9/v10 syntax induction can ignore normalization: panic's logical definition is default=[], confirmed in Init/Prelude. Must `clear h` before induction or it is generalized. v10 valid, 40 tokens, 459.164 hb, S=88.3208.
+- v11 same nil proof of panic branch but evidence induction: valid, 38 tokens, 474.942 hb, S=88.4262.
+- v12 generic repeat with separate refl branch: valid, 30 tokens, 680.455 hb, S=87.0882.
+- v13 fold `unfold; split; exact refl` into last repeat branch: valid, 30 tokens, 521.167 hb, S=89.0563.
+- v14/v15 change RHS to underlying getVars: `<+` not open; explicit List.Sublist works, but regressive (37 tokens, 529.495 hb, S=87.9023).
+- v16/v17 unfold every constructor and then split/repeat: need `(try split)` to avoid try consuming tail; valid at 31 tokens, 567.507 hb, S=88.3336.
+- v18/v19 solve_by_elim only requires `*` to use IHs; valid at 27 tokens, 601.929 hb, S=88.5089.
+- v20/v21 apply_rules only leaves app but fails with no progress unless wrapped in try; valid, 37 tokens, 500.033 hb, S=88.2663.
+- v22 attempt unfold/split before repeat on every constructor: valid, 33 tokens, 593.549 hb, S=87.7115.
+- v23/v24 focus app with case': must specify `a.app` (goal prefix from apply Sublist.subset). Valid, 28 tokens, 484.842 hb, S=89.8054.
+- v25 case' then apply_rules: valid, 26 tokens, 512.774 hb, S=89.7606.
+- v26 use apply nil_sublist / apply Sublist.refl, avoiding exact placeholders: valid, 26 tokens, 449.052 hb, S=90.5479.
+- v27 try nil_sublist before assumption: valid, 26 tokens, 443.763 hb, S=90.6132.
+- v28 rintro - discards unused normalization before syntax induction; valid, 26 tokens, 430.242 hb, S=90.7803 (best).
+- v29 focused syntax induction plus solve_by_elim for remaining nil/append goals: valid, 25 tokens, 460.055 hb, S=90.5621 (regressive).
+- Stopping: stronger Sublist representation removes the local helper, logical panic is nil, and focused app splitting plus lightweight constructor/append closure outperforms tested simplifiers and search tactics. Remaining ordering tweaks offer little expected gain.

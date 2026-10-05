@@ -1,0 +1,118 @@
+{
+  "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+  "source": "cslib",
+  "method": "menu",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": -23.774509803921575,
+      "heartbeat_reduction_pct": 97.58385842866163,
+      "compatibility_pct": 100.0,
+      "combined_pct": 57.93644954158001
+    },
+    "candidate": {
+      "length": 505,
+      "code_sha256": "f2afa35c6c77b5a62d505ab6eaa9ed5504a8f344e74ef8546caa755fb77b4b6a"
+    },
+    "primary_version": "v4.33.0-rc2",
+    "per_version": {
+      "v4.33.0-rc2": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1445.664,
+        "heartbeat_reduction_pct": 97.58385842866163,
+        "cached": true,
+        "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+        "elapsed_seconds": 3.2429049387574196,
+        "diagnostics": []
+      },
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1606.362,
+        "heartbeat_reduction_pct": 97.40753472410508,
+        "cached": true,
+        "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+        "elapsed_seconds": 3.5474408753216267,
+        "diagnostics": []
+      },
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1605.148,
+        "heartbeat_reduction_pct": 97.40912069742042,
+        "cached": true,
+        "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+        "elapsed_seconds": 3.6046953313052654,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": -23.774509803921575,
+      "heartbeat_reduction_pct": 97.58385842866163,
+      "compatibility_pct": 100.0,
+      "combined_pct": 57.93644954158001
+    },
+    "candidate": {
+      "length": 505,
+      "code_sha256": "f2afa35c6c77b5a62d505ab6eaa9ed5504a8f344e74ef8546caa755fb77b4b6a"
+    },
+    "primary_version": "v4.33.0-rc2",
+    "per_version": {
+      "v4.33.0-rc2": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1445.664,
+        "heartbeat_reduction_pct": 97.58385842866163,
+        "cached": true,
+        "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+        "elapsed_seconds": 3.2429049387574196,
+        "diagnostics": []
+      },
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1606.362,
+        "heartbeat_reduction_pct": 97.40753472410508,
+        "cached": true,
+        "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+        "elapsed_seconds": 3.5474408753216267,
+        "diagnostics": []
+      },
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1605.148,
+        "heartbeat_reduction_pct": 97.40912069742042,
+        "cached": true,
+        "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+        "elapsed_seconds": 3.6046953313052654,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            \n            grind\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' d sub ih =>\n    have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n    right\n    cases ih rfl d with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := d.canonical_form_tabs val\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := (Term.body_let.mp (Typing.let' L der h).wf.2.1).2\n    right\n    cases ih rfl der with\n    | inl val => exact ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := (Term.body_case.mp (Typing.case L der h₂ h₃).wf.2.1).2.1\n    have hb₃ : t₃.body := (Term.body_case.mp (Typing.case L der h₂ h₃).wf.2.1).2.2\n    right\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    grind\n  case tabs L h ih =>\n    grind",
+  "initial_sha256": "f2afa35c6c77b5a62d505ab6eaa9ed5504a8f344e74ef8546caa755fb77b4b6a",
+  "rounds": 3,
+  "attempts": 6,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 6,
+  "lean_candidate_checks": 6,
+  "cache_hits": 0,
+  "seen": [
+    "c0bd8115b63322d970907a201c462c3f335d71725a18dde4d2fe9a861f5db8ca",
+    "d5b3c0ffdcd99a0e06ae53fca14f1ccc14eb560596a440891e25214e2a8ccf2b",
+    "3f610ce0d34ff4a4c274c5e0e8f8b2068be90f7c3664c5a3f4b893286b2a9062",
+    "9d715ac8180b9682eeb2b22c7d02f40796ec34322293025f066346e62fddf639",
+    "d09baa704ff1f2812eb2b343d71c7d2bc61153510c073198caf68413717c00b6",
+    "57447b3dfee81b14301b185e7f3277913cf52dc9170f4af1d68c422f76b33963"
+  ],
+  "plan": null,
+  "elapsed_seconds": 50.032288420945406,
+  "stop_reason": "round_limit",
+  "site_offset": 18
+}

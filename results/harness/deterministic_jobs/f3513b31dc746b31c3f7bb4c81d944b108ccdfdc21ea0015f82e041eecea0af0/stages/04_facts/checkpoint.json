@@ -1,0 +1,97 @@
+{
+  "name": "fundamental_theorem_of_variational_calculus'",
+  "source": "physlib",
+  "method": "facts",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 18.448883666274973,
+      "heartbeat_reduction_pct": 41.40525845524834,
+      "compatibility_pct": 100.0,
+      "combined_pct": 53.284714040507765
+    },
+    "candidate": {
+      "length": 694,
+      "code_sha256": "c8cf113568dd8a474c7d2ce3c63b752894e30feffd73a282c5236417c76edf5b"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7003.148,
+        "heartbeat_reduction_pct": 41.40525845524834,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 2.1608035061508417,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 18.448883666274973,
+      "heartbeat_reduction_pct": 41.40525845524834,
+      "compatibility_pct": 100.0,
+      "combined_pct": 53.284714040507765
+    },
+    "candidate": {
+      "length": 694,
+      "code_sha256": "c8cf113568dd8a474c7d2ce3c63b752894e30feffd73a282c5236417c76edf5b"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7003.148,
+        "heartbeat_reduction_pct": 41.40525845524834,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 2.1608035061508417,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma fundamental_theorem_of_variational_calculus' {f : Y → V}\n    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]\n    [OpensMeasurableSpace Y]\n    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :\n    f = 0 := by\n  -- assume ¬(f = 0)\n    rw [funext_iff]; by_contra h₀\n    obtain ⟨x₀, hx0⟩ := not_forall.1 h₀\n    simp at hx0 -- hx0 : f x₀ ≠ 0\n\n  -- [1] Proof that `f` is continuous at `x₀`.\n  -- Embed into the true IP-space `WithLp 2 V`.\n  -- Continuity of the scalar product itself gives positivity nearby.\n    let q : Y → ℝ := fun x => ⟪f x, f x₀⟫_ℝ\n    have hinner_cont : Continuous (fun x => ⟪f x, f x₀⟫_ℝ) :=\n      Continuous.inner' (f : Y → V) (fun _ => f x₀) hf continuous_const\n    have hq : ContinuousAt q x₀ := hinner_cont.continuousAt\n    have hself : 0 < q x₀ := by\n      have hnn : 0 ≤ q x₀ := by\n        simpa [q] using (real_inner_self_nonneg' (F := V) (x := f x₀))\n      have hne : q x₀ ≠ 0 := by\n        intro h\n        exact hx0 ((inner_self_eq_zero' (𝕜 := ℝ)).mp (by simpa [q] using h))\n      exact lt_of_le_of_ne hnn (Ne.symm hne)\n    obtain ⟨δ₂, hδ₂_pos, hδ₂⟩ :=\n      Metric.continuousAt_iff.mp hq (q x₀ / 2) (by linarith)\n    have inner_pos₂ : ∀ x (hx : x ∈ Metric.ball x₀ δ₂), 0 < q x := by\n      intro x hx\n      have hd := hδ₂ (Metric.mem_ball.mp hx)\n      have : |q x - q x₀| < q x₀ / 2 := by simpa [Real.dist_eq] using hd\n      have := abs_lt.mp this\n      linarith\n  -- [3] `g` construction using bump function.\n    haveI : HasContDiffBump Y := hasContDiffBump_of_innerProductSpace Y\n    let φ1 : ContDiffBump x₀ := ⟨δ₂ / 4, δ₂ / 2, by positivity, by linarith⟩\n    let φ : Y → ℝ := φ1.toFun\n    have hφ_testfun : IsTestFunction φ := ⟨φ1.contDiff, φ1.hasCompactSupport⟩\n    have hφ_non_neg : ∀ x ∈ Function.support φ, 0 ≤ φ x := fun x _ => φ1.nonneg\n    have hφ_support_subset : Function.support φ ⊆ Metric.ball x₀ (δ₂/2) := by\n      change Function.support φ1.toFun ⊆ Metric.ball x₀ (δ₂/2)\n      rw [ContDiffBump.support_eq]\n    have hφ_pos_inner : ∀ x ∈ Metric.closedBall x₀ (δ₂/4), 0 < φ x := by\n      intro x hx\n      apply φ1.pos_of_mem_ball\n      exact Metric.mem_ball.mpr\n        (lt_of_le_of_lt hx (by show δ₂ / 4 < δ₂ / 2; linarith))\n    have key_integral : ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ = 0 := by\n      simpa only [inner_smul_right'] using\n        hg (fun x => φ x • f x₀) (IsTestFunction.smul_right hφ_testfun contDiff_const)\n\n  -- [4.2] 0 < ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ. Sketch: on the support of φ (which is contained in\n  -- B(x₀, δ/2) ⊆ B(x₀, δ)), we have ⟪f x, f x₀⟫ > ‖f x₀‖²/2 > 0 by our choice of δ.\n  -- Since φ is nonnegative on its support and positive somewhere, this gives the contradiction.\n\n  -- [4.2.1] Integrability of the integrand: `integrable_prod` .\n    have support_subset : Function.support φ ⊆ Metric.ball x₀ δ₂ :=\n      hφ_support_subset.trans (Metric.ball_subset_ball (by linarith))\n    have supp_subset2 : Function.support (fun x => φ x * ⟪f x, f x₀⟫_ℝ) ⊆ Function.support φ := by simp\n    have integrable_prod :\n      Integrable (fun x => φ x * ⟪f x, f x₀⟫_ℝ) μ :=\n    -- (i) build a `HasCompactSupport` witness for the product\n      (Continuous.mul hφ_testfun.smooth.continuous hinner_cont).integrable_of_hasCompactSupport\n        (hφ_testfun.supp.mono supp_subset2)\n\n  -- [4.2.2] Nonnegativity everywhere (`h_nonneg`)\n    have h_nonneg : ∀ x, 0 ≤ φ x * ⟪f x, f x₀⟫_ℝ := by\n      intro x\n      by_cases hx : x ∈ Function.support φ\n      · -- on the support, φ ≥ 0 and ⟪f x, f x₀⟫ > 0\n        exact mul_nonneg (hφ_non_neg x hx) (inner_pos₂ x (support_subset hx)).le\n      · -- off the support, φ x = 0 so the product is 0\n        simp [Function.notMem_support.mp hx]\n\n  -- [4.2.3] That closed ball has positive measure, and is contained in the support\n    -- every nonempty open set has positive measure\n    have hμ_ball : 0 < μ (Metric.ball x₀ (δ₂/4)) :=\n      Metric.isOpen_ball.measure_pos μ (Metric.nonempty_ball.mpr (by positivity))\n    have ball_subset_support :\n        Metric.ball x₀ (δ₂/4)\n          ⊆ Function.support (fun x => φ x * ⟪f x, f x₀⟫_ℝ) := by\n        intro x hx\n        have hφx := hφ_pos_inner x (Metric.ball_subset_closedBall hx)\n        have hin : 0 < ⟪f x, f x₀⟫_ℝ :=\n          inner_pos₂ x (Metric.ball_subset_ball (by linarith) hx)\n        simp only [Function.support_mul, Set.mem_inter_iff, Function.mem_support]\n        constructor\n        · linarith\n        · linarith\n\n  -- [4.2.4] putting everything together: positivity contradicts `key_integral : ∫ ... = 0`\n    have integral_pos : 0 < ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ :=\n      (integral_pos_iff_support_of_nonneg h_nonneg integrable_prod).mpr\n        (lt_of_lt_of_le hμ_ball\n          (measure_mono ball_subset_support))\n    linarith",
+  "initial_sha256": "c8cf113568dd8a474c7d2ce3c63b752894e30feffd73a282c5236417c76edf5b",
+  "rounds": 1,
+  "attempts": 25,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 25,
+  "cache_hits": 0,
+  "seen": [
+    "5aa4f3f286b01123f5a1389faa30ffe4cdc5d6152057a33420f39bee46eb035a",
+    "9e7f036a873641a505a2dcbec74d69bd1b8a3b45863fbc95a0176aa3406893b4",
+    "afa0b662f7eb17288aa875b66008922a14ebec0d76a3b4778d366ebc16c47c04",
+    "62a73d8857fd1b824c3becee6b7b1d882cbe3b890b056c1b1695f794e0194f59",
+    "01b9423862b7949500e1e6907059bf075394109bf6401a05df4d54e09c4988c5",
+    "f26f5ed416575164078d5be23eeffa5055042cde07285185646cb2c51773594d",
+    "d85d233eba48ceca22b455a644ecfc9981fc52ba086a07373da34cc53b4eeaa8",
+    "bb0d27bae891f8dd4f98cc177c1cd7bd723666fd57fe13b21fc0274422f5134c",
+    "959fd92a485b06b02de27294fb9ae642cc5f52f0fd8ab8ca43f2ba0fd397d47a",
+    "673b1dfa4427d4c4d2b3f78666ada6ddf83d15857469e8ca333e73ff8711c9e7",
+    "d0250c42ba097f9485751bfade44eba53a73649275b01fb4f04afdab0cdc3b98",
+    "d721c18cbdc229bc199a7c076b9bba1bb67a1b25634185dca8ae28b493cf6e1b",
+    "c8899f079227e10d5a278a817de864160b0c1fce89eeb4e3699f9375c50501b0",
+    "c31baa11362a02a9b8109c93b0319163f597aa782e5b81724be98da67d14730e",
+    "e0951686d5bf36aa5c19774fdfe693afe3674c74b6672603d7777c02aacc8610",
+    "f63af773c64fc60ccacd1d0f6fbc6c7bde0cab75fe6e913564998b2bcf8fa5a1",
+    "b5431efe0cbb209d8a50b4abe0d46bc1efb58ccb610231845ede7edd420484ec",
+    "bd1622b4a09c21f629021838febf5c8dcf01c50f005ea8d3fa19b38cecef27d1",
+    "75a0850ee1b021de03871a0a93d4b17dc0e63eb72f676f80db1e94e82319cb55",
+    "9aee92d54c0953f88aeb7f42d04ac970998761aa06a884fac2b9fc0e5ef6cea2",
+    "ed635dc1f604c57fc40696dbf242ec62a02d7510ed172f1b7b563d23cf0eae1d",
+    "fc285c13bdb20bcb57368586293491e011522fb32604f4e443c0618c4a7d0414",
+    "0c784b31d50334dc6b21dabcafeb84cd483ef1f0d7475f63ad4ca123a651f1d7",
+    "5f371b8c4384d8a18cc604e2f1491d76e63f0e9ca98e9fdac9bc413c555332de",
+    "054f2ed48b1618c93a53107dc03fe40838886e11e912b013760ad0bf4053b763"
+  ],
+  "plan": null,
+  "elapsed_seconds": 63.24403263255954,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0
+}

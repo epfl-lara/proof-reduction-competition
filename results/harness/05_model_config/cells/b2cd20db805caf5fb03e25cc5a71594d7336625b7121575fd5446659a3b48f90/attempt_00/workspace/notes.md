@@ -1,0 +1,10 @@
+- Whole-store commutation + constructors from length/definedness: valid all versions, 126 tokens, 239.966 HB, score 79.36945. Replaces induction over UpdateStates.
+- Inline commutation via rw failed until unfolding updatedStates (rw cannot see nested wrapper).
+- Inline with simp-only unfolding: 96 tokens, 257.374 HB, score 83.69732, all versions valid.
+- Combined simp-only equations/unfolding and direct contradiction simpa: 90 tokens, 214.216 HB, score 84.92839, all versions valid.
+- Inlining all invariant haves: valid, 91 tokens, 215.633 HB, score 84.76848 (regressive).
+- rw unzip + Option.isSome_iff_ne_none: valid, 91 tokens, 256.55 HB, score 84.44782 (regressive).
+- Direct Bool.false_ne_true cast failed due to expected-type-directed ▸. Bool.noConfusion repaired it: valid, 91 tokens, 213.274 HB, score 84.78696 (regressive).
+- simp (not only) in both canonicalization steps + cases impossible Bool equality: 88 tokens, 216.475 HB, score 85.20831, best valid.
+- Focused grind-only disjoint proof needed Option.isSome_none; then valid but 83 tokens, 580.704 HB, score 83.09799 (regressive).
+- Whole-store lemma route is substantially better than seed; further direct transport/Option lemma and focused search alternatives did not improve best.

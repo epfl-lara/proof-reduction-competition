@@ -1,0 +1,129 @@
+{
+  "name": "Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+  "source": "arklib",
+  "method": "rw_min",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 37.8673957621326,
+      "heartbeat_reduction_pct": 54.534827416547515,
+      "compatibility_pct": 100.0,
+      "combined_pct": 64.13407439289337
+    },
+    "candidate": {
+      "length": 909,
+      "code_sha256": "f041dc21e1b5d5b750ea79cc582fe86b927f2c5b244aab9b1cc3d6efaa459331"
+    },
+    "primary_version": "v4.31.0",
+    "per_version": {
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7116.232,
+        "heartbeat_reduction_pct": 54.534827416547515,
+        "cached": true,
+        "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+        "elapsed_seconds": 8.532311981543899,
+        "diagnostics": []
+      },
+      "v4.30.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7351.807,
+        "heartbeat_reduction_pct": 56.83070704432491,
+        "cached": true,
+        "environment_fingerprint": "554e1850835d469c72f5efbcce1fb186712bb08829fcd9e0fd75dee8a3bc2f6c",
+        "elapsed_seconds": 7.313377754762769,
+        "diagnostics": []
+      },
+      "v4.29.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 8494.235,
+        "heartbeat_reduction_pct": 54.722215899759654,
+        "cached": true,
+        "environment_fingerprint": "1ab71abdd0714f4a6c78175e8ab5280292bd128b28cdaaa5243d707457481218",
+        "elapsed_seconds": 9.173854928463697,
+        "diagnostics": []
+      },
+      "v4.28.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 10384.488,
+        "heartbeat_reduction_pct": 52.164822399519764,
+        "cached": true,
+        "environment_fingerprint": "c8aaaf089c5202bcdefbb16b05d868bac5b8c3dc6197b5a1349d3e16a21dc442",
+        "elapsed_seconds": 12.50941670872271,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by\n  unfold fiberwiseClose at h_fw_dist_lt\n  unfold hammingClose\n  let d_fw := fiberwiseDistance 𝔽q β (i := i) steps h_i_add_steps f\n  let C_i := (BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  let d_H := Code.distFromCode f C_i\n  let d_i := BBF_CodeDistance ℓ 𝓡 (⟨i, by omega⟩)\n  let d_i_plus_steps := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩\n\n  have h_d_i_gt_0 : d_i > 0 := by\n    dsimp only [BBF_CodeDistance, d_i]\n    omega\n\n  obtain ⟨g', h_g'_mem, h_g'_min_card⟩ : ∃ g' ∈ C_i, d_fw\n    = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard := by\n    let S := (fun g : C_i => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ\n    have hS : S.Nonempty := Set.image_nonempty.mpr Set.univ_nonempty\n    rcases Nat.sInf_mem hS with ⟨g, _, h⟩\n    exact ⟨g.val, g.property, h.symm⟩\n\n  have h_dist_le_fw_dist_times_fiber_size : (hammingDist f g' : ℕ∞) ≤ d_fw * 2 ^ steps := by\n    change (Δ₀(f, g') : ℕ∞) ≤ ↑d_fw * ((2 ^ steps : ℕ) : ℕ∞)\n    rw [← ENat.coe_mul, ENat.coe_le_coe, h_g'_min_card]\n    let ΔH := Finset.filter (fun x => f x ≠ g' x) Finset.univ\n    let Y := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g'\n    let _ : Fintype Y := Fintype.ofFinite Y\n    let Φ : {x // x ∈ ΔH} → Y × Fin (2 ^ steps) := fun x =>\n      (⟨iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x.val, by\n        change ∃ z, iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps z =\n          iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x.val ∧ f z ≠ g' z\n        refine ⟨x.val, rfl, ?_⟩\n        simpa only [ΔH, Finset.mem_filter, Finset.mem_univ, true_and] using x.property⟩,\n        pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps)\n          (h_i_add_steps := h_i_add_steps) (x := x.val))\n    let F : Y × Fin (2 ^ steps) →\n        sDomain 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ := fun p =>\n      qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps)\n        (h_i_add_steps := fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := p.1.val) p.2\n    have hrec (x : {x // x ∈ ΔH}) : F (Φ x) = x.val := by\n      dsimp only [F, Φ]\n      exact (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps\n        (x := x.val) (y := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps\n          h_i_add_steps x.val)).mp rfl\n    have hinj : Function.Injective Φ := by\n      intro x z h\n      exact Subtype.ext ((hrec x).symm.trans ((congrArg F h).trans (hrec z)))\n    have hc := Fintype.card_le_of_injective Φ hinj\n    rw [Fintype.card_coe, Fintype.card_prod, Fintype.card_fin] at hc\n    calc\n      _ ≤ Fintype.card Y * 2 ^ steps := hc\n      _ = Y.ncard * 2 ^ steps := by rw [← _root_.Nat.card_coe_set_eq, Nat.card_eq_fintype_card]\n\n  have h_dist_bridge : d_H ≤ d_fw * 2 ^ steps := by\n    exact (Code.distFromCode_le_dist_to_mem f g' h_g'_mem).trans\n      h_dist_le_fw_dist_times_fiber_size\n\n  have h_fw_bound : 2 * d_fw ≤ d_i_plus_steps - 1 :=\n    Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt)\n\n  have h_algebraic_identity : (d_i_plus_steps - 1) * 2 ^ steps = d_i - 1 := by\n    dsimp only [BBF_CodeDistance, Nat.add_one_sub_one, d_i_plus_steps, d_i]\n    rw [Nat.sub_mul, ←Nat.pow_add, ←Nat.pow_add]\n    have hsub (a : ℕ) (ha : ↑i + steps ≤ a) :\n        a - (↑i + steps) + steps = a - ↑i := by omega\n    rw [hsub (ℓ + 𝓡) (h_i_add_steps.trans (Nat.le_add_right ℓ 𝓡)), hsub ℓ h_i_add_steps]\n\n  have h_dH_ne_top : d_H ≠ ⊤ := by\n    intro h\n    rw [h] at h_dist_bridge\n    exact (not_le_of_gt (ENat.coe_lt_top (d_fw * 2 ^ steps))) h_dist_bridge\n\n  let d_H_nat := ENat.toNat d_H\n  have h_dH_eq : d_H = d_H_nat := (ENat.coe_toNat h_dH_ne_top).symm\n\n  have h_final_inequality : 2 * d_H_nat ≤ d_i - 1 := by\n    have h_bridge_nat : d_H_nat ≤ d_fw * 2 ^ steps :=\n      ENat.coe_le_coe.mp (h_dH_eq ▸ h_dist_bridge)\n    calc 2 * d_H_nat\n      _ ≤ 2 * (d_fw * 2 ^ steps) := Nat.mul_le_mul_left 2 h_bridge_nat\n      _ = (2 * d_fw) * 2 ^ steps := by rw [mul_assoc]\n      _ ≤ (d_i_plus_steps - 1) * 2 ^ steps := Nat.mul_le_mul_right _ h_fw_bound\n      _ = d_i - 1 := h_algebraic_identity\n\n  simp only [d_H] at h_dH_eq\n  rw [h_dH_eq]\n  change ((2 : ℕ) : ℕ∞) * ↑Δ₀(f, C_i).toNat <\n    ↑(BBF_CodeDistance ℓ 𝓡 ⟨↑i, by omega⟩)\n  rw [←ENat.coe_mul, ENat.coe_lt_coe]\n  apply Nat.lt_of_le_pred (n := 2 * Δ₀(f, C_i).toNat) (m := d_i) (h := h_d_i_gt_0)\n    h_final_inequality",
+  "rounds": 1,
+  "attempts": 26,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 26,
+  "cache_hits": 0,
+  "elapsed_seconds": 218.088,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 37.8673957621326,
+      "heartbeat_reduction_pct": 54.534827416547515,
+      "compatibility_pct": 100.0,
+      "combined_pct": 64.13407439289337
+    },
+    "candidate": {
+      "length": 909,
+      "code_sha256": "f041dc21e1b5d5b750ea79cc582fe86b927f2c5b244aab9b1cc3d6efaa459331"
+    },
+    "primary_version": "v4.31.0",
+    "per_version": {
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7116.232,
+        "heartbeat_reduction_pct": 54.534827416547515,
+        "cached": true,
+        "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+        "elapsed_seconds": 8.532311981543899,
+        "diagnostics": []
+      },
+      "v4.30.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7351.807,
+        "heartbeat_reduction_pct": 56.83070704432491,
+        "cached": true,
+        "environment_fingerprint": "554e1850835d469c72f5efbcce1fb186712bb08829fcd9e0fd75dee8a3bc2f6c",
+        "elapsed_seconds": 7.313377754762769,
+        "diagnostics": []
+      },
+      "v4.29.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 8494.235,
+        "heartbeat_reduction_pct": 54.722215899759654,
+        "cached": true,
+        "environment_fingerprint": "1ab71abdd0714f4a6c78175e8ab5280292bd128b28cdaaa5243d707457481218",
+        "elapsed_seconds": 9.173854928463697,
+        "diagnostics": []
+      },
+      "v4.28.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 10384.488,
+        "heartbeat_reduction_pct": 52.164822399519764,
+        "cached": true,
+        "environment_fingerprint": "c8aaaf089c5202bcdefbb16b05d868bac5b8c3dc6197b5a1349d3e16a21dc442",
+        "elapsed_seconds": 12.50941670872271,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": false
+}

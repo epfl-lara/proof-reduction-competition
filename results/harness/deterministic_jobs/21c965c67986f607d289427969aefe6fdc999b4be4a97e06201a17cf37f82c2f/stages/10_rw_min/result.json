@@ -1,0 +1,129 @@
+{
+  "name": "Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+  "source": "arklib",
+  "method": "rw_min",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 74.02597402597402,
+      "heartbeat_reduction_pct": 60.526195576541376,
+      "compatibility_pct": 100.0,
+      "combined_pct": 78.1840565341718
+    },
+    "candidate": {
+      "length": 380,
+      "code_sha256": "74ac2b30ee00ce7e878b41c39915bec6d8e75c749d7d7ca040133fd47e885a66"
+    },
+    "primary_version": "v4.31.0",
+    "per_version": {
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 6178.46,
+        "heartbeat_reduction_pct": 60.526195576541376,
+        "cached": true,
+        "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+        "elapsed_seconds": 6.479741338640451,
+        "diagnostics": []
+      },
+      "v4.30.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 6847.78,
+        "heartbeat_reduction_pct": 59.79031809240738,
+        "cached": true,
+        "environment_fingerprint": "554e1850835d469c72f5efbcce1fb186712bb08829fcd9e0fd75dee8a3bc2f6c",
+        "elapsed_seconds": 6.574526024982333,
+        "diagnostics": []
+      },
+      "v4.29.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7870.594,
+        "heartbeat_reduction_pct": 58.04648024540797,
+        "cached": true,
+        "environment_fingerprint": "1ab71abdd0714f4a6c78175e8ab5280292bd128b28cdaaa5243d707457481218",
+        "elapsed_seconds": 7.486338077113032,
+        "diagnostics": []
+      },
+      "v4.28.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 9501.702,
+        "heartbeat_reduction_pct": 56.23129395721405,
+        "cached": true,
+        "environment_fingerprint": "c8aaaf089c5202bcdefbb16b05d868bac5b8c3dc6197b5a1349d3e16a21dc442",
+        "elapsed_seconds": 10.229372719302773,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by\n  classical\n  let C := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩\n  obtain ⟨g, _, hg⟩ := Nat.sInf_mem (s :=\n    (fun g : C => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) ''\n      Set.univ) (Set.image_nonempty.mpr Set.univ_nonempty)\n  let Y := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g\n  have hfw : 2 * Y.ncard ≤ BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩ - 1 := by\n    rw [show Y.ncard = _ from hg]\n    exact Nat.le_of_lt_succ (ENat.coe_lt_coe.mp h_fw_dist_lt)\n  have hcount : hammingDist f g ≤ Y.ncard * 2 ^ steps := by\n    rw [ Set.ncard_eq_toFinset_card', ← Fintype.card_fin (n := 2 ^ steps),\n      ← Finset.card_univ, ← Finset.card_product]\n    apply Finset.card_le_card_of_surjOn (fun p =>\n      qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps)\n        (h_i_add_steps := fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := p.1) p.2)\n    intro x hx\n    refine ⟨(iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n      pointToIterateQuotientIndex (i := ⟨i, by norm_num⟩) (steps := steps)\n        (h_i_add_steps := h_i_add_steps) (x := x)), ?_, ?_⟩\n    · exact Finset.mem_product.mpr ⟨Set.mem_toFinset.mpr\n        ⟨x, rfl, (Finset.mem_filter.mp hx).2⟩, Finset.mem_univ _⟩\n    · exact (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps x _).mp rfl\n  unfold hammingClose\n  apply lt_of_le_of_lt\n    (mul_le_mul_left' (Code.distFromCode_le_dist_to_mem f g g.property) 2)\n  change ((2 * hammingDist f g : ℕ) : ℕ∞) < _\n  apply ENat.coe_lt_coe.mpr\n  apply Nat.lt_succ_of_le\n  have h := Nat.mul_le_mul_right (2 ^ steps) hfw\n  dsimp only [BBF_CodeDistance, Nat.add_one_sub_one] at h\n  rw [Nat.sub_mul, ← Nat.pow_add, ← Nat.pow_add,\n    show ℓ + 𝓡 - (i.val + steps) + steps = ℓ + 𝓡 - i.val by omega,\n    show ℓ - (i.val + steps) + steps = ℓ - i.val by omega] at h\n  exact (Nat.mul_le_mul_left 2 hcount).trans (by simpa only [mul_assoc] using h)",
+  "rounds": 1,
+  "attempts": 16,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 16,
+  "cache_hits": 0,
+  "elapsed_seconds": 109.574,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 74.02597402597402,
+      "heartbeat_reduction_pct": 60.526195576541376,
+      "compatibility_pct": 100.0,
+      "combined_pct": 78.1840565341718
+    },
+    "candidate": {
+      "length": 380,
+      "code_sha256": "74ac2b30ee00ce7e878b41c39915bec6d8e75c749d7d7ca040133fd47e885a66"
+    },
+    "primary_version": "v4.31.0",
+    "per_version": {
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 6178.46,
+        "heartbeat_reduction_pct": 60.526195576541376,
+        "cached": true,
+        "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+        "elapsed_seconds": 6.479741338640451,
+        "diagnostics": []
+      },
+      "v4.30.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 6847.78,
+        "heartbeat_reduction_pct": 59.79031809240738,
+        "cached": true,
+        "environment_fingerprint": "554e1850835d469c72f5efbcce1fb186712bb08829fcd9e0fd75dee8a3bc2f6c",
+        "elapsed_seconds": 6.574526024982333,
+        "diagnostics": []
+      },
+      "v4.29.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7870.594,
+        "heartbeat_reduction_pct": 58.04648024540797,
+        "cached": true,
+        "environment_fingerprint": "1ab71abdd0714f4a6c78175e8ab5280292bd128b28cdaaa5243d707457481218",
+        "elapsed_seconds": 7.486338077113032,
+        "diagnostics": []
+      },
+      "v4.28.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 9501.702,
+        "heartbeat_reduction_pct": 56.23129395721405,
+        "cached": true,
+        "environment_fingerprint": "c8aaaf089c5202bcdefbb16b05d868bac5b8c3dc6197b5a1349d3e16a21dc442",
+        "elapsed_seconds": 10.229372719302773,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": false
+}

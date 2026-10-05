@@ -1,0 +1,26 @@
+open OldExpressions in
+theorem extractedOldExprInVars :
+  NormalizedOldExpr post →
+  (extractOldExprVars post).Subset
+  (Imperative.HasVarsPure.getVars post) := by
+  intro h
+  have append_mono {α} {a b c d : List α}
+      (ha : a ⊆ c) (hb : b ⊆ d) : (a ++ b) ⊆ (c ++ d) :=
+    List.append_subset.mpr ⟨List.subset_append_of_subset_left d ha,
+      List.subset_append_of_subset_right c hb⟩
+  induction h with
+  | const | op | bvar | fvar => simp [extractOldExprVars]
+  | abs hn ih => assumption
+  | quant htr he ihtr ihe => exact append_mono ihtr ihe
+  | app hfn he valid ihfn ihe =>
+      unfold extractOldExprVars
+      split
+      · simp [Imperative.HasVarsPure.getVars, Lambda.LExpr.LExpr.getVars,
+          List.Subset]
+      · next Hfalse =>
+        exfalso
+        cases valid (by constructor)
+        simp_all
+      · exact append_mono ihfn ihe
+  | ite hc ht he ihc iht ihe => exact append_mono (append_mono ihc iht) ihe
+  | eq h1 h2 ih1 ih2 => exact append_mono ih1 ih2

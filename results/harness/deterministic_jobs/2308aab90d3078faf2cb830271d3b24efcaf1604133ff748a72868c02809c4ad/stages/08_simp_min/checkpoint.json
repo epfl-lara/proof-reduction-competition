@@ -1,0 +1,104 @@
+{
+  "name": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+  "source": "physlib",
+  "method": "simp_min",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 73.68804664723032,
+      "heartbeat_reduction_pct": 81.71233706027998,
+      "compatibility_pct": 100.0,
+      "combined_pct": 85.13346123583676
+    },
+    "candidate": {
+      "length": 361,
+      "code_sha256": "17803bc0eecc94ff522679e78b77db519cd6762fdf3eea1679146b9534bd788d"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4934.403,
+        "heartbeat_reduction_pct": 81.71233706027998,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 6.69394245557487,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 73.83381924198251,
+      "heartbeat_reduction_pct": 81.72743593623649,
+      "compatibility_pct": 100.0,
+      "combined_pct": 85.18708505940633
+    },
+    "candidate": {
+      "length": 359,
+      "code_sha256": "7656fe9dd3601ce62688a1ca12bd342fe6f426b2c8b4831620230b0ba4f1ac60"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4930.329,
+        "heartbeat_reduction_pct": 81.72743593623649,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 6.753687523305416,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d}\n    {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d)\n    (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J)\n    (t : Time) (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -\n      𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n      𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n  have hA3 : ContDiff ℝ 3 A := hA.of_le (ENat.LEInfty.out)\n  have hdJ := hJ.differentiable (by decide)\n  have hEs := fun j => electricField_apply_contDiff_space (n := 2) (c := 𝓕.c) (i := j) hA3 t\n  have hEd := fun j k => Space.deriv_differentiable (hEs j) k\n  have hBc := fun j => magneticFieldMatrix_contDiff (n := 2) (c := 𝓕.c) A\n    hA3 (j, i)\n  have hBt := fun j => Space.space_deriv_differentiable_time (i := j) (hBc j) x t\n  have hJt := LorentzCurrentDensity.currentDensity_apply_differentiable_time\n    (c := 𝓕.c) hdJ x i t\n  have hgd := congrArg (fun f => fderiv ℝ f x (Space.basis i))\n    (funext fun y => ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1)\n  unfold Space.div at hgd\n  simp only [div_eq_mul_inv, fderiv_fun_sum (fun j _ => hEd j j x),\n    fderiv_mul_const (LorentzCurrentDensity.chargeDensity_differentiable_space\n      hdJ t x), _root_.sum_apply, _root_.smul_apply,\n    ← Space.deriv_eq_fderiv_basis] at hgd\n  conv_lhs =>\n    enter [1, s]\n    rw [Time.deriv_euclid (electricField_differentiable_time\n      (hA.of_le (ENat.LEInfty.out)) x), time_deriv_electricField_of_isExtrema hA J hJ h]\n  rw [Time.deriv_eq,\n    (((HasFDerivAt.fun_sum fun j _ => (hBt j).hasFDerivAt).const_mul _).fun_sub\n      (hJt.hasFDerivAt.const_mul _)).fderiv]\n  simp only [_root_.sub_apply, _root_.smul_apply, smul_eq_mul, _root_.sum_apply,\n    ← Time.deriv_eq, fun j => Space.time_deriv_comm_space_deriv (i := j) (hBc j) t x,\n    time_deriv_magneticFieldMatrix A (hA.of_le (ENat.LEInfty.out)),\n    fun j => Space.fun_deriv_sub (u := j) _ _ (hEd i j) (hEd j i),\n    fun j => Space.deriv_commute (u := j) (v := i) _ (hEs j),\n    Finset.sum_sub_distrib, hgd, mul_sub, ← mul_assoc, ← div_eq_mul_inv]\n  rw [mul_comm 𝓕.μ₀ 𝓕.ε₀, ← FreeSpace.c_sq]\n  congr 2\n  rw [FreeSpace.c_sq, div_mul_eq_mul_div₀, mul_div_mul_right _ _ 𝓕.μ₀_ne_zero]",
+  "initial_sha256": "17803bc0eecc94ff522679e78b77db519cd6762fdf3eea1679146b9534bd788d",
+  "rounds": 2,
+  "attempts": 32,
+  "accepted_edits": 1,
+  "accepted_transitions": 1,
+  "analysis_requests": 2,
+  "lean_candidate_checks": 32,
+  "cache_hits": 1,
+  "seen": [
+    "41c668c478b76f06a775c691aee9a3de284adbff772782e63b97fb8ae8d5e961",
+    "e460bb85660c018730284588fc94d8b2ce6c4115cd5f67fdd5096d9e3144442b",
+    "aaa7bfc3a6ce536044d0eefcfc47ccfa6d351f7e74afcb229b5d9f44e110b637",
+    "3fb793e28d85f63a523518a735238871542b976ec55b2b1e24736dd2198c0bb3",
+    "4d8706b1be73e22a70d3ce9d58e383a1be993466b14710c8aaad4ddac5d68412",
+    "f13f5e20a577579d9e6c62cc4c2456327993757e179b522eef1e459dac10f4c1",
+    "6bf1658f86e47acde2b9855c69c263899716afa9fd617a9e8dbe80ea47d693ba",
+    "3b8aa2f00f282bf040e86f50c6d734a18bc6b4ea2abb7c7c2bcf0c09a0016c53",
+    "e42be0382128e422aba1c47b852e879b6b4c3deee4c3906b1bd14eb68f7e6256",
+    "57a33aad45de3e0aa4b802bf1fa8d528f47e82b48942814fd37fbac6582f5cf2",
+    "38bd9075a9c054dd95dc531d1ba2dd4265d6e25a9f1edb450879900bfbe5ba7c",
+    "47eadbc467720b6f25a005ec734f9e5099d2d2f348df1447732eef29d935e3a4",
+    "2c846eff430d010e6f9989fbe56a774067932104a0b275bb9fb2519ac9975fb2",
+    "37b2534d1eb814db3f4811b3bcc0094dfa4d581fd0550a246fb272728f9c3baa",
+    "288c6f3c7a6fb359d2d91e3741562476cae32e76b319995d089669819d699e35",
+    "b65499c2049549aab0e9ec4c417a44607d75f78296a0110b4df86507919f2716",
+    "b8a12597c78506304ed1adc087b5b42e268746902f12e3173586f2dd0f493054",
+    "10d88b329c7e54d9131e87f4ab666a862f52388cd8a56aa6a0b6d206e8eabf15",
+    "55b2793ef68f61ab6debbfbddc6ae44bffb5f768cb8a8cd5cdc4c30e6bb4cc24",
+    "09c10e804c335690fb9399f7461ca073d2aaabaa27df11089cb144bcc0ea10eb",
+    "c1f395857fe689f38eaad4c0d5ca74f859e0bf22bdbbda05b0efc481d78f8ba4",
+    "95aa4765bbb8304e108b56767938cc1f6721f014c0533c0e9d0351984cba801d",
+    "7656fe9dd3601ce62688a1ca12bd342fe6f426b2c8b4831620230b0ba4f1ac60",
+    "5f317c7f3fc24857cf1c568172bf6268791ff786ff989f07b7dba8886a5ae470",
+    "57cb8d4bf80964b98ab20ada8e9284c7cd39f83c3a47e58d1f5e9422cf8a140a",
+    "96d6f254a6409b1e4335e1bd195d3552c095c7037f4ba7444b66e2289431734d",
+    "2efc755cd9443e87d6e4cc5e50e917fb5e5622c9192bae537257bad5800e72e2",
+    "c5ccd7ce540b23e287efb9d3c5db5750fdf1810c0fc4a21e987c4f94de25757e",
+    "705d6e3a20b1c62cafde619494e83bcf588739072e72cd86268f27c59f8902b1",
+    "054f50fc74ea9c90a593e78942cafd141e0ffb25e5df67ff3fc5b0bc2a3157a2",
+    "b9caa1484aaf27dca25140dd6d186eea6eeb085e807a07e26cebb1a4d22627e8",
+    "7053e9ed470ed25e1f4fa4aa97c1a0e79969eb66af8ee105990d93037ed0b0db"
+  ],
+  "plan": null,
+  "elapsed_seconds": 232.22884720750153,
+  "stop_reason": "trial_limit",
+  "site_offset": 0
+}

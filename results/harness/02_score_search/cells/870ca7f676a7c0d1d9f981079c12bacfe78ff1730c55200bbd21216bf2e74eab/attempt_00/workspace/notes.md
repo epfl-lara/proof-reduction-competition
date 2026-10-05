@@ -1,0 +1,16 @@
+- Explicit ChoiceBisim proof using Bisimilarity.follow_fst/snd instead of unpacking relations: 180 tokens, 390.045 heartbeats, score 72.72695, all versions valid.
+- Sharing both directions with `first | obtain ...follow_fst | obtain ...follow_snd` fails: obtain recovers elaboration errors instead of failing for the wrong direction. Trying refine/Exists.elim instead.
+- Shared directional proof with `first | refine ...elim`: valid, 129 tokens, 488.185 heartbeats, score 78.65226.
+- Generic grind-only follow lemmas failed: default patterns require an exact existential already present; and generic LTS.Tr does not match reduced CCS.Tr. Try forward use of specialized follow facts.
+- Specialized forward grind follows transitions successfully but does not match ChoiceBisim.bisim's folded lts after unfolding; repeated follow facts then diverge. Explicit common transition transport is more promising.
+- Factored choiceL and bisim cases using case' plus a common follow/constructor tail: valid, 102 tokens, 498.106 heartbeats, score 82.15223.
+- Reordering relation cases before splitting directions reduces heartbeats: 102 tokens, 473.341 heartbeats, score 82.36612, valid.
+- Adding lts to the failed grind variant did not repair its unfolded matching.
+- Symmetric simulation characterization eliminates reverse transition proofs: valid, 106 tokens, 308.412 heartbeats, score 83.25934.
+- Symmetric simulation with rintro patterns: valid, 103 tokens, 303.402 heartbeats, score 83.70101.
+- solve_by_elim only [Tr.choiceL] fails because local transition is excluded; goals tool unavailable. Including local context succeeds: 99 tokens, 363.339 heartbeats, score 83.71457 (not accepted as best; only +0.01356).
+- Letting the named ChoiceBisim.choice constructor determine the relation: valid, 99 tokens, 301.591 heartbeats, score 84.24786.
+- rcases transition with two alternatives does not bind the surviving choice branches (Tr has other constructors); worse length and invalid.
+- Replacing explicit choiceR case with a `first` branch: valid but same 99 tokens and 386.711 heartbeats, score 83.51271 (regressive).
+- Focused solve_by_elim only [hv, Tr.choiceL] avoids irrelevant hypotheses: valid, 98 tokens, 300.001 heartbeats, score 84.39440 (best).
+- Local stopping decision: explicit witnesses plus symmetric simulation removed the duplicated direction and relation unpacking. More general automation and branch backtracking were worse or invalid; remaining changes look like minor syntax tradeoffs.

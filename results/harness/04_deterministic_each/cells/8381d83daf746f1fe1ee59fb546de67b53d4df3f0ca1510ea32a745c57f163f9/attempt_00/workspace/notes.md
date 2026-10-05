@@ -1,0 +1,18 @@
+# Progress optimization notes
+- Seed: score 34.0353 (398 tokens, ~60040 hb).
+- Explicit constructors; remove duplicated typing premise, reconstruct abs/tabs only; direct body witnesses: all versions valid, 441 tokens, 848.674 hb, score 63.49779. Most time saved by removing grind.
+- Deterministic cleanup of explicit version: 436 tokens, 913.043 hb, score 63.87043; changes first injection value proof to grind.
+- Shared aesop preprocessing attempt: syntax required rule lists/one-line tactic arguments. Broad safe cases Value + safe constructors produced internal proof reconstruction errors (all versions); goals unavailable. Narrowing cases to canonical sum manually; using default constructor search (explicit phase keyword rejected by client despite being tactic syntax).
+- Aesop with explicit data, manual sum split, and default-priority constructors: valid 260 tokens / 34861.552 hb / score 59.33677 (worse than explicit). Likely constructor search cost; next use manual canonical forms with shared focused constructor solving.
+- Aesop deterministic cleanup: 258 tokens / 34386.473 hb / score 59.76484, still regressive.
+- Manual canonical splits + shared solve_by_elim over exceptional Red constructors: initial generic existential construction failed; explicit `exact ⟨_, by ...⟩` required to infer witness (refine did not defer it). Valid 302 tokens / 2973.647 hb / score 73.67018.
+- `body_let.mp`/`body_case.mp` extract all body obligations from reconstructed typing, eliminating repeated closure witnesses.
+- Shared IH splitting: bind IH names before adding local facts (later case renaming sees new facts, not old recursor fields). Valid 272 tokens / 2974.925 hb / score 76.12044. Next simplify the exhaustive case list to all_goals.
+- Carry local closure, not the full typing derivation, through induction. Destruct closure for app/tapp/injections; use body characterizations for bindings. Valid after correcting case tags: 222 tokens / 3123.845 hb / score 80.12245. Shared all_goals splits eliminate exhaustive case list.
+- Closure proof deterministic cleanup: sub branch grind, 219 tokens / 3466.073 hb / score 80.17689.
+- Combined trivial/closure branches, direct rfl sum cases, implicit assumption terms, generic batched solver with Exists.intro and depth 8: valid 191 tokens / 5255.38 hb / score 81.46765. Compare focused explicit existential tail next; search added ~2k hb.
+- Compact generic solver cleanup: 190 tokens / 5058.672 hb / score 81.65893.
+- Destruct LC uniformly, including binding constructors; Exists.intro lets focused search reconstruct body witnesses from cofinite closure evidence. Avoid naming typing fields and use canonical forms with inferred derivations. Valid 172 tokens / 5141.158 hb / score 83.08357.
+- Focused existential tail experiments: batching pre-opened existential goals at depth 7 failed; per-goal restricted search at depth 8 also failed. Testing the restriction independently on the verified generic shape.
+- Generic solver with only explicit constructors + local context: valid 175 tokens / 4367.225 hb / score 83.26963. Small gain; the focused failures likely need more depth for cofinite body proof.
+- Final deterministic cleanup unchanged. Stop locally: the shared closure invariant and canonical-form splits account for the necessary structure; latest changes give only small gains and more aggressive focused search variants failed. Selected score 83.26963 (175 tokens, 4367.225 hb), all three versions valid.

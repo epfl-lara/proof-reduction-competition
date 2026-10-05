@@ -1,0 +1,76 @@
+{
+  "name": "fundamental_theorem_of_variational_calculus'",
+  "source": "physlib",
+  "method": "simp",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 17.743830787309044,
+      "heartbeat_reduction_pct": 41.297425659335886,
+      "compatibility_pct": 100.0,
+      "combined_pct": 53.01375214888164
+    },
+    "candidate": {
+      "length": 700,
+      "code_sha256": "fd593f2f1879608e91a8f778af6e37a4d2cd3aa3e0e7983ad6cb0f45713fdad7"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7016.036,
+        "heartbeat_reduction_pct": 41.297425659335886,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 2.810843735933304,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 17.743830787309044,
+      "heartbeat_reduction_pct": 41.297425659335886,
+      "compatibility_pct": 100.0,
+      "combined_pct": 53.01375214888164
+    },
+    "candidate": {
+      "length": 700,
+      "code_sha256": "fd593f2f1879608e91a8f778af6e37a4d2cd3aa3e0e7983ad6cb0f45713fdad7"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7016.036,
+        "heartbeat_reduction_pct": 41.297425659335886,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 2.810843735933304,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma fundamental_theorem_of_variational_calculus' {f : Y → V}\n    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]\n    [OpensMeasurableSpace Y]\n    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :\n    f = 0 := by\n  -- assume ¬(f = 0)\n    rw [funext_iff]; by_contra h₀\n    obtain ⟨x₀, hx0⟩ := not_forall.1 h₀\n    simp at hx0 -- hx0 : f x₀ ≠ 0\n\n  -- [1] Proof that `f` is continuous at `x₀`.\n  -- Embed into the true IP-space `WithLp 2 V`.\n  -- Continuity of the scalar product itself gives positivity nearby.\n    let q : Y → ℝ := fun x => ⟪f x, f x₀⟫_ℝ\n    have hinner_cont : Continuous (fun x => ⟪f x, f x₀⟫_ℝ) :=\n      Continuous.inner' (f : Y → V) (fun _ => f x₀) hf continuous_const\n    have hq : ContinuousAt q x₀ := hinner_cont.continuousAt\n    have hself : 0 < q x₀ := by\n      have hnn : 0 ≤ q x₀ := by\n        simpa [q] using (real_inner_self_nonneg' (F := V) (x := f x₀))\n      have hne : q x₀ ≠ 0 := by\n        intro h\n        exact hx0 ((inner_self_eq_zero' (𝕜 := ℝ)).mp (by simpa [q] using h))\n      exact lt_of_le_of_ne hnn (Ne.symm hne)\n    obtain ⟨δ₂, hδ₂_pos, hδ₂⟩ :=\n      Metric.continuousAt_iff.mp hq (q x₀ / 2) (by linarith)\n    have inner_pos₂ : ∀ x (hx : x ∈ Metric.ball x₀ δ₂), 0 < q x := by\n      intro x hx\n      have hd := hδ₂ (Metric.mem_ball.mp hx)\n      have : |q x - q x₀| < q x₀ / 2 := by simpa [Real.dist_eq] using hd\n      have := abs_lt.mp this\n      linarith\n  -- [3] `g` construction using bump function.\n    have bump_exists : ∃ φ : Y → ℝ, IsTestFunction φ ∧\n        (∀ x ∈ Function.support φ, 0 ≤ φ x) ∧\n        Function.support φ ⊆ Metric.ball x₀ (δ₂/2) ∧\n        (∀ x ∈ Metric.closedBall x₀ (δ₂/4), 0 < φ x) := by\n        -- use `hasContDiffBump_of_innerProductSpace`, leveraging `[innerProductSpace Y]`\n          haveI : HasContDiffBump Y := hasContDiffBump_of_innerProductSpace Y\n          let φ1 : ContDiffBump x₀ :=\n            ⟨δ₂ / 4, δ₂ / 2, by positivity, by linarith⟩\n          refine ⟨φ1.toFun, ⟨φ1.contDiff, φ1.hasCompactSupport⟩, fun x _ => φ1.nonneg,\n            by rw [ContDiffBump.support_eq], fun x hx => φ1.pos_of_mem_ball ?_⟩\n        -- the closed ball of radius `δ₂/4` lies in the open ball of radius `rOut = δ₂/2`\n          \n          exact Metric.mem_ball.mpr (lt_of_le_of_lt hx (by show δ₂ / 4 < δ₂ / 2; linarith))\n    obtain ⟨φ, hφ_testfun, hφ_non_neg, hφ_support_subset, hφ_pos_inner⟩ :=\n      bump_exists\n    have key_integral : ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ = 0 := by\n      simpa only [inner_smul_right'] using\n        hg (fun x => φ x • f x₀) (IsTestFunction.smul_right hφ_testfun contDiff_const)\n\n  -- [4.2] 0 < ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ. Sketch: on the support of φ (which is contained in\n  -- B(x₀, δ/2) ⊆ B(x₀, δ)), we have ⟪f x, f x₀⟫ > ‖f x₀‖²/2 > 0 by our choice of δ.\n  -- Since φ is nonnegative on its support and positive somewhere, this gives the contradiction.\n\n  -- [4.2.1] Integrability of the integrand: `integrable_prod` .\n    have support_subset : Function.support φ ⊆ Metric.ball x₀ δ₂ :=\n      hφ_support_subset.trans (Metric.ball_subset_ball (by linarith))\n    have supp_subset2 : Function.support (fun x => φ x * ⟪f x, f x₀⟫_ℝ) ⊆ Function.support φ := by simp\n    have integrable_prod :\n      Integrable (fun x => φ x * ⟪f x, f x₀⟫_ℝ) μ :=\n    -- (i) build a `HasCompactSupport` witness for the product\n      (Continuous.mul hφ_testfun.smooth.continuous hinner_cont).integrable_of_hasCompactSupport\n        (hφ_testfun.supp.mono supp_subset2)\n\n  -- [4.2.2] Nonnegativity everywhere (`h_nonneg`)\n    have h_nonneg : ∀ x, 0 ≤ φ x * ⟪f x, f x₀⟫_ℝ := by\n      intro x\n      by_cases hx : x ∈ Function.support φ\n      · -- on the support, φ ≥ 0 and ⟪f x, f x₀⟫ > 0\n        exact mul_nonneg (hφ_non_neg x hx) (inner_pos₂ x (support_subset hx)).le\n      · -- off the support, φ x = 0 so the product is 0\n        simp [Function.notMem_support.mp hx]\n\n  -- [4.2.3] That closed ball has positive measure, and is contained in the support\n    -- every nonempty open set has positive measure\n    have hμ_ball : 0 < μ (Metric.ball x₀ (δ₂/4)) :=\n      Metric.isOpen_ball.measure_pos μ (Metric.nonempty_ball.mpr (by positivity))\n    have ball_subset_support :\n        Metric.ball x₀ (δ₂/4)\n          ⊆ Function.support (fun x => φ x * ⟪f x, f x₀⟫_ℝ) := by\n        intro x hx\n        have hφx := hφ_pos_inner x (Metric.ball_subset_closedBall hx)\n        have hin : 0 < ⟪f x, f x₀⟫_ℝ :=\n          inner_pos₂ x (Metric.ball_subset_ball (by linarith) hx)\n        simp only [Function.support_mul, Set.mem_inter_iff, Function.mem_support]\n        constructor\n        · linarith\n        · linarith\n\n  -- [4.2.4] putting everything together: positivity contradicts `key_integral : ∫ ... = 0`\n    have integral_pos : 0 < ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ :=\n      (integral_pos_iff_support_of_nonneg h_nonneg integrable_prod).mpr\n        (lt_of_lt_of_le hμ_ball\n          (measure_mono ball_subset_support))\n    linarith",
+  "initial_sha256": "fd593f2f1879608e91a8f778af6e37a4d2cd3aa3e0e7983ad6cb0f45713fdad7",
+  "rounds": 1,
+  "attempts": 4,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 2,
+  "lean_candidate_checks": 4,
+  "cache_hits": 0,
+  "seen": [
+    "786074980fc664175d24b79f378ff8aeb0e015166b05a1ecc773757e5deb6519",
+    "b79f4717c6b2ff857ee618e494882d25f98421d01043a398426a4be6f83c8226",
+    "1db69e8a0f9b88d7b9d4e3682eebe945e55c030cd90a4fece2c13ec889dc98db",
+    "1bcd6da796d5b63d3afa8e5e7d983707aad185722a027eed2cbd6343f200171c"
+  ],
+  "plan": null,
+  "elapsed_seconds": 11.898283580318093,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0
+}

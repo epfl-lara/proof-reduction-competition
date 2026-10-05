@@ -1,0 +1,14 @@
+1. Pointwise induction + simp_all + try grind valid: 35 tokens, 7093.654 HB, score 50.588. Cleanup replaces last simp_all by simp_all only: 36 tokens, 6503.376 HB, 54.283. Main issue: general grind attempts expensive app goal.
+2. Split x=h1 first, pointwise induction then Or.imp: 77 tokens, 5251.458 HB, score 57.979. Cleanup 67 tokens, 5321.074 HB, score 58.596. Context-wide simp_all still costly.
+3. Pointwise induction, simp only at *, handle app before grind only: first version missed two app injection implications. Repair with simp +contextual solved them. Valid 49 tokens, 2344.551 HB, score 79.682. Major improvement from avoiding try grind on app and avoiding simp_all.
+3 cleanup: 44 tokens, 2241.581 HB, score 80.878; removed List.mem_singleton/not_mem_nil from initial simp and used grind (not only) in generic app.
+4. Explicit app injections and first assumption/Or.inl for simple branches: 57 tokens, 2017.692 HB, score 80.935. Cleanup unchanged. Only small gain over 44-token version.
+5. Global preprocessing then repeat' split and grind only with getVars/mem_append lemmas: valid 32 tokens but 3707.378 HB, score 72.716. General rewrite lemmas in grind are slower than prior focused simp; saved best unchanged.
+5 cleanup shortened to 28 tokens / 3536.779 HB, still regressive.
+6. Split substitution first, then simp only at * and grind only: 27 tokens / 2489.632 HB / 81.091. Compact but final context-wide simplification potentially costly after app splits.
+6 cleanup unchanged. 7. Preprocess projection and append before induction; after split simplify target only. Valid 30 tokens, 1910.743 HB, score 84.499. This removes needless rewriting of induction hypotheses and split side conditions.
+8. Split membership in [h1], reducing recursive steps to Or.imp/id. Valid 66 tokens, 1636.456 HB, score 82.432: modest heartbeat savings do not repay extra proof length. Best remains version 7.
+8 cleanup: 62 tokens / 1593.963 HB / 83.132, still below best.
+9. Definitional simplification of substOld and splitting only app: 35 tokens / 1650.726 HB / 85.642. Avoiding split searches in other constructors repays the extra focus syntax.
+Remaining assessment: stronger invariant/explicit Or.imp adds too many tokens; available list-subset lemmas do not directly absorb the repeated common suffix. Omega frontend ignores opaque non-arithmetic atoms, so it is not a promising replacement for the final propositional grind. Current proof keeps unfolding and search focused.
+9 cleanup unchanged. Local stopping decision: retain version 9 (85.642); remaining helper/automation changes are unlikely to repay their size or elaboration overhead.

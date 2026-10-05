@@ -1,0 +1,2993 @@
+{
+  "name": "putnam_1995_a3",
+  "source": "putnambench",
+  "input_proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have change (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ (i : ℕ) := by\n    rw [hdigits_to_num]\n    calc\n      (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ (j : ℕ)) =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ (j : ℕ) +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases hj : j = i <;> simp [hj] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ (j : ℕ)) +\n          ∑ j : Fin 9, (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ) :=\n        Finset.sum_add_distrib\n      _ = _ := by simp [Finset.sum_ite_eq']\n  have hde := (hrelation d e).mp h.1 |>.2\n  have hef := (hrelation e f).mp h.2 |>.2\n  have h₁ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n    intro i\n    have := hde i\n    rw [change d e i] at this\n    convert this using 1 <;> ring\n  have h₂ : ∀ i : Fin 9, 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n    intro i\n    have := hef i\n    rw [change e f i] at this\n    convert this using 1 <;> ring\n  let A : ℤ := ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)\n  have hsum : 7 ∣ A + 9 * digits_to_num d := by\n    have := Finset.dvd_sum (s := Finset.univ) (fun i _ => h₁ i)\n    convert this using 1 <;> simp [A, Finset.sum_add_distrib, Finset.sum_const] <;> norm_num\n  have hnum : digits_to_num e = digits_to_num d + A := by\n    rw [hdigits_to_num]\n    dsimp [A]\n    calc\n      (∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ)) =\n          ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        ring\n      _ = _ := by rw [Finset.sum_add_distrib]\n  have h7d : 7 ∣ (7 : ℤ) * digits_to_num d := ⟨digits_to_num d, by ring⟩\n  have hsum' : 7 ∣ A + 2 * digits_to_num d := by\n    have := dvd_sub hsum h7d\n    convert this using 1 <;> ring\n  have htotal : 7 ∣ digits_to_num e + digits_to_num d := by\n    rw [hnum]\n    convert hsum' using 1 <;> ring\n  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n    intro i\n    have hleft : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n      have := dvd_sub (h₂ i) htotal\n      convert this using 1 <;> ring\n    have := dvd_add hleft (h₁ i)\n    convert this using 1 <;> ring\n  intro i\n  have hp : (7 : ℕ).Prime := by decide\n  have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    intro h\n    have hn : (7 : ℕ) ∣ 10 ^ (i : ℕ) := by norm_cast at h ⊢\n    have : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow hp hn\n    norm_num at this\n  have hsplit : (7 : ℤ) ∣ f i - d i ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    exact (Int.prime_iff_natAbs_prime.mpr (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i)\n  rcases hsplit with hdiv | hdiv\n  · have hn : 7 ∣ -(f i - d i) := dvd_neg.mpr hdiv\n    convert hn using 1 <;> ring\n  · exact (False.elim (hpow hdiv))",
+  "input_proof_sha256": "67ac933c6afd341e0bde6fb0e1fe025111dd31d98b33066def6214914fbd9853",
+  "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have change (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ (i : ℕ) := by\n    rw [hdigits_to_num]\n    calc\n      (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ (j : ℕ)) =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ (j : ℕ) +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases hj : j = i <;> simp [hj] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ (j : ℕ)) +\n          ∑ j : Fin 9, (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ) :=\n        Finset.sum_add_distrib\n      _ = _ := by simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]\n  have hde := (hrelation d e).mp h.1 |>.2\n  have hef := (hrelation e f).mp h.2 |>.2\n  have h₁ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n    intro i\n    have := hde i\n    rw [change d e i] at this\n    convert this using 1 <;> ring\n  have h₂ : ∀ i : Fin 9, 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n    intro i\n    have := hef i\n    rw [change e f i] at this\n    convert this using 1 <;> abel\n  let A : ℤ := ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)\n  have hsum : 7 ∣ A + 9 * digits_to_num d := by\n    have := Finset.dvd_sum (s := Finset.univ) (fun i _ => h₁ i)\n    convert this using 1 <;> simp only [Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul,\n    Nat.cast_ofNat, A] <;> norm_num\n  have hnum : digits_to_num e = digits_to_num d + A := by\n    rw [hdigits_to_num]\n    dsimp only [A]\n    calc\n      (∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ)) =\n          ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        ring\n      _ = _ := by rw [Finset.sum_add_distrib]\n  have h7d : 7 ∣ (7 : ℤ) * digits_to_num d := ⟨digits_to_num d, by exact rfl⟩\n  have hsum' : 7 ∣ A + 2 * digits_to_num d := by\n    have := dvd_sub hsum h7d\n    convert this using 1 <;> ring\n  have htotal : 7 ∣ digits_to_num e + digits_to_num d := by\n    rw [hnum]\n    convert hsum' using 1 <;> ring\n  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n    intro i\n    have hleft : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n      have := dvd_sub (h₂ i) htotal\n      convert this using 1 <;> ring\n    have := dvd_add hleft (h₁ i)\n    convert this using 1 <;> ring\n  intro i\n  have hp : (7 : ℕ).Prime := by decide\n  have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    intro h\n    have hn : (7 : ℕ) ∣ 10 ^ (i : ℕ) := by norm_cast at h ⊢\n    have : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow hp hn\n    norm_num at this\n  have hsplit : (7 : ℤ) ∣ f i - d i ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    exact (Int.prime_iff_natAbs_prime.mpr (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i)\n  rcases hsplit with hdiv | hdiv\n  · have hn : 7 ∣ -(f i - d i) := dvd_neg.mpr hdiv\n    convert hn using 1 <;> ring\n  · exact (False.elim (hpow hdiv))",
+  "initial_evaluation": {
+    "schema_version": 1,
+    "name": "putnam_1995_a3",
+    "status": "passed",
+    "primary_version": "v4.25.0",
+    "requested_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "all_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "measurement": "local_cached_reference",
+    "reference": {
+      "length": 4085,
+      "published_heartbeats": 14130
+    },
+    "candidate": {
+      "length": 894,
+      "code_sha256": "67ac933c6afd341e0bde6fb0e1fe025111dd31d98b33066def6214914fbd9853"
+    },
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 6903.411,
+        "heartbeats_raw": 6903411,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_d74216be8289410eaeefd0ee8b52f0ac:6903411",
+            "endPos": {
+              "column": 34,
+              "line": 106
+            },
+            "fileName": "_ProofEval_d74216be8289410eaeefd0ee8b52f0ac.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 92,
+              "line": 69
+            },
+            "fileName": "_ProofEval_d74216be8289410eaeefd0ee8b52f0ac.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 84,
+              "line": 69
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 45,
+              "line": 49
+            },
+            "fileName": "_ProofEval_d74216be8289410eaeefd0ee8b52f0ac.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 42,
+              "line": 49
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 60
+            },
+            "fileName": "_ProofEval_d74216be8289410eaeefd0ee8b52f0ac.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 60
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 65
+            },
+            "fileName": "_ProofEval_d74216be8289410eaeefd0ee8b52f0ac.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 65
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 69
+            },
+            "fileName": "_ProofEval_d74216be8289410eaeefd0ee8b52f0ac.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 69
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 83
+            },
+            "fileName": "_ProofEval_d74216be8289410eaeefd0ee8b52f0ac.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 83
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 29,
+              "line": 86
+            },
+            "fileName": "_ProofEval_d74216be8289410eaeefd0ee8b52f0ac.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 26,
+              "line": 86
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 30,
+              "line": 91
+            },
+            "fileName": "_ProofEval_d74216be8289410eaeefd0ee8b52f0ac.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 27,
+              "line": 91
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 93
+            },
+            "fileName": "_ProofEval_d74216be8289410eaeefd0ee8b52f0ac.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 93
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 26,
+              "line": 105
+            },
+            "fileName": "_ProofEval_d74216be8289410eaeefd0ee8b52f0ac.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 23,
+              "line": 105
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'norm_num' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 92,
+              "line": 69
+            },
+            "fileName": "_ProofEval_d74216be8289410eaeefd0ee8b52f0ac.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 84,
+              "line": 69
+            },
+            "severity": "warning"
+          }
+        ],
+        "elapsed_seconds": 3.4073373656719923,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "details": {
+          "project_dir": "/localhome/milikic/miniconda3/envs/af/lib/python3.12/site-packages/lean_interact/cache/tmp_projects/v4.25.0/76aa669ccf1d618b7aeaf5d9bbd93695de28133e652494bfb5552694c9715773",
+          "version": "v4.25.0",
+          "source_commit": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+          "toolchain": "leanprover/lean4:v4.25.0",
+          "compiler_version": "Lean (version 4.25.0, x86_64-unknown-linux-gnu, commit cdd38ac5115bdeec5f609e9126cce00f51ae88b3, Release)",
+          "dependencies": {
+            "mathlib": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+            "plausible": "2503bfb5e2d4d8202165f5bd2cc39e44a3be31c3",
+            "LeanSearchClient": "2ed4ba69b6127de8f5c2af83cccacd3c988b06bf",
+            "importGraph": "009064c21bad4d7f421f2901c5e817c8bf3468cb",
+            "proofwidgets": "e8ef4bdd7a23c3a37170fbd3fa7ee07ef2a54c2d",
+            "aesop": "26e4c7c0e63eb3e6cce3cf7faba27b8526ea8349",
+            "Qq": "2781d8ad404303b2fe03710ac7db946ddfe3539f",
+            "batteries": "5c78955e8375f872c085514cb521216bac1bda17",
+            "Cli": "1dae8b12f8ba27576ffe5ddee78bebf6458157b0"
+          },
+          "configuration_sha256": {
+            "lakefile.lean": "e499b310ac31f26e019ae07722d0f1ed974a783005724aef23305747d8faa89c",
+            "lake-manifest.json": "c40097fa28208b0451fe4a0471e1ca54f2a1308ffa116b5fde2407e5d330b2bb"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "putnam_1995_a3",
+          "version": "v4.25.0",
+          "status": "prepared",
+          "heartbeats": 17957.759,
+          "heartbeats_raw": 17957759,
+          "length": 4085,
+          "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+          "measured_at": "2026-10-02T15:12:33.147011+00:00",
+          "reference_code_sha256": "56dcc03e9f1d22a0655aeb46aa929c75efddb21f2fa73d7504b648792b6e8329",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/miniconda3/envs/af/lib/python3.12/site-packages/lean_interact/cache/tmp_projects/v4.25.0/76aa669ccf1d618b7aeaf5d9bbd93695de28133e652494bfb5552694c9715773",
+            "version": "v4.25.0",
+            "source_commit": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+            "toolchain": "leanprover/lean4:v4.25.0",
+            "compiler_version": "Lean (version 4.25.0, x86_64-unknown-linux-gnu, commit cdd38ac5115bdeec5f609e9126cce00f51ae88b3, Release)",
+            "dependencies": {
+              "mathlib": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+              "plausible": "2503bfb5e2d4d8202165f5bd2cc39e44a3be31c3",
+              "LeanSearchClient": "2ed4ba69b6127de8f5c2af83cccacd3c988b06bf",
+              "importGraph": "009064c21bad4d7f421f2901c5e817c8bf3468cb",
+              "proofwidgets": "e8ef4bdd7a23c3a37170fbd3fa7ee07ef2a54c2d",
+              "aesop": "26e4c7c0e63eb3e6cce3cf7faba27b8526ea8349",
+              "Qq": "2781d8ad404303b2fe03710ac7db946ddfe3539f",
+              "batteries": "5c78955e8375f872c085514cb521216bac1bda17",
+              "Cli": "1dae8b12f8ba27576ffe5ddee78bebf6458157b0"
+            },
+            "configuration_sha256": {
+              "lakefile.lean": "e499b310ac31f26e019ae07722d0f1ed974a783005724aef23305747d8faa89c",
+              "lake-manifest.json": "c40097fa28208b0451fe4a0471e1ca54f2a1308ffa116b5fde2407e5d330b2bb"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 61.55750280421961
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 5559.28,
+        "heartbeats_raw": 5559280,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_616ab407c35c43a7abcd315f3f6bae26:5559280",
+            "endPos": {
+              "column": 34,
+              "line": 106
+            },
+            "fileName": "_ProofEval_616ab407c35c43a7abcd315f3f6bae26.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 92,
+              "line": 69
+            },
+            "fileName": "_ProofEval_616ab407c35c43a7abcd315f3f6bae26.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 84,
+              "line": 69
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 45,
+              "line": 49
+            },
+            "fileName": "_ProofEval_616ab407c35c43a7abcd315f3f6bae26.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 42,
+              "line": 49
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 60
+            },
+            "fileName": "_ProofEval_616ab407c35c43a7abcd315f3f6bae26.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 60
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 65
+            },
+            "fileName": "_ProofEval_616ab407c35c43a7abcd315f3f6bae26.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 65
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 69
+            },
+            "fileName": "_ProofEval_616ab407c35c43a7abcd315f3f6bae26.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 69
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 83
+            },
+            "fileName": "_ProofEval_616ab407c35c43a7abcd315f3f6bae26.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 83
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 29,
+              "line": 86
+            },
+            "fileName": "_ProofEval_616ab407c35c43a7abcd315f3f6bae26.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 26,
+              "line": 86
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 30,
+              "line": 91
+            },
+            "fileName": "_ProofEval_616ab407c35c43a7abcd315f3f6bae26.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 27,
+              "line": 91
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 93
+            },
+            "fileName": "_ProofEval_616ab407c35c43a7abcd315f3f6bae26.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 93
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 26,
+              "line": 105
+            },
+            "fileName": "_ProofEval_616ab407c35c43a7abcd315f3f6bae26.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 23,
+              "line": 105
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'norm_num' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 92,
+              "line": 69
+            },
+            "fileName": "_ProofEval_616ab407c35c43a7abcd315f3f6bae26.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 84,
+              "line": 69
+            },
+            "severity": "warning"
+          }
+        ],
+        "elapsed_seconds": 3.222646540030837,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.26.0",
+          "version": "v4.26.0",
+          "source_commit": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+          "toolchain": "leanprover/lean4:v4.26.0",
+          "compiler_version": "Lean (version 4.26.0, x86_64-unknown-linux-gnu, commit d8204c9fd894f91bbb2cdfec5912ec8196fd8562, Release)",
+          "dependencies": {
+            "mathlib": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+            "plausible": "160af9e8e7d4ae448f3c92edcc5b6a8522453f11",
+            "LeanSearchClient": "3591c3f664ac3719c4c86e4483e21e228707bfa2",
+            "importGraph": "e9f31324f15ead11048b1443e62c5deaddd055d2",
+            "proofwidgets": "b4fb2aa5290ebf61bc5f80a5375ba642f0a49192",
+            "aesop": "2f6d238744c4cb07fdc91240feaf5d4221a27931",
+            "Qq": "9312503909aa8e8bb392530145cc1677a6298574",
+            "batteries": "24241822ef9d3e7f6a3bcc53ad136e12663db8f3",
+            "Cli": "933fce7e893f65969714c60cdb4bd8376786044e"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "ac86bcf8e6bf878066a78d76ea8e25f120040ccfca9627f51c612823441e6601",
+            "lake-manifest.json": "dad3466bf41524af6ad1eb3764fd6b4c6953d12992c4b6346aa75ae8975a61bd"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "putnam_1995_a3",
+          "version": "v4.26.0",
+          "status": "prepared",
+          "heartbeats": 14311.524,
+          "heartbeats_raw": 14311524,
+          "length": 4085,
+          "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+          "measured_at": "2026-10-02T15:12:37.337573+00:00",
+          "reference_code_sha256": "56dcc03e9f1d22a0655aeb46aa929c75efddb21f2fa73d7504b648792b6e8329",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.26.0",
+            "version": "v4.26.0",
+            "source_commit": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+            "toolchain": "leanprover/lean4:v4.26.0",
+            "compiler_version": "Lean (version 4.26.0, x86_64-unknown-linux-gnu, commit d8204c9fd894f91bbb2cdfec5912ec8196fd8562, Release)",
+            "dependencies": {
+              "mathlib": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+              "plausible": "160af9e8e7d4ae448f3c92edcc5b6a8522453f11",
+              "LeanSearchClient": "3591c3f664ac3719c4c86e4483e21e228707bfa2",
+              "importGraph": "e9f31324f15ead11048b1443e62c5deaddd055d2",
+              "proofwidgets": "b4fb2aa5290ebf61bc5f80a5375ba642f0a49192",
+              "aesop": "2f6d238744c4cb07fdc91240feaf5d4221a27931",
+              "Qq": "9312503909aa8e8bb392530145cc1677a6298574",
+              "batteries": "24241822ef9d3e7f6a3bcc53ad136e12663db8f3",
+              "Cli": "933fce7e893f65969714c60cdb4bd8376786044e"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "ac86bcf8e6bf878066a78d76ea8e25f120040ccfca9627f51c612823441e6601",
+              "lake-manifest.json": "dad3466bf41524af6ad1eb3764fd6b4c6953d12992c4b6346aa75ae8975a61bd"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 61.15522008697327
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 5504.243,
+        "heartbeats_raw": 5504243,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_12abe6811c834f8c8b8387ee803de1a6:5504243",
+            "endPos": {
+              "column": 34,
+              "line": 106
+            },
+            "fileName": "_ProofEval_12abe6811c834f8c8b8387ee803de1a6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 92,
+              "line": 69
+            },
+            "fileName": "_ProofEval_12abe6811c834f8c8b8387ee803de1a6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 84,
+              "line": 69
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 45,
+              "line": 49
+            },
+            "fileName": "_ProofEval_12abe6811c834f8c8b8387ee803de1a6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 42,
+              "line": 49
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 60
+            },
+            "fileName": "_ProofEval_12abe6811c834f8c8b8387ee803de1a6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 60
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 65
+            },
+            "fileName": "_ProofEval_12abe6811c834f8c8b8387ee803de1a6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 65
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 69
+            },
+            "fileName": "_ProofEval_12abe6811c834f8c8b8387ee803de1a6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 69
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 83
+            },
+            "fileName": "_ProofEval_12abe6811c834f8c8b8387ee803de1a6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 83
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 29,
+              "line": 86
+            },
+            "fileName": "_ProofEval_12abe6811c834f8c8b8387ee803de1a6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 26,
+              "line": 86
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 30,
+              "line": 91
+            },
+            "fileName": "_ProofEval_12abe6811c834f8c8b8387ee803de1a6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 27,
+              "line": 91
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 93
+            },
+            "fileName": "_ProofEval_12abe6811c834f8c8b8387ee803de1a6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 93
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 26,
+              "line": 105
+            },
+            "fileName": "_ProofEval_12abe6811c834f8c8b8387ee803de1a6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 23,
+              "line": 105
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'norm_num' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 92,
+              "line": 69
+            },
+            "fileName": "_ProofEval_12abe6811c834f8c8b8387ee803de1a6.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 84,
+              "line": 69
+            },
+            "severity": "warning"
+          }
+        ],
+        "elapsed_seconds": 3.7475571762770414,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.27.0",
+          "version": "v4.27.0",
+          "source_commit": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+          "toolchain": "leanprover/lean4:v4.27.0",
+          "compiler_version": "Lean (version 4.27.0, x86_64-unknown-linux-gnu, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)",
+          "dependencies": {
+            "mathlib": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+            "plausible": "009dc1e6f2feb2c96c081537d80a0905b2c6498f",
+            "LeanSearchClient": "5ce7f0a355f522a952a3d678d696bd563bb4fd28",
+            "importGraph": "8f497d55985a189cea8020d9dc51260af1e41ad2",
+            "proofwidgets": "c04225ee7c0585effbd933662b3151f01b600e40",
+            "aesop": "cb837cc26236ada03c81837bebe0acd9c70ced7d",
+            "Qq": "bd58c9efe2086d56ca361807014141a860ddbf8c",
+            "batteries": "b25b36a7caf8e237e7d1e6121543078a06777c8a",
+            "Cli": "55c37290ff6186e2e965d68cf853a57c0702db82"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "d263ada844fc6d044e312196f91387036cc2791f594b08f7db177d76bc8f52ae",
+            "lake-manifest.json": "c014b41406a35a3bbd3477abc9e8f5dff8af0b0c8795b1ed7bfe89e086f215d2"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "putnam_1995_a3",
+          "version": "v4.27.0",
+          "status": "prepared",
+          "heartbeats": 14134.228,
+          "heartbeats_raw": 14134228,
+          "length": 4085,
+          "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+          "measured_at": "2026-10-02T15:12:41.578506+00:00",
+          "reference_code_sha256": "56dcc03e9f1d22a0655aeb46aa929c75efddb21f2fa73d7504b648792b6e8329",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.27.0",
+            "version": "v4.27.0",
+            "source_commit": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+            "toolchain": "leanprover/lean4:v4.27.0",
+            "compiler_version": "Lean (version 4.27.0, x86_64-unknown-linux-gnu, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)",
+            "dependencies": {
+              "mathlib": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+              "plausible": "009dc1e6f2feb2c96c081537d80a0905b2c6498f",
+              "LeanSearchClient": "5ce7f0a355f522a952a3d678d696bd563bb4fd28",
+              "importGraph": "8f497d55985a189cea8020d9dc51260af1e41ad2",
+              "proofwidgets": "c04225ee7c0585effbd933662b3151f01b600e40",
+              "aesop": "cb837cc26236ada03c81837bebe0acd9c70ced7d",
+              "Qq": "bd58c9efe2086d56ca361807014141a860ddbf8c",
+              "batteries": "b25b36a7caf8e237e7d1e6121543078a06777c8a",
+              "Cli": "55c37290ff6186e2e965d68cf853a57c0702db82"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "d263ada844fc6d044e312196f91387036cc2791f594b08f7db177d76bc8f52ae",
+              "lake-manifest.json": "c014b41406a35a3bbd3477abc9e8f5dff8af0b0c8795b1ed7bfe89e086f215d2"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 61.057349577210715
+      }
+    },
+    "diagnostics": [],
+    "scores": {
+      "length_reduction_pct": 78.11505507955935,
+      "heartbeat_reduction_pct": 61.55750280421961,
+      "compatibility_pct": 100.0,
+      "combined_pct": 79.89085262792632
+    }
+  },
+  "evaluation": {
+    "schema_version": 1,
+    "name": "putnam_1995_a3",
+    "status": "passed",
+    "primary_version": "v4.25.0",
+    "requested_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "all_versions": [
+      "v4.25.0",
+      "v4.26.0",
+      "v4.27.0"
+    ],
+    "measurement": "local_cached_reference",
+    "reference": {
+      "length": 4085,
+      "published_heartbeats": 14130
+    },
+    "candidate": {
+      "length": 915,
+      "code_sha256": "24ea9712a1b0e9f4bbb775af3042d1f448d859ed65759d75701bae162cffbc4c"
+    },
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 6043.663,
+        "heartbeats_raw": 6043663,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_0400f8b42dd24c1eb62043b2be67dfc0:6043663",
+            "endPos": {
+              "column": 34,
+              "line": 107
+            },
+            "fileName": "_ProofEval_0400f8b42dd24c1eb62043b2be67dfc0.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 35,
+              "line": 70
+            },
+            "fileName": "_ProofEval_0400f8b42dd24c1eb62043b2be67dfc0.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 27,
+              "line": 70
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 45,
+              "line": 49
+            },
+            "fileName": "_ProofEval_0400f8b42dd24c1eb62043b2be67dfc0.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 42,
+              "line": 49
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 60
+            },
+            "fileName": "_ProofEval_0400f8b42dd24c1eb62043b2be67dfc0.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 60
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 65
+            },
+            "fileName": "_ProofEval_0400f8b42dd24c1eb62043b2be67dfc0.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 65
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 69
+            },
+            "fileName": "_ProofEval_0400f8b42dd24c1eb62043b2be67dfc0.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 69
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 84
+            },
+            "fileName": "_ProofEval_0400f8b42dd24c1eb62043b2be67dfc0.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 84
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 29,
+              "line": 87
+            },
+            "fileName": "_ProofEval_0400f8b42dd24c1eb62043b2be67dfc0.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 26,
+              "line": 87
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 30,
+              "line": 92
+            },
+            "fileName": "_ProofEval_0400f8b42dd24c1eb62043b2be67dfc0.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 27,
+              "line": 92
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 94
+            },
+            "fileName": "_ProofEval_0400f8b42dd24c1eb62043b2be67dfc0.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 94
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 26,
+              "line": 106
+            },
+            "fileName": "_ProofEval_0400f8b42dd24c1eb62043b2be67dfc0.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 23,
+              "line": 106
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'norm_num' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 35,
+              "line": 70
+            },
+            "fileName": "_ProofEval_0400f8b42dd24c1eb62043b2be67dfc0.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 27,
+              "line": 70
+            },
+            "severity": "warning"
+          }
+        ],
+        "elapsed_seconds": 4.077930668368936,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "details": {
+          "project_dir": "/localhome/milikic/miniconda3/envs/af/lib/python3.12/site-packages/lean_interact/cache/tmp_projects/v4.25.0/76aa669ccf1d618b7aeaf5d9bbd93695de28133e652494bfb5552694c9715773",
+          "version": "v4.25.0",
+          "source_commit": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+          "toolchain": "leanprover/lean4:v4.25.0",
+          "compiler_version": "Lean (version 4.25.0, x86_64-unknown-linux-gnu, commit cdd38ac5115bdeec5f609e9126cce00f51ae88b3, Release)",
+          "dependencies": {
+            "mathlib": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+            "plausible": "2503bfb5e2d4d8202165f5bd2cc39e44a3be31c3",
+            "LeanSearchClient": "2ed4ba69b6127de8f5c2af83cccacd3c988b06bf",
+            "importGraph": "009064c21bad4d7f421f2901c5e817c8bf3468cb",
+            "proofwidgets": "e8ef4bdd7a23c3a37170fbd3fa7ee07ef2a54c2d",
+            "aesop": "26e4c7c0e63eb3e6cce3cf7faba27b8526ea8349",
+            "Qq": "2781d8ad404303b2fe03710ac7db946ddfe3539f",
+            "batteries": "5c78955e8375f872c085514cb521216bac1bda17",
+            "Cli": "1dae8b12f8ba27576ffe5ddee78bebf6458157b0"
+          },
+          "configuration_sha256": {
+            "lakefile.lean": "e499b310ac31f26e019ae07722d0f1ed974a783005724aef23305747d8faa89c",
+            "lake-manifest.json": "c40097fa28208b0451fe4a0471e1ca54f2a1308ffa116b5fde2407e5d330b2bb"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "putnam_1995_a3",
+          "version": "v4.25.0",
+          "status": "prepared",
+          "heartbeats": 17957.759,
+          "heartbeats_raw": 17957759,
+          "length": 4085,
+          "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+          "measured_at": "2026-10-02T15:12:33.147011+00:00",
+          "reference_code_sha256": "56dcc03e9f1d22a0655aeb46aa929c75efddb21f2fa73d7504b648792b6e8329",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/miniconda3/envs/af/lib/python3.12/site-packages/lean_interact/cache/tmp_projects/v4.25.0/76aa669ccf1d618b7aeaf5d9bbd93695de28133e652494bfb5552694c9715773",
+            "version": "v4.25.0",
+            "source_commit": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+            "toolchain": "leanprover/lean4:v4.25.0",
+            "compiler_version": "Lean (version 4.25.0, x86_64-unknown-linux-gnu, commit cdd38ac5115bdeec5f609e9126cce00f51ae88b3, Release)",
+            "dependencies": {
+              "mathlib": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33",
+              "plausible": "2503bfb5e2d4d8202165f5bd2cc39e44a3be31c3",
+              "LeanSearchClient": "2ed4ba69b6127de8f5c2af83cccacd3c988b06bf",
+              "importGraph": "009064c21bad4d7f421f2901c5e817c8bf3468cb",
+              "proofwidgets": "e8ef4bdd7a23c3a37170fbd3fa7ee07ef2a54c2d",
+              "aesop": "26e4c7c0e63eb3e6cce3cf7faba27b8526ea8349",
+              "Qq": "2781d8ad404303b2fe03710ac7db946ddfe3539f",
+              "batteries": "5c78955e8375f872c085514cb521216bac1bda17",
+              "Cli": "1dae8b12f8ba27576ffe5ddee78bebf6458157b0"
+            },
+            "configuration_sha256": {
+              "lakefile.lean": "e499b310ac31f26e019ae07722d0f1ed974a783005724aef23305747d8faa89c",
+              "lake-manifest.json": "c40097fa28208b0451fe4a0471e1ca54f2a1308ffa116b5fde2407e5d330b2bb"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 66.34511577975847
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4852.431,
+        "heartbeats_raw": 4852431,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_4de01e38a7f4486dae10e8992dd629ab:4852431",
+            "endPos": {
+              "column": 34,
+              "line": 107
+            },
+            "fileName": "_ProofEval_4de01e38a7f4486dae10e8992dd629ab.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 35,
+              "line": 70
+            },
+            "fileName": "_ProofEval_4de01e38a7f4486dae10e8992dd629ab.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 27,
+              "line": 70
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 45,
+              "line": 49
+            },
+            "fileName": "_ProofEval_4de01e38a7f4486dae10e8992dd629ab.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 42,
+              "line": 49
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 60
+            },
+            "fileName": "_ProofEval_4de01e38a7f4486dae10e8992dd629ab.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 60
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 65
+            },
+            "fileName": "_ProofEval_4de01e38a7f4486dae10e8992dd629ab.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 65
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 69
+            },
+            "fileName": "_ProofEval_4de01e38a7f4486dae10e8992dd629ab.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 69
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 84
+            },
+            "fileName": "_ProofEval_4de01e38a7f4486dae10e8992dd629ab.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 84
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 29,
+              "line": 87
+            },
+            "fileName": "_ProofEval_4de01e38a7f4486dae10e8992dd629ab.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 26,
+              "line": 87
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 30,
+              "line": 92
+            },
+            "fileName": "_ProofEval_4de01e38a7f4486dae10e8992dd629ab.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 27,
+              "line": 92
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 94
+            },
+            "fileName": "_ProofEval_4de01e38a7f4486dae10e8992dd629ab.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 94
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 26,
+              "line": 106
+            },
+            "fileName": "_ProofEval_4de01e38a7f4486dae10e8992dd629ab.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 23,
+              "line": 106
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'norm_num' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 35,
+              "line": 70
+            },
+            "fileName": "_ProofEval_4de01e38a7f4486dae10e8992dd629ab.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 27,
+              "line": 70
+            },
+            "severity": "warning"
+          }
+        ],
+        "elapsed_seconds": 3.6285463478416204,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.26.0",
+          "version": "v4.26.0",
+          "source_commit": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+          "toolchain": "leanprover/lean4:v4.26.0",
+          "compiler_version": "Lean (version 4.26.0, x86_64-unknown-linux-gnu, commit d8204c9fd894f91bbb2cdfec5912ec8196fd8562, Release)",
+          "dependencies": {
+            "mathlib": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+            "plausible": "160af9e8e7d4ae448f3c92edcc5b6a8522453f11",
+            "LeanSearchClient": "3591c3f664ac3719c4c86e4483e21e228707bfa2",
+            "importGraph": "e9f31324f15ead11048b1443e62c5deaddd055d2",
+            "proofwidgets": "b4fb2aa5290ebf61bc5f80a5375ba642f0a49192",
+            "aesop": "2f6d238744c4cb07fdc91240feaf5d4221a27931",
+            "Qq": "9312503909aa8e8bb392530145cc1677a6298574",
+            "batteries": "24241822ef9d3e7f6a3bcc53ad136e12663db8f3",
+            "Cli": "933fce7e893f65969714c60cdb4bd8376786044e"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "ac86bcf8e6bf878066a78d76ea8e25f120040ccfca9627f51c612823441e6601",
+            "lake-manifest.json": "dad3466bf41524af6ad1eb3764fd6b4c6953d12992c4b6346aa75ae8975a61bd"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "putnam_1995_a3",
+          "version": "v4.26.0",
+          "status": "prepared",
+          "heartbeats": 14311.524,
+          "heartbeats_raw": 14311524,
+          "length": 4085,
+          "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+          "measured_at": "2026-10-02T15:12:37.337573+00:00",
+          "reference_code_sha256": "56dcc03e9f1d22a0655aeb46aa929c75efddb21f2fa73d7504b648792b6e8329",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.26.0",
+            "version": "v4.26.0",
+            "source_commit": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+            "toolchain": "leanprover/lean4:v4.26.0",
+            "compiler_version": "Lean (version 4.26.0, x86_64-unknown-linux-gnu, commit d8204c9fd894f91bbb2cdfec5912ec8196fd8562, Release)",
+            "dependencies": {
+              "mathlib": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67",
+              "plausible": "160af9e8e7d4ae448f3c92edcc5b6a8522453f11",
+              "LeanSearchClient": "3591c3f664ac3719c4c86e4483e21e228707bfa2",
+              "importGraph": "e9f31324f15ead11048b1443e62c5deaddd055d2",
+              "proofwidgets": "b4fb2aa5290ebf61bc5f80a5375ba642f0a49192",
+              "aesop": "2f6d238744c4cb07fdc91240feaf5d4221a27931",
+              "Qq": "9312503909aa8e8bb392530145cc1677a6298574",
+              "batteries": "24241822ef9d3e7f6a3bcc53ad136e12663db8f3",
+              "Cli": "933fce7e893f65969714c60cdb4bd8376786044e"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "ac86bcf8e6bf878066a78d76ea8e25f120040ccfca9627f51c612823441e6601",
+              "lake-manifest.json": "dad3466bf41524af6ad1eb3764fd6b4c6953d12992c4b6346aa75ae8975a61bd"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 66.09423985873202
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4803.245,
+        "heartbeats_raw": 4803245,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_147bc91ccbfc44db9b9272e0654dde04:4803245",
+            "endPos": {
+              "column": 34,
+              "line": 107
+            },
+            "fileName": "_ProofEval_147bc91ccbfc44db9b9272e0654dde04.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 31
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "this tactic is never executed\n\nNote: This linter can be disabled with `set_option linter.unreachableTactic false`",
+            "endPos": {
+              "column": 35,
+              "line": 70
+            },
+            "fileName": "_ProofEval_147bc91ccbfc44db9b9272e0654dde04.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unreachableTactic",
+            "pos": {
+              "column": 27,
+              "line": 70
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 45,
+              "line": 49
+            },
+            "fileName": "_ProofEval_147bc91ccbfc44db9b9272e0654dde04.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 42,
+              "line": 49
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 60
+            },
+            "fileName": "_ProofEval_147bc91ccbfc44db9b9272e0654dde04.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 60
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 65
+            },
+            "fileName": "_ProofEval_147bc91ccbfc44db9b9272e0654dde04.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 65
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 69
+            },
+            "fileName": "_ProofEval_147bc91ccbfc44db9b9272e0654dde04.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 69
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 84
+            },
+            "fileName": "_ProofEval_147bc91ccbfc44db9b9272e0654dde04.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 84
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 29,
+              "line": 87
+            },
+            "fileName": "_ProofEval_147bc91ccbfc44db9b9272e0654dde04.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 26,
+              "line": 87
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 30,
+              "line": 92
+            },
+            "fileName": "_ProofEval_147bc91ccbfc44db9b9272e0654dde04.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 27,
+              "line": 92
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 28,
+              "line": 94
+            },
+            "fileName": "_ProofEval_147bc91ccbfc44db9b9272e0654dde04.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 25,
+              "line": 94
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice\n\nNote: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`",
+            "endPos": {
+              "column": 26,
+              "line": 106
+            },
+            "fileName": "_ProofEval_147bc91ccbfc44db9b9272e0654dde04.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unnecessarySeqFocus",
+            "pos": {
+              "column": 23,
+              "line": 106
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "'norm_num' tactic does nothing\n\nNote: This linter can be disabled with `set_option linter.unusedTactic false`",
+            "endPos": {
+              "column": 35,
+              "line": 70
+            },
+            "fileName": "_ProofEval_147bc91ccbfc44db9b9272e0654dde04.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedTactic",
+            "pos": {
+              "column": 27,
+              "line": 70
+            },
+            "severity": "warning"
+          }
+        ],
+        "elapsed_seconds": 3.627760924398899,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.27.0",
+          "version": "v4.27.0",
+          "source_commit": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+          "toolchain": "leanprover/lean4:v4.27.0",
+          "compiler_version": "Lean (version 4.27.0, x86_64-unknown-linux-gnu, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)",
+          "dependencies": {
+            "mathlib": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+            "plausible": "009dc1e6f2feb2c96c081537d80a0905b2c6498f",
+            "LeanSearchClient": "5ce7f0a355f522a952a3d678d696bd563bb4fd28",
+            "importGraph": "8f497d55985a189cea8020d9dc51260af1e41ad2",
+            "proofwidgets": "c04225ee7c0585effbd933662b3151f01b600e40",
+            "aesop": "cb837cc26236ada03c81837bebe0acd9c70ced7d",
+            "Qq": "bd58c9efe2086d56ca361807014141a860ddbf8c",
+            "batteries": "b25b36a7caf8e237e7d1e6121543078a06777c8a",
+            "Cli": "55c37290ff6186e2e965d68cf853a57c0702db82"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "d263ada844fc6d044e312196f91387036cc2791f594b08f7db177d76bc8f52ae",
+            "lake-manifest.json": "c014b41406a35a3bbd3477abc9e8f5dff8af0b0c8795b1ed7bfe89e086f215d2"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "standalone_header",
+          "candidate_start_line": 32,
+          "original_file_path": null,
+          "exit_code": 0
+        },
+        "cached": true,
+        "reference": {
+          "name": "putnam_1995_a3",
+          "version": "v4.27.0",
+          "status": "prepared",
+          "heartbeats": 14134.228,
+          "heartbeats_raw": 14134228,
+          "length": 4085,
+          "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+          "measured_at": "2026-10-02T15:12:41.578506+00:00",
+          "reference_code_sha256": "56dcc03e9f1d22a0655aeb46aa929c75efddb21f2fa73d7504b648792b6e8329",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/putnambench-v4.27.0",
+            "version": "v4.27.0",
+            "source_commit": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+            "toolchain": "leanprover/lean4:v4.27.0",
+            "compiler_version": "Lean (version 4.27.0, x86_64-unknown-linux-gnu, commit db93fe1608548721853390a10cd40580fe7d22ae, Release)",
+            "dependencies": {
+              "mathlib": "a3a10db0e9d66acbebf76c5e6a135066525ac900",
+              "plausible": "009dc1e6f2feb2c96c081537d80a0905b2c6498f",
+              "LeanSearchClient": "5ce7f0a355f522a952a3d678d696bd563bb4fd28",
+              "importGraph": "8f497d55985a189cea8020d9dc51260af1e41ad2",
+              "proofwidgets": "c04225ee7c0585effbd933662b3151f01b600e40",
+              "aesop": "cb837cc26236ada03c81837bebe0acd9c70ced7d",
+              "Qq": "bd58c9efe2086d56ca361807014141a860ddbf8c",
+              "batteries": "b25b36a7caf8e237e7d1e6121543078a06777c8a",
+              "Cli": "55c37290ff6186e2e965d68cf853a57c0702db82"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "d263ada844fc6d044e312196f91387036cc2791f594b08f7db177d76bc8f52ae",
+              "lake-manifest.json": "c014b41406a35a3bbd3477abc9e8f5dff8af0b0c8795b1ed7bfe89e086f215d2"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "standalone_header",
+            "candidate_start_line": 32,
+            "original_file_path": null,
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 66.01692713602752
+      }
+    },
+    "diagnostics": [],
+    "scores": {
+      "length_reduction_pct": 77.60097919216646,
+      "heartbeat_reduction_pct": 66.34511577975847,
+      "compatibility_pct": 100.0,
+      "combined_pct": 81.31536499064164
+    }
+  },
+  "all_versions_valid": true,
+  "status": "complete",
+  "incomplete_methods": [],
+  "job_config_sha256": "a5cda5a26e1cf824f954acc97a53c6b286a90a4ee71d29bfb6cdc1ecbfd46ec2",
+  "stage_result_sha256": {
+    "stages/01_lint/result.json": "b78636a9abd7c13e46b0b36022d3446c3bdc92a0b4405c46dc5c9f854edee951",
+    "stages/02_simp/result.json": "0a7058459127b1754ad156b8055ef21ee6dee9c3dba33e9df119657cbc1e3abf",
+    "stages/03_wrappers/result.json": "ee02c8284dabd2037e3079f29090d8c43c841051b97d93ab011b6177e035f64f",
+    "stages/04_facts/result.json": "8ab3d7ad7e519026202597f502b9863e876d7d4583517a012b192225aa5d2b3a",
+    "stages/05_reuse/result.json": "57a9db8b6735584703447c722d0883926612ae6c404e087a72d77ebee7142436",
+    "stages/06_menu/result.json": "112c96bcfad5a0436f6355f5d87c3767c26b83204029ddb6519a457a48ccb59d",
+    "stages/07_search/result.json": "df9ef5f1b8fa0a98fa4cfe32d948ff47f4b552b39fb87b8245edda7ff86322d1",
+    "stages/08_simp_min/result.json": "a0f81d76af441f7cec52fac686b360b71b0eca249fc494d7425c0b0c6575429c",
+    "stages/09_arith_min/result.json": "81a58ae24d8683c6c661551a76d495d952c59916900319d97975f945356e820f",
+    "stages/10_rw_min/result.json": "26f66e07a0c83d23318bf109e4ae2b3ef563208208969354680a76da9c4a663e"
+  },
+  "stages": [
+    {
+      "name": "putnam_1995_a3",
+      "source": "putnambench",
+      "method": "lint",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 78.11505507955935,
+          "heartbeat_reduction_pct": 61.55750280421961,
+          "compatibility_pct": 100.0,
+          "combined_pct": 79.89085262792632
+        },
+        "candidate": {
+          "length": 894,
+          "code_sha256": "67ac933c6afd341e0bde6fb0e1fe025111dd31d98b33066def6214914fbd9853"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6903.411,
+            "heartbeat_reduction_pct": 61.55750280421961,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4073373656719923,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 5559.28,
+            "heartbeat_reduction_pct": 61.15522008697327,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.222646540030837,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 5504.243,
+            "heartbeat_reduction_pct": 61.057349577210715,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.7475571762770414,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have change (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ (i : ℕ) := by\n    rw [hdigits_to_num]\n    calc\n      (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ (j : ℕ)) =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ (j : ℕ) +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases hj : j = i <;> simp [hj] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ (j : ℕ)) +\n          ∑ j : Fin 9, (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ) :=\n        Finset.sum_add_distrib\n      _ = _ := by simp [Finset.sum_ite_eq']\n  have hde := (hrelation d e).mp h.1 |>.2\n  have hef := (hrelation e f).mp h.2 |>.2\n  have h₁ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n    intro i\n    have := hde i\n    rw [change d e i] at this\n    convert this using 1 <;> ring\n  have h₂ : ∀ i : Fin 9, 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n    intro i\n    have := hef i\n    rw [change e f i] at this\n    convert this using 1 <;> ring\n  let A : ℤ := ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)\n  have hsum : 7 ∣ A + 9 * digits_to_num d := by\n    have := Finset.dvd_sum (s := Finset.univ) (fun i _ => h₁ i)\n    convert this using 1 <;> simp [A, Finset.sum_add_distrib, Finset.sum_const] <;> norm_num\n  have hnum : digits_to_num e = digits_to_num d + A := by\n    rw [hdigits_to_num]\n    dsimp [A]\n    calc\n      (∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ)) =\n          ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        ring\n      _ = _ := by rw [Finset.sum_add_distrib]\n  have h7d : 7 ∣ (7 : ℤ) * digits_to_num d := ⟨digits_to_num d, by ring⟩\n  have hsum' : 7 ∣ A + 2 * digits_to_num d := by\n    have := dvd_sub hsum h7d\n    convert this using 1 <;> ring\n  have htotal : 7 ∣ digits_to_num e + digits_to_num d := by\n    rw [hnum]\n    convert hsum' using 1 <;> ring\n  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n    intro i\n    have hleft : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n      have := dvd_sub (h₂ i) htotal\n      convert this using 1 <;> ring\n    have := dvd_add hleft (h₁ i)\n    convert this using 1 <;> ring\n  intro i\n  have hp : (7 : ℕ).Prime := by decide\n  have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    intro h\n    have hn : (7 : ℕ) ∣ 10 ^ (i : ℕ) := by norm_cast at h ⊢\n    have : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow hp hn\n    norm_num at this\n  have hsplit : (7 : ℤ) ∣ f i - d i ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    exact (Int.prime_iff_natAbs_prime.mpr (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i)\n  rcases hsplit with hdiv | hdiv\n  · have hn : 7 ∣ -(f i - d i) := dvd_neg.mpr hdiv\n    convert hn using 1 <;> ring\n  · exact (False.elim (hpow hdiv))",
+      "rounds": 1,
+      "attempts": 1,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 1,
+      "cache_hits": 0,
+      "elapsed_seconds": 8.12,
+      "stop_reason": "no_improving_proposal",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 78.11505507955935,
+          "heartbeat_reduction_pct": 61.55750280421961,
+          "compatibility_pct": 100.0,
+          "combined_pct": 79.89085262792632
+        },
+        "candidate": {
+          "length": 894,
+          "code_sha256": "67ac933c6afd341e0bde6fb0e1fe025111dd31d98b33066def6214914fbd9853"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6903.411,
+            "heartbeat_reduction_pct": 61.55750280421961,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4073373656719923,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 5559.28,
+            "heartbeat_reduction_pct": 61.15522008697327,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.222646540030837,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 5504.243,
+            "heartbeat_reduction_pct": 61.057349577210715,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.7475571762770414,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "putnam_1995_a3",
+      "source": "putnambench",
+      "method": "simp",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 78.11505507955935,
+          "heartbeat_reduction_pct": 61.55750280421961,
+          "compatibility_pct": 100.0,
+          "combined_pct": 79.89085262792632
+        },
+        "candidate": {
+          "length": 894,
+          "code_sha256": "67ac933c6afd341e0bde6fb0e1fe025111dd31d98b33066def6214914fbd9853"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6903.411,
+            "heartbeat_reduction_pct": 61.55750280421961,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4073373656719923,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 5559.28,
+            "heartbeat_reduction_pct": 61.15522008697327,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.222646540030837,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 5504.243,
+            "heartbeat_reduction_pct": 61.057349577210715,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.7475571762770414,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have change (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ (i : ℕ) := by\n    rw [hdigits_to_num]\n    calc\n      (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ (j : ℕ)) =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ (j : ℕ) +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases hj : j = i <;> simp [hj] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ (j : ℕ)) +\n          ∑ j : Fin 9, (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ) :=\n        Finset.sum_add_distrib\n      _ = _ := by simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]\n  have hde := (hrelation d e).mp h.1 |>.2\n  have hef := (hrelation e f).mp h.2 |>.2\n  have h₁ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n    intro i\n    have := hde i\n    rw [change d e i] at this\n    convert this using 1 <;> ring\n  have h₂ : ∀ i : Fin 9, 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n    intro i\n    have := hef i\n    rw [change e f i] at this\n    convert this using 1 <;> ring\n  let A : ℤ := ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)\n  have hsum : 7 ∣ A + 9 * digits_to_num d := by\n    have := Finset.dvd_sum (s := Finset.univ) (fun i _ => h₁ i)\n    convert this using 1 <;> simp only [Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul,\n    Nat.cast_ofNat, A] <;> norm_num\n  have hnum : digits_to_num e = digits_to_num d + A := by\n    rw [hdigits_to_num]\n    dsimp only [A]\n    calc\n      (∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ)) =\n          ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        ring\n      _ = _ := by rw [Finset.sum_add_distrib]\n  have h7d : 7 ∣ (7 : ℤ) * digits_to_num d := ⟨digits_to_num d, by ring⟩\n  have hsum' : 7 ∣ A + 2 * digits_to_num d := by\n    have := dvd_sub hsum h7d\n    convert this using 1 <;> ring\n  have htotal : 7 ∣ digits_to_num e + digits_to_num d := by\n    rw [hnum]\n    convert hsum' using 1 <;> ring\n  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n    intro i\n    have hleft : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n      have := dvd_sub (h₂ i) htotal\n      convert this using 1 <;> ring\n    have := dvd_add hleft (h₁ i)\n    convert this using 1 <;> ring\n  intro i\n  have hp : (7 : ℕ).Prime := by decide\n  have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    intro h\n    have hn : (7 : ℕ) ∣ 10 ^ (i : ℕ) := by norm_cast at h ⊢\n    have : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow hp hn\n    norm_num at this\n  have hsplit : (7 : ℤ) ∣ f i - d i ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    exact (Int.prime_iff_natAbs_prime.mpr (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i)\n  rcases hsplit with hdiv | hdiv\n  · have hn : 7 ∣ -(f i - d i) := dvd_neg.mpr hdiv\n    convert hn using 1 <;> ring\n  · exact (False.elim (hpow hdiv))",
+      "rounds": 2,
+      "attempts": 1,
+      "accepted_edits": 3,
+      "accepted_transitions": 1,
+      "analysis_requests": 4,
+      "lean_candidate_checks": 3,
+      "cache_hits": 1,
+      "elapsed_seconds": 23.323,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.62545899632802,
+          "heartbeat_reduction_pct": 65.86454356582021,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.16333418738274
+        },
+        "candidate": {
+          "length": 914,
+          "code_sha256": "15c74ef4ff32832fbc9ce611eb648e63d714c2a2f88e50dcbc356fa00f522108"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6129.963,
+            "heartbeat_reduction_pct": 65.86454356582021,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4086341820657253,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4929.352,
+            "heartbeat_reduction_pct": 65.55676390578668,
+            "cached": false,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.2882641348987818,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4876.916,
+            "heartbeat_reduction_pct": 65.4957030550236,
+            "cached": false,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.892475623637438,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": true
+    },
+    {
+      "name": "putnam_1995_a3",
+      "source": "putnambench",
+      "method": "wrappers",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.62545899632802,
+          "heartbeat_reduction_pct": 65.86454356582021,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.16333418738274
+        },
+        "candidate": {
+          "length": 914,
+          "code_sha256": "15c74ef4ff32832fbc9ce611eb648e63d714c2a2f88e50dcbc356fa00f522108"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6129.963,
+            "heartbeat_reduction_pct": 65.86454356582021,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4086341820657253,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4929.352,
+            "heartbeat_reduction_pct": 65.55676390578668,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.2882641348987818,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4876.916,
+            "heartbeat_reduction_pct": 65.4957030550236,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.892475623637438,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have change (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ (i : ℕ) := by\n    rw [hdigits_to_num]\n    calc\n      (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ (j : ℕ)) =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ (j : ℕ) +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases hj : j = i <;> simp [hj] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ (j : ℕ)) +\n          ∑ j : Fin 9, (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ) :=\n        Finset.sum_add_distrib\n      _ = _ := by simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]\n  have hde := (hrelation d e).mp h.1 |>.2\n  have hef := (hrelation e f).mp h.2 |>.2\n  have h₁ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n    intro i\n    have := hde i\n    rw [change d e i] at this\n    convert this using 1 <;> ring\n  have h₂ : ∀ i : Fin 9, 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n    intro i\n    have := hef i\n    rw [change e f i] at this\n    convert this using 1 <;> ring\n  let A : ℤ := ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)\n  have hsum : 7 ∣ A + 9 * digits_to_num d := by\n    have := Finset.dvd_sum (s := Finset.univ) (fun i _ => h₁ i)\n    convert this using 1 <;> simp only [Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul,\n    Nat.cast_ofNat, A] <;> norm_num\n  have hnum : digits_to_num e = digits_to_num d + A := by\n    rw [hdigits_to_num]\n    dsimp only [A]\n    calc\n      (∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ)) =\n          ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        ring\n      _ = _ := by rw [Finset.sum_add_distrib]\n  have h7d : 7 ∣ (7 : ℤ) * digits_to_num d := ⟨digits_to_num d, by ring⟩\n  have hsum' : 7 ∣ A + 2 * digits_to_num d := by\n    have := dvd_sub hsum h7d\n    convert this using 1 <;> ring\n  have htotal : 7 ∣ digits_to_num e + digits_to_num d := by\n    rw [hnum]\n    convert hsum' using 1 <;> ring\n  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n    intro i\n    have hleft : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n      have := dvd_sub (h₂ i) htotal\n      convert this using 1 <;> ring\n    have := dvd_add hleft (h₁ i)\n    convert this using 1 <;> ring\n  intro i\n  have hp : (7 : ℕ).Prime := by decide\n  have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    intro h\n    have hn : (7 : ℕ) ∣ 10 ^ (i : ℕ) := by norm_cast at h ⊢\n    have : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow hp hn\n    norm_num at this\n  have hsplit : (7 : ℤ) ∣ f i - d i ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    exact (Int.prime_iff_natAbs_prime.mpr (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i)\n  rcases hsplit with hdiv | hdiv\n  · have hn : 7 ∣ -(f i - d i) := dvd_neg.mpr hdiv\n    convert hn using 1 <;> ring\n  · exact (False.elim (hpow hdiv))",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 0.329,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.62545899632802,
+          "heartbeat_reduction_pct": 65.86454356582021,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.16333418738274
+        },
+        "candidate": {
+          "length": 914,
+          "code_sha256": "15c74ef4ff32832fbc9ce611eb648e63d714c2a2f88e50dcbc356fa00f522108"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6129.963,
+            "heartbeat_reduction_pct": 65.86454356582021,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4086341820657253,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4929.352,
+            "heartbeat_reduction_pct": 65.55676390578668,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.2882641348987818,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4876.916,
+            "heartbeat_reduction_pct": 65.4957030550236,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.892475623637438,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "putnam_1995_a3",
+      "source": "putnambench",
+      "method": "facts",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.62545899632802,
+          "heartbeat_reduction_pct": 65.86454356582021,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.16333418738274
+        },
+        "candidate": {
+          "length": 914,
+          "code_sha256": "15c74ef4ff32832fbc9ce611eb648e63d714c2a2f88e50dcbc356fa00f522108"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6129.963,
+            "heartbeat_reduction_pct": 65.86454356582021,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4086341820657253,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4929.352,
+            "heartbeat_reduction_pct": 65.55676390578668,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.2882641348987818,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4876.916,
+            "heartbeat_reduction_pct": 65.4957030550236,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.892475623637438,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have change (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ (i : ℕ) := by\n    rw [hdigits_to_num]\n    calc\n      (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ (j : ℕ)) =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ (j : ℕ) +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases hj : j = i <;> simp [hj] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ (j : ℕ)) +\n          ∑ j : Fin 9, (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ) :=\n        Finset.sum_add_distrib\n      _ = _ := by simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]\n  have hde := (hrelation d e).mp h.1 |>.2\n  have hef := (hrelation e f).mp h.2 |>.2\n  have h₁ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n    intro i\n    have := hde i\n    rw [change d e i] at this\n    convert this using 1 <;> ring\n  have h₂ : ∀ i : Fin 9, 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n    intro i\n    have := hef i\n    rw [change e f i] at this\n    convert this using 1 <;> ring\n  let A : ℤ := ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)\n  have hsum : 7 ∣ A + 9 * digits_to_num d := by\n    have := Finset.dvd_sum (s := Finset.univ) (fun i _ => h₁ i)\n    convert this using 1 <;> simp only [Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul,\n    Nat.cast_ofNat, A] <;> norm_num\n  have hnum : digits_to_num e = digits_to_num d + A := by\n    rw [hdigits_to_num]\n    dsimp only [A]\n    calc\n      (∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ)) =\n          ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        ring\n      _ = _ := by rw [Finset.sum_add_distrib]\n  have h7d : 7 ∣ (7 : ℤ) * digits_to_num d := ⟨digits_to_num d, by ring⟩\n  have hsum' : 7 ∣ A + 2 * digits_to_num d := by\n    have := dvd_sub hsum h7d\n    convert this using 1 <;> ring\n  have htotal : 7 ∣ digits_to_num e + digits_to_num d := by\n    rw [hnum]\n    convert hsum' using 1 <;> ring\n  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n    intro i\n    have hleft : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n      have := dvd_sub (h₂ i) htotal\n      convert this using 1 <;> ring\n    have := dvd_add hleft (h₁ i)\n    convert this using 1 <;> ring\n  intro i\n  have hp : (7 : ℕ).Prime := by decide\n  have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    intro h\n    have hn : (7 : ℕ) ∣ 10 ^ (i : ℕ) := by norm_cast at h ⊢\n    have : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow hp hn\n    norm_num at this\n  have hsplit : (7 : ℤ) ∣ f i - d i ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    exact (Int.prime_iff_natAbs_prime.mpr (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i)\n  rcases hsplit with hdiv | hdiv\n  · have hn : 7 ∣ -(f i - d i) := dvd_neg.mpr hdiv\n    convert hn using 1 <;> ring\n  · exact (False.elim (hpow hdiv))",
+      "rounds": 1,
+      "attempts": 18,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 18,
+      "cache_hits": 0,
+      "elapsed_seconds": 64.573,
+      "stop_reason": "no_improving_proposal",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.62545899632802,
+          "heartbeat_reduction_pct": 65.86454356582021,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.16333418738274
+        },
+        "candidate": {
+          "length": 914,
+          "code_sha256": "15c74ef4ff32832fbc9ce611eb648e63d714c2a2f88e50dcbc356fa00f522108"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6129.963,
+            "heartbeat_reduction_pct": 65.86454356582021,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4086341820657253,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4929.352,
+            "heartbeat_reduction_pct": 65.55676390578668,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.2882641348987818,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4876.916,
+            "heartbeat_reduction_pct": 65.4957030550236,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.892475623637438,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "putnam_1995_a3",
+      "source": "putnambench",
+      "method": "reuse",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.62545899632802,
+          "heartbeat_reduction_pct": 65.86454356582021,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.16333418738274
+        },
+        "candidate": {
+          "length": 914,
+          "code_sha256": "15c74ef4ff32832fbc9ce611eb648e63d714c2a2f88e50dcbc356fa00f522108"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6129.963,
+            "heartbeat_reduction_pct": 65.86454356582021,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4086341820657253,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4929.352,
+            "heartbeat_reduction_pct": 65.55676390578668,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.2882641348987818,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4876.916,
+            "heartbeat_reduction_pct": 65.4957030550236,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.892475623637438,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have change (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ (i : ℕ) := by\n    rw [hdigits_to_num]\n    calc\n      (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ (j : ℕ)) =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ (j : ℕ) +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases hj : j = i <;> simp [hj] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ (j : ℕ)) +\n          ∑ j : Fin 9, (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ) :=\n        Finset.sum_add_distrib\n      _ = _ := by simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]\n  have hde := (hrelation d e).mp h.1 |>.2\n  have hef := (hrelation e f).mp h.2 |>.2\n  have h₁ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n    intro i\n    have := hde i\n    rw [change d e i] at this\n    convert this using 1 <;> ring\n  have h₂ : ∀ i : Fin 9, 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n    intro i\n    have := hef i\n    rw [change e f i] at this\n    convert this using 1 <;> ring\n  let A : ℤ := ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)\n  have hsum : 7 ∣ A + 9 * digits_to_num d := by\n    have := Finset.dvd_sum (s := Finset.univ) (fun i _ => h₁ i)\n    convert this using 1 <;> simp only [Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul,\n    Nat.cast_ofNat, A] <;> norm_num\n  have hnum : digits_to_num e = digits_to_num d + A := by\n    rw [hdigits_to_num]\n    dsimp only [A]\n    calc\n      (∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ)) =\n          ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        ring\n      _ = _ := by rw [Finset.sum_add_distrib]\n  have h7d : 7 ∣ (7 : ℤ) * digits_to_num d := ⟨digits_to_num d, by ring⟩\n  have hsum' : 7 ∣ A + 2 * digits_to_num d := by\n    have := dvd_sub hsum h7d\n    convert this using 1 <;> ring\n  have htotal : 7 ∣ digits_to_num e + digits_to_num d := by\n    rw [hnum]\n    convert hsum' using 1 <;> ring\n  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n    intro i\n    have hleft : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n      have := dvd_sub (h₂ i) htotal\n      convert this using 1 <;> ring\n    have := dvd_add hleft (h₁ i)\n    convert this using 1 <;> ring\n  intro i\n  have hp : (7 : ℕ).Prime := by decide\n  have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    intro h\n    have hn : (7 : ℕ) ∣ 10 ^ (i : ℕ) := by norm_cast at h ⊢\n    have : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow hp hn\n    norm_num at this\n  have hsplit : (7 : ℤ) ∣ f i - d i ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    exact (Int.prime_iff_natAbs_prime.mpr (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i)\n  rcases hsplit with hdiv | hdiv\n  · have hn : 7 ∣ -(f i - d i) := dvd_neg.mpr hdiv\n    convert hn using 1 <;> ring\n  · exact (False.elim (hpow hdiv))",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 0.272,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.62545899632802,
+          "heartbeat_reduction_pct": 65.86454356582021,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.16333418738274
+        },
+        "candidate": {
+          "length": 914,
+          "code_sha256": "15c74ef4ff32832fbc9ce611eb648e63d714c2a2f88e50dcbc356fa00f522108"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6129.963,
+            "heartbeat_reduction_pct": 65.86454356582021,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4086341820657253,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4929.352,
+            "heartbeat_reduction_pct": 65.55676390578668,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.2882641348987818,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4876.916,
+            "heartbeat_reduction_pct": 65.4957030550236,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.892475623637438,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "putnam_1995_a3",
+      "source": "putnambench",
+      "method": "menu",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.62545899632802,
+          "heartbeat_reduction_pct": 65.86454356582021,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.16333418738274
+        },
+        "candidate": {
+          "length": 914,
+          "code_sha256": "15c74ef4ff32832fbc9ce611eb648e63d714c2a2f88e50dcbc356fa00f522108"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6129.963,
+            "heartbeat_reduction_pct": 65.86454356582021,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4086341820657253,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4929.352,
+            "heartbeat_reduction_pct": 65.55676390578668,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.2882641348987818,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4876.916,
+            "heartbeat_reduction_pct": 65.4957030550236,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.892475623637438,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have change (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ (i : ℕ) := by\n    rw [hdigits_to_num]\n    calc\n      (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ (j : ℕ)) =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ (j : ℕ) +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases hj : j = i <;> simp [hj] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ (j : ℕ)) +\n          ∑ j : Fin 9, (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ) :=\n        Finset.sum_add_distrib\n      _ = _ := by simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]\n  have hde := (hrelation d e).mp h.1 |>.2\n  have hef := (hrelation e f).mp h.2 |>.2\n  have h₁ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n    intro i\n    have := hde i\n    rw [change d e i] at this\n    convert this using 1 <;> ring\n  have h₂ : ∀ i : Fin 9, 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n    intro i\n    have := hef i\n    rw [change e f i] at this\n    convert this using 1 <;> abel\n  let A : ℤ := ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)\n  have hsum : 7 ∣ A + 9 * digits_to_num d := by\n    have := Finset.dvd_sum (s := Finset.univ) (fun i _ => h₁ i)\n    convert this using 1 <;> simp only [Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul,\n    Nat.cast_ofNat, A] <;> norm_num\n  have hnum : digits_to_num e = digits_to_num d + A := by\n    rw [hdigits_to_num]\n    dsimp only [A]\n    calc\n      (∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ)) =\n          ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        ring\n      _ = _ := by rw [Finset.sum_add_distrib]\n  have h7d : 7 ∣ (7 : ℤ) * digits_to_num d := ⟨digits_to_num d, by ring⟩\n  have hsum' : 7 ∣ A + 2 * digits_to_num d := by\n    have := dvd_sub hsum h7d\n    convert this using 1 <;> ring\n  have htotal : 7 ∣ digits_to_num e + digits_to_num d := by\n    rw [hnum]\n    convert hsum' using 1 <;> ring\n  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n    intro i\n    have hleft : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n      have := dvd_sub (h₂ i) htotal\n      convert this using 1 <;> ring\n    have := dvd_add hleft (h₁ i)\n    convert this using 1 <;> ring\n  intro i\n  have hp : (7 : ℕ).Prime := by decide\n  have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    intro h\n    have hn : (7 : ℕ) ∣ 10 ^ (i : ℕ) := by norm_cast at h ⊢\n    have : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow hp hn\n    norm_num at this\n  have hsplit : (7 : ℤ) ∣ f i - d i ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    exact (Int.prime_iff_natAbs_prime.mpr (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i)\n  rcases hsplit with hdiv | hdiv\n  · have hn : 7 ∣ -(f i - d i) := dvd_neg.mpr hdiv\n    convert hn using 1 <;> ring\n  · exact (False.elim (hpow hdiv))",
+      "rounds": 3,
+      "attempts": 32,
+      "accepted_edits": 1,
+      "accepted_transitions": 1,
+      "analysis_requests": 6,
+      "lean_candidate_checks": 36,
+      "cache_hits": 2,
+      "elapsed_seconds": 160.074,
+      "stop_reason": "trial_limit",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.62545899632802,
+          "heartbeat_reduction_pct": 66.025593728037,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.21701757478833
+        },
+        "candidate": {
+          "length": 914,
+          "code_sha256": "e71780c710e6919e961480ad0a83c29e1a29c947c4b793ddbc30cf7d0e33220a"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6101.042,
+            "heartbeat_reduction_pct": 66.025593728037,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4673957712948322,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4897.319,
+            "heartbeat_reduction_pct": 65.7805905227144,
+            "cached": false,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.3243202827870846,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4846.44,
+            "heartbeat_reduction_pct": 65.71132148144207,
+            "cached": false,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.3169924542307854,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": true
+    },
+    {
+      "name": "putnam_1995_a3",
+      "source": "putnambench",
+      "method": "search",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.62545899632802,
+          "heartbeat_reduction_pct": 66.025593728037,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.21701757478833
+        },
+        "candidate": {
+          "length": 914,
+          "code_sha256": "e71780c710e6919e961480ad0a83c29e1a29c947c4b793ddbc30cf7d0e33220a"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6101.042,
+            "heartbeat_reduction_pct": 66.025593728037,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 3.4673957712948322,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4897.319,
+            "heartbeat_reduction_pct": 65.7805905227144,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.3243202827870846,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4846.44,
+            "heartbeat_reduction_pct": 65.71132148144207,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.3169924542307854,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have change (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ (i : ℕ) := by\n    rw [hdigits_to_num]\n    calc\n      (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ (j : ℕ)) =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ (j : ℕ) +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases hj : j = i <;> simp [hj] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ (j : ℕ)) +\n          ∑ j : Fin 9, (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ) :=\n        Finset.sum_add_distrib\n      _ = _ := by simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]\n  have hde := (hrelation d e).mp h.1 |>.2\n  have hef := (hrelation e f).mp h.2 |>.2\n  have h₁ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n    intro i\n    have := hde i\n    rw [change d e i] at this\n    convert this using 1 <;> ring\n  have h₂ : ∀ i : Fin 9, 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n    intro i\n    have := hef i\n    rw [change e f i] at this\n    convert this using 1 <;> abel\n  let A : ℤ := ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)\n  have hsum : 7 ∣ A + 9 * digits_to_num d := by\n    have := Finset.dvd_sum (s := Finset.univ) (fun i _ => h₁ i)\n    convert this using 1 <;> simp only [Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul,\n    Nat.cast_ofNat, A] <;> norm_num\n  have hnum : digits_to_num e = digits_to_num d + A := by\n    rw [hdigits_to_num]\n    dsimp only [A]\n    calc\n      (∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ)) =\n          ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        ring\n      _ = _ := by rw [Finset.sum_add_distrib]\n  have h7d : 7 ∣ (7 : ℤ) * digits_to_num d := ⟨digits_to_num d, by exact rfl⟩\n  have hsum' : 7 ∣ A + 2 * digits_to_num d := by\n    have := dvd_sub hsum h7d\n    convert this using 1 <;> ring\n  have htotal : 7 ∣ digits_to_num e + digits_to_num d := by\n    rw [hnum]\n    convert hsum' using 1 <;> ring\n  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n    intro i\n    have hleft : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n      have := dvd_sub (h₂ i) htotal\n      convert this using 1 <;> ring\n    have := dvd_add hleft (h₁ i)\n    convert this using 1 <;> ring\n  intro i\n  have hp : (7 : ℕ).Prime := by decide\n  have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    intro h\n    have hn : (7 : ℕ) ∣ 10 ^ (i : ℕ) := by norm_cast at h ⊢\n    have : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow hp hn\n    norm_num at this\n  have hsplit : (7 : ℤ) ∣ f i - d i ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    exact (Int.prime_iff_natAbs_prime.mpr (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i)\n  rcases hsplit with hdiv | hdiv\n  · have hn : 7 ∣ -(f i - d i) := dvd_neg.mpr hdiv\n    convert hn using 1 <;> ring\n  · exact (False.elim (hpow hdiv))",
+      "rounds": 3,
+      "attempts": 10,
+      "accepted_edits": 1,
+      "accepted_transitions": 1,
+      "analysis_requests": 6,
+      "lean_candidate_checks": 12,
+      "cache_hits": 1,
+      "elapsed_seconds": 124.203,
+      "stop_reason": "round_limit",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.60097919216646,
+          "heartbeat_reduction_pct": 66.34511577975847,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.31536499064164
+        },
+        "candidate": {
+          "length": 915,
+          "code_sha256": "24ea9712a1b0e9f4bbb775af3042d1f448d859ed65759d75701bae162cffbc4c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6043.663,
+            "heartbeat_reduction_pct": 66.34511577975847,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 4.077930668368936,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4852.431,
+            "heartbeat_reduction_pct": 66.09423985873202,
+            "cached": false,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.6285463478416204,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4803.245,
+            "heartbeat_reduction_pct": 66.01692713602752,
+            "cached": false,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.627760924398899,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": true
+    },
+    {
+      "name": "putnam_1995_a3",
+      "source": "putnambench",
+      "method": "simp_min",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.60097919216646,
+          "heartbeat_reduction_pct": 66.34511577975847,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.31536499064164
+        },
+        "candidate": {
+          "length": 915,
+          "code_sha256": "24ea9712a1b0e9f4bbb775af3042d1f448d859ed65759d75701bae162cffbc4c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6043.663,
+            "heartbeat_reduction_pct": 66.34511577975847,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 4.077930668368936,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4852.431,
+            "heartbeat_reduction_pct": 66.09423985873202,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.6285463478416204,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4803.245,
+            "heartbeat_reduction_pct": 66.01692713602752,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.627760924398899,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have change (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ (i : ℕ) := by\n    rw [hdigits_to_num]\n    calc\n      (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ (j : ℕ)) =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ (j : ℕ) +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases hj : j = i <;> simp [hj] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ (j : ℕ)) +\n          ∑ j : Fin 9, (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ) :=\n        Finset.sum_add_distrib\n      _ = _ := by simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]\n  have hde := (hrelation d e).mp h.1 |>.2\n  have hef := (hrelation e f).mp h.2 |>.2\n  have h₁ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n    intro i\n    have := hde i\n    rw [change d e i] at this\n    convert this using 1 <;> ring\n  have h₂ : ∀ i : Fin 9, 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n    intro i\n    have := hef i\n    rw [change e f i] at this\n    convert this using 1 <;> abel\n  let A : ℤ := ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)\n  have hsum : 7 ∣ A + 9 * digits_to_num d := by\n    have := Finset.dvd_sum (s := Finset.univ) (fun i _ => h₁ i)\n    convert this using 1 <;> simp only [Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul,\n    Nat.cast_ofNat, A] <;> norm_num\n  have hnum : digits_to_num e = digits_to_num d + A := by\n    rw [hdigits_to_num]\n    dsimp only [A]\n    calc\n      (∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ)) =\n          ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        ring\n      _ = _ := by rw [Finset.sum_add_distrib]\n  have h7d : 7 ∣ (7 : ℤ) * digits_to_num d := ⟨digits_to_num d, by exact rfl⟩\n  have hsum' : 7 ∣ A + 2 * digits_to_num d := by\n    have := dvd_sub hsum h7d\n    convert this using 1 <;> ring\n  have htotal : 7 ∣ digits_to_num e + digits_to_num d := by\n    rw [hnum]\n    convert hsum' using 1 <;> ring\n  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n    intro i\n    have hleft : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n      have := dvd_sub (h₂ i) htotal\n      convert this using 1 <;> ring\n    have := dvd_add hleft (h₁ i)\n    convert this using 1 <;> ring\n  intro i\n  have hp : (7 : ℕ).Prime := by decide\n  have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    intro h\n    have hn : (7 : ℕ) ∣ 10 ^ (i : ℕ) := by norm_cast at h ⊢\n    have : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow hp hn\n    norm_num at this\n  have hsplit : (7 : ℤ) ∣ f i - d i ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    exact (Int.prime_iff_natAbs_prime.mpr (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i)\n  rcases hsplit with hdiv | hdiv\n  · have hn : 7 ∣ -(f i - d i) := dvd_neg.mpr hdiv\n    convert hn using 1 <;> ring\n  · exact (False.elim (hpow hdiv))",
+      "rounds": 1,
+      "attempts": 23,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 23,
+      "cache_hits": 0,
+      "elapsed_seconds": 91.381,
+      "stop_reason": "no_improving_proposal",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.60097919216646,
+          "heartbeat_reduction_pct": 66.34511577975847,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.31536499064164
+        },
+        "candidate": {
+          "length": 915,
+          "code_sha256": "24ea9712a1b0e9f4bbb775af3042d1f448d859ed65759d75701bae162cffbc4c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6043.663,
+            "heartbeat_reduction_pct": 66.34511577975847,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 4.077930668368936,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4852.431,
+            "heartbeat_reduction_pct": 66.09423985873202,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.6285463478416204,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4803.245,
+            "heartbeat_reduction_pct": 66.01692713602752,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.627760924398899,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "putnam_1995_a3",
+      "source": "putnambench",
+      "method": "arith_min",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.60097919216646,
+          "heartbeat_reduction_pct": 66.34511577975847,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.31536499064164
+        },
+        "candidate": {
+          "length": 915,
+          "code_sha256": "24ea9712a1b0e9f4bbb775af3042d1f448d859ed65759d75701bae162cffbc4c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6043.663,
+            "heartbeat_reduction_pct": 66.34511577975847,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 4.077930668368936,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4852.431,
+            "heartbeat_reduction_pct": 66.09423985873202,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.6285463478416204,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4803.245,
+            "heartbeat_reduction_pct": 66.01692713602752,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.627760924398899,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have change (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ (i : ℕ) := by\n    rw [hdigits_to_num]\n    calc\n      (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ (j : ℕ)) =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ (j : ℕ) +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases hj : j = i <;> simp [hj] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ (j : ℕ)) +\n          ∑ j : Fin 9, (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ) :=\n        Finset.sum_add_distrib\n      _ = _ := by simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]\n  have hde := (hrelation d e).mp h.1 |>.2\n  have hef := (hrelation e f).mp h.2 |>.2\n  have h₁ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n    intro i\n    have := hde i\n    rw [change d e i] at this\n    convert this using 1 <;> ring\n  have h₂ : ∀ i : Fin 9, 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n    intro i\n    have := hef i\n    rw [change e f i] at this\n    convert this using 1 <;> abel\n  let A : ℤ := ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)\n  have hsum : 7 ∣ A + 9 * digits_to_num d := by\n    have := Finset.dvd_sum (s := Finset.univ) (fun i _ => h₁ i)\n    convert this using 1 <;> simp only [Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul,\n    Nat.cast_ofNat, A] <;> norm_num\n  have hnum : digits_to_num e = digits_to_num d + A := by\n    rw [hdigits_to_num]\n    dsimp only [A]\n    calc\n      (∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ)) =\n          ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        ring\n      _ = _ := by rw [Finset.sum_add_distrib]\n  have h7d : 7 ∣ (7 : ℤ) * digits_to_num d := ⟨digits_to_num d, by exact rfl⟩\n  have hsum' : 7 ∣ A + 2 * digits_to_num d := by\n    have := dvd_sub hsum h7d\n    convert this using 1 <;> ring\n  have htotal : 7 ∣ digits_to_num e + digits_to_num d := by\n    rw [hnum]\n    convert hsum' using 1 <;> ring\n  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n    intro i\n    have hleft : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n      have := dvd_sub (h₂ i) htotal\n      convert this using 1 <;> ring\n    have := dvd_add hleft (h₁ i)\n    convert this using 1 <;> ring\n  intro i\n  have hp : (7 : ℕ).Prime := by decide\n  have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    intro h\n    have hn : (7 : ℕ) ∣ 10 ^ (i : ℕ) := by norm_cast at h ⊢\n    have : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow hp hn\n    norm_num at this\n  have hsplit : (7 : ℤ) ∣ f i - d i ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    exact (Int.prime_iff_natAbs_prime.mpr (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i)\n  rcases hsplit with hdiv | hdiv\n  · have hn : 7 ∣ -(f i - d i) := dvd_neg.mpr hdiv\n    convert hn using 1 <;> ring\n  · exact (False.elim (hpow hdiv))",
+      "rounds": 1,
+      "attempts": 0,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 0,
+      "cache_hits": 0,
+      "elapsed_seconds": 0.286,
+      "stop_reason": "no_new_proposals",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.60097919216646,
+          "heartbeat_reduction_pct": 66.34511577975847,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.31536499064164
+        },
+        "candidate": {
+          "length": 915,
+          "code_sha256": "24ea9712a1b0e9f4bbb775af3042d1f448d859ed65759d75701bae162cffbc4c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6043.663,
+            "heartbeat_reduction_pct": 66.34511577975847,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 4.077930668368936,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4852.431,
+            "heartbeat_reduction_pct": 66.09423985873202,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.6285463478416204,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4803.245,
+            "heartbeat_reduction_pct": 66.01692713602752,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.627760924398899,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    },
+    {
+      "name": "putnam_1995_a3",
+      "source": "putnambench",
+      "method": "rw_min",
+      "initial": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.60097919216646,
+          "heartbeat_reduction_pct": 66.34511577975847,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.31536499064164
+        },
+        "candidate": {
+          "length": 915,
+          "code_sha256": "24ea9712a1b0e9f4bbb775af3042d1f448d859ed65759d75701bae162cffbc4c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6043.663,
+            "heartbeat_reduction_pct": 66.34511577975847,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 4.077930668368936,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4852.431,
+            "heartbeat_reduction_pct": 66.09423985873202,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.6285463478416204,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4803.245,
+            "heartbeat_reduction_pct": 66.01692713602752,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.627760924398899,
+            "diagnostics": []
+          }
+        }
+      },
+      "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have change (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j : Fin 9 => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * (10 : ℤ) ^ (i : ℕ) := by\n    rw [hdigits_to_num]\n    calc\n      (∑ j : Fin 9, (if j = i then b j else a j) * (10 : ℤ) ^ (j : ℕ)) =\n          ∑ j : Fin 9, (a j * (10 : ℤ) ^ (j : ℕ) +\n            (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro j _\n        by_cases hj : j = i <;> simp [hj] <;> ring\n      _ = (∑ j : Fin 9, a j * (10 : ℤ) ^ (j : ℕ)) +\n          ∑ j : Fin 9, (if j = i then (b j - a j) else 0) * (10 : ℤ) ^ (j : ℕ) :=\n        Finset.sum_add_distrib\n      _ = _ := by simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]\n  have hde := (hrelation d e).mp h.1 |>.2\n  have hef := (hrelation e f).mp h.2 |>.2\n  have h₁ : ∀ i : Fin 9, 7 ∣ (e i - d i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num d := by\n    intro i\n    have := hde i\n    rw [change d e i] at this\n    convert this using 1 <;> ring\n  have h₂ : ∀ i : Fin 9, 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) + digits_to_num e := by\n    intro i\n    have := hef i\n    rw [change e f i] at this\n    convert this using 1 <;> abel\n  let A : ℤ := ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ (i : ℕ)\n  have hsum : 7 ∣ A + 9 * digits_to_num d := by\n    have := Finset.dvd_sum (s := Finset.univ) (fun i _ => h₁ i)\n    convert this using 1 <;> simp only [Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin, Int.nsmul_eq_mul,\n    Nat.cast_ofNat, A] <;> norm_num\n  have hnum : digits_to_num e = digits_to_num d + A := by\n    rw [hdigits_to_num]\n    dsimp only [A]\n    calc\n      (∑ i : Fin 9, e i * (10 : ℤ) ^ (i : ℕ)) =\n          ∑ i : Fin 9, (d i * (10 : ℤ) ^ (i : ℕ) + (e i - d i) * (10 : ℤ) ^ (i : ℕ)) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        ring\n      _ = _ := by rw [Finset.sum_add_distrib]\n  have h7d : 7 ∣ (7 : ℤ) * digits_to_num d := ⟨digits_to_num d, by exact rfl⟩\n  have hsum' : 7 ∣ A + 2 * digits_to_num d := by\n    have := dvd_sub hsum h7d\n    convert this using 1 <;> ring\n  have htotal : 7 ∣ digits_to_num e + digits_to_num d := by\n    rw [hnum]\n    convert hsum' using 1 <;> ring\n  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ (i : ℕ) := by\n    intro i\n    have hleft : 7 ∣ (f i - e i) * (10 : ℤ) ^ (i : ℕ) - digits_to_num d := by\n      have := dvd_sub (h₂ i) htotal\n      convert this using 1 <;> ring\n    have := dvd_add hleft (h₁ i)\n    convert this using 1 <;> ring\n  intro i\n  have hp : (7 : ℕ).Prime := by decide\n  have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    intro h\n    have hn : (7 : ℕ) ∣ 10 ^ (i : ℕ) := by norm_cast at h ⊢\n    have : (7 : ℕ) ∣ 10 := Nat.Prime.dvd_of_dvd_pow hp hn\n    norm_num at this\n  have hsplit : (7 : ℤ) ∣ f i - d i ∨ (7 : ℤ) ∣ (10 : ℤ) ^ (i : ℕ) := by\n    exact (Int.prime_iff_natAbs_prime.mpr (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i)\n  rcases hsplit with hdiv | hdiv\n  · have hn : 7 ∣ -(f i - d i) := dvd_neg.mpr hdiv\n    convert hn using 1 <;> ring\n  · exact (False.elim (hpow hdiv))",
+      "rounds": 1,
+      "attempts": 6,
+      "accepted_edits": 0,
+      "accepted_transitions": 0,
+      "analysis_requests": 1,
+      "lean_candidate_checks": 6,
+      "cache_hits": 0,
+      "elapsed_seconds": 21.603,
+      "stop_reason": "no_improving_proposal",
+      "site_offset": 0,
+      "final": {
+        "status": "passed",
+        "scores": {
+          "length_reduction_pct": 77.60097919216646,
+          "heartbeat_reduction_pct": 66.34511577975847,
+          "compatibility_pct": 100.0,
+          "combined_pct": 81.31536499064164
+        },
+        "candidate": {
+          "length": 915,
+          "code_sha256": "24ea9712a1b0e9f4bbb775af3042d1f448d859ed65759d75701bae162cffbc4c"
+        },
+        "primary_version": "v4.25.0",
+        "per_version": {
+          "v4.25.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 6043.663,
+            "heartbeat_reduction_pct": 66.34511577975847,
+            "cached": true,
+            "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+            "elapsed_seconds": 4.077930668368936,
+            "diagnostics": []
+          },
+          "v4.26.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4852.431,
+            "heartbeat_reduction_pct": 66.09423985873202,
+            "cached": true,
+            "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+            "elapsed_seconds": 3.6285463478416204,
+            "diagnostics": []
+          },
+          "v4.27.0": {
+            "status": "passed",
+            "passed": true,
+            "heartbeats": 4803.245,
+            "heartbeat_reduction_pct": 66.01692713602752,
+            "cached": true,
+            "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+            "elapsed_seconds": 3.627760924398899,
+            "diagnostics": []
+          }
+        }
+      },
+      "changed": false
+    }
+  ],
+  "counters": {
+    "attempts": 91,
+    "analysis_requests": 23,
+    "lean_candidate_checks": 99,
+    "cache_hits": 4,
+    "accepted_transitions": 3,
+    "elapsed_seconds": 494.164
+  },
+  "verification_accounting": "Optimizer counters exclude initial/final whole-proof validation; these checks use the existing evaluator cache.",
+  "changed": true
+}

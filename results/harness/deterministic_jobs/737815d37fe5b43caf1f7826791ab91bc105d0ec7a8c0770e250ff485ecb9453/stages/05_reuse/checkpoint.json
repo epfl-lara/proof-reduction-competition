@@ -1,0 +1,93 @@
+{
+  "name": "putnam_1964_b2",
+  "source": "putnambench",
+  "method": "reuse",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 74.74344355758267,
+      "heartbeat_reduction_pct": 97.08793565804231,
+      "compatibility_pct": 100.0,
+      "combined_pct": 90.61045973854165
+    },
+    "candidate": {
+      "length": 443,
+      "code_sha256": "4ec1d5adb2bf54611a0eb3ea63ea0cff3289bc7ab3712a3557f22c01a01d7e33"
+    },
+    "primary_version": "v4.25.0",
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3509.129,
+        "heartbeat_reduction_pct": 97.08793565804231,
+        "cached": true,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "elapsed_seconds": 3.6983195915818214,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 2774.223,
+        "heartbeat_reduction_pct": 97.93721742559315,
+        "cached": true,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "elapsed_seconds": 3.498718673363328,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 75.31356898517674,
+      "heartbeat_reduction_pct": 97.10366636833143,
+      "compatibility_pct": 100.0,
+      "combined_pct": 90.80574511783607
+    },
+    "candidate": {
+      "length": 433,
+      "code_sha256": "cacbc34fa1c8c47599ba7acb891b26c6c304e9f8a68511380c171c49c523b62c"
+    },
+    "primary_version": "v4.25.0",
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3490.173,
+        "heartbeat_reduction_pct": 97.10366636833143,
+        "cached": true,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "elapsed_seconds": 3.134622823446989,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 2760.802,
+        "heartbeat_reduction_pct": 97.9471966539865,
+        "cached": false,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "elapsed_seconds": 3.035922396928072,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem putnam_1964_b2\n(S : Type*) [Fintype S] [Nonempty S]\n(P : Finset (Set S))\n(hPP : ∀ T ∈ P, ∀ U ∈ P, T ∩ U ≠ ∅)\n(hPS : ¬∃ T : Set S, T ∉ P ∧ (∀ U ∈ P, T ∩ U ≠ ∅))\n: (P.card = 2 ^ (Fintype.card S - 1)) := by\n  classical\n  have hpair : ∀ A : Set S, A ∈ P ∨ Aᶜ ∈ P := by\n    intro A\n    by_cases hA : A ∈ P\n    · exact Or.inl hA\n    · right\n      by_contra hAc\n      have hn : ¬ ∀ U ∈ P, A ∩ U ≠ ∅ := fun h => hPS ⟨A, hA, h⟩\n      push_neg at hn\n      obtain ⟨U, hU, hAU⟩ := hn\n      \n      apply hPS\n      refine ⟨Aᶜ, hAc, ?_⟩\n      intro V hV\n      obtain ⟨x, hx⟩ := Set.nonempty_iff_ne_empty.mpr (hPP U hU V hV)\n      have hxA : x ∉ A := by\n        intro hxA\n        have : x ∈ A ∩ U := ⟨hxA, hx.1⟩\n        rw [hAU] at this\n        exact this\n      exact Set.nonempty_iff_ne_empty.mp ⟨x, by simp [hxA, hx.2]⟩\n  have hnot : ∀ A : Set S, A ∈ P → Aᶜ ∉ P := by\n    intro A hA hAc\n    have he : A ∩ Aᶜ = ∅ := by\n      ext x\n      simp\n    have h := hPP A hA Aᶜ hAc\n    rw [he] at h\n    exact h rfl\n  let Q : Finset (Set S) := Finset.univ \\ P\n  have hpq : ∀ A : Set S, A ∈ P → Aᶜ ∈ Q := by\n    intro A hA\n    simp [Q, hnot A hA]\n  have hqp : ∀ A : Set S, A ∈ Q → Aᶜ ∈ P := by\n    intro A hA\n    have hAn : A ∉ P := (Finset.mem_sdiff.mp hA).2\n    rcases hpair A with h | h\n    · exact False.elim (hAn h)\n    · exact h\n  have hcard : P.card = Q.card := by\n    refine Finset.card_bij' (fun A _ => Aᶜ) (fun A _ => Aᶜ) hpq hqp ?_ ?_\n    · intro A hA\n      simp\n    · intro A hA\n      simp\n  have hsum : P.card + Q.card = 2 ^ Fintype.card S := by\n    calc\n      P.card + Q.card = Q.card + P.card := Nat.add_comm _ _\n      _ = (Finset.univ : Finset (Set S)).card := by\n        simpa [Q] using Finset.card_sdiff_add_card_eq_card (Finset.subset_univ P)\n      _ = 2 ^ Fintype.card S := by simp\n  have hn : 0 < Fintype.card S := by positivity\n  have hp : 2 ^ (Fintype.card S - 1) * 2 = 2 ^ Fintype.card S := by\n    rw [← pow_succ, Nat.sub_add_cancel (by omega : 1 ≤ Fintype.card S)]\n  omega",
+  "initial_sha256": "4ec1d5adb2bf54611a0eb3ea63ea0cff3289bc7ab3712a3557f22c01a01d7e33",
+  "rounds": 2,
+  "attempts": 1,
+  "accepted_edits": 1,
+  "accepted_transitions": 1,
+  "analysis_requests": 2,
+  "lean_candidate_checks": 2,
+  "cache_hits": 1,
+  "seen": [
+    "cacbc34fa1c8c47599ba7acb891b26c6c304e9f8a68511380c171c49c523b62c"
+  ],
+  "plan": null,
+  "elapsed_seconds": 9.947337349876761,
+  "stop_reason": "no_new_proposals",
+  "site_offset": 0
+}

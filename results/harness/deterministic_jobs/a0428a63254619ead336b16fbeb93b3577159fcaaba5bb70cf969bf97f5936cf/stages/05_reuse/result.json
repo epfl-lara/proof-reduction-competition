@@ -1,0 +1,109 @@
+{
+  "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+  "source": "cslib",
+  "method": "reuse",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": -24.01960784313726,
+      "heartbeat_reduction_pct": 93.0631662019889,
+      "compatibility_pct": 100.0,
+      "combined_pct": 56.34785278628388
+    },
+    "candidate": {
+      "length": 506,
+      "code_sha256": "c38c12804f22f65365ac7c752a64d68bf99a6a5d174bdb2c67d51050a7b535d9"
+    },
+    "primary_version": "v4.33.0-rc2",
+    "per_version": {
+      "v4.33.0-rc2": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4150.556,
+        "heartbeat_reduction_pct": 93.0631662019889,
+        "cached": true,
+        "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+        "elapsed_seconds": 3.432806583121419,
+        "diagnostics": []
+      },
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4424.419,
+        "heartbeat_reduction_pct": 92.85954683719501,
+        "cached": true,
+        "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+        "elapsed_seconds": 3.7771873865276575,
+        "diagnostics": []
+      },
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4425.959,
+        "heartbeat_reduction_pct": 92.85603223679945,
+        "cached": true,
+        "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+        "elapsed_seconds": 3.7763958275318146,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            refine ⟨u ^ᵗᵗ t₂, ?_⟩\n            rw [h]\n            exact Red.abs (h ▸ l.wf.2.1) val_r\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' der _ ih =>\n    right\n    specialize ih rfl der\n    cases ih with\n    | inl val =>\n        obtain ⟨_, t, _⟩ := der.canonical_form_tabs val\n        exists t ^ᵗᵞ σ'\n        grind\n    | inr red =>\n        obtain ⟨t', _⟩ := red\n        exists .tapp t' σ'\n        grind\n  case let' t₁ σ t₂ τ L der h ih _ =>\n    have hb : t₂.body := ⟨L, fun x hx => (h x hx).wf.2.1⟩\n    cases ih rfl der with\n    | inl val => exact Or.inr ⟨t₂ ^ᵗᵗ t₁, Red.let_body val hb⟩\n    | inr red =>\n        obtain ⟨t₁', step⟩ := red\n        exact Or.inr ⟨t₁'.let' t₂, Red.let_bind step hb⟩\n  case inl der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inl u, Red.inl step⟩\n  case inr der _ ih =>\n    cases ih rfl der with\n    | inl val => grind\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.inr u, Red.inr step⟩\n  case case t₁ σ τ t₂ δ t₃ L der h₂ h₃ ih _ _ =>\n    have hb₂ : t₂.body := ⟨L, fun x hx => (h₂ x hx).wf.2.1⟩\n    have hb₃ : t₃.body := ⟨L, fun x hx => (h₃ x hx).wf.2.1⟩\n    cases ih rfl der with\n    | inl val =>\n        obtain ⟨u, h | h⟩ := der.canonical_form_sum val\n        · subst t₁\n          cases val with\n          | inl vu => exact Or.inr ⟨t₂ ^ᵗᵗ u, Red.case_inl vu hb₂ hb₃⟩\n        · subst t₁\n          cases val with\n          | inr vu => exact Or.inr ⟨t₃ ^ᵗᵗ u, Red.case_inr vu hb₂ hb₃⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        exact Or.inr ⟨.case u t₂ t₃, Red.case step hb₂ hb₃⟩\n  case sub der sub ih => exact ih rfl der\n  case abs σ body τ L h ih =>\n    grind\n  case tabs L h ih =>\n    grind",
+  "rounds": 1,
+  "attempts": 0,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 0,
+  "cache_hits": 0,
+  "elapsed_seconds": 0.3,
+  "stop_reason": "no_new_proposals",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": -24.01960784313726,
+      "heartbeat_reduction_pct": 93.0631662019889,
+      "compatibility_pct": 100.0,
+      "combined_pct": 56.34785278628388
+    },
+    "candidate": {
+      "length": 506,
+      "code_sha256": "c38c12804f22f65365ac7c752a64d68bf99a6a5d174bdb2c67d51050a7b535d9"
+    },
+    "primary_version": "v4.33.0-rc2",
+    "per_version": {
+      "v4.33.0-rc2": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4150.556,
+        "heartbeat_reduction_pct": 93.0631662019889,
+        "cached": true,
+        "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+        "elapsed_seconds": 3.432806583121419,
+        "diagnostics": []
+      },
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4424.419,
+        "heartbeat_reduction_pct": 92.85954683719501,
+        "cached": true,
+        "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+        "elapsed_seconds": 3.7771873865276575,
+        "diagnostics": []
+      },
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 4425.959,
+        "heartbeat_reduction_pct": 92.85603223679945,
+        "cached": true,
+        "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+        "elapsed_seconds": 3.7763958275318146,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": false
+}

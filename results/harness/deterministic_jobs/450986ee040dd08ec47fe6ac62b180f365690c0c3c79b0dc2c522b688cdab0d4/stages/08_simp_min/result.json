@@ -1,0 +1,129 @@
+{
+  "name": "Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+  "source": "arklib",
+  "method": "simp_min",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 25.63226247436774,
+      "heartbeat_reduction_pct": 27.6843782326035,
+      "compatibility_pct": 100.0,
+      "combined_pct": 51.105546902323745
+    },
+    "candidate": {
+      "length": 1088,
+      "code_sha256": "8effe3a29f9e7e632df977e11bc28cc544640dca17d4cec1ee0e01faac45931b"
+    },
+    "primary_version": "v4.31.0",
+    "per_version": {
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 11318.878,
+        "heartbeat_reduction_pct": 27.6843782326035,
+        "cached": true,
+        "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+        "elapsed_seconds": 6.286945892497897,
+        "diagnostics": []
+      },
+      "v4.30.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 11997.118,
+        "heartbeat_reduction_pct": 29.553767996656756,
+        "cached": true,
+        "environment_fingerprint": "554e1850835d469c72f5efbcce1fb186712bb08829fcd9e0fd75dee8a3bc2f6c",
+        "elapsed_seconds": 7.030288513749838,
+        "diagnostics": []
+      },
+      "v4.29.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 13444.753,
+        "heartbeat_reduction_pct": 28.333908396099396,
+        "cached": true,
+        "environment_fingerprint": "1ab71abdd0714f4a6c78175e8ab5280292bd128b28cdaaa5243d707457481218",
+        "elapsed_seconds": 7.565037447959185,
+        "diagnostics": []
+      },
+      "v4.28.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 16001.537,
+        "heartbeat_reduction_pct": 26.29040889876748,
+        "cached": true,
+        "environment_fingerprint": "c8aaaf089c5202bcdefbb16b05d868bac5b8c3dc6197b5a1349d3e16a21dc442",
+        "elapsed_seconds": 10.624666383489966,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by\n  unfold fiberwiseClose at h_fw_dist_lt\n  unfold hammingClose\n  let d_fw := fiberwiseDistance 𝔽q β (i := i) steps h_i_add_steps f\n  let C_i := (BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  let d_H := Code.distFromCode f C_i\n  let d_i := BBF_CodeDistance ℓ 𝓡 (⟨i, by omega⟩)\n  let d_i_plus_steps := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩\n\n  have h_d_i_gt_0 : d_i > 0 := by\n    dsimp only [BBF_CodeDistance, d_i]\n\n\n    omega\n\n  have h_C_i_nonempty : Nonempty C_i := by\n    simp only [nonempty_subtype]\n    exact Submodule.nonempty (BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i.val, by omega⟩)\n\n  obtain ⟨g', h_g'_mem, h_g'_min_card⟩ : ∃ g' ∈ C_i, d_fw\n    = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard := by\n    let S := (fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps\n      f g).ncard) '' Set.univ\n    have hS_nonempty : S.Nonempty := by\n      refine Set.image_nonempty.mpr ?_\n\n      exact Set.univ_nonempty\n    have h_sInf_mem : sInf S ∈ S := Nat.sInf_mem hS_nonempty\n\n\n    rcases h_sInf_mem with ⟨g_subtype, _, h_eq⟩\n    exact ⟨g_subtype.val, g_subtype.property, by exact id (Eq.symm h_eq)⟩\n\n  have h_dist_le_fw_dist_times_fiber_size : (hammingDist f g' : ℕ∞) ≤ d_fw * 2 ^ steps := by\n    change (Δ₀(f, g') : ℕ∞) ≤ ↑d_fw * ((2 ^ steps : ℕ) : ℕ∞)\n    rw [←ENat.coe_mul, ENat.coe_le_coe, h_g'_min_card]\n    set ΔH := Finset.filter (fun x => f x ≠ g' x) Finset.univ\n\n\n    set Y_bad := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g'\n    simp only at *\n\n\n    have hFinType_Y_bad : Fintype Y_bad := by exact Fintype.ofFinite ↑Y_bad\n    have h_ΔH_subset_bad_fiber_points : ΔH ⊆ Finset.biUnion Y_bad.toFinset\n        (t := fun y => ((qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps)\n          (h_i_add_steps := by apply Nat.lt_add_of_pos_right_of_le; omega) (y := y)) ''\n          (Finset.univ : Finset (Fin ((2:ℕ)^steps)))).toFinset) := by\n      intro x hx_in_ΔH;\n      simp only [mem_filter, ΔH] at hx_in_ΔH\n      let y_of_x := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x\n      apply Finset.mem_biUnion.mpr; use y_of_x\n      have h_elemenet_Y_bad : y_of_x ∈ Y_bad.toFinset :=\n        Set.mem_toFinset.mpr ⟨x, rfl, hx_in_ΔH.2⟩\n      simp only [h_elemenet_Y_bad]\n\n      set qMapFiber := qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps)\n        (h_i_add_steps := by apply Nat.lt_add_of_pos_right_of_le; omega) (y := y_of_x)\n      simp only [coe_univ, Set.image_univ, Set.toFinset_range, mem_image, mem_univ, true_and]\n      use (pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps)\n        (h_i_add_steps := by omega) (x := x))\n      exact is_fiber_iff_generates_quotient_point 𝔽q β i steps (by omega)\n        (x := x) (y := y_of_x).mp (by rfl)\n    apply (Finset.card_le_card h_ΔH_subset_bad_fiber_points).trans\n    apply Finset.card_biUnion_le.trans\n    calc\n      _ ≤ ∑ y ∈ Y_bad.toFinset, 2 ^ steps := by\n        apply Finset.sum_le_sum\n        intro y hy\n        simpa only [coe_univ, Set.image_univ, Set.toFinset_range,\n          Fintype.card_fin, Finset.card_univ] using\n          (Finset.card_image_le (s := Finset.univ)\n            (f := qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩)\n              (steps := steps) (h_i_add_steps := by have := NeZero.pos 𝓡; dsimp; omega) (y := y)))\n      _ = _ := by simp only [sum_const, smul_eq_mul, Set.toFinset_card, ← Nat.card_coe_set_eq, Nat.card_eq_fintype_card]\n\n  have h_dist_bridge : d_H ≤ d_fw * 2 ^ steps := by\n    apply le_trans (a := d_H) (c := d_fw * 2 ^ steps) (b := hammingDist f g')\n    ·\n      simp only [distFromCode, SetLike.mem_coe, hammingDist, ne_eq, d_H];\n      apply sInf_le\n      use g'\n    · exact h_dist_le_fw_dist_times_fiber_size\n\n  have h_fw_bound : 2 * d_fw ≤ d_i_plus_steps - 1 := by\n    exact Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt)\n\n  have h_algebraic_identity : (d_i_plus_steps - 1) * 2 ^ steps = d_i - 1 := by\n    dsimp only [BBF_CodeDistance, Nat.add_one_sub_one, d_i_plus_steps, d_i]\n    rw [Nat.sub_mul, ←Nat.pow_add, ←Nat.pow_add];\n    have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by\n      rw [Nat.sub_add_eq_sub_sub_rev (h1 := by omega) (h2 := by omega),\n        Nat.add_sub_cancel (n := i) (m := steps)]\n    have h2 : (ℓ - (↑i + steps) + steps) = ℓ - i := by\n      rw [Nat.sub_add_eq_sub_sub_rev (h1 := by omega) (h2 := by omega),\n        Nat.add_sub_cancel (n := i) (m := steps)]\n    rw [h1, h2]\n\n  have h_dH_ne_top : d_H ≠ ⊤ := by\n    simp only [ne_eq]\n    rw [Code.distFromCode_eq_top_iff_empty f C_i]\n    exact Set.nonempty_iff_ne_empty'.mp h_C_i_nonempty\n\n  let d_H_nat := ENat.toNat d_H\n  have h_dH_eq : d_H = d_H_nat := (ENat.coe_toNat h_dH_ne_top).symm\n\n  have h_final_inequality : 2 * d_H_nat ≤ d_i - 1 := by\n    have h_bridge_nat : d_H_nat ≤ d_fw * 2 ^ steps := by\n        rw [←ENat.coe_le_coe]\n        exact le_of_eq_of_le (id (Eq.symm h_dH_eq)) h_dist_bridge\n    calc 2 * d_H_nat\n      _ ≤ 2 * (d_fw * 2 ^ steps) := by gcongr\n      _ = (2 * d_fw) * 2 ^ steps := by rw [mul_assoc]\n      _ ≤ (d_i_plus_steps - 1) * 2 ^ steps := by gcongr;\n      _ = d_i - 1 := h_algebraic_identity\n\n  simp only [d_H, d_H_nat] at h_dH_eq\n  rw [h_dH_eq]\n  change ((2 : ℕ) : ℕ∞) * ↑Δ₀(f, C_i).toNat < ↑(BBF_CodeDistance ℓ 𝓡 ⟨↑i, by omega⟩)\n  rw [←ENat.coe_mul, ENat.coe_lt_coe]\n  apply Nat.lt_of_le_pred (n := 2 * Δ₀(f, C_i).toNat) (m := d_i) (h := h_d_i_gt_0)\n    (h_final_inequality)",
+  "rounds": 2,
+  "attempts": 32,
+  "accepted_edits": 1,
+  "accepted_transitions": 1,
+  "analysis_requests": 2,
+  "lean_candidate_checks": 35,
+  "cache_hits": 1,
+  "elapsed_seconds": 243.587,
+  "stop_reason": "trial_limit",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 25.76896787423103,
+      "heartbeat_reduction_pct": 27.822992654445088,
+      "compatibility_pct": 100.0,
+      "combined_pct": 51.19732017622537
+    },
+    "candidate": {
+      "length": 1086,
+      "code_sha256": "92930a83c954c0ed7cf5c8e46e9232fc5c6d789829022094fba8c449d2a7eedd"
+    },
+    "primary_version": "v4.31.0",
+    "per_version": {
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 11297.182,
+        "heartbeat_reduction_pct": 27.822992654445088,
+        "cached": true,
+        "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+        "elapsed_seconds": 6.476076135411859,
+        "diagnostics": []
+      },
+      "v4.30.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 11976.181,
+        "heartbeat_reduction_pct": 29.67670858617617,
+        "cached": false,
+        "environment_fingerprint": "554e1850835d469c72f5efbcce1fb186712bb08829fcd9e0fd75dee8a3bc2f6c",
+        "elapsed_seconds": 6.938711931928992,
+        "diagnostics": []
+      },
+      "v4.29.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 13422.326,
+        "heartbeat_reduction_pct": 28.453453577509624,
+        "cached": false,
+        "environment_fingerprint": "1ab71abdd0714f4a6c78175e8ab5280292bd128b28cdaaa5243d707457481218",
+        "elapsed_seconds": 7.345600755885243,
+        "diagnostics": []
+      },
+      "v4.28.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 15953.607,
+        "heartbeat_reduction_pct": 26.511193983442915,
+        "cached": false,
+        "environment_fingerprint": "c8aaaf089c5202bcdefbb16b05d868bac5b8c3dc6197b5a1349d3e16a21dc442",
+        "elapsed_seconds": 10.26544040441513,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": true
+}

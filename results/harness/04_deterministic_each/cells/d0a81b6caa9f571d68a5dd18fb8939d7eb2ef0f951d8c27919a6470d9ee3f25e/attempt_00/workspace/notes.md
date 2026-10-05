@@ -1,0 +1,16 @@
+- Initial compressed induction from 1, direct recursive rewrite and probability monotonicity: failed because uninstantiated probability lemmas do not match predicates with binders; also needed ENNReal.coe_one.
+- Explicit predicate fixes base probability matching; primary also needs ENNReal.coe_natCast. Forward split rewrite still fails to unfold semireducible predicate. Try inverse rewrite at split probability goal instead.
+- Inverse split rewrite: passes v4.30/v4.29, primary rejects partially-applied Fin.init. Use Fin.init_def (function equality) instead of unfolding full-application Fin.init.
+- Valid compressed induction + inverse split: 193 tokens, 2642.569 primary heartbeats; score 85.676136 (L85.7354 H71.2930 C100).
+- Deterministic cleanup of valid1: unchanged, score 85.676136.
+- Next: direct Nat.le_induction application; rewrite base goal rather than implication; inverse base sampling lemma; exact after focused rewriting to avoid simpa transparency limitations and normalization.
+- Direct recursor and exact-after-rewriting: all-version valid. 146 tokens, 2251.419 HB, score 88.250449.
+- Deterministic valid2 cleanup replaced exact hp with assumption: 144 tokens, 2215.692 HB, score 88.429093.
+- Next: explicit F/n in probability/recursion rewrites, simp only rather than simp_rw, term for monotonicity, remove unused classical.
+- Explicit rewrite parameters + no classical + monotonicity term: valid but regressive, 173 tokens / 2270.742 HB / score 87.515290. Retain cleaned valid2 (88.429093) unless cleanup improves this.
+- Explicit-parameter cleanup unchanged (regressive).
+- Next structural variant: establish recursive probability comparison by pointwise monotonicity, rewriting only the sampled word-distance hypothesis; small proof-term extensionality and inferred C.
+- Pointwise probability comparison + compact extensionality + inferred C: valid; 135 tokens / 2108.617 HB / score 89.038551.
+- Pointwise cleanup unchanged. Compare compact inferred-C/term-extensionality proof with direct probability simplification again (without extra monotonicity step).
+- Compact direct simp variant: valid, 127 tokens / 2153.917 HB / score 89.071609. Gain only 0.033057; host did not replace saved pointwise best (89.038551). No substantial remaining structural changes identified.
+- Final direct-simp cleanup unchanged. Stopping: induction/sampling blocks reduced to existing lemmas; explicit-parameter and probability-comparison variants now give only marginal differences. Select host-saved pointwise best.

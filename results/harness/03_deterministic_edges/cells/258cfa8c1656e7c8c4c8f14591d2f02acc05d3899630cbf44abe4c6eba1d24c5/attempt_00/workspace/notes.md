@@ -1,0 +1,26 @@
+# Optimization notes
+- Initial rewrite via `Set.Intersecting.is_max_iff_card_eq` passes both versions: 99 tokens, 1207.604 primary heartbeats, score 97.784541.
+- Search client returned no source matches; inspecting pinned mathlib sources via rg/sed works.
+- Remaining idea: rewrite goal under multiplication by 2 and invoke cardinality theorem directly, avoiding arithmetic automation.
+- Direct multiplication cancellation plus rewriting to the library theorem: 86 tokens, 890.460 heartbeats, score 98.119323; passes both.
+- Inlined intersecting proof and used `Nat.two_pos`: 71 tokens, 685.137 heartbeats, score 98.461182; passes both.
+- Maximality as a pure term is valid but regressive: 74 tokens, 598.875 heartbeats, score 98.428031. Keep tactic maximality as baseline.
+- Remove classical, dotted antisymmetry, and mt conversion: valid, 68 tokens, 782.654 heartbeats, score 98.491220; feedback did not accept as best.
+- Set-specific negated disjointness iff for both conversions: 68 tokens, 632.981 heartbeats, score 98.532622, accepted best.
+- Next: compose cardinal equalities directly to avoid two rewrite traversals.
+- Direct composition of arithmetic equalities regressed: 71 tokens, 606.177 heartbeats, score 98.483024.
+- Next: normalize both hypotheses from empty intersections to disjointness once, eliminating per-element iff conversions.
+- Global disjointness normalization initially failed (`simp` needs `ne_eq`); adding it passes: 61 tokens, 667.730 heartbeats, score 98.656039.
+- Try focused automation only for the reverse-inclusion consequence of maximality.
+- Focused `grind [Set.Intersecting]` after antisymmetry is better: 42 tokens, 1104.188 heartbeats, score 98.896386.
+- `grind only [Set.Intersecting]` fails because it does not expand Finset subset or coe membership. Default grind had done that.
+- `grind [Set.Intersecting]` proves entire maximality, eliminating manual antisymmetry: 36 tokens, 1130.130 heartbeats, score 99.003235.
+- Next: leave both library side conditions to focused grind, without global disjointness normalization.
+- Both raw side conditions with grind failed on maximality (also with reversed disjoint iff orientation); normalized disjointness avoids the missed instantiations.
+- `simp_all only` on both side conditions followed by grind is valid but regressive: 31 tokens, 1692.383 heartbeats, score 98.942727. Try simplifying just the goals instead.
+- Goal-only simplification passes: 31 tokens, 1317.180 heartbeats, score 99.046515, but feedback retained prior best.
+- Adding hPP to goal simplification did not help: 32 tokens, 1360.096 heartbeats, score 99.015639; baseline retained.
+- Try removing unused intersecting hypothesis before the single normalized maximality grind.
+- Clearing hPP after applying the cardinal theorem: 37 tokens, 990.248 heartbeats, score 99.022925; baseline retained.
+- Goal-only normalization with apply (instead of refine) is accepted best: 30 tokens, 1333.328 heartbeats, score 99.061052; both pinned versions pass.
+- Stopping locally: the large counting argument is replaced by the library cardinality theorem; tested explicit, global-normalization, goal-normalization, arithmetic-composition and restricted/default automation variants. Further marginal rearrangements do not justify more checks.

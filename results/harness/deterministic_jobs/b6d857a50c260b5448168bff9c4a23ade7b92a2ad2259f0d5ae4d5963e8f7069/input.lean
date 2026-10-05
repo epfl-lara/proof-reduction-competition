@@ -1,0 +1,19 @@
+lemma fundamental_theorem_of_variational_calculus' {f : Y → V}
+    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]
+    [OpensMeasurableSpace Y]
+    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :
+    f = 0 := by
+  funext x
+  change f x = 0
+  refine (inner_self_eq_zero' (𝕜 := ℝ)).mp
+    (le_antisymm (le_of_not_gt fun hp => ?_) real_inner_self_nonneg')
+  have hc := Continuous.inner' (𝕜 := ℝ) f (fun _ => f x) hf continuous_const
+  obtain ⟨φ, hs, hk, hd, hn, hφ⟩ := exists_contDiff_tsupport_subset (n := ⊤)
+    ((isOpen_lt continuous_const hc).mem_nhds hp)
+  have hz := hg (fun y => φ y • f x)
+    ⟨hd.smul contDiff_const, hk.smul_right⟩
+  simp only [inner_smul_right'] at hz
+  exact hz.not_gt <| (hd.continuous.fun_mul hc).integral_pos_of_hasCompactSupport_nonneg_nonzero
+    hk.mul_right (fun y => mul_nonneg_iff_pos_imp_nonneg.mpr
+      ⟨fun hy => (hs (subset_tsupport _ hy.ne')).le, fun _ => (hn ⟨y, rfl⟩).1⟩)
+    (mul_ne_zero (hφ.trans_ne one_ne_zero) hp.ne')

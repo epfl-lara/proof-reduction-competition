@@ -1,0 +1,88 @@
+theorem fold_advances_evaluation_poly
+  (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡)
+  (coeffs : Fin (2 ^ (ℓ - ↑i)) → L) (r_chal : L) :
+  let P_i : L[X] := intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i, by
+    exact Nat.lt_trans (n := i) (k := ℓ+1) (m := ℓ) (h₁ := i.isLt) (by exact Nat.lt_add_one ℓ)
+  ⟩) coeffs
+  let f_i := fun (x : (sDomain 𝔽q β h_ℓ_add_R_rate)
+      ⟨i, by exact Nat.lt_trans (n := i) (k := r) (m := ℓ) (h₁ := by omega) (by omega)⟩) =>
+    P_i.eval (x.val : L)
+  let f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)
+  let new_coeffs := fun j : Fin (2^(ℓ - (i + 1))) =>
+    (1 - r_chal) * (coeffs ⟨j.val * 2, by
+      rw [←Nat.add_zero (j.val * 2)]
+      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))
+        (i := 0) (by omega) (by omega)
+    ⟩) +
+    r_chal * (coeffs ⟨j.val * 2 + 1, by
+      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))
+        (i := 1) (by omega) (by omega)
+    ⟩)
+  let P_i_plus_1 :=
+    intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i+1, by omega⟩) new_coeffs
+  ∀ (y : (sDomain 𝔽q β h_ℓ_add_R_rate)
+    ⟨i+1, by omega⟩), f_i_plus_1 y = P_i_plus_1.eval y.val := by
+  simp only
+  intro y
+  set fiberMap := qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := 1)
+    (h_i_add_steps := by simp only; omega) (y := y)
+  set x₀ := fiberMap 0
+  set x₁ := fiberMap 1
+  set P_i := intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i, by omega⟩) coeffs
+  set new_coeffs := fun j : Fin (2^(ℓ - (i + 1))) =>
+    (1 - r_chal) * (coeffs ⟨j.val * 2, by
+      rw [←Nat.add_zero (j.val * 2)]
+      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))
+        (i := 0) (by omega) (by omega)
+    ⟩) +
+    r_chal * (coeffs ⟨j.val * 2 + 1, by
+      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))
+        (i := 1) (by omega) (by omega)
+    ⟩)
+  have h_eval_qMap (k : Fin 2) :
+      (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval (fiberMap k).val = y := by
+    have h := iteratedQuotientMap_k_eq_1_is_qMap 𝔽q β h_ℓ_add_R_rate i (by omega) (fiberMap k)
+    have h_res := generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega)
+      (x := fiberMap k) (y := y) (by exact ⟨k, rfl⟩)
+    exact (congrArg Subtype.val h).symm.trans (congrArg Subtype.val h_res).symm
+  have h0 := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y (0 : Fin 2)
+  have h1 := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y (1 : Fin 2)
+  have h_fiber_diff : x₁.val - x₀.val = 1 := by
+    simp only [x₀, x₁, fiberMap] at h0 h1 ⊢
+    rw [h1, h0]
+    simp [Fin2ToF2, get_sDomain_first_basis_eq_1]
+  set P_i_plus_1 :=
+    intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i+1, by omega⟩) new_coeffs
+  set P₀ := evenRefinement 𝔽q β h_ℓ_add_R_rate i coeffs
+  set P₁ := oddRefinement 𝔽q β h_ℓ_add_R_rate i coeffs
+  have h_P_i_eval := evaluation_poly_split_identity 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ coeffs
+  -- Equation 39 : P^(i)(X) = P₀^(i+1)(q^(i)(X)) + X · P₁^(i+1)(q^(i)(X))
+  have h_equation (x : sDomain 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩)
+      (hx : (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval x.val = y) :
+      P_i.eval x.val = P₀.eval y.val + x.val * P₁.eval y.val := by
+    simp only [h_P_i_eval, Fin.eta, Polynomial.eval_add, eval_comp, hx,
+      Polynomial.eval_mul, Polynomial.eval_X, P_i, P₀, P₁]
+  set f_i := fun (x : (sDomain 𝔽q β h_ℓ_add_R_rate) ⟨i, by omega⟩) => P_i.eval (x.val : L)
+  set f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)
+  calc f_i_plus_1 y
+    = f_i x₀ * ((1 - r_chal) * x₁.val - r_chal) +
+        f_i x₁ * (r_chal - (1 - r_chal) * x₀.val) := rfl
+    _ = P₀.eval y.val * (1 - r_chal) + P₁.eval y.val * r_chal := by
+      simp only [f_i]
+      rw [h_equation x₀ (h_eval_qMap 0), h_equation x₁ (h_eval_qMap 1)]
+      linear_combination (P₀.eval y.val * (1 - r_chal) + P₁.eval y.val * r_chal) * h_fiber_diff
+    _ = P_i_plus_1.eval y.val := by
+      simp only [P_i_plus_1, P₀, P₁, new_coeffs, evenRefinement, oddRefinement,
+        intermediateEvaluationPoly]
+      -- ⊢ eval y (C (1-r) * ∑...) + eval y (C r * ∑...) = eval y (∑...)
+      conv_lhs => enter [1]; rw [mul_comm, ←Polynomial.eval_C_mul]
+      conv_lhs => enter [2]; rw [mul_comm, ←Polynomial.eval_C_mul]
+      rw [←Polynomial.eval_add]
+      -- ⊢ poly_left.eval y = poly_right.eval y
+      congr
+      simp_rw [mul_sum, ←Finset.sum_add_distrib]
+      -- We now prove that the terms inside the sums are equal for each index.
+      apply Finset.sum_congr rfl
+      intro j _
+      simp only [Polynomial.C_mul, Polynomial.C_add]
+      ring

@@ -1,0 +1,97 @@
+```lean
+theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)
+    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)
+    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)
+  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)
+    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :
+  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by
+  unfold fiberwiseClose at h_fw_dist_lt
+  unfold hammingClose
+  let d_fw := fiberwiseDistance 𝔽q β (i := i) steps h_i_add_steps f
+  let C_i := (BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)
+  let d_H := Code.distFromCode f C_i
+  let d_i := BBF_CodeDistance ℓ 𝓡 (⟨i, by omega⟩)
+  let d_i_plus_steps := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩
+
+  have h_d_i_gt_0 : d_i > 0 := by
+    dsimp only [BBF_CodeDistance, d_i]
+    omega
+
+  obtain ⟨g', h_g'_mem, h_g'_min_card⟩ : ∃ g' ∈ C_i, d_fw
+    = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard := by
+    let S := (fun g : C_i => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ
+    have hS : S.Nonempty := Set.image_nonempty.mpr Set.univ_nonempty
+    rcases Nat.sInf_mem hS with ⟨g, _, h⟩
+    exact ⟨g.val, g.property, h.symm⟩
+
+  have h_dist_le_fw_dist_times_fiber_size : (hammingDist f g' : ℕ∞) ≤ d_fw * 2 ^ steps := by
+    change (Δ₀(f, g') : ℕ∞) ≤ ↑d_fw * ((2 ^ steps : ℕ) : ℕ∞)
+    rw [← ENat.coe_mul, ENat.coe_le_coe, h_g'_min_card]
+    let ΔH := Finset.filter (fun x => f x ≠ g' x) Finset.univ
+    let Y := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g'
+    let _ : Fintype Y := Fintype.ofFinite Y
+    let Φ : {x // x ∈ ΔH} → Y × Fin (2 ^ steps) := fun x =>
+      (⟨iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x.val, by
+        change ∃ z, iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps z =
+          iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x.val ∧ f z ≠ g' z
+        refine ⟨x.val, rfl, ?_⟩
+        simpa only [ΔH, Finset.mem_filter, Finset.mem_univ, true_and] using x.property⟩,
+        pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps)
+          (h_i_add_steps := h_i_add_steps) (x := x.val))
+    let F : Y × Fin (2 ^ steps) →
+        sDomain 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ := fun p =>
+      qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps)
+        (h_i_add_steps := fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := p.1.val) p.2
+    have hrec (x : {x // x ∈ ΔH}) : F (Φ x) = x.val := by
+      dsimp [F, Φ]
+      exact (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps
+        (x := x.val) (y := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps
+          h_i_add_steps x.val)).mp rfl
+    have hinj : Function.Injective Φ := by
+      intro x z h
+      exact Subtype.ext ((hrec x).symm.trans ((congrArg F h).trans (hrec z)))
+    have hc := Fintype.card_le_of_injective Φ hinj
+    rw [Fintype.card_coe, Fintype.card_prod, Fintype.card_fin] at hc
+    calc
+      _ ≤ Fintype.card Y * 2 ^ steps := hc
+      _ = Y.ncard * 2 ^ steps := by rw [← _root_.Nat.card_coe_set_eq, Nat.card_eq_fintype_card]
+
+  have h_dist_bridge : d_H ≤ d_fw * 2 ^ steps := by
+    exact (Code.distFromCode_le_dist_to_mem f g' h_g'_mem).trans
+      h_dist_le_fw_dist_times_fiber_size
+
+  have h_fw_bound : 2 * d_fw ≤ d_i_plus_steps - 1 :=
+    Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt)
+
+  have h_algebraic_identity : (d_i_plus_steps - 1) * 2 ^ steps = d_i - 1 := by
+    dsimp only [BBF_CodeDistance, Nat.add_one_sub_one, d_i_plus_steps, d_i]
+    rw [Nat.sub_mul, ←Nat.pow_add, ←Nat.pow_add]
+    have hsub (a : ℕ) (ha : ↑i + steps ≤ a) :
+        a - (↑i + steps) + steps = a - ↑i := by omega
+    rw [hsub (ℓ + 𝓡) (h_i_add_steps.trans (Nat.le_add_right ℓ 𝓡)), hsub ℓ h_i_add_steps]
+
+  have h_dH_ne_top : d_H ≠ ⊤ := by
+    intro h
+    rw [h] at h_dist_bridge
+    exact (not_le_of_gt (ENat.coe_lt_top (d_fw * 2 ^ steps))) h_dist_bridge
+
+  let d_H_nat := ENat.toNat d_H
+  have h_dH_eq : d_H = d_H_nat := (ENat.coe_toNat h_dH_ne_top).symm
+
+  have h_final_inequality : 2 * d_H_nat ≤ d_i - 1 := by
+    have h_bridge_nat : d_H_nat ≤ d_fw * 2 ^ steps :=
+      ENat.coe_le_coe.mp (h_dH_eq ▸ h_dist_bridge)
+    calc 2 * d_H_nat
+      _ ≤ 2 * (d_fw * 2 ^ steps) := Nat.mul_le_mul_left 2 h_bridge_nat
+      _ = (2 * d_fw) * 2 ^ steps := by rw [mul_assoc]
+      _ ≤ (d_i_plus_steps - 1) * 2 ^ steps := Nat.mul_le_mul_right _ h_fw_bound
+      _ = d_i - 1 := h_algebraic_identity
+
+  simp only [d_H, d_H_nat] at h_dH_eq
+  rw [h_dH_eq]
+  change ((2 : ℕ) : ℕ∞) * ↑Δ₀(f, C_i).toNat <
+    ↑(BBF_CodeDistance ℓ 𝓡 ⟨↑i, by omega⟩)
+  rw [←ENat.coe_mul, ENat.coe_lt_coe]
+  apply Nat.lt_of_le_pred (n := 2 * Δ₀(f, C_i).toNat) (m := d_i) (h := h_d_i_gt_0)
+    h_final_inequality
+```

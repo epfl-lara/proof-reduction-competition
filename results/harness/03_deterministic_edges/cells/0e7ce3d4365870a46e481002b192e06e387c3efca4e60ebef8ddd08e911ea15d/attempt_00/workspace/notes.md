@@ -1,0 +1,16 @@
+- First rewrite: induction on reduction evidence (rather than recursive theorem), explicit joins/constructors and obtain-rfl. One shadowing failure repaired by hx. Valid all four versions: 351 tokens, 379.316k heartbeats, score 62.11765.
+- Seed: 408 tokens, score 33.51376. Saved seed.lean.
+- Factored reflexive goals with a saved copy of h; after fixing IH argument order and naming par hypotheses before dependent cases, 268 tokens / 406.460k HB / score 68.26162.
+- Grouped symmetric root-par cases with `apply symm`, shared irreducibility and constructor proofs: 212 tokens / 429.542k HB / score 72.29212.
+- Removed h copy, reconstruct reflexive branch by constructor: 208 tokens / 426.189k HB / score 72.70047. Important: `all_goals` executes whole sequence per initial goal; after cases, subsequent tactics affect only first remaining goal. Refl branch then identical-root branch closed sequentially.
+- Structural induction on SKI source then cases on h: valid, 243 tokens / 583.538k HB / score 66.04438; worse than evidence induction.
+- Anonymous assumptions `‹_›`: 204 tokens / 429.740k HB / score 72.94255 (new best).
+- Clear unused IHs in overlap branches: 207 tokens / 426.857k HB / 72.76628, not worth token cost.
+- Rewrite head equality in goal instead of obtain-rfl: 212 tokens / 459.552k HB / 71.56936, worse.
+- Orientation-independent `refine`/first-constructor joins: abandoned. More tokens; unsolved witness metas need explicit witnesses, and S-congruence needed type propagation. Symmetry is clearer and efficient.
+- Named IHs only in par.par and retained conjunction projections: 196 tokens / 428.456k HB / 73.62867.
+- Focused `first` for the three normalized overlap types: 186 tokens / 459.697k HB / 73.69527 (best).
+- Direct cases on I-reduction: 187 tokens / 494.056k HB / 72.78587, worse than irreducibility lemma.
+- Short `case' par` selector does not select desired par.* branches; invalid, discarded.
+- Let-patterns instead of obtain for recursive joins: 186 tokens / 491.501k HB / 72.92930, worse.
+Stopping: structural alternatives and local elaboration variants tested; keep highest all-version score.

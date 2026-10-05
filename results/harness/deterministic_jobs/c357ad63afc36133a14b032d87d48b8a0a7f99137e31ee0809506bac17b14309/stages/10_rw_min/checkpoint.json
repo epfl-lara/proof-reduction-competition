@@ -1,0 +1,104 @@
+{
+  "name": "FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time",
+  "source": "physlib",
+  "method": "rw_min",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 28.348397699260474,
+      "heartbeat_reduction_pct": 26.595113971128715,
+      "compatibility_pct": 100.0,
+      "combined_pct": 51.647837223463064
+    },
+    "candidate": {
+      "length": 872,
+      "code_sha256": "f4292bc49e31bbd0d1f17996f066f79a070ab2eeb407c7f9a2c95b17372edfaa"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 30872.867,
+        "heartbeat_reduction_pct": 26.595113971128715,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 4.600478921085596,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 28.348397699260474,
+      "heartbeat_reduction_pct": 26.595113971128715,
+      "compatibility_pct": 100.0,
+      "combined_pct": 51.647837223463064
+    },
+    "candidate": {
+      "length": 872,
+      "code_sha256": "f4292bc49e31bbd0d1f17996f066f79a070ab2eeb407c7f9a2c95b17372edfaa"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 30872.867,
+        "heartbeat_reduction_pct": 26.595113971128715,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 4.600478921085596,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp}\n    (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * b) =\n    ι ([ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by\n  let spanSet : Submodule ℂ 𝓕.FieldOpFreeAlgebra := Submodule.span ℂ (Set.range ofCrAnListFBasis)\n  let p (a b : 𝓕.FieldOpFreeAlgebra) (_ : a ∈ spanSet) (_ : b ∈ spanSet) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * b) =\n      ι ([ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b))\n  change p a b (Basis.mem_span _ a) (Basis.mem_span _ b)\n  apply Submodule.span_induction₂\n  · rintro x y ⟨φs', rfl⟩ ⟨φs, rfl⟩\n    let sl := List.insertionSort crAnTimeOrderRel (φs' ++ φs)\n    let before := List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) sl\n    let both := fun c => decide (crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ)\n    let bothL := List.filter both φs'\n    let bothR := List.filter both φs\n    let after := List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬crAnTimeOrderRel c φ) sl\n    let u := ι (ofCrAnListF before)\n    let v := ι (ofCrAnListF bothL)\n    let w := ι (ofCrAnListF bothR)\n    let z := ι (ofCrAnListF after)\n    simp only [ofListBasis_eq_ofList, map_mul, p]\n    calc _\n      /- Split the commutator. -/\n      _ = crAnTimeOrderSign (φs' ++ φ :: ψ :: φs) •\n        ι (ofCrAnListF (crAnTimeOrderList (φs' ++ φ :: ψ :: φs))) -\n          crAnTimeOrderSign (φs' ++ ψ :: φ :: φs) •\n        𝓢(𝓕.crAnStatistics φ, 𝓕.crAnStatistics ψ) •\n          ι (ofCrAnListF (crAnTimeOrderList (φs' ++ ψ :: φ :: φs))) := by\n        conv_lhs =>\n          rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton,\n            superCommuteF_ofCrAnListF_ofCrAnListF]\n          simp [mul_sub, sub_mul, ← ofCrAnListF_append]\n          rw [timeOrderF_ofCrAnListF, timeOrderF_ofCrAnListF]\n        simp only [map_smul, sub_right_inj]\n        module\n      /- Simplify the signs. -/\n      _ = crAnTimeOrderSign (φs' ++ φ :: ψ :: φs) •\n        (ι (ofCrAnListF (crAnTimeOrderList (φs' ++ φ :: ψ :: φs))) -\n        𝓢(𝓕.crAnStatistics φ, 𝓕.crAnStatistics ψ) •\n          ι (ofCrAnListF (crAnTimeOrderList (φs' ++ ψ :: φ :: φs)))) := by\n        rw [crAnTimeOrderSign_swap_eq_time hφψ hψφ]\n        module\n      /- Splitting the time-ordered lists. -/\n      _ = crAnTimeOrderSign (φs' ++ [φ, ψ] ++ φs) •\n        (u *\n            v *\n            ι (ofCrAnListF [φ, ψ]) *\n            w *\n            z -\n        𝓢(𝓕.crAnStatistics φ, 𝓕.crAnStatistics ψ) •\n        u *\n            v *\n            ι (ofCrAnListF [ψ, φ]) *\n            w *\n            z) := by\n        have h1 := insertionSort_of_eq_list 𝓕.crAnTimeOrderRel φ φs' [φ, ψ] φs\n          (by simp_all)\n        rw [crAnTimeOrderList, show φs' ++ φ :: ψ :: φs = φs' ++ [φ, ψ] ++ φs by simp, h1]\n        have h2 := insertionSort_of_eq_list 𝓕.crAnTimeOrderRel φ φs' [ψ, φ] φs\n          (by simp_all)\n        rw [crAnTimeOrderList, show φs' ++ ψ :: φ :: φs = φs' ++ [ψ, φ] ++ φs by norm_num, h2]\n        simp only [ofCrAnListF_append, map_mul, Algebra.smul_mul_assoc, before, bothL, bothR, after, sl, both, u, v, w, z]\n      _ = crAnTimeOrderSign (φs' ++ [φ, ψ] ++ φs) •\n          (u *\n            v *\n            (ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕.crAnStatistics φ, 𝓕.crAnStatistics ψ) •\n              ι (ofCrAnListF [ψ, φ])) *\n            w *\n            z) := by\n          simp only [\n  Algebra.smul_mul_assoc, mul_sub, Algebra.mul_smul_comm, sub_mul]\n      _ = crAnTimeOrderSign (φs' ++ [φ, ψ] ++ φs) •\n          (u *\n            v *\n            ι [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF *\n            w *\n            z) := by\n          congr\n          rw [superCommuteF_ofCrAnOpF_ofCrAnOpF, ← ofCrAnListF_singleton,\n            ← ofCrAnListF_singleton]\n          simp only [← ofCrAnListF_append, List.cons_append, List.nil_append, Algebra.smul_mul_assoc, map_sub, map_smul]\n    rw [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ)]\n    simp only [ z]\n    repeat rw [mul_assoc]\n    rw [← map_mul, ← map_mul, ← map_mul, ← ofCrAnListF_append, ← ofCrAnListF_append,\n      ← ofCrAnListF_append]\n    have h1 := insertionSort_of_takeWhile_filter 𝓕.crAnTimeOrderRel φ φs' φs\n    simp only [List.append_assoc, List.cons_append, List.nil_append] at h1 ⊢\n    rw [← h1, ← crAnTimeOrderList]\n    by_cases hq : (𝓕 |>ₛ φ) ≠ (𝓕 |>ₛ ψ)\n    · simp only [ι_superCommuteF_of_diff_statistic hq, zero_mul, smul_zero]\n    · rw [crAnTimeOrderSign, Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ (by grind only),\n        ← crAnTimeOrderSign, ← ofCrAnListF_append, timeOrderF_ofCrAnListF]\n      simp only [map_smul, Algebra.mul_smul_comm]\n  all_goals simp_all only [map_mul, zero_mul, map_zero, mul_zero, add_mul, map_add,\n    mul_add, Algebra.smul_mul_assoc, map_smul, Algebra.mul_smul_comm, implies_true, p]",
+  "initial_sha256": "f4292bc49e31bbd0d1f17996f066f79a070ab2eeb407c7f9a2c95b17372edfaa",
+  "rounds": 1,
+  "attempts": 32,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 32,
+  "cache_hits": 0,
+  "seen": [
+    "48f7365d70e2bcc35bc042bf519f6c388e25cc0a6354d5d459efde6f1fab338a",
+    "bae5fe1d5b8f2ec27a034d72cb11c0e0a99dffeff67edc08da3fce521f4850a5",
+    "8157fc9ce3ac7a7d327370716df34231e2fa3164c8ec582109b79f0be091a051",
+    "3627be8cf898b653af251d7185a186ab5a8dd5a10d000b3a8bdda980b0b1dce0",
+    "2d07b705ca78767c63d87853cd5aa79ee39295137f7d0a1c636ad63240852571",
+    "d79c0c029894b99514220fd371da11dcc5317a17f1a9cc45b5ce284e2f492e89",
+    "83e0a35d802ca51357bcc51cc276672b6d30c2835ecd88c27b1341bd3332786b",
+    "7fc1e459de6ee76e5f6d4f4207850adc6e0186df571e121f6d938f966d23f92a",
+    "664e773affc64db026a0f7b9683d9843611ecd00ee6fa75ade577c8b14af91da",
+    "bdf0961189755beeaccec693623f9246173e0ed006bfafd8be214ff0fdadb349",
+    "52ab5c2584e86baba04c93f463ad4c5a16bd29010c93b268466185e42c991469",
+    "f47bcb0785426788c2f4f027f023600498e74d56ab3eecaa0769457db77da9c3",
+    "b52533b2bc966e28a403da9335bc2268c02afcfe0302518b98606a2209cbdace",
+    "bff6b06d4698ba2718d55967a642a5407c4bc175949b266444d0e689490dea4e",
+    "4c463d56e5828acffb54e79fe96c39b53379594e2f3e479526ceb7d8185c6395",
+    "4d2be2a12c02d8bb44f470208153b0cddcfdc5c98a3c10b6b33a11d5e8bbea3f",
+    "d42732a2d682ad71af180f296278610c935cc3be9c242d4ad65b15c8a4ed1d60",
+    "324b5578ff78e03607b3abf3c68ee03fc3ebd5405a56ee6f8501c7156d44236a",
+    "4cedc80f9a86c68c804538fd102147093259566714337f6b0da5061576a26e49",
+    "acc927d9ae42f2e4c3d1f59a11a36d712572b816c1265dce896afbd12566fbd9",
+    "7544a379a12ac212a5425fd93e63492b553122e7650db3cb3796c69aa2f17fbb",
+    "886c3b610aa31cad75c798c9f43812eb4c70be8714d5a92e9678c0ac709b18a0",
+    "b1ae2b41d1e275e34eb3d1fa3b2eeaa4307bfce7f49fdfccc83d2bfc3bc5bc0b",
+    "d2cc3735b2c73463603850eead84308b0610a576ae2791bc81cb4bb67f873a02",
+    "62ac6af391dcb163bc4e4695f2a179220168bed81b07e3b34cd61697f1c1481e",
+    "d4d8d82c9d8f30e8eb44a50e697b750869ed211df17c40cb99e81f88871bc847",
+    "7f2ae3f9464488ce193fa3489bdf68d8a47967fc07bbcea78adec368337b9daa",
+    "084182a4a0518642846436ba8acc388da261238c6a70cda92720b94dfbcebd95",
+    "b02eb83174c40377425ebcd6c34d2520c8c830168b3a7231a0ba759225700ef7",
+    "1a2052d2fcdd75b817f5154a9f1835857f808c7f5966f375921a69fa91404f2f",
+    "559e9b7ea9a18f159ce41c6c37fc9631d3eb45c90b0e98bb2c9b2aa2ab7239f4",
+    "d56191c82692f3af76ba8ad9c17c2fede3f6bde7c32fc77741813f0b229d4907"
+  ],
+  "plan": null,
+  "elapsed_seconds": 221.0242094900459,
+  "stop_reason": "trial_limit",
+  "site_offset": 0
+}

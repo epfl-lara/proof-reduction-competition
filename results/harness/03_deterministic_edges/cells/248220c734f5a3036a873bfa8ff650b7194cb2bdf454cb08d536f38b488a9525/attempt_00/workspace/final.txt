@@ -1,0 +1,63 @@
+```lean
+theorem putnam_1995_a3
+(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)
+(digits_to_num : (Fin 9 → ℤ) → ℤ)
+(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)
+(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))
+: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by
+  intro d e f h
+  have hreplace (x y : Fin 9 → ℤ) (i : Fin 9) :
+      digits_to_num (fun j : Fin 9 => if j = i then y j else x j) =
+        digits_to_num x + (y i - x i) * (10 : ℤ) ^ i.1 := by
+    rw [hdigits_to_num]
+    calc
+      (∑ j : Fin 9, (if j = i then y j else x j) * (10 : ℤ) ^ j.1) =
+          ∑ j : Fin 9, (x j * (10 : ℤ) ^ j.1 +
+            (if j = i then y j - x j else 0) * (10 : ℤ) ^ j.1) := by
+        apply Finset.sum_congr rfl
+        intro j hj
+        by_cases hji : j = i <;> simp only [hji, ↓reduceIte] <;> ring
+      _ = (∑ j : Fin 9, x j * (10 : ℤ) ^ j.1) +
+          (y i - x i) * (10 : ℤ) ^ i.1 := by
+        rw [Finset.sum_add_distrib]
+        simp only [ite_mul, zero_mul, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
+  have hrel_dvd (x y : Fin 9 → ℤ) (hr : relation x y) :
+      ∀ i : Fin 9, 7 ∣ (y i - x i) * (10 : ℤ) ^ i.1 + digits_to_num x := by
+    intro i
+    simpa only [hreplace, add_comm] using ((hrelation x y).mp hr).2 i
+  have hde := hrel_dvd d e h.1
+  have hef := hrel_dvd e f h.2
+  have hdiff : digits_to_num e = digits_to_num d +
+      ∑ i : Fin 9, (e i - d i) * (10 : ℤ) ^ i.1 := by
+    rw [hdigits_to_num]
+    rw [← Finset.sum_add_distrib]
+    apply Finset.sum_congr rfl
+    intro i hi
+    ring
+  have hsum : 7 ∣ digits_to_num e + digits_to_num d := by
+    have hs : 7 ∣ ∑ i : Fin 9,
+        ((e i - d i) * (10 : ℤ) ^ i.1 + digits_to_num d) :=
+      Finset.dvd_sum (fun i hi => hde i)
+    rw [Finset.sum_add_distrib] at hs
+    simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin,
+      Int.nsmul_eq_mul, Nat.cast_ofNat] at hs
+    have hm : 7 ∣ 7 * digits_to_num d := ⟨digits_to_num d, rfl⟩
+    rw [hdiff]
+    convert dvd_sub hs hm using 1 <;> ring
+  have hprod : ∀ i : Fin 9, 7 ∣ (f i - d i) * (10 : ℤ) ^ i.1 := by
+    intro i
+    convert dvd_add (dvd_sub (hef i) hsum) (hde i) using 1 <;> ring
+  intro i
+  have hdiv : 7 ∣ f i - d i := by
+    have hp : (7 : ℕ).Prime := by norm_num
+    have hpow : ¬ (7 : ℤ) ∣ (10 : ℤ) ^ i.1 := by
+      intro hx
+      norm_cast at hx
+      have : (7 : ℕ) ∣ 10 := hp.dvd_of_dvd_pow hx
+      norm_num at this
+    rcases (Int.prime_iff_natAbs_prime.mpr
+      (by norm_num : Nat.Prime (Int.natAbs (7 : ℤ)))).dvd_mul.mp (hprod i) with hfactor | hfactor
+    · exact hfactor
+    · exact False.elim (hpow hfactor)
+  simpa only [sub_eq_add_neg, neg_add_rev, neg_neg, add_comm] using dvd_neg.mpr hdiv
+```

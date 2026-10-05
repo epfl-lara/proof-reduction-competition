@@ -1,0 +1,109 @@
+{
+  "name": "putnam_1964_a4",
+  "source": "putnambench",
+  "method": "simp",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 26.342566421707183,
+      "heartbeat_reduction_pct": 74.21376883042102,
+      "compatibility_pct": 100.0,
+      "combined_pct": 66.8521117507094
+    },
+    "candidate": {
+      "length": 1303,
+      "code_sha256": "289db023b67106769383131a164d598ad7632b6d3c106b979ced5f13b48d9777"
+    },
+    "primary_version": "v4.25.0",
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 36385.178,
+        "heartbeat_reduction_pct": 74.21376883042102,
+        "cached": true,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "elapsed_seconds": 4.512266149744391,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 29903.996,
+        "heartbeat_reduction_pct": 74.15681722149002,
+        "cached": true,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "elapsed_seconds": 4.36670770123601,
+        "diagnostics": []
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 28988.503,
+        "heartbeat_reduction_pct": 74.00546046234847,
+        "cached": true,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "elapsed_seconds": 4.276938224211335,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by \n  have h_main : ∃ (i j : ℕ), i < j ∧ (u i = u j ∧ u (i + 1) = u (j + 1) ∧ u (i + 2) = u (j + 2) ∧ u (i + 3) = u (j + 3)) := by\n    obtain ⟨B, T, hB⟩ := boundedu\n    classical\n    \n    let f : ℕ → (ℤ × ℤ × ℤ × ℤ) := fun n => (u n, u (n + 1), u (n + 2), u (n + 3))\n    have h₂ : Set.Finite (Set.range f) := by\n      have h₃ : Set.range f ⊆ Set.Icc (B, B, B, B) (T, T, T, T) := by\n        intro x hx\n        rcases hx with ⟨n, rfl⟩\n        have h₄ := hB n\n        have h₅ := hB (n + 1)\n        have h₆ := hB (n + 2)\n        have h₇ := hB (n + 3)\n        simp only at h₄ h₅ h₆ h₇ ⊢\n        constructor <;>\n        (try constructor) <;>\n        (try constructor) <;>\n        (try constructor) <;>\n        (try simp_all only [and_self, f]) \n      \n      have h₄ : Set.Finite (Set.Icc (B, B, B, B) (T, T, T, T)) := by\n        apply Set.Finite.subset (Set.finite_mem_finset (Finset.Icc (B, B, B, B) (T, T, T, T)))\n        intro x hx\n        simp_all only [ge_iff_le, ne_eq, mem_Icc, Finset.mem_Icc, mem_setOf_eq, and_self]\n        \n      exact Set.Finite.subset h₄ h₃\n    \n    have h₃ : ∃ (i j : ℕ), i < j ∧ f i = f j := by\n      by_contra! h₄\n      have h₅ : Function.Injective f := by\n        intro i j h₆\n        by_cases h₇ : i = j\n        · exact h₇\n        · have h₈ : i < j ∨ j < i := by omega\n          cases h₈ with\n          | inl h₈ =>\n            \n            simp_all only\n          | inr h₈ =>\n            \n            tauto\n      have h₆ : Set.Infinite (Set.range f) := Set.infinite_range_of_injective h₅\n      exact Set.not_infinite.mpr h₂ h₆\n    \n    obtain ⟨i, j, h₄, h₅⟩ := h₃\n    refine' ⟨i, j, h₄, _⟩\n    simp only [Prod.mk.injEq, f] at h₅ ⊢\n    <;>\n    (try exact h₅)\n  \n  obtain ⟨i, j, hij, h_eq⟩ := h_main\n  have h₁ : ∀ m : ℕ, u (i + m) = u (j + m) := by\n    intro m\n    induction m using Nat.strong_induction_on with\n    | h m ih =>\n      by_cases hm : m < 4\n      · have hs : m = 0 ∨ m = 1 ∨ m = 2 ∨ m = 3 := by omega\n        rcases hs with hs | hs | hs | hs <;> subst m <;> simp_all\n      · obtain ⟨k, hk⟩ : ∃ k, m = k + 4 := ⟨m - 4, by omega⟩\n        subst m\n        have e0 := ih k (by omega)\n        have e1 := ih (k + 1) (by omega)\n        have e2 := ih (k + 2) (by omega)\n        have e3 := ih (k + 3) (by omega)\n        have hi : (u (i + (k + 4)) : ℝ) =\n            ((u (i + (k + 3)) + u (i + (k + 2)) + u (i + (k + 1)) * u (i + k)) : ℝ) /\n              (u (i + (k + 3)) * u (i + (k + 2)) + u (i + (k + 1)) + u (i + k)) := by\n          simpa only [show i + (k + 4) - 1 = i + (k + 3) by omega,\n            show i + (k + 4) - 2 = i + (k + 2) by omega,\n            show i + (k + 4) - 3 = i + (k + 1) by omega,\n            show i + (k + 4) - 4 = i + k by omega] using (hu (i + (k + 4)) (by omega)).1\n        have hj : (u (j + (k + 4)) : ℝ) =\n            ((u (j + (k + 3)) + u (j + (k + 2)) + u (j + (k + 1)) * u (j + k)) : ℝ) /\n              (u (j + (k + 3)) * u (j + (k + 2)) + u (j + (k + 1)) + u (j + k)) := by\n          simpa only [show j + (k + 4) - 1 = j + (k + 3) by omega,\n            show j + (k + 4) - 2 = j + (k + 2) by omega,\n            show j + (k + 4) - 3 = j + (k + 1) by omega,\n            show j + (k + 4) - 4 = j + k by omega] using (hu (j + (k + 4)) (by omega)).1\n        have r0 : (u (i + k) : ℝ) = u (j + k) := by exact_mod_cast e0\n        have r1 : (u (i + (k + 1)) : ℝ) = u (j + (k + 1)) := by exact_mod_cast e1\n        have r2 : (u (i + (k + 2)) : ℝ) = u (j + (k + 2)) := by exact_mod_cast e2\n        have r3 : (u (i + (k + 3)) : ℝ) = u (j + (k + 3)) := by exact_mod_cast e3\n        have hr : (u (i + (k + 4)) : ℝ) = u (j + (k + 4)) := by\n          rw [hi, hj, r3, r2, r1, r0]\n        exact_mod_cast hr\n  use i, (j - i)\n  have h₃ : j - i > 0 := by\n    omega\n  constructor\n  · exact h₃\n  · intro n hn\n    have h₅ : u (i + (n - i)) = u (j + (n - i)) := by\n      have h₆ := h₁ (n - i)\n      assumption\n      <;> omega\n    have h₆ : i + (n - i) = n := by\n      omega\n    have h₇ : j + (n - i) = n + (j - i) := by\n      omega\n    rw [h₆] at h₅\n    rw [h₇] at h₅\n    exact id (Eq.symm h₅)",
+  "rounds": 1,
+  "attempts": 0,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 2,
+  "lean_candidate_checks": 0,
+  "cache_hits": 0,
+  "elapsed_seconds": 4.721,
+  "stop_reason": "no_new_proposals",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 26.342566421707183,
+      "heartbeat_reduction_pct": 74.21376883042102,
+      "compatibility_pct": 100.0,
+      "combined_pct": 66.8521117507094
+    },
+    "candidate": {
+      "length": 1303,
+      "code_sha256": "289db023b67106769383131a164d598ad7632b6d3c106b979ced5f13b48d9777"
+    },
+    "primary_version": "v4.25.0",
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 36385.178,
+        "heartbeat_reduction_pct": 74.21376883042102,
+        "cached": true,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "elapsed_seconds": 4.512266149744391,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 29903.996,
+        "heartbeat_reduction_pct": 74.15681722149002,
+        "cached": true,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "elapsed_seconds": 4.36670770123601,
+        "diagnostics": []
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 28988.503,
+        "heartbeat_reduction_pct": 74.00546046234847,
+        "cached": true,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "elapsed_seconds": 4.276938224211335,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": false
+}

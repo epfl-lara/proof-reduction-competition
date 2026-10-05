@@ -1,0 +1,17 @@
+- Initial: reuse Set.Intersecting.is_max_iff_card_eq; maximality follows from hPS and inclusion. Explicit disjoint conversion, mul_pow_sub_one. Valid both versions: 84 tokens, 771.384 heartbeats, score 98.190270.
+- Source tool search unexpectedly returned no matches; inspected pinned .lake/packages/mathlib sources with rg/read instead. Intersecting file signatures same in both pins.
+
+- v2: no named hs or classical, Nat.two_pos, refined library lemma goals. Valid both: 70 tokens, 575.003 HB, score 98.510651.
+- v3: simp only conversion for hs (incl mem_coe): 67 tokens, 607.193 HB, 98.558759; improvement smaller than best-accept threshold.
+- v4: simp generic disjoint_iff and full maximality lambda: 68 tokens, 667.221 HB, 98.523150, worse than v3.
+- v5: normalize hPP/hPS via reverse Set.disjoint_iff_inter_eq_empty, use rw is_max lemma. Failed: simp no progress because ne_eq omitted.
+- v6: added ne_eq; 57 tokens, 658.193 HB, 98.734694, accepted best. Both versions valid.
+- v7/v8: aesop after subset antisymm: missing norm phase, then failed to introduce subset goal despite unfolding Intersecting.
+- v9: intro membership, grind [Set.Intersecting, Finset.subset_iff]. Valid: 43 tokens, 1130.522 HB, 98.870098 accepted.
+- v10: grind only, no intro: failed because coe memberships weren't identified.
+- v11: add Finset.mem_coe to grind only: valid 43 tokens, 1252.615 HB, 98.836324 (regression).
+- v12: grind handles whole maximality with antisymm lemma: 35 tokens, 1933.498 HB, 98.800013 (regression).
+- v13: Finset.subset_iff already a default grind theorem. Omit it and intro T: 38 tokens, 1094.382 HB, 98.975115 accepted best.
+- v14: whole maximality via grind and antisymm_iff: 33 tokens, 1865.159 HB, 98.856926 (regression).
+- v15: dot-form antisymm and clear irrelevant hPP before grind: 39 tokens, 961.583 HB, 98.992846. Valid but below best-accept improvement threshold; saved best remains v13.
+- Stop: central intersecting-family counting theorem reused; explicit, simplified, and automated maximality variants compared. Further marginal changes unlikely to justify attempts.

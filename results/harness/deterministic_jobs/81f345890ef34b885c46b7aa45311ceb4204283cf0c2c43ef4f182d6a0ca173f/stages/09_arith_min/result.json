@@ -1,0 +1,109 @@
+{
+  "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+  "source": "cslib",
+  "method": "arith_min",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": -9.80392156862746,
+      "heartbeat_reduction_pct": 16.17098124497983,
+      "compatibility_pct": 100.0,
+      "combined_pct": 35.45568655878412
+    },
+    "candidate": {
+      "length": 448,
+      "code_sha256": "f5641f514aa4bb895b0ae85593277e3d7668154f5cccd7355563d9d053511104"
+    },
+    "primary_version": "v4.33.0-rc2",
+    "per_version": {
+      "v4.33.0-rc2": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 50157.903,
+        "heartbeat_reduction_pct": 16.17098124497983,
+        "cached": true,
+        "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+        "elapsed_seconds": 4.93860144354403,
+        "diagnostics": []
+      },
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 52124.248,
+        "heartbeat_reduction_pct": 15.87805054393997,
+        "cached": true,
+        "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+        "elapsed_seconds": 5.495130363851786,
+        "diagnostics": []
+      },
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 52151.078,
+        "heartbeat_reduction_pct": 15.822622837636423,
+        "cached": true,
+        "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+        "elapsed_seconds": 5.5367633905261755,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have der' : Typing Γ t τ := der\n  induction der <;> subst eq\n  case var mem => grind\n  case app t₁ _ _ t₂ l r ih_l ih_r =>\n    right\n    cases ih_l rfl l with\n    | inl val_l =>\n        cases ih_r rfl r with\n        | inl val_r =>\n            obtain ⟨σ, u, h⟩ := l.canonical_form_abs val_l\n            exists u ^ᵗᵗ t₂\n            rw [h]\n            exact Red.abs (h ▸ l.wf.2.1) val_r\n        | inr red_r =>\n            obtain ⟨t₂', red⟩ := red_r\n            exact ⟨t₁.app t₂', Red.appᵣ val_l red⟩\n    | inr red_l =>\n        obtain ⟨t₁', red⟩ := red_l\n        exact ⟨t₁'.app t₂, Red.appₗ r.wf.2.1 red⟩\n  case tapp σ' der sub ih =>\n    right\n    specialize ih rfl der\n    cases ih with\n    | inl val =>\n        obtain ⟨δ, u, h⟩ := der.canonical_form_tabs val\n        have lc : LC (Term.tabs δ u) := h ▸ der.wf.2.1\n        have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n        exact ⟨u ^ᵗᵞ σ', by grind⟩\n    | inr red =>\n        obtain ⟨u, step⟩ := red\n        have lcσ : σ'.LC := (sub.wf [] σ' _).2.1.lc\n        exact ⟨.tapp u σ', Red.tapp lcσ step⟩\n  case let' t₁ σ t₂ τ L der _ ih _ =>\n    right\n    cases ih rfl der with\n    | inl _ =>\n        exists t₂ ^ᵗᵗ t₁\n        grind\n    | inr red =>\n        obtain ⟨t₁', _⟩ := red\n        exists t₁'.let' t₂\n        grind\n  case inl der _ ih =>\n    cases (ih rfl der) with\n    | inl val => grind\n    | inr red =>\n        right\n        obtain ⟨t', _⟩ := red\n        exists .inl t'\n        grind\n  case inr der _ ih =>\n    cases (ih rfl der) with\n    | inl val => grind\n    | inr red =>\n        right\n        obtain ⟨t', _⟩ := red\n        exists .inr t'\n        grind\n  case case t₁ _ _ t₂ _ t₃ _ der _ _ ih _ _ =>\n    right\n    cases ih rfl der with\n    | inl val =>\n        have ⟨t₁, lr⟩ := der.canonical_form_sum val\n        cases lr <;> [exists t₂ ^ᵗᵗ t₁; exists t₃ ^ᵗᵗ t₁] <;> grind\n    | inr red =>\n        obtain ⟨t₁', _⟩ := red\n        exists t₁'.case t₂ t₃\n        grind\n  case sub => grind\n  case abs σ body τ L h ih =>\n    grind\n  case tabs L h ih =>\n    exact Or.inl (Value.tabs (Typing.wf (Typing.tabs L h)).2.1)",
+  "rounds": 1,
+  "attempts": 0,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 0,
+  "cache_hits": 0,
+  "elapsed_seconds": 0.311,
+  "stop_reason": "no_new_proposals",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": -9.80392156862746,
+      "heartbeat_reduction_pct": 16.17098124497983,
+      "compatibility_pct": 100.0,
+      "combined_pct": 35.45568655878412
+    },
+    "candidate": {
+      "length": 448,
+      "code_sha256": "f5641f514aa4bb895b0ae85593277e3d7668154f5cccd7355563d9d053511104"
+    },
+    "primary_version": "v4.33.0-rc2",
+    "per_version": {
+      "v4.33.0-rc2": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 50157.903,
+        "heartbeat_reduction_pct": 16.17098124497983,
+        "cached": true,
+        "environment_fingerprint": "902239d64789e607c7f5c5229206085fbc228fe17cd61979588098ae70c76298",
+        "elapsed_seconds": 4.93860144354403,
+        "diagnostics": []
+      },
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 52124.248,
+        "heartbeat_reduction_pct": 15.87805054393997,
+        "cached": true,
+        "environment_fingerprint": "529cbf7e1bc7d38a0a6bbe7b564cd4b44182b22dba3ad2aecb8fc583c0e29bf9",
+        "elapsed_seconds": 5.495130363851786,
+        "diagnostics": []
+      },
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 52151.078,
+        "heartbeat_reduction_pct": 15.822622837636423,
+        "cached": true,
+        "environment_fingerprint": "dcc7dc0ef2ca3898ab488c3b07c311a472571d922c0889951bbbface33734bc6",
+        "elapsed_seconds": 5.5367633905261755,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": false
+}

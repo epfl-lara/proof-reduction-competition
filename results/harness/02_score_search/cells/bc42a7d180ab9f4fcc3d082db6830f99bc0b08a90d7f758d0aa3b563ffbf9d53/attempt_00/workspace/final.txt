@@ -1,0 +1,22 @@
+theorem bisimilarity_congr_choice :
+    (p ~[lts (defs := defs)] q) → (choice p r) ~[lts (defs := defs)] (choice q r) := by
+  intro h
+  refine ⟨_, ChoiceBisim.choice h, ?_⟩
+  intro s1 s2 hr μ
+  cases hr <;> rename_i hpq <;> constructor
+  · intro s1' ht
+    cases ht <;> rename_i htr
+    · obtain ⟨s2', ht2, hb⟩ := hpq.follow_fst htr
+      exact ⟨s2', .choiceL ht2, .bisim hb⟩
+    · exact ⟨s1', .choiceR htr, .bisim (.refl _)⟩
+  · intro s2' ht
+    cases ht <;> rename_i htr
+    · obtain ⟨s1', ht1, hb⟩ := hpq.follow_snd htr
+      exact ⟨s1', .choiceL ht1, .bisim hb⟩
+    · exact ⟨s2', .choiceR htr, .bisim (.refl _)⟩
+  · intro s1' ht
+    obtain ⟨s2', ht2, hb⟩ := hpq.follow_fst ht
+    exact ⟨s2', ht2, .bisim hb⟩
+  · intro s2' ht
+    obtain ⟨s1', ht1, hb⟩ := hpq.follow_snd ht
+    exact ⟨s1', ht1, .bisim hb⟩

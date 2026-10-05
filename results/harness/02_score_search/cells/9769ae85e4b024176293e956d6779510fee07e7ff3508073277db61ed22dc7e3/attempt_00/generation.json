@@ -1,0 +1,41 @@
+{
+  "status": "received",
+  "content": "```lean\nlemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d}\n    {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d)\n    (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J)\n    (t : Time) (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -\n      𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n      𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n  have hEs : ∀ j, ContDiff ℝ 2 (fun y => A.electricField 𝓕.c t y j) :=\n    fun j => electricField_apply_contDiff_space (i := j) (hA.of_le (right_eq_inf.mp rfl)) t\n  have hEd : ∀ j k, Differentiable ℝ (∂[k] (fun y => A.electricField 𝓕.c t y j)) :=\n    fun j k => Space.deriv_differentiable (hEs j) k\n  have hBt : ∀ j, Differentiable ℝ\n      (fun s => ∂[j] (fun y => A.magneticFieldMatrix 𝓕.c s y (j, i)) x) :=\n    fun j => Space.space_deriv_differentiable_time (i := j)\n      (magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) (j, i)) x\n  have hJt : Differentiable ℝ (fun s => J.currentDensity 𝓕.c s x i) :=\n    LorentzCurrentDensity.currentDensity_apply_differentiable_time (hJ.differentiable (by simp)) x i\n  have hg : (∑ j, ∂[j] (∂[i] (A.electricField 𝓕.c t · j)) x) =\n      𝓕.ε₀⁻¹ * ∂[i] (J.chargeDensity 𝓕.c t ·) x := by\n    conv_lhs =>\n      arg 2\n      ext j\n      rw [Space.deriv_commute _ (hEs j)]\n    have he := congrArg (fun f : Space d → ℝ => ∂[i] f x)\n      (funext fun y => ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1)\n    change ∂[i] (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) x = _ at he\n    rw [Space.deriv_eq_fderiv_basis,\n      fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt)] at he\n    simp only [FunLike.coe_sum, Finset.sum_apply, ← Space.deriv_eq_fderiv_basis] at he\n    rw [he]\n    simp only [div_eq_mul_inv]\n    rw [Space.deriv_eq_fderiv_basis, fderiv_mul_const\n      (LorentzCurrentDensity.chargeDensity_differentiable_space\n        (hJ.differentiable (by simp)) t).differentiableAt]\n    simp [← Space.deriv_eq_fderiv_basis, mul_comm]\n  change ∂ₜ (fun s => ∂ₜ (A.electricField 𝓕.c · x i) s) t = _\n  simp_rw [Time.deriv_euclid (electricField_differentiable_time\n    (hA.of_le (right_eq_inf.mp rfl)) _),\n    time_deriv_electricField_of_isExtrema hA J hJ h]\n  calc\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) * (∑ j, ∂ₜ\n        (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t) -\n        1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      simp only [Time.deriv_eq]\n      rw [fderiv_fun_sub\n        ((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt\n        (hJt.const_mul _).differentiableAt,\n        fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt,\n        fderiv_const_mul hJt.differentiableAt,\n        fderiv_fun_sum fun j _ => (hBt j).differentiableAt]\n      simp\n    _ = 1 / (𝓕.μ₀ * 𝓕.ε₀) *(∑ j, ∂[j] (fun x => ∂[j] (A.electricField 𝓕.c t · i) x -\n        ∂[i] (A.electricField 𝓕.c t · j) x)) x -\n        1 / 𝓕.ε₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n      simp_rw [Finset.sum_apply, Space.time_deriv_comm_space_deriv\n        (magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) _),\n        time_deriv_magneticFieldMatrix _ (hA.of_le (ENat.LEInfty.out))]\n    _ = _ := by\n      simp only [Finset.sum_apply]\n      simp only [← Pi.sub_def]\n      simp only [Space.deriv_sub _ _ (hEd i _) (hEd _ i), Pi.sub_apply]\n      simp only [Finset.sum_sub_distrib, mul_sub, hg]\n      simp [FreeSpace.c_sq]\n      field_simp\n```",
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 418325,
+    "completion_tokens": 5184,
+    "cached_input_tokens": 374784
+  },
+  "codex_usage": {
+    "input_tokens": 418325,
+    "cached_input_tokens": 374784,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 5184,
+    "reasoning_output_tokens": 792
+  },
+  "completed_turns": 1,
+  "tool_items": 18,
+  "tool_item_types": [
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution",
+    "command_execution"
+  ],
+  "elapsed_seconds": 306.94574486278,
+  "finished_at": "2026-10-03T21:53:46.040509+00:00"
+}

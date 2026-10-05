@@ -1,0 +1,23 @@
+# Optimization notes
+- Evidence induction removes the repeated normalization cases.
+- Attempt 1/2: `simp_all` leaves direct `List.Subset` append goals; explicitly adding `List.append_subset` does not rewrite them because its lhs uses `⊆`. Application also needs `unfold extractOldExprVars` before `split`.
+- Attempt 3: changing the goal to `⊆` before evidence induction works with simp_all. 57 tokens, 2467.578 heartbeats, score 60.9535. Running required deterministic cleanup.
+- Next concrete alternatives: replace simp_all with targeted simplification / explicit append helper; or strengthen to `List.Sublist`, using `List.Sublist.append` and finally `.subset`.
+- Deterministic cleanup of attempt 3: 49 tokens, 2445.824 heartbeats, score 62.4235.
+- Sublist strengthening works via `apply List.Sublist.subset`. Direct constructor cases and `.append` avoid broad simp. ite append is left-associated before simp. Corrected attempt: 94 tokens, 354.083 heartbeats, score 81.5110. Cleanup running.
+- Explicit evidence/Sublist cleanup: 85 tokens, 361.459 heartbeats, score 82.7713.
+- Core `panic` and `panicCore` safely reduce to `default`; the unnormalized branch of extraction is thus definitionally []. The Sublist result holds for all expressions, independent of normalization.
+- Syntax induction must clear normalization evidence (else it enters the IH). Parenthesize `(try split)` in a `<;>` chain, otherwise subsequent tactic is in the try block.
+- Unconditional syntax induction + common solve: 45 tokens, 620.923 heartbeats, score 85.5715. Cleanup running. Potential improvement: avoid trying reflexivity / splitting on every constructor; use focused recursive append construction.
+- Common solve cleanup: 51 tokens, 525.588 heartbeats, score 85.8485.
+- Replaced all explicit solve branches with recursive `repeat' first` using only assumption/nil_sublist/Sublist.append/Sublist.refl. 31 tokens, 497.275 heartbeats, score 89.2013. Cleanup running.
+- Next: move unfold+split to the final alternative of repeat' so only the application constructor gets split.
+- Repeat' constructor proof cleanup unchanged (31 tokens).
+- Moving unfold+split to final repeat' alternative reduces to 28 tokens, 466.874 heartbeats, score 90.0274. Cleanup running.
+- Concrete next change: split application before trying reflexivity, avoiding a failed equality-unification attempt on a compound extraction.
+- Last best cleanup unchanged: 28 tokens, score 90.0274.
+- Moving split ahead of refl was slightly worse: 28 tokens, 472.836 heartbeats, score 89.9537. Do not repeat this ordering.
+- Final structural alternative to compare: use evidence induction with the same focused Sublist tactics, removing clear h and retaining normalization witnesses in context.
+- Split-before-refl cleanup unchanged.
+- Evidence-induction focused tactic variant: 26 tokens, 488.328 heartbeats, score 90.0626. Tool did not accept it as best (improvement only 0.0352 pp); retained syntax-induction score 90.0274. Required cleanup running.
+- Local stopping decision after cleanup: structure is now just sublist strengthening and nil/append/reflexivity; the latest ordering and induction alternatives are near ties and no further concrete structural savings are apparent.

@@ -1,0 +1,26 @@
+- Seed: 232 tokens, HB 2247.55 (score 37.40).
+- Evidence induction with subset notation/change and simp_all: app requires explicit unfold extractOldExprVars.
+- After unfold: valid, 55 tokens, HB 2458.426, score 61.3669. All non-app branches solved by simp_all.
+- Next: avoid simplifying whole context; use simp with IHs on goals only.
+- Goal-only simp [defs, *]: valid, 60 tokens, HB 1919.998, score 67.2686.
+- simp only with subset simp lemmas: valid, 82 tokens, HB 1679.436, score 66.9376 (regression).
+- Next structural alternative: local append monotonicity and explicit evidence induction, avoiding global simplification.
+- Explicit evidence induction + append-subset helper: valid, 141 tokens, HB 439.794, score 73.3950.
+- Stronger Sublist invariant (apply List.Sublist.subset), existing Sublist.append: valid, 94 tokens, HB 354.034, score 81.5116.
+- Next try compact shared tactics on evidence cases.
+- Shared `first` closing one/two-component cases, explicit ite: valid 72 tokens, HB 563.248, score 82.2300.
+- `repeat' first | assumption | apply nil_sublist | apply Sublist.append`: valid 52 tokens, HB 454.203, score 86.5803.
+- Source inspection: panicCore is kernel-definitionally `default`; extractor panic branch defaults to [] (List inhabitant). Try avoiding normalization-elimination there.
+- Replacing impossible app branch by List.nil_sublist (panic defaults to []): valid 37 tokens, HB 432.928, score 89.0954.
+- Syntax induction after clearing norm h: valid 39 tokens, HB 417.017, score 88.9917 (slightly worse).
+- Next: split app before shared structural closure so all branches share final tactics.
+- Split app before structural closure, explicit refl first: valid 29 tokens, HB 439.268, score 90.2183.
+- solve_by_elim variant: 25 tokens, HB 592.788, score 88.9221; only [*, nil_sublist, append]: 28 tokens, HB 513.482, score 89.4515.
+- Removed redundant all_goals (repeat' already traverses all): valid 28 tokens, HB 437.511, score 90.3902.
+- Next: do append decomposition before closing IH/nil leaves, avoiding failed assumption scans on compound targets.
+- Two-phase closure (append decomposition then IH/nil leaves): valid 28 tokens, HB 399.349, score 90.8617.
+- Focused simp-only closure failed on panic and split-alias app goals; not pursued.
+- dsimp-only at all contexts before structural closure: valid 40 tokens, HB 713.210, score 85.1820 (worse).
+- Initial change to concrete getVars: valid 33 tokens, HB 407.581, score 90.0092 (worse).
+- Apply reflexivity instead of exact refl _: valid 27 tokens, HB 389.949, score 91.1280 (best).
+- Stopping locally: Sublist invariant eliminates helper, append decomposition handles all recursive cases, panic branch is definitionally empty. Remaining simplifier/representation alternatives measured worse.

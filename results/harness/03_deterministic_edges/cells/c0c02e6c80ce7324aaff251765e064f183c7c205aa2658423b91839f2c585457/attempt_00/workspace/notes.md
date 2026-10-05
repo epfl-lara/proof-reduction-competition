@@ -1,0 +1,14 @@
+- Baseline: score 39.899; 1648 tokens, ~42484 hb.
+- One-level fiber lemma replaces basis/cast sum computation; unused P0/P1 coeffs removed: valid all versions, 1175 tokens / 21626.491 hb, score 63.528.
+- Full refactor: introduce statement lets; share evaluation for arbitrary fiber index; coefficient evaluation via sum distributivity; single ring identity. First simp-only hp attempts failed (identical printed sums). `congr 1` closes residual.
+- Refactor384: valid all versions, 384 tokens / 8320.107 hb, score 87.1586.
+- Smaller helper attempt (324 tokens) hd simp and hp rfl succeed, but simp fails to use raw congrArg Subtype.val h due to projection indexing. Repaired by rewriting Subtype.eq_iff in h.
+- Refactor244: simp-only normalizes projected fiber equality (rw alone leaves projection simp cannot index); hd one simp, hp rfl, fold dsimp and substitution algebra. Valid all versions: 244 tokens / 7218.704 hb / 90.4179 score.
+- Generalizing eval/fiber atoms before final ring is regressive: 262 tokens / 7266.586 hb, score 90.0678.
+- Linear_combination factor*hd instead of substitution/ring: valid but worse, 258 tokens / 7591.585 hb / 89.8985 score.
+- Direct fiber equality, trans, and rw evaluation: needed dsimp P_i; valid 236 tokens / 7400.573 hb / 90.4239, near tie and not accepted. Try restoring simp for split evaluation and specialized eval_C_mul for sums.
+- Refactor234: keep simp evaluation, use eval_C_mul in coefficient sums, trans + direct fiber equality: valid all versions, 234 tokens / 6835.989 hb / 90.8746.
+- Polynomial rather than value linearity trans: valid but worse 230 tokens / 8490.762 hb / 89.7262. Eval_C_mul scalar sums are cheaper.
+- Focused simp-only for fiber shift and positional fiber args: valid all versions, 232 tokens / 5953.279 hb / 91.5594 score.
+- Explicit index bound plus forward sum_add_distrib: valid but regressive, 235 tokens / 6058.916 hb / 91.4292. Retain focused simp/scalar-sum proof.
+- Stopping: main structural reductions are verified; generalization, linear_combination, polynomial linearity, rewrite-only evaluation, and forward sums did not improve best.

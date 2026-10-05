@@ -1,0 +1,43 @@
+lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by
+  generalize eq : [] = Γ at der
+  have := der
+  induction der <;> subst_vars
+  case app t₁ _ _ t₂ l r ih_l ih_r =>
+    rcases ih_l rfl l with val_l | ⟨t₁', step_l⟩
+    · rcases ih_r rfl r with val_r | ⟨t₂', step_r⟩
+      · obtain ⟨δ, body, rfl⟩ := l.canonical_form_abs val_l
+        exact .inr ⟨_, .abs l.wf.2.1 val_r⟩
+      · exact .inr ⟨_, .appᵣ val_l step_r⟩
+    · exact .inr ⟨_, .appₗ r.wf.2.1 step_l⟩
+  case tapp σ' der sub ih =>
+    have hσ := sub.wf.2.1.lc
+    rcases ih rfl der with val | ⟨t', step⟩
+    · obtain ⟨δ, body, rfl⟩ := der.canonical_form_tabs val
+      exact .inr ⟨_, .tabs der.wf.2.1 hσ⟩
+    · exact .inr ⟨_, .tapp hσ step⟩
+  case let' t₁ σ t₂ τ L d body ih _ =>
+    have hbody := (body_let.mp (Typing.let' L d body).wf.2.1).2
+    rcases ih rfl d with val | ⟨t₁', step⟩
+    · exact .inr ⟨_, .let_body val hbody⟩
+    · exact .inr ⟨_, .let_bind step hbody⟩
+  case inl d _ ih =>
+    rcases ih rfl d with val | ⟨t', step⟩
+    · exact .inl (.inl val)
+    · exact .inr ⟨_, .inl step⟩
+  case inr d _ ih =>
+    rcases ih rfl d with val | ⟨t', step⟩
+    · exact .inl (.inr val)
+    · exact .inr ⟨_, .inr step⟩
+  case case t₁ _ _ t₂ _ t₃ L d h₂ h₃ ih _ _ =>
+    have ⟨b₂, b₃⟩ := (body_case.mp (Typing.case L d h₂ h₃).wf.2.1).2
+    rcases ih rfl d with val | ⟨t₁', step⟩
+    · rcases d.canonical_form_sum val with ⟨u, rfl | rfl⟩
+      · cases val with
+        | inl vu => exact .inr ⟨_, .case_inl vu b₂ b₃⟩
+      · cases val with
+        | inr vu => exact .inr ⟨_, .case_inr vu b₂ b₃⟩
+    · exact .inr ⟨_, .case step b₂ b₃⟩
+  case sub d s ih => exact ih rfl d
+  case abs => exact .inl (.abs this.wf.2.1)
+  case tabs => exact .inl (.tabs this.wf.2.1)
+  simp_all

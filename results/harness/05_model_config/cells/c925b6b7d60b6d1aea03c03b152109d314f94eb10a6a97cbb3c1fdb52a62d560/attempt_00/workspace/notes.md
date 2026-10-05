@@ -1,0 +1,33 @@
+# Search notes
+- Initial proof: score 39.8992 (L 13.5362, H 6.1613, C 100).
+- Attempt 1: Use qMap_total_fiber_one_level_eq + first basis = 1 for fiber offset; explicit existential for forward map; generic evaluation identity; sum linearity via simplification. Failed only due ambiguous eval_add/eval_mul/eval_C (MvPolynomial is also open).
+- Attempt 2: qualify Polynomial eval lemmas. Awaiting check.
+- Attempt 2: qualified eval lemmas but final simp left a definitionally reflexive dependent-sum goal.
+- Attempt 3: add rfl to final sum simplification. Valid all versions, 396 tokens / 8040.622 hb; score 87.15447.
+- Attempt 4: unfold fold initially and remove the redundant change goal. Awaiting check.
+- Attempt 4: valid all versions, 325 tokens / 7684.944 hb; score 88.65804.
+- Attempt 5: derive generic evaluation identity by congrArg instead of restating its type. Awaiting check.
+- Attempt 5: valid all versions, 302 tokens / 7220.818 hb; score 89.40200.
+- Attempt 6: infer forward-map equality from congrArg, reverse it in generic evaluation simp. Awaiting check.
+- Attempt 6: valid all versions, 277 tokens / 7004.509 hb; score 89.99848.
+- Attempt 7: simplify fiber offset with one simp and one-level fiber identity. Awaiting check.
+- Attempt 7: valid but regressive: 240 tokens / 109963.13 hb; score 14.84075. Broad simp for fiber offset is too costly.
+- Attempt 8: retain focused simp only, integrate one-level rewrites and x unfolding into that simp. Awaiting check.
+- Attempt 8: valid all versions, 261 tokens / 6615.617 hb; score 90.56462.
+- Attempt 9: rewrite evaluation split directly in goal with focused simp; remove separate generic evaluation helper. Awaiting check.
+- Attempt 9: failed, direct simp did not recognize hq because its lhs contained the local fiber function x while goal contained the unfolded function.
+- Attempt 10: normalize x in hq before direct split simplification. Awaiting check.
+- Attempt 10: valid all versions, 234 tokens / 6411.584 hb; score 91.18704.
+- Attempt 11: use definitional simplification (dsimp only) for initial fold unfolding. Awaiting check.
+- Attempt 11: valid all versions, 234 tokens / 6383.254 hb; score 91.20790. Tiny gain not accepted as saved best.
+- Attempt 12: abstract polynomial evaluations and fiber value before ring1 to avoid expensive atom comparisons. Awaiting check.
+- Attempt 12: valid but regressive: 251 tokens / 6448.356 hb; score 90.86266. Generalization before ring does not pay off.
+- Attempt 13: replace body arithmetic search by explicit Fin bound lemmas, retain initial dsimp and focused ring1. Awaiting check.
+- Attempt 13: valid all versions, 239 tokens / 6275 hb; score 91.20016 (tiny gain not accepted).
+- Attempt 14: remove the now singly-used refinement abbreviations; inline them in the calc midpoint. Awaiting check.
+- Attempt 14: valid all versions, 233 tokens / 6240.14 hb; score 91.33075.
+- Attempt 15: use positional fiber arguments, remove inert Fin.isValue and definitionally redundant Nat.sub_add_eq simplifiers. Awaiting check.
+- Attempt 15: valid all versions, 217 tokens / 6236.68 hb; score 91.61312.
+- Attempt 16: bind fiber by set to share the expression in the goal; avoid normalization of x in the forward map helper. Awaiting check.
+- Attempt 16: valid but regressive: 215 tokens / 6466.776 hb; score 91.47868. Extra set rewriting costs more than it saves.
+- Stopping: structural reconstruction and duplicate branches have been eliminated. Broad simp, ring generalization, and set sharing regressed; remaining ideas are small elaboration cleanups. Select attempt 15 (score 91.61312), valid in all three versions.

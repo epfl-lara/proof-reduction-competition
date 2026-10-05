@@ -1,0 +1,21 @@
+theorem parallelReduction_diamond : Diamond ParallelReduction := by
+  intro a b c h k
+  induction h generalizing c
+  case refl => exact ⟨_, k, .refl _⟩
+  all_goals
+    cases k
+    exact ⟨_, .refl _, by constructor <;> assumption⟩
+    try exact ⟨_, .refl _, .refl _⟩
+  case par.par iha ihb _ _ ha' hb' =>
+    obtain ⟨_, ha⟩ := iha ha'
+    obtain ⟨_, hb⟩ := ihb hb'
+    exact ⟨_, .par ha.1 hb.1, .par ha.2 hb.2⟩
+  case' par.red_I | par.red_K | par.red_S => apply symm
+  all_goals
+    first
+    | cases I_irreducible _ ‹_›
+      exact ⟨_, ‹_›, .red_I _⟩
+    | obtain ⟨_, h, rfl⟩ := Ka_irreducible _ _ ‹_›
+      exact ⟨_, h, .red_K ..⟩
+    | obtain ⟨_, _, hx, hy, rfl⟩ := Sab_irreducible _ _ _ ‹_›
+      exact ⟨_, .par (.par hx ‹_›) (.par hy ‹_›), .red_S ..⟩

@@ -1,0 +1,22 @@
+InitsUpdatesComm optimization notes
+- Used whole-store update commutation (`updatedStatesComm`) instead of induction on UpdateStates. Proved key disjointness from defined-after-update vs undefined-after-init; canonical store equations provide endpoint. Initial clean check: 186 tokens, 405.008 heartbeats, score 69.147; all three versions pass.
+- Deterministic portfolio cleaned disjoint contradiction to `simp_all`: 181 tokens, 424.147 heartbeats, score 69.742; all three versions pass. Continue from this selected proof.
+- Endpoint equality shortened using the InitStatesUpdated/UpdateStatesUpdated equations directly (`rw` then `simpa [updatedStates]`), improving to 145 tokens, 379.289 heartbeats, score 75.450; cleanup unchanged.
+- Replaced local `have` contradiction by `simpa [InitStatesNotDefined ...] using UpdateStatesDefined ...`: 142 tokens, 357.099 heartbeats, score 76.071; portfolio unchanged.
+- Reused the bound update-list length in `unzip_zip`: 139 tokens, 354.812 heartbeats, score 76.535; deterministic portfolio unchanged.
+- Attempted to replace final `rw [← heq]; exact ...` with `simpa [heq] using ...`; Lean left an implicit store metavariable unresolved. Restoring the verified endpoint construction; this did not replace the best proof.
+- Final `simpa [heq]` version passed but scored 75.448 (148 tokens, 322.596 heartbeats), below the best due source length; deterministic cleanup returned the previous best pattern. Continue from the concise `rw`/`exact` ending.
+- Folding the initial InitStates proof into `refine` removed a bullet: 135 tokens, 354.417 heartbeats, score 77.133; deterministic cleanup unchanged.
+- Omitting the existential store term lets `rfl` infer it: 132 tokens, 351.515 heartbeats, score 77.602; deterministic cleanup unchanged.
+- Collapsing endpoint equalities into one `simpa` lowered source and elaboration: 130 tokens, 308.533 heartbeats, score 78.237; deterministic cleanup unchanged.
+- Split `updatedStatesUpdate` application into `apply` plus the definedness proof: 129 tokens, 309.199 heartbeats, score 78.380; portfolio unchanged.
+- Replaced endpoint helper equality with direct rewriting using `InitStatesUpdated`, `UpdateStatesUpdated`, unfolding `updatedStates`, and `updatedStatesComm`: 114 tokens, 317.386 heartbeats, score 80.548; portfolio unchanged.
+- Inlined `updatedStatesComm` in the endpoint rewrite, eliminating a local equality: 110 tokens, 314.771 heartbeats, score 81.164; deterministic cleanup unchanged.
+- Tried a direct `ks.Disjoint ks'` proof with inline commutation instantiation; Lean's implicit pair-list inference chose the wrong zipped list. The explicit typed disjoint proof remains shorter and verified.
+- Plain `simp [updatedStates]` in the endpoint normalization saved one source token over `simp only`: 109 tokens, 315.154 heartbeats, score 81.310; cleanup unchanged.
+- Replaced `simp only [updatedStates]` with `dsimp [updatedStates]`; valid on all versions with 109 tokens, 311.723 heartbeats, score 81.337. Deterministic cleanup favored the prior `simp` spelling, so both remain candidates.
+- Supplying `updatedStatesComm` directly to `simp` handled both representation normalization and commutation: 107 tokens, 275.336 heartbeats, score 81.920; deterministic cleanup unchanged.
+- A single `simpa` across the final UpdateStates application was valid but regressed to 81.867; retain the previous simp-then-exact form.
+- Direct unzipped-list disjointness with explicit pair-list parameters was valid but scored below the typed-pair proof (115 tokens; portfolio 80.838), so retain the typed version.
+- Bound `InitStatesLength Hinit` once as `hlen'`, reused in construction and unzip simplification: 106 tokens, 274.767 heartbeats, score 82.073; cleanup unchanged.
+- Attempt to directly `simp` the contradiction without the `using` term made no progress; restore the verified `simpa ... using UpdateStatesDefined` proof.

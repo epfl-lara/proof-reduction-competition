@@ -1,0 +1,35 @@
+theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)
+    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)
+    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)
+  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)
+    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :
+  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by
+  classical
+  let C := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩
+  obtain ⟨g, _, hg⟩ := Nat.sInf_mem (s := (fun g : C =>
+    (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ)
+    (Set.image_nonempty.mpr Set.univ_nonempty)
+  let Y := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g
+  have hcount : hammingDist f g ≤ Y.ncard * 2 ^ steps := by
+    let q := qMap_total_fiber 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) (i := ⟨i, by omega⟩) (steps := steps)
+      (h_i_add_steps := fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps)
+    rw [hammingDist, Set.ncard_eq_toFinset_card', ← Fintype.card_fin (2 ^ steps),
+      ← Finset.card_univ, ← Finset.card_product]
+    apply Finset.card_le_card_of_surjOn (Function.uncurry q)
+    intro x hx
+    refine ⟨(_, _), ?_, (is_fiber_iff_generates_quotient_point
+      𝔽q β i steps h_i_add_steps x _).mp rfl⟩
+    exact Finset.mem_product.mpr ⟨Set.mem_toFinset.mpr
+      ⟨x, rfl, (Finset.mem_filter.mp hx).2⟩, Finset.mem_univ _⟩
+  unfold fiberwiseClose fiberwiseDistance at h_fw_dist_lt
+  rw [← hg] at h_fw_dist_lt
+  have hfw := Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt)
+  unfold hammingClose
+  apply lt_of_le_of_lt (mul_le_mul_left' (Code.distFromCode_le_dist_to_mem f g g.property) 2)
+  apply ENat.coe_lt_coe.mpr
+  apply Nat.lt_succ_of_le
+  refine (Nat.mul_le_mul_left 2 hcount).trans ?_
+  rw [← Nat.mul_assoc]
+  refine (Nat.mul_le_mul_right (2 ^ steps) hfw).trans_eq ?_
+  rw [Nat.sub_mul, ← Nat.pow_add, ← Nat.pow_add]
+  congr 2 <;> dsimp only <;> omega

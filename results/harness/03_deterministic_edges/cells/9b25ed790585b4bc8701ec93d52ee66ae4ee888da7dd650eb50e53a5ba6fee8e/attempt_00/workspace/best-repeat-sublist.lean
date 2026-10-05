@@ -1,0 +1,19 @@
+open OldExpressions in
+theorem extractedOldExprInVars :
+  NormalizedOldExpr post →
+  (extractOldExprVars post).Subset
+  (Imperative.HasVarsPure.getVars post) := by
+  intro h
+  apply List.Sublist.subset
+  induction h <;> repeat' first
+  | assumption
+  | apply List.nil_sublist
+  | apply List.Sublist.append
+  next hnfn hne hwf ih1 ih2 =>
+    unfold extractOldExprVars
+    split
+    · exact List.Sublist.refl _
+    · next h =>
+      cases hwf .oldPred
+      exact False.elim (h _ _ _ rfl)
+    · exact ih1.append ih2

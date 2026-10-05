@@ -1,0 +1,58 @@
+theorem putnam_1964_b2
+(S : Type*) [Fintype S] [Nonempty S]
+(P : Finset (Set S))
+(hPP : ∀ T ∈ P, ∀ U ∈ P, T ∩ U ≠ ∅)
+(hPS : ¬∃ T : Set S, T ∉ P ∧ (∀ U ∈ P, T ∩ U ≠ ∅))
+: (P.card = 2 ^ (Fintype.card S - 1)) := by
+  classical
+  have hmiss : ∀ A : Set S, A ∉ P → ∃ U : Set S, U ∈ P ∧ A ∩ U = ∅ := by
+    intro A hA
+    by_contra hn
+    exact hPS ⟨A, hA, by
+      intro U hU
+      by_contra hne
+      exact hn ⟨U, hU, hne⟩⟩
+  have hcomp : ∀ A : Set S, A ∈ P ∨ Aᶜ ∈ P := by
+    intro A
+    by_contra! h
+    obtain ⟨hA, hAc⟩ := h
+    obtain ⟨U, hU, hu⟩ := hmiss A hA
+    obtain ⟨V, hV, hv⟩ := hmiss Aᶜ hAc
+    have ⟨x, hx⟩ := Set.nonempty_iff_ne_empty.mpr (hPP U hU V hV)
+    change x ∈ U ∧ x ∈ V at hx
+    have hxna : x ∉ A := by
+      intro ha
+      have hmem : x ∈ A ∩ U := ⟨ha, hx.1⟩
+      rw [hu] at hmem
+      simpa using hmem
+    have hxa : x ∈ A := by
+      by_contra hxna'
+      have hmem : x ∈ Aᶜ ∩ V := ⟨by simpa using hxna', hx.2⟩
+      rw [hv] at hmem
+      simpa using hmem
+    exact hxna hxa
+  have hnotboth : ∀ A : Set S, A ∈ P → Aᶜ ∉ P := by
+    intro A hA hAc
+    exact (hPP A hA Aᶜ hAc) (by ext x; simp)
+  let Q : Finset (Set S) := Finset.univ \ P
+  have hPQ : P.card = Q.card := by
+    refine Finset.card_bij' (fun A _ => Aᶜ) (fun A _ => Aᶜ) ?_ ?_ (by intro A hA; simp) (by intro A hA; simp)
+    · intro A hA
+      simpa [Q] using hnotboth A hA
+    · intro A hA
+      simp only [Q, Finset.mem_sdiff, Finset.mem_univ, true_and] at hA
+      exact (hcomp A).resolve_left hA
+  have hsum : Q.card + P.card = (Finset.univ : Finset (Set S)).card :=
+    Finset.card_sdiff_add_card_eq_card (Finset.subset_univ P)
+  have huniv : (Finset.univ : Finset (Set S)).card = 2 ^ Fintype.card S := by
+    simp [Fintype.card_fun]
+  have hdouble : P.card * 2 = 2 ^ Fintype.card S := by
+    rw [← hPQ, huniv] at hsum
+    omega
+  have hn : 0 < Fintype.card S :=
+    Fintype.card_pos_iff.mpr ⟨Classical.choice ‹Nonempty S›⟩
+  have hpow : 2 ^ (Fintype.card S - 1) * 2 = 2 ^ Fintype.card S := by
+    rw [← pow_succ]
+    congr 1
+    omega
+  omega

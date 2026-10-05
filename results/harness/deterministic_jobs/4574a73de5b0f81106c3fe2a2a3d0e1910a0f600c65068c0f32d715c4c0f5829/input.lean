@@ -1,0 +1,19 @@
+open OldExpressions in
+theorem extractedOldExprInVars :
+  NormalizedOldExpr post →
+  (extractOldExprVars post).Subset
+  (Imperative.HasVarsPure.getVars post) := by
+  have app {a b c d : List Expression.Ident}
+      (h : a.Subset c) (k : b.Subset d) : (a ++ b).Subset (c ++ d) := by
+    grind [List.Subset]
+  intro h
+  induction h
+  all_goals try solve | exact List.Subset.empty | repeat first | assumption | apply app
+  case app hn he hnold ih₁ ih₂ =>
+    unfold extractOldExprVars
+    split
+    · simp only; exact fun _ h => h
+    · next hf =>
+      cases hnold .oldPred
+      exfalso; apply hf; rfl
+    · exact app ih₁ ih₂

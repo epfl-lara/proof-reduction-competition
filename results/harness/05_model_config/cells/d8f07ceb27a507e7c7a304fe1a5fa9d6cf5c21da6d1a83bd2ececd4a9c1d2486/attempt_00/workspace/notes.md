@@ -1,0 +1,25 @@
+- Seed: score 40.563, tokens 1270, heartbeats ~31100.
+- Shared time-order pair factorization into l1/l2 and binary span induction: first failed on scalar distribution and append matching; repaired with pair helper and crAnTimeOrderList unfolding.
+- simp only [smul_comm] caused recursion; one rw [smul_comm] fixes it.
+- best1: 752 tokens, 15626.872 heartbeats, score 67.018, all versions valid.
+- Omitting span_induction₂ predicate failed (cannot infer motive).
+- Removing redundant commutator identity hc, using list commutator expansion on both sides: best2 682 tokens, 14015.542 heartbeats, score 70.212.
+- Bilinear map equality via Basis.ext twice, using mulLinearMap and compr₂: best3 610 tokens, 10641.498 heartbeats, score 74.858.
+- Using c abbreviation and trans instead of repeated hs type: best4 575 tokens, 10169.660 heartbeats, score 76.191 (simp must unfold c in closing branches).
+- Helper only for crAnTimeOrderList instead of mapped timeOrderF: best5 531 tokens, 9751.585 heartbeats, score 77.727. Must separate simp of timeOrderF from ofCrAnListF_append (bottom-up rewriting otherwise expands input list too early).
+- Fully explicit list membership proof and focused reflexivity simp: valid, 544 tokens/9482.166 heartbeats, score 77.585 (slightly worse than best5).
+- Combined ht membership premise hxy: best6 522 tokens, 9942.857 heartbeats, score 77.822.
+- Factoring equality in free algebra before applying ι: 533 tokens/9502.083 heartbeats, 77.870 raw score, not saved best by tool (tiny improvement).
+- Focused simp for sign cancellation, avoiding unfold/refold rw: best7 519 tokens/9807.378 heartbeats, score 78.012.
+- Removed single-use f and mulLinearMap aliases: best8 503 tokens/9919.985 heartbeats, score 78.361.
+- LinearMap.ext_basis replaces Basis.ext twice: best9 502 tokens/9779.798 heartbeats, score 78.499.
+- Considered relocating commutator via vanishing triple commutators: requires separate graded relocation proof and statistic cases, no clear reduction vs direct stable-sort factorization.
+- Explicit normalization via compr₂_apply/comp_apply/flip_apply instead of change full basis equality: best10 486 tokens/9524.390 heartbeats, score 79.140.
+- Consolidated pair sign rewriting into focused simp and combined product/scalar normalization: best11 481 tokens/9424.808 heartbeats, score 79.356.
+- Comm expansion in one explicit simp instead of dsimp/rw/simp: best12 473 tokens/9273.582 heartbeats, score 79.695.
+- Consolidated expansion and sort simp; then expand pair lists via ofCrAnListF_cons: best13 478 tokens/8664.117 heartbeats, score 80.041.
+- Direct ofCrAnOpF commutator expansion and backward cons rewrites: valid 472 tokens/9222.120 heartbeats, 79.763, regressive.
+- Generalized stable-sort helper to arbitrary block, reused with [] (no separate takeWhile/filter theorem): best14 470 tokens/8655.661 heartbeats, score 80.267.
+- Normalize empty/pair helper instances together; explicit nil-list membership witness: best15 466 tokens/8599.618 heartbeats, score 80.421.
+- Replacing nil/map_one/mul_one simplification with singleton lemma failed, even with singleton ordered before cons; retained best15.
+- Stopping: main structural gains (bilinear basis ext and a reusable arbitrary-block stable-sort identity) are realized; recent shorter alternatives fail or regress.

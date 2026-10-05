@@ -1,0 +1,22 @@
+lemma fundamental_theorem_of_variational_calculus' {f : Y → V}
+    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]
+    [OpensMeasurableSpace Y]
+    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :
+    f = 0 := by
+  funext x
+  by_contra hx
+  have hp : 0 < ⟪f x, f x⟫_ℝ :=
+    real_inner_self_nonneg'.lt_of_ne' (mt inner_self_eq_zero'.mp hx)
+  have hc := Continuous.inner' (𝕜 := ℝ) f (fun _ => f x) hf continuous_const
+  obtain ⟨φ, hs, hk, hd, hn, hxφ⟩ := exists_contDiff_tsupport_subset (n := ⊤)
+    (Filter.Tendsto.eventually_const_lt hp hc.continuousAt)
+  have hcont := hd.continuous.mul hc
+  have hzero := hg (fun y => φ y • f x)
+    (IsTestFunction.smul_right ⟨hd, hk⟩ contDiff_const)
+  simp only [inner_smul_right'] at hzero
+  refine (integral_pos_of_integrable_nonneg_nonzero (x := x) hcont
+    (hcont.integrable_of_hasCompactSupport hk.mul_right) ?_ ?_).ne' hzero
+  · exact fun y => mul_nonneg_iff_pos_imp_nonneg.mpr
+      ⟨fun hy => (hs (subset_tsupport φ hy.ne')).le,
+        fun _ => (hn (Set.mem_range_self y)).1⟩
+  · simpa only [Pi.mul_apply, hxφ, one_mul] using hp.ne'

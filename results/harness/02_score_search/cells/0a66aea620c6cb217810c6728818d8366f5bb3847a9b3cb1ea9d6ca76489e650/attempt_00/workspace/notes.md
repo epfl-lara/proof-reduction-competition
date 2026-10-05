@@ -1,0 +1,19 @@
+- Initial structural rewrite: shared fiber evaluation lemma; one-level fiber representation replaces cast/sum argument; split identity + polynomial linearity. Check failed only in hQ (sum domains/projections not normalized). 341 tokens. hx and algebra succeeded all versions.
+- Attempt 2 added Fin.val_mk/Fin.eta; hQ still unsolved (sum equality visually identical).
+- Attempt 3 closed hQ with `congr 1 <;> congr 1`: all versions pass, 350 tokens, 8485.742 heartbeats, score 87.63123.
+- Next: isolate ring atoms with generalize; use i.isLt for successor bounds.
+- Attempt 4: generalize ring atoms plus explicit i.isLt bounds: valid, 359 tokens, 8299.691 HB, score 87.61081 (slightly worse). Removing generalize next; test rfl in place of congr.
+- Attempt 5: i.isLt, no generalize, rfl closes hQ after simp. Valid, 337 tokens, 8277.471 HB, score 88.01192.
+- Attempt 6: inferred hq using congrArg; consolidated hx simplification. Valid 301 tokens, 7833.095 HB, score 88.96869.
+- Next: avoid repeating fold formula via dsimp; remove redundant index simplifications in hQ.
+- Attempt 7: dsimp fold in final goal and remove index simp entries. Valid 255 tokens, 7640.992 HB, score 89.91461.
+- Attempt 8: hx in additive form succeeds, but combined simp cannot match he under unfolded fold (rw had stronger matching); final goal invalid. Repair with dsimp + rw, use eval_C_mul.
+- Attempt 9: additive hx, dsimp+rw final with eval_C_mul, and hQ dsimp separated. Valid 253 tokens, 7161.525 HB, score 90.30260.
+- Next: prove hQ with explicit sum_congr and pointwise algebra instead of global simp normalizing both sums.
+- Attempt 10: explicit sum_congr hQ valid but worse (263 tokens, 7322.555 HB, 90.00915); reverting. Next compare linear_combination hx with ring after substitution.
+- Attempt 11: linear_combination valid but worse (268 tokens, 7567.164 HB, 89.74161). Revert. Next remove he by applying split identity directly in final simplification, unfold x in hq for matching.
+- Attempt 12: eliminate he, directly split/evaluate in final simp; unfold x in hq for syntactic matching. Valid 211 tokens, 6916.501 HB, score 91.21752.
+- Next: unfold fold before setting x, so hq matches syntactically without unfolding x; infer k binder and use positional fiber arguments.
+- Attempt 13: set x after dsimp fold, inferred k, positional fiber arguments. Valid 195 tokens, 7129.866 HB, score 91.34025. Set structure increased HB; next retain syntactic shortenings but revert to let x / unfold x in hq.
+- Attempt 14: let x / unfold x in hq, keeping positional fiber arguments and inferred k. Valid all versions, 194 tokens, 6904.177 HB, score 91.52390 (selected best).
+- Stopping: proof now uses one-level fiber representation and polynomial split directly; explicit sum-congr, separate evaluated split helper, set-based folding, generalize, and linear_combination alternatives were checked and were worse. Remaining tweaks offer little justified benefit.

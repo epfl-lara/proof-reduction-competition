@@ -1,0 +1,138 @@
+{
+  "name": "putnam_1995_a3",
+  "source": "putnambench",
+  "method": "simp_min",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 95.47123623011015,
+      "heartbeat_reduction_pct": 91.24456453614285,
+      "compatibility_pct": 100.0,
+      "combined_pct": 95.571933588751
+    },
+    "candidate": {
+      "length": 185,
+      "code_sha256": "8d22eb8655d5c32be7706b73739976bbbb212fb1b2595dbd8ce04144da6c5fbf"
+    },
+    "primary_version": "v4.25.0",
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1572.28,
+        "heartbeat_reduction_pct": 91.24456453614285,
+        "cached": true,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "elapsed_seconds": 4.42923703417182,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1255.046,
+        "heartbeat_reduction_pct": 91.23052164116135,
+        "cached": true,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "elapsed_seconds": 4.069450801238418,
+        "diagnostics": []
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1218.395,
+        "heartbeat_reduction_pct": 91.37982633363492,
+        "cached": true,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "elapsed_seconds": 4.751428831368685,
+        "diagnostics": []
+      }
+    }
+  },
+  "best": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 95.56915544675643,
+      "heartbeat_reduction_pct": 91.32094377700469,
+      "compatibility_pct": 100.0,
+      "combined_pct": 95.63003307458705
+    },
+    "candidate": {
+      "length": 181,
+      "code_sha256": "fc7afcbcff41441b745874291050c32bc47df78b6e8c6fbd7e881a8c4c9c6b58"
+    },
+    "primary_version": "v4.25.0",
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1558.564,
+        "heartbeat_reduction_pct": 91.32094377700469,
+        "cached": true,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "elapsed_seconds": 3.75605814345181,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1244.915,
+        "heartbeat_reduction_pct": 91.30131074789799,
+        "cached": false,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "elapsed_seconds": 3.5761603228747845,
+        "diagnostics": []
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 1208.831,
+        "heartbeat_reduction_pct": 91.44749186160008,
+        "cached": false,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "elapsed_seconds": 3.6329788006842136,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f h\n  have step {a b} (hab : relation a b) (i : Fin 9) :\n      7 ∣ b i * 10 ^ i.1 - a i * 10 ^ i.1 + digits_to_num a := by\n    convert (hrelation a b).mp hab |>.2 i using 1\n    symm\n    apply sub_eq_iff_eq_add.mp\n    rw [hdigits_to_num, ← Finset.sum_sub_distrib]\n    simp only [ite_mul, ite_sub,\n      sub_self, Fintype.sum_ite_eq']\n  have hs := Finset.dvd_sum (s := Finset.univ) (fun i _ => step h.1 i)\n  simp only [Finset.sum_add_distrib, Finset.sum_sub_distrib, Fin.sum_const,\n    ← congrFun hdigits_to_num e, ← congrFun hdigits_to_num d] at hs\n  intro i\n  apply (show IsCoprime (7 : ℤ) 10 from ⟨3, -2, by decide⟩).pow_right (n := i.1) |>.dvd_of_dvd_mul_right\n  convert dvd_sub (dvd_sub hs (dvd_add (step h.1 i) (step h.2 i)))\n    ⟨digits_to_num d, rfl⟩ using 1 <;> ring",
+  "initial_sha256": "8d22eb8655d5c32be7706b73739976bbbb212fb1b2595dbd8ce04144da6c5fbf",
+  "rounds": 2,
+  "attempts": 26,
+  "accepted_edits": 1,
+  "accepted_transitions": 1,
+  "analysis_requests": 2,
+  "lean_candidate_checks": 28,
+  "cache_hits": 1,
+  "seen": [
+    "3e10e1426906d6b25ae7fef75306de7567ae46aff417397032771f14376b4557",
+    "7e7f6dc7b790f5ea804849b3d7115b3aaf57359c14483b6393d84be2ad30eef3",
+    "72f9e6f1924aca2b7da6f622d6b35ac4b513f2cdfd00f9ccb22620c7aa244037",
+    "1179c791fd1a8385d9e9bbc7966740b934611346c40a568314923f9eba54def8",
+    "e80ae6e82bb6d7c8ee238cb7f9ca6561d36c7932a03846966507bbb0f0baba18",
+    "163308882f9857e2ef055c0fcdc031c4f0e14419a0eaa8bca3fe5f7c433fd5ff",
+    "fd944ae89a0fb9992710819a98db79a0d8c209473109851836a7953c60a969ce",
+    "e309bc4d1898759293dd34c0a65a34d9df3e9d0238b03d88a11fd0bd1c26827f",
+    "62eec797546ae77b71fcb019f1c838ff3dd715c547f3defd14e516dd82d81070",
+    "d803d2fed26b9aa99592ae7bf42e6543e535cc2a4e9f41c102fa199e1a983857",
+    "552ab346fc931bedf697f1d65f84510ff1005c9964f3825387fef7b53ae271f1",
+    "fc7afcbcff41441b745874291050c32bc47df78b6e8c6fbd7e881a8c4c9c6b58",
+    "d74ab586268fbf12cf9d14096a9fe1c5df5c8fa9031a5fca1b4e5b2197579c53",
+    "4a7b6e6b0689d3c7bf97051bca8afeff645667869f664dd256779ad42563d554",
+    "daf12e6b88a12cb3539a2644d4e9baf8f5b586b0371c4573b483370b6352d4c1",
+    "a91c85cf141f67710f1c47e1f7720335c8e769056222e6c74276f84da12127d2",
+    "fb6fcfd51271814528abce969768f34b8f3c8777756bb3b49e101957c805b221",
+    "6965bed32f43693cae8e9ea75b49bbece442c411bf85321f447fb2ef07b10547",
+    "f0bcc70234990e6327cba5cfaf1ab891a436125c6f26069d71e26d2890dd6d2e",
+    "b51ac1db060ba6ce94136b67ff757a84e764736fbc8dcecbb0d0b6abfa958447",
+    "5b8fe64ed088ecd6861a4e330fd66b11d2af1b419647d4bb2c010bf957f001a3",
+    "1bfaa6c0f6aeafb0eae22a8af5802853926b3f2d704f76e648acf0f08797426d",
+    "04f25876a4d78a2b88b5b7358d564bd4d0ef50fd72dd669b0434d2bb8502cfe1",
+    "addede6430fd157d13ec324494425ef7a854b09eee9d2c57384ebce1fbb013d7",
+    "5742d1dff067b7f4a26272acf078ddf1f9cec62df3216abbcf95bcb3ad131383",
+    "2f58b8d3e7be65a2314c6e80b833cbb6a9bf86badcb2d28f563e54f0f12410cf"
+  ],
+  "plan": null,
+  "elapsed_seconds": 108.58312989212573,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0
+}

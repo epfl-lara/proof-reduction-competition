@@ -1,0 +1,14 @@
+# Attempts
+- Seed: 43.462 score, 4.935% length / 25.451% heartbeat reduction.
+- Scalar continuous inner product; construct direct bump and use integral_pos_of_integrable_nonneg_nonzero. First draft failed (Pi.zero_apply missing and measure implicit).
+- Explicit integral type and Pi.zero_apply: valid, 243 tokens, 2219.154 heartbeats, score 84.293. Eliminates the WithLp estimate and all positive-ball measure work.
+- Stronger Continuous.integral_pos_of_hasCompactSupport_nonneg_nonzero and shorter hpos term: valid, 219 tokens, 2113.06 heartbeats, score 85.529.
+- exists_contDiff_tsupport_subset: ∞ syntax out of scope; replaced with ⊤. Valid, same 219 tokens, 1926.968 heartbeats, score 86.048. Generic cutoff is available and faster than constructing ball radii.
+- Inline positivity theorem with measure explicit: first failed (function multiplication not unfolded); Pi.mul_apply repaired it. Valid 201 tokens, 1829.287 heartbeats, score 87.025.
+- Inline nonnegativity in positivity theorem: apply generated goals in surprising order; refine solved ordering. Valid 185 tokens, 1789.614 heartbeats, score 87.762.
+- Remove local proposition annotations (scalar and positive self-inner inferred with explicit scalar/input) and focused rw for zero product: valid 170 tokens, 1771.092 heartbeats, score 88.402.
+- Explicit IsTestFunction fields for the scaled cutoff: valid but regressive, 167 tokens / 2443.276 heartbeats / score 86.644. Keep smul_right helper.
+- Omitting scalar in Continuous.inner' is stuck. Zero-branch cast cannot rewrite hidden Pi.mul. simp [hx] is valid and marginally better: 164 tokens, 1760.323 heartbeats, score 88.667.
+- Pulling back Ioi_mem_nhds directly through hc.continuousAt (with either center nonzero lemma) is valid but slightly regressive: 162 tokens, about 1809-1810 heartbeats, score 88.609/88.606. Keep isOpen_lt.mem_nhds.
+- Prove self-inner is zero using le_antisymm and contradiction on scalar positivity instead of vector nonzero. Plain by_contra + lt_of_not_ge: valid but slightly worse (165 tokens, 1763.307 heartbeats).
+- by_contra! on that scalar goal: valid, 161 tokens, 1763.316 heartbeats, score 88.776 (best). No remaining large proof block to remove with available hypotheses; direct field and neighborhood alternatives were regressive.

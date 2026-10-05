@@ -1,0 +1,4 @@
+- Replaced the expanded fiber basis-sum subtraction with `qMap_total_fiber_one_level_eq` and first-basis normalization; all three Lean versions pass. Score 48.5463 (L 12.9066, H 32.7324, C 100).
+- Tried two iterations of the one-level identity with mismatched `Fin` bounds; both failed. Final version uses explicit `ii`, `jj`, basis index, and `hii`/`hjj` bounds.
+- Tested using the concise `mul_two_add_bit_lt_two_pow` for the even-index bound; the checker did not return after several minutes, so it was interrupted. Restored the last all-version-verified bound proof.
+- The concise even-index bound eventually completed checking successfully after a long delay; it became the best proof, score 49.3550 (L 14.3757, H 33.6893, C 100).

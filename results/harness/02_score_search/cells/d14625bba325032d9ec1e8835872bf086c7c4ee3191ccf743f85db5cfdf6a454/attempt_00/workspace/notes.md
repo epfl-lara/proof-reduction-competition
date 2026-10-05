@@ -1,0 +1,19 @@
+- Replaced norm/Cauchy–Schwarz, support-measure argument with continuity of scalar inner product, one bump, and Continuous.integral_pos_of_hasCompactSupport_nonneg_nonzero.
+- Initial failure: scalar 𝕜 ambiguous for Continuous.inner'; specified ℝ.
+- Second failure: rw did not unfold pointwise function multiplication; added change in zero branch.
+- Valid A: 196 tokens, 2080.416 heartbeats, score 86.52054.
+- B: inferred positivity goal + direct smooth/support constructor: 171 tokens, 2677.651 heartbeats, score 85.83411 (regression). First used equality not_lt wrong way, fixed symm.
+- C: retained IsTestFunction.smul_right, applied hz.symm.not_lt: 174 tokens, 2011.645 heartbeats, score 87.57407 (best).
+- D: explicit μ/x plus refine positivity into subgoals: 183 tokens, 2016.614 heartbeats, score 87.20768 (regression).
+- E: exists_contDiff_tsupport_subset replaces metric ball/bump construction. n is ENat, so use ⊤ (∞ scoped notation unavailable). 174 tokens, 1846.57 heartbeats, score 88.03446 (best).
+- Inspected AE distribution theorem: requires BorelSpace, unavailable from OpensMeasurableSpace without trim/transport; current direct positivity avoids it.
+- F: exact hz.symm.not_lt instead of apply: 175 tokens, 1830.416 heartbeats, score 88.04034; best saver kept E (tiny gain).
+- G: simp [hy] zero branch and transport hx ▸ one_ne_zero: 160 tokens, 1825.364 heartbeats, score 88.64198 (best).
+- H: hg _ with IsTestFunction.smul_right (f := b) (g := fun _ => f x) avoids elaborating polymorphic scalar-action witness: 165 tokens, 1517.608 heartbeats, score 89.30445.
+- I: removed unnecessary explicit f := b: 160 tokens, 1521.921 heartbeats, score 89.48827 (best).
+- J: hg _ ⟨hd.smul_const (f x), hk.smul_right⟩: 151 tokens, 2175.535 heartbeats, score 88.01788 (regression; generic constructor more costly).
+- K: infer scalar positivity type from explicitly supplied center: 158 tokens, 1502.418 heartbeats, score 89.62100 (best).
+- L: neighborhood from hc.continuousAt.eventually (Ioi_mem_nhds hp): 156 tokens, 1507.632 heartbeats, score 89.68480.
+- M: inferred hp's center and term proof (mul_eq_zero_of_left hy _).ge for zero branch: 150 tokens, 1497.287 heartbeats, score 89.94867 (best).
+- N: explicit constant c := f x through (IsTestFunction.mk hd hk).smul_right: 149 tokens, 1483.730 heartbeats, score 90.02565 (best).
+- Stopping locally: the major norm/measure blocks are eliminated, the existing compact smooth cutoff and positive-integral lemmas handle the structure, and recent changes yield only small elaboration/length gains. Generic smul constructors were measurably worse; the AE shortcut needs stronger measurability assumptions.

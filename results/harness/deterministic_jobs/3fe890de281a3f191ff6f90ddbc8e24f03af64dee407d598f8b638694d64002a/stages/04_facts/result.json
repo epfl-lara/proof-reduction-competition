@@ -1,0 +1,109 @@
+{
+  "name": "putnam_1964_a4",
+  "source": "putnambench",
+  "method": "facts",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 63.48219332956473,
+      "heartbeat_reduction_pct": 95.48420065111952,
+      "compatibility_pct": 100.0,
+      "combined_pct": 86.32213132689475
+    },
+    "candidate": {
+      "length": 646,
+      "code_sha256": "89da589248336d35b1e8b1527497a64485a4ce9cadbd9f253f674f0378df386d"
+    },
+    "primary_version": "v4.25.0",
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 6371.934,
+        "heartbeat_reduction_pct": 95.48420065111952,
+        "cached": true,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "elapsed_seconds": 5.412748720496893,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 5174.772,
+        "heartbeat_reduction_pct": 95.52793617839183,
+        "cached": true,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "elapsed_seconds": 3.7824788950383663,
+        "diagnostics": []
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 5395.957,
+        "heartbeat_reduction_pct": 95.16134318560819,
+        "cached": true,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "elapsed_seconds": 3.480397341772914,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  classical\n  let f n := (u n, u (n+1), u (n+2), u (n+3))\n  have hf : (Set.range f).Finite := Set.Finite.subset\n    (Set.finite_Icc (B,B,B,B) (T,T,T,T)) (by\n      rintro x ⟨n,rfl⟩\n      simp only [mem_Icc, Prod.mk_le_mk, hB, and_self, f])\n  have hp : ∃ i j : ℕ, i < j ∧ f i = f j := by\n    obtain ⟨i,_,j,_,hne,heq⟩ :=\n      Set.Infinite.exists_ne_map_eq_of_mapsTo Set.infinite_univ\n        (Set.mapsTo_range f Set.univ) hf\n    rcases lt_or_gt_of_ne hne with h | h\n    · exact ⟨i,j,h,heq⟩\n    · exact ⟨j,i,h,heq.symm⟩\n  obtain ⟨i,j,hij,hfij⟩ := hp\n  have heq : u i = u j ∧ u (i+1) = u (j+1) ∧ u (i+2) = u (j+2) ∧ u (i+3) = u (j+3) := by\n    simpa [f] using hfij\n  have hs : ∀ m : ℕ, u (i+m) = u (j+m) ∧ u (i+m+1) = u (j+m+1) ∧\n      u (i+m+2) = u (j+m+2) ∧ u (i+m+3) = u (j+m+3) := by\n    intro m\n    induction m with\n    | zero => simpa using heq\n    | succ m ih =>\n      refine ⟨?_, ?_, ?_, ?_⟩\n      · simpa [Nat.add_assoc] using ih.2.1\n      · simpa [Nat.add_assoc] using ih.2.2.1\n      · simpa [Nat.add_assoc] using ih.2.2.2\n      · have ri := (hu (i+(m+4)) (by omega)).1\n        have rj := (hu (j+(m+4)) (by omega)).1\n        simp only [le_add_iff_nonneg_left, zero_le, Nat.add_sub_assoc, Nat.add_one_sub_one, Nat.reduceLeDiff,\n    Nat.reduceSub, add_tsub_cancel_right] at ri rj\n        have hcast : (u (i+m) : ℝ) = u (j+m) ∧\n            (u (i+(m+1)) : ℝ) = u (j+(m+1)) ∧\n            (u (i+(m+2)) : ℝ) = u (j+(m+2)) ∧\n            (u (i+(m+3)) : ℝ) = u (j+(m+3)) := by\n          norm_cast\n        have hreal : (u (i+(m+4)) : ℝ) = u (j+(m+4)) := by\n          rw [ri, rj]\n          simp only [hcast.2.2.2, hcast.2.2.1, hcast.2.1, hcast.1]\n        exact_mod_cast hreal\n  refine ⟨i, j-i, by omega, ?_⟩\n  intro n hn\n  have h := (hs (n-i)).1\n  have hi : i+(n-i) = n := by omega\n  have hj : j+(n-i) = n+(j-i) := by omega\n  rw [hi,hj] at h\n  exact h.symm",
+  "rounds": 1,
+  "attempts": 12,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 12,
+  "cache_hits": 0,
+  "elapsed_seconds": 46.614,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 63.48219332956473,
+      "heartbeat_reduction_pct": 95.48420065111952,
+      "compatibility_pct": 100.0,
+      "combined_pct": 86.32213132689475
+    },
+    "candidate": {
+      "length": 646,
+      "code_sha256": "89da589248336d35b1e8b1527497a64485a4ce9cadbd9f253f674f0378df386d"
+    },
+    "primary_version": "v4.25.0",
+    "per_version": {
+      "v4.25.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 6371.934,
+        "heartbeat_reduction_pct": 95.48420065111952,
+        "cached": true,
+        "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+        "elapsed_seconds": 5.412748720496893,
+        "diagnostics": []
+      },
+      "v4.26.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 5174.772,
+        "heartbeat_reduction_pct": 95.52793617839183,
+        "cached": true,
+        "environment_fingerprint": "e089bc97585666aa2720538ef647224c9aa9ca7d8393b588e73f45de11c1ebc0",
+        "elapsed_seconds": 3.7824788950383663,
+        "diagnostics": []
+      },
+      "v4.27.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 5395.957,
+        "heartbeat_reduction_pct": 95.16134318560819,
+        "cached": true,
+        "environment_fingerprint": "80fc49a06239c45694a9789cea3d28822babb7aa9a3332d707c5d9c8ac8ec0da",
+        "elapsed_seconds": 3.480397341772914,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": false
+}

@@ -1,0 +1,19 @@
+# Optimization notes
+- Seed: score 73.31945 (1193 tokens, 87.40% heartbeat reduction).
+- Structural proposal: pigeonhole using finite tuple interval; induct on equality of 4-tuples to share all four base cases. First check failed at `rw` because indices needed explicit `change` normalization (414 tokens).
+- Repair underway: normalize successor index to i+m+4 before rewriting recurrence.
+- Index repair still failed on rewrites under numeral subtraction; specialized `Nat.add_sub_assoc` simp caused recursion depth failure.
+- Represent recurrence by a function g of 4-tuples, use exact hu and congrArg g instead of rewriting indices. After removing an accidental old block, valid on all versions: 409 tokens, 3022.144 heartbeats, score 91.57926498. Deterministic cleanup requested.
+- Cleanup of 409-token proof made no change.
+- Simplified bound proof with `simp [f,hB]`, folded final equality projection into simpa: all-version-valid, 316 tokens, 4799.024 HB, score 92.91190827; cleanup requested. Increased HB from full simp can likely be recovered with focused simp.
+- Cleanup narrowed bound simp: 323 tokens, 2971.532 HB, score 93.21172247.
+- Induct on evidence n≥i (Nat.le_induction) for f(j-i+n)=f n; removes final offset arithmetic: valid all versions, 297 tokens, 2461.539 HB, score 93.82211905; cleanup requested.
+- Cleanup of Nat.le_induction variant unchanged.
+- Inlined interval membership into pigeonhole and used recurrence directly with Nat.le_add_left sideconditions: 287 tokens, 2505.781 HB, score 94.00009797, all versions valid. Cleanup requested.
+- Cleanup of direct-hu variant unchanged.
+- Explicit recurrence indices, inline the transition map into congrArg, and drop unnecessary final f unfolding: valid all versions, 263 tokens, 2303.260 HB, score 94.50017318; cleanup requested.
+- Remaining representation alternative: use tuples of bounded-integer subtypes so pigeonhole uses finite_univ and interval membership is built once. Expected savings offset by subtype equality/coercion costs; worth one comparison.
+- Cleanup of 263-token proof unchanged.
+- Bounded-subtype tuple representation valid on all versions but regressive: 252 tokens, 5710.903 HB, score 93.90244599. The 11-token saving does not pay for subtype elaboration. Cleanup requested; retain raw integer tuples as best unless cleanup improves it.
+- Main blocks are now finite-state pigeonhole and a single induction on n≥i, with explicit recurrence congruence. Further changes appear limited to small savings or add coercion/unification costs.
+- Subtype cleanup unchanged. Status recovered best: raw integer quadruples, 263 tokens, 2303.26 HB, combined 94.50017318, all versions pass. Restored that exact declaration. Stopping after the alternate finite-state representation regressed; remaining small edits do not justify more checks.

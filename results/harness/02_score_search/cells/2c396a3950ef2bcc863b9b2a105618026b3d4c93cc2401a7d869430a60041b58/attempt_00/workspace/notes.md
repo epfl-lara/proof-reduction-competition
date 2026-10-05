@@ -1,0 +1,16 @@
+- Seed: 1217 tokens / 42058.327 heartbeats, score 33.333.
+- Shared sorted-list factorization hs plus hs [] replaces large calc: 678 tokens, 32660.323 hb, score 55.5448 (best1.lean).
+- Using simp with smul_comm hit maxRecDepth; module after distributing smuls works. Algebra.mul_smul_comm needed in equal-statistic branch.
+- Double span_induction₂ avoids duplicated motives and simp_all: 563 tokens, 20655.378 hb, score 68.2091 (best2.lean). Need mul_add in add_left branch.
+- rw [smul_comm] instead of module: 566 tokens, 20133.338 hb, score 68.5407 (best3.lean).
+- Bilinear f=(mul).compr₂(ι ∘ T), Basis.ext twice replaces span induction. 529 tokens, 11756.279 hb, score 76.1934 (best4.lean). map_mul needed explicit ι in rw.
+- c abbreviation with focused hc/zero simp: 529 tokens, 11057.315 hb, score 76.7473 (best5.lean).
+- Expand commutator and reverse singleton/append in place (no hc lemma): 500 tokens, 11421.457 hb, score 77.2530 (best6.lean).
+- Use list-commutator formula in a single simp, with reverse singleton: 492 tokens, 10885.198 hb, score 77.8972 (best7.lean).
+- change with underscored operands after bilinear ext timed out; retain explicit simp-only unfolding.
+- Let x,y be quotient algebra factors, not lists: 488 tokens, 10776.039 hb, score 78.0932 (best8.lean).
+- Fully explicit change after ext valid: 499 tokens, 10550.377 hb, score 77.9708 (slightly worse).
+- Partial change RHS failed unification; keep simp-only map unfolding.
+- Move smul_sub into initial simp and remove redundant distribution pass: 475 tokens, 10717.987 hb, score 78.4953 (best9.lean).
+- Focused list-membership simp-only left a nil-list quantifier; retain working short simp conditions.
+- Explicit sorting-list arguments and center witness x: 476 tokens, 10716.660 hb, score 78.4690 (worse). Further tweaks appear marginal; select best9.

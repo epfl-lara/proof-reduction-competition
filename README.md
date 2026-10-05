@@ -8,6 +8,7 @@ The task is to refactor existing Lean 4 proofs while preserving their statements
 
 - [RULES.md](RULES.md): competition rules and submission requirements, checked on October 2, 2026, with pinned source links.
 - [data/benchmark_data_warmup.jsonl](data/benchmark_data_warmup.jsonl): the original, unmodified warm-up benchmark.
+- [problems](problems/README.md): all 15 warm-up problems, each with complete `initial.lean`, `deterministic.lean`, and `best.lean` files, scores, and provenance.
 - [data/benchmark_heartbeats.jsonl](data/benchmark_heartbeats.jsonl): the organizer's published reference heartbeat counts, preserved separately from local measurements.
 - [src/proof_eval](src/proof_eval): Python, CLI, and localhost HTTP evaluation API, including training reward adapters.
 - [related_work](related_work/README.md): verified literature, downloadable papers, model feasibility, and the proposed harness/SFT/GRPO plan for both tracks.
@@ -124,7 +125,14 @@ The correctness-only stage tests Astra/low and Luna/max; the score stage also
 tests Astra/max and returns `(length reduction, heartbeat reduction,
 compatibility)` plus the combined score after each check. It retains the best
 proof passing every version and lets the agent continue without a fixed total
-attempt, token or wall-time budget. Run the staged controller with
+attempt, token or wall-time budget. Beginning/end deterministic cleanup is now
+the default; in-loop cleanup is retired. The
+[model configuration study](results/harness/05_model_config/PROTOCOL.md) tests
+Sol 6.1/max and Astra/high with that setup. Estimate costs before launching with
+`python src/run_agent_harness.py --estimate-only`, or call the Python API in
+[`proof_eval.costs`](src/proof_eval/costs.py). It reports per-problem estimates
+and flags the $3 cap, including missing usage; it does not enforce a spend limit.
+Run the staged controller with
 `python src/continue_agent_harness.py` only when no copy is already active.
 The [comparison report](results/harness/COMPARISON.md) separates full benchmark
 results from partial searches and improvements after the first valid proposal.
