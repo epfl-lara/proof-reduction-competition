@@ -5,7 +5,7 @@ one optimization proposal, then up to three Lean debugging rounds with **no
 candidate performance feedback**. The original direct-output matrix in
 [01_context_ablation](../01_context_ablation/) remains intact.
 
-See the [protocol and API guide](../../../docs/VALIDITY_REPAIR.md). Generation
+See the [protocol and API guide](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/docs/VALIDITY_REPAIR.md). Generation
 settings remain temperature 0.3, high reasoning requested, and 32,768 tokens
 including reasoning per request. The debugger sees the fixed statement,
 current proposal, known-valid incumbent, bounded source excerpt and compiler

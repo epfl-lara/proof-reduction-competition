@@ -145,11 +145,23 @@ DeepSeek gateway price is unverified and remains unknown rather than borrowing
 another model's rate. The $3 limit applies to each problem; these comparisons
 report it without a stopping budget.
 
+Claude usage schema 2 preserves reported one-hour cache writes and the
+`modelUsage` thinking-token subset when it covers all output. One-hour writes
+are priced at $8/M and remaining writes at $5/M; reasoning stays included in
+output and is charged once. Missing duration metadata leaves the independent
+five-minute pricing scenario explicitly assumed. Failed or limited native
+sessions retain any complete reported usage and cost, while their task outcome
+remains incomplete. The auditor uses each record's normalization version;
+historical generation and result bytes stay unchanged.
+
 Lemex uses its installed model catalog, pinned by hash, and an explicit Responses
 endpoint. Set `LEMEX_API_KEY`/`LEMEX_BASE_URL`, or reuse literal gateway credentials
 from the existing `.env`; credentials go only into the child environment. The
 host takes a shared filesystem admission slot for each native Lemex session,
 conservatively limiting all concurrent batches on this machine to five sessions.
+Admission files live under `~/.proof-arena/lemex-slots`, outside model-writable
+runtime/cache directories. The child holds the slot descriptor until it exits,
+even if its host process ends first.
 Other machines or clients using the same key must respect the same shared limit.
 No sampling temperature is sent: there is no old 0.3 setting or 32K output cap.
 The gateway's effective default temperature is not independently verified.
@@ -163,8 +175,10 @@ permission bypass, bare mode, fallback model, turn limit or dollar stopping limi
 Unrelated MCP servers are excluded for this matched benchmark. Linux Landlock
 protects source projects and the host evidence regardless of CLI permissions.
 Terminal `is_error`, subtype, actual model, permission denials, session ID, usage
-and cost are preserved and checked; denied tools or an unavailable model leave
-an incomplete outcome. See [headless Claude Code](https://code.claude.com/docs/en/headless).
+and cost are preserved and checked. A successful native result may include
+recovered tool denials; those remain in its evidence. Errors, limits, missing or
+inconsistent session IDs and model mismatches leave an incomplete outcome.
+See [headless Claude Code](https://code.claude.com/docs/en/headless).
 
 ## Artifacts and resuming
 

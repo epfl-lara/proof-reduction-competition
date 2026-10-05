@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
@@ -38,7 +40,15 @@ def claude_events(**changes):
         "modelUsage": {claude.MODEL: {"costUSD": 0.00144}},
         **changes,
     }
-    return [{"type": "system", "subtype": "init", "model": claude.MODEL}, terminal]
+    return [
+        {
+            "type": "system",
+            "subtype": "init",
+            "model": claude.MODEL,
+            "session_id": "session-test",
+        },
+        terminal,
+    ]
 
 
 def test_claude_normalizes_cache_counts_and_keeps_reported_cost():
@@ -67,11 +77,107 @@ def test_claude_normalizes_cache_counts_and_keeps_reported_cost():
         {"is_error": True},
         {"subtype": "error_max_turns"},
         {"result": ""},
-        {"permission_denials": [{"tool_name": "Bash"}]},
+        {"session_id": None},
+        {"session_id": ""},
+        {"session_id": "another-session"},
     ],
 )
-def test_claude_errors_limits_and_denied_tools_are_incomplete(changes):
-    assert claude.parse_events(claude_events(**changes), "", 0)["status"] != "received"
+def test_claude_terminal_errors_and_limits_are_incomplete(changes):
+    parsed = claude.parse_events(claude_events(**changes), "", 0)
+    assert parsed["status"] != "received"
+    parsed["provider"] = "claude"
+    assert generations_cost(CostConfig(claude.MODEL, "max"), [parsed])[
+        "total_usd"
+    ] == pytest.approx(0.00144)
+
+
+def test_recoverable_tool_denials_preserve_success_usage_and_cost():
+    denials = [{"tool_name": "Bash", "tool_input": {"command": "unapproved helper"}}]
+    parsed = claude.parse_events(claude_events(permission_denials=denials), "", 0)
+    parsed["provider"] = "claude"
+    assert parsed["status"] == "received" and parsed["permission_denials"] == denials
+    assert parsed["tool_outcome"] == "completed_with_denials"
+    assert generations_cost(CostConfig(claude.MODEL, "max"), [parsed])[
+        "total_usd"
+    ] == pytest.approx(0.00144)
+
+
+def test_claude_prices_reported_cache_duration_and_counts_thinking_once():
+    events = claude_events()
+    terminal = events[-1]
+    terminal["usage"]["cache_creation"] = {
+        "ephemeral_1h_input_tokens": 20,
+        "ephemeral_5m_input_tokens": 0,
+    }
+    terminal["modelUsage"][claude.MODEL].update(outputTokens=50, thinkingTokens=35)
+    terminal["total_cost_usd"] = 0.00150
+    parsed = claude.parse_events(events, "", 0)
+    assert parsed["usage_schema_version"] == 2
+    assert parsed["cache_write_ttl_reported"] and parsed["reasoning_usage_reported"]
+    assert parsed["token_usage"]["reasoning_output_tokens"] == 35
+    assert parsed["token_usage"]["cache_write_1h_input_tokens"] == 20
+    parsed["provider"] = "claude"
+    cost = generations_cost(CostConfig(claude.MODEL, "max"), [parsed])
+    assert cost["total_usd"] == pytest.approx(0.00150)
+    assert cost["aggregate_usage_at_opus_list_rates"]["total_usd"] == pytest.approx(
+        0.00150
+    )
+    legacy = claude.parse_events(events, "", 0, usage_schema_version=1)
+    assert "usage_schema_version" not in legacy
+    assert "cache_write_1h_input_tokens" not in legacy["token_usage"]
+    assert legacy["token_usage"]["reasoning_output_tokens"] == 0
+    assert not legacy["reasoning_usage_reported"]
+
+
+@pytest.mark.parametrize("thinking", [True, -1, 51, None])
+def test_invalid_or_missing_thinking_counter_remains_unreported(thinking):
+    events = claude_events()
+    events[-1]["modelUsage"][claude.MODEL].update(
+        outputTokens=50, thinkingTokens=thinking
+    )
+    parsed = claude.parse_events(events, "", 0)
+    assert not parsed["reasoning_usage_reported"]
+    assert parsed["token_usage"]["reasoning_output_tokens"] == 0
+
+
+def test_incomplete_auxiliary_model_usage_does_not_certify_reasoning():
+    events = claude_events()
+    events[-1]["modelUsage"][claude.MODEL].update(outputTokens=40, thinkingTokens=35)
+    events[-1]["modelUsage"]["auxiliary"] = {"outputTokens": 10}
+    parsed = claude.parse_events(events, "", 0)
+    assert not parsed["reasoning_usage_reported"]
+
+
+def test_inconsistent_cache_breakdown_is_preserved_but_not_used_for_pricing():
+    events = claude_events()
+    events[-1]["usage"]["cache_creation"] = {
+        "ephemeral_1h_input_tokens": 30,
+        "ephemeral_5m_input_tokens": 0,
+    }
+    parsed = claude.parse_events(events, "", 0)
+    assert not parsed["cache_write_ttl_reported"]
+    assert "cache_write_1h_input_tokens" not in parsed["token_usage"]
+    assert parsed["claude_usage"] == events[-1]["usage"]
+
+
+@pytest.mark.parametrize("version", [True, 0, 3, "2"])
+def test_unsupported_usage_versions_are_rejected(version):
+    with pytest.raises(ValueError, match="usage schema"):
+        claude.parse_events(claude_events(), "", 0, usage_schema_version=version)
+
+
+def test_saved_failed_claude_usage_is_audited_without_model_or_lean_calls(tmp_path):
+    from proof_eval.harness.audit import _audit_claude_terminal
+
+    events = claude_events(is_error=True, subtype="error_max_turns")
+    parsed = claude.parse_events(events, "", 1)
+    (tmp_path / "events.jsonl").write_text(
+        "".join(json.dumps(event) + "\n" for event in events)
+    )
+    _audit_claude_terminal(tmp_path, parsed, {"model": claude.MODEL})
+    parsed["cli_cost_usd"] = 0
+    with pytest.raises(ValueError, match="cli_cost_usd"):
+        _audit_claude_terminal(tmp_path, parsed, {"model": claude.MODEL})
 
 
 def test_claude_requires_the_requested_model_and_exact_terminal_output():
@@ -222,7 +328,7 @@ def test_gateway_credential_bridge_is_child_only_and_literal(tmp_path, monkeypat
 
 
 def test_lemex_capacity_is_shared_across_concurrent_batches(tmp_path, monkeypatch):
-    monkeypatch.setattr(lemex, "ROOT", tmp_path)
+    monkeypatch.setattr(lemex, "SLOT_DIRECTORY", tmp_path / "slots")
     release = threading.Event()
     full = threading.Event()
     counts = [0, 0]
@@ -246,6 +352,32 @@ def test_lemex_capacity_is_shared_across_concurrent_batches(tmp_path, monkeypatc
         for future in futures:
             future.result()
     assert counts[1] == 5
+
+
+def test_native_child_keeps_gateway_slot_after_host_releases_it(tmp_path, monkeypatch):
+    monkeypatch.setattr(lemex, "SLOT_DIRECTORY", tmp_path / "slots")
+    monkeypatch.setattr(lemex, "SLOT_COUNT", 1)
+    with lemex.capacity() as fd:
+        child = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(10)"], pass_fds=(fd,)
+        )
+    entered = threading.Event()
+
+    def acquire():
+        with lemex.capacity():
+            entered.set()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(acquire)
+        try:
+            assert not entered.wait(
+                0.3
+            ), "A live orphaned CLI must retain its admission slot"
+        finally:
+            child.terminate()
+            child.wait(timeout=5)
+        future.result(timeout=5)
+    assert entered.is_set()
 
 
 def test_only_one_prompt_policy_and_production_mode_remain():

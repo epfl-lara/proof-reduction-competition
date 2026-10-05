@@ -44,7 +44,7 @@ use, and saves proof diffs, case studies, figures and an offline evidence audit.
 [02_validity_repair](02_validity_repair/) adds the requested correctness-only
 debugging stage to saved proposals: up to three repair calls, stopping at the
 first all-version-valid declaration, with no candidate performance feedback.
-See the [repair guide](../../docs/VALIDITY_REPAIR.md). This preserves the original
+See the [repair guide](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/docs/VALIDITY_REPAIR.md). This preserves the original
 direct-output baseline and reports the added calls separately.
 
 [03_repaired_context_ablation](03_repaired_context_ablation/) applies that fixed
@@ -117,7 +117,7 @@ retrieval and resume checks were fixed before any model calls. The final
 `config.json`, `input_hashes.json`, `cell_index.json` and exact per-cell requests
 identify the actual experiment. Prepared inputs stay immutable across resume.
 
-See the [runner guide](../../docs/ONE_SHOT.md),
+See the [runner guide](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/docs/ONE_SHOT.md),
 [strategy research](../../related_work/STRATEGY_CONTEXT.md),
 [context implementation](../../docs/PROOF_CONTEXT.md),
 [the saved context coverage audit](01_context_ablation/CONTEXT_COVERAGE.md), and

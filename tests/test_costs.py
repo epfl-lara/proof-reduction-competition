@@ -111,6 +111,29 @@ def test_all_attempts_count_and_per_problem_cap_is_not_an_average():
         summarize_costs([{"name": "x", "cost": cost}, {"name": "x", "cost": cost}])
 
 
+def test_claude_cache_duration_prices_mixed_writes_and_all_attempts():
+    cfg = CostConfig("claude-opus-5-5", "max")
+    usage = {**USAGE, "cache_write_1h_input_tokens": 40000}
+    cost = estimate_codex_cost(cfg, usage)
+    assert cost["breakdown_usd"]["cache_write_usd"] == pytest.approx(0.62)
+    assert cost["total_usd"] == pytest.approx(3.94)
+    generations = [{"token_usage": usage}, {"token_usage": usage}]
+    total = generations_cost(cfg, generations)
+    assert total["usage"]["cache_write_1h_input_tokens"] == 80000
+    assert total["total_usd"] == pytest.approx(7.88)
+    missing_ttl = generations_cost(cfg, generations + [{"token_usage": USAGE}])
+    assert "cache_write_1h_input_tokens" not in missing_ttl["usage"]
+
+
+@pytest.mark.parametrize("value", [True, -1, 100001, None])
+def test_one_hour_cache_count_must_be_a_valid_subset(value):
+    with pytest.raises(ValueError, match="One-hour"):
+        estimate_codex_cost(
+            CostConfig("claude-opus-5-5", "max"),
+            {**USAGE, "cache_write_1h_input_tokens": value},
+        )
+
+
 def test_repricing_has_explicit_source_and_target_without_mutating_evidence():
     traces = [
         {

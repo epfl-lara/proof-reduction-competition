@@ -17,6 +17,41 @@ from proof_eval.providers.events import parse_events
 from proof_eval.verification.feedback import all_versions_passed
 
 
+def _audit_claude_terminal(folder: Path, generation: dict, request: dict) -> None:
+    events = [
+        json.loads(line) for line in (folder / "events.jsonl").read_text().splitlines()
+    ]
+    version = generation.get("usage_schema_version", 1)
+    parsed = claude.parse_events(
+        events,
+        generation.get("content", ""),
+        generation["returncode"],
+        model=request["model"],
+        usage_schema_version=version,
+    )
+    fields = [
+        "status",
+        "actual_model",
+        "session_id",
+        "claude_result",
+        "claude_usage",
+        "token_usage",
+        "cli_cost_usd",
+        "permission_denials",
+    ]
+    if version == 2:
+        fields += [
+            "usage_schema_version",
+            "reasoning_usage_reported",
+            "cache_write_ttl_reported",
+        ]
+    for field in fields:
+        _require(
+            parsed[field] == generation[field],
+            "Claude terminal evidence changed: " + field,
+        )
+
+
 def audit(output: Path) -> dict:
     config = read(output / "config.json")
     dataset_path = Path(
@@ -518,6 +553,12 @@ def audit(output: Path) -> dict:
                     (req["messages"] == inp["messages"]),
                     str("Saved harness evidence is inconsistent at audit line 309"),
                 )
+            if (
+                config.get("provider") == "claude"
+                and gen.get("usage_schema_version") == 2
+                and gen["status"] != "received"
+            ):
+                _audit_claude_terminal(folder, gen, req)
             if gen["status"] == "received":
                 _require(
                     (
@@ -527,32 +568,15 @@ def audit(output: Path) -> dict:
                     str("Saved harness evidence is inconsistent at audit line 311"),
                 )
                 if "cost_assumptions" in config:
-                    events = [
-                        json.loads(line)
-                        for line in (folder / "events.jsonl").read_text().splitlines()
-                    ]
                     if config.get("provider", "codex") == "claude":
-                        parsed = claude.parse_events(
-                            events,
-                            gen["content"],
-                            gen["returncode"],
-                            model=req["model"],
-                        )
-                        for field in (
-                            "status",
-                            "actual_model",
-                            "session_id",
-                            "claude_result",
-                            "claude_usage",
-                            "token_usage",
-                            "cli_cost_usd",
-                            "permission_denials",
-                        ):
-                            _require(
-                                parsed[field] == gen[field],
-                                "Claude terminal evidence changed: " + field,
-                            )
+                        _audit_claude_terminal(folder, gen, req)
                     else:
+                        events = [
+                            json.loads(line)
+                            for line in (folder / "events.jsonl")
+                            .read_text()
+                            .splitlines()
+                        ]
                         parsed = parse_events(events, gen["content"], 0)
                         _require(
                             parsed["status"] == "received"

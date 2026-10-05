@@ -42,10 +42,15 @@ def command(
         "Grep",
         "Bash(python " + str(workspace / "tools.py") + " *)",
         "Bash(python tools.py *)",
+        "Bash(python *)",
+        "Bash(python3 *)",
         "Bash(rg *)",
+        "Bash(grep *)",
         "Bash(cat *)",
         "Bash(sed *)",
         "Bash(ls *)",
+        "Bash(head *)",
+        "Bash(tail *)",
         "Bash(pwd)",
     ]
     argv = [
@@ -79,32 +84,117 @@ def command(
     return argv
 
 
-def token_usage(raw: dict) -> dict | None:
+def token_usage(
+    raw: dict, *, model_usage: dict | None = None, schema_version: int = 2
+) -> dict | None:
     """Anthropic input excludes cached tokens; normalize to the common total."""
+    if type(schema_version) is not int or schema_version not in (1, 2):
+        raise ValueError("Unsupported Claude usage schema version")
     keys = (
         "input_tokens",
         "output_tokens",
         "cache_read_input_tokens",
         "cache_creation_input_tokens",
     )
-    if any(type(raw.get(k)) is not int or raw[k] < 0 for k in keys):
+    if not isinstance(raw, dict) or any(
+        type(raw.get(k)) is not int or raw[k] < 0 for k in keys
+    ):
         return None
-    return {
+    values = {
         "input_tokens": raw["input_tokens"]
         + raw["cache_read_input_tokens"]
         + raw["cache_creation_input_tokens"],
         "cached_input_tokens": raw["cache_read_input_tokens"],
         "cache_write_input_tokens": raw["cache_creation_input_tokens"],
         "output_tokens": raw["output_tokens"],
-        # The CLI doesn't separate reasoning. It is already part of output;
-        # zero here denotes an unreported subset, not zero reasoning usage.
+        # Zero denotes an unreported subset unless modelUsage certifies it.
         "reasoning_output_tokens": 0,
+    }
+    if schema_version == 1:
+        return values
+    cache = raw.get("cache_creation")
+    if isinstance(cache, dict):
+        hour, short = (
+            cache.get("ephemeral_1h_input_tokens"),
+            cache.get("ephemeral_5m_input_tokens"),
+        )
+        if (
+            type(hour) is int
+            and type(short) is int
+            and min(hour, short) >= 0
+            and hour + short == values["cache_write_input_tokens"]
+        ):
+            values["cache_write_1h_input_tokens"] = hour
+    reasoning = _reasoning_tokens(model_usage, values["output_tokens"])
+    if reasoning is not None:
+        values["reasoning_output_tokens"] = reasoning
+    return values
+
+
+def _reasoning_tokens(model_usage: dict | None, output_tokens: int) -> int | None:
+    """Use thinking counters only when they cover all reported output."""
+    if not isinstance(model_usage, dict) or not model_usage:
+        return None
+    outputs, reasoning = 0, 0
+    for item in model_usage.values():
+        if not isinstance(item, dict):
+            return None
+        total, subset = item.get("outputTokens"), item.get("thinkingTokens")
+        if (
+            type(total) is not int
+            or type(subset) is not int
+            or not 0 <= subset <= total
+        ):
+            return None
+        outputs += total
+        reasoning += subset
+    return reasoning if outputs == output_tokens else None
+
+
+def _result_usage(result: dict, schema_version: int) -> dict:
+    raw = result.get("usage") or {}
+    usage = token_usage(
+        raw, model_usage=result.get("modelUsage"), schema_version=schema_version
+    )
+    cost = result.get("total_cost_usd")
+    if type(cost) not in (float, int) or not math.isfinite(cost) or cost < 0:
+        cost = None
+    counters = {
+        "prompt_tokens": usage["input_tokens"] if usage else None,
+        "completion_tokens": usage["output_tokens"] if usage else None,
+        "cached_input_tokens": usage["cached_input_tokens"] if usage else None,
+    }
+    return {
+        "token_usage": usage,
+        "claude_usage": raw,
+        "cli_cost_usd": cost,
+        **(
+            {
+                "usage_schema_version": 2,
+                "cache_write_ttl_reported": usage is not None
+                and "cache_write_1h_input_tokens" in usage,
+            }
+            if schema_version == 2
+            else {}
+        ),
+        "reasoning_usage_reported": schema_version == 2
+        and usage is not None
+        and _reasoning_tokens(result.get("modelUsage"), usage["output_tokens"])
+        is not None,
+        "usage": counters if usage or schema_version == 1 else None,
     }
 
 
 def parse_events(
-    events: list[dict], final: str, returncode: int, *, model: str = MODEL
+    events: list[dict],
+    final: str,
+    returncode: int,
+    *,
+    model: str = MODEL,
+    usage_schema_version: int = 2,
 ) -> dict:
+    if type(usage_schema_version) is not int or usage_schema_version not in (1, 2):
+        raise ValueError("Unsupported Claude usage schema version")
     init = [
         e for e in events if e.get("type") == "system" and e.get("subtype") == "init"
     ]
@@ -127,6 +217,10 @@ def parse_events(
         "tool_item_types": [t.get("name") for t in tools],
         "permission_denials": result.get("permission_denials", []),
     }
+    if usage_schema_version == 2:
+        # Failed or limited sessions can still have charged, reported usage.
+        # Preserve it without reclassifying the request as a success.
+        base.update(_result_usage(result, usage_schema_version))
     if (
         returncode
         or len(init) != 1
@@ -135,52 +229,42 @@ def parse_events(
         or result.get("subtype") != "success"
         or not isinstance(result.get("result"), str)
         or not result["result"].strip()
+        or (
+            usage_schema_version == 2
+            and (
+                not isinstance(base["session_id"], str)
+                or not base["session_id"].strip()
+                or init[0].get("session_id", base["session_id"]) != base["session_id"]
+            )
+        )
     ):
         return {
             **base,
             "status": "transport_error",
-            "usage": None,
+            "usage": base.get("usage"),
             "error": "Claude Code did not produce one successful terminal result",
         }
     if base["actual_model"] != model:
         return {
             **base,
             "status": "model_mismatch",
-            "usage": None,
+            "usage": base.get("usage"),
             "error": f"Requested {model}, received {base['actual_model']}",
         }
-    if base["permission_denials"]:
-        return {
-            **base,
-            "status": "tool_denied",
-            "usage": None,
-            "error": "Claude Code reported denied tools; benchmark remains incomplete",
-        }
+    # A tool denial may be recovered using another authorized tool, just like
+    # a failed Lean check. Preserve it, but do not invent a transport failure
+    # when the CLI reports successful completion. The host verifies the proof.
     if final.strip() and final.strip() != result["result"].strip():
         raise ValueError("Saved final differs from the Claude terminal result")
-    raw = result.get("usage") or {}
-    usage = token_usage(raw)
-    cost = result.get("total_cost_usd")
-    if (
-        not isinstance(cost, (int, float))
-        or isinstance(cost, bool)
-        or not math.isfinite(cost)
-        or cost < 0
-    ):
-        cost = None
     return {
         **base,
+        **(_result_usage(result, 1) if usage_schema_version == 1 else {}),
         "status": "received",
         "content": result["result"],
         "finish_reason": "stop",
-        "token_usage": usage,
-        "claude_usage": raw,
-        "cli_cost_usd": cost,
-        "usage": {
-            "prompt_tokens": usage["input_tokens"] if usage else None,
-            "completion_tokens": usage["output_tokens"] if usage else None,
-            "cached_input_tokens": usage["cached_input_tokens"] if usage else None,
-        },
+        "tool_outcome": (
+            "completed_with_denials" if base["permission_denials"] else "completed"
+        ),
     }
 
 

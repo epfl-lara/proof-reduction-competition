@@ -20,6 +20,11 @@ checks, versus 87.342215% in stage 05. Its mean/max API-equivalent cost was
 $1.060463/$2.536752 per problem, with 0/15 above $3. The earlier stronger submission
 remains available; the two runs are separate.
 
+Stage 07 is incomplete and stopped. The corrected Opus run completed 1/15
+problems before the account quota interrupted subsequent requests; it remains
+paused. DeepSeek's first pilot ended with a transport error after preserving an
+improved proof. See the [native provider findings](07_native_agents/README.md).
+
 ## Completed comparisons
 
 | Model | Score search (02) | Beginning/end cleanup (03) | In-loop cleanup (04) |

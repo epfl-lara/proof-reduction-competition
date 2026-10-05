@@ -125,7 +125,7 @@ def generate(
         # Holding one slot until the native session exits conservatively bounds
         # the sequential requests made by that session across all host batches.
         with (
-            launch.capacity(),
+            launch.capacity() as capacity_fd,
             tool_service(session, workspace),
             (folder / "events.jsonl").open("w") as out,
             (folder / "stderr.log").open("w") as err,
@@ -140,6 +140,7 @@ def generate(
                 env=launch.environment,
                 text=True,
                 start_new_session=True,
+                pass_fds=() if capacity_fd is None else (capacity_fd,),
             )
             write_json(folder / "process.json", {"pid": child.pid, "started_at": now()})
             try:

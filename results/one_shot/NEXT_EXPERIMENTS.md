@@ -131,7 +131,7 @@ model contract can be the same for prompting a closed model and training an open
 model. The current results do not require teaching either model a general tool
 protocol.
 
-Choose repair depth from the saved [repair-budget replay](../../docs/VALIDITY_REPAIR.md),
+Choose repair depth from the saved [repair-budget replay](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/docs/VALIDITY_REPAIR.md),
 not validity alone: a final incumbent copy does not earn an optimization gain.
 Depth three has already produced an accepted Qwen3.5 improvement, so evidence
 of zero third-round gain for another model does not justify a universal cap of

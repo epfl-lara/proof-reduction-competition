@@ -6,7 +6,7 @@ Every initial proposal is reused exactly. No initial model request is repeated,
 and repaired proofs never become another cell's starting proof.
 
 Each nonempty invalid proposal may receive up to three correctness-only correction
-calls through [the fixed debugger](../../../docs/VALIDITY_REPAIR.md). The first
+calls through [the fixed debugger](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/docs/VALIDITY_REPAIR.md). The first
 proof passing all required versions stops the loop. The debugger gets no candidate
 length, heartbeat, score, reward, or acceptance feedback. A valid but inferior
 proof therefore stops immediately; score-based incumbent fallback happens afterward.

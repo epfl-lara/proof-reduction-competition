@@ -122,6 +122,11 @@ def _usage(raw):
         raise ValueError("Cache counters exceed total input")
     if values["reasoning_output_tokens"] > values["output_tokens"]:
         raise ValueError("Reasoning is a subset of output tokens")
+    if "cache_write_1h_input_tokens" in raw:
+        hour = raw["cache_write_1h_input_tokens"]
+        if type(hour) is not int or not 0 <= hour <= values["cache_write_input_tokens"]:
+            raise ValueError("One-hour cache writes must be a subset of cache writes")
+        values["cache_write_1h_input_tokens"] = hour
     return values
 
 
@@ -140,7 +145,7 @@ def _parts(config, usage, *, all_uncached_are_writes=False, long_context=False):
         writes += ordinary
         ordinary = 0
     counts = (ordinary, reads, writes, usage["output_tokens"])
-    return {
+    parts = {
         k: float(Decimal(n) * p / 1000000)
         for k, n, p in zip(
             ("input_usd", "cached_input_usd", "cache_write_usd", "output_usd"),
@@ -148,6 +153,15 @@ def _parts(config, usage, *, all_uncached_are_writes=False, long_context=False):
             prices,
         )
     }
+    if config.model == CLAUDE_MODEL and "cache_write_1h_input_tokens" in usage:
+        # The base write price is $5/M; one-hour writes cost $8/M.
+        parts["cache_write_usd"] += float(
+            Decimal(usage["cache_write_1h_input_tokens"])
+            * Decimal("3")
+            * multiplier
+            / 1000000
+        )
+    return parts
 
 
 def estimate_codex_cost(
@@ -219,7 +233,14 @@ def estimate_codex_cost(
             "Service tier and region are pricing assumptions, not verified billing metadata.",
             "For aggregates, the selected context band is an assumption for every underlying request.",
             "Codex subscription charges and future API cache-write behavior are not inferred.",
-        ],
+        ]
+        + (
+            [
+                "Reported one-hour Claude cache writes use $8/M; remaining writes use $5/M."
+            ]
+            if config.model == CLAUDE_MODEL and "cache_write_1h_input_tokens" in usage
+            else []
+        ),
     }
 
 
@@ -227,6 +248,8 @@ def generations_cost(config: CostConfig, generations, *, budget_usd=3.0):
     """Add all attempts, including discarded proposals; expose missing usage."""
     totals = dict.fromkeys(USAGE_FIELDS, 0)
     unknown = []
+    ttl_values = []
+    ttl_reported = False
     for i, generation in enumerate(generations):
         try:
             usage = _usage(generation.get("token_usage", generation.get("codex_usage")))
@@ -235,6 +258,19 @@ def generations_cost(config: CostConfig, generations, *, budget_usd=3.0):
             continue
         for k in USAGE_FIELDS:
             totals[k] += usage[k]
+        ttl_reported |= "cache_write_1h_input_tokens" in usage
+        ttl_values.append(
+            usage.get("cache_write_1h_input_tokens", 0)
+            if "cache_write_1h_input_tokens" in usage
+            or not usage["cache_write_input_tokens"]
+            else None
+        )
+    if (
+        config.model == CLAUDE_MODEL
+        and ttl_reported
+        and all(value is not None for value in ttl_values)
+    ):
+        totals["cache_write_1h_input_tokens"] = sum(ttl_values)
     known = estimate_codex_cost(config, totals, budget_usd=budget_usd)
     if not generations or unknown:
         return {
@@ -282,7 +318,11 @@ def generations_cost(config: CostConfig, generations, *, budget_usd=3.0):
             "assumptions": [
                 "Claude Code's reported cost is a client-side API-equivalent estimate, not an invoice.",
                 "All reported attempts and auxiliary models are included in the CLI estimate.",
-                "The independent aggregate repricing assumes Opus and five-minute cache writes; inspect modelUsage for auxiliary models.",
+                (
+                    "The independent aggregate repricing assumes Opus with reported cache durations; inspect modelUsage for auxiliary models."
+                    if "cache_write_1h_input_tokens" in totals
+                    else "The independent aggregate repricing assumes Opus and five-minute cache writes; inspect modelUsage for auxiliary models."
+                ),
                 "Input tokens include cache reads/writes; reasoning is already included in output.",
             ],
         }

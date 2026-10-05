@@ -59,7 +59,7 @@ Report candidate pass rate, compatibility, per-axis scores, accepted improvement
 
 ## Correctness-only debugging
 
-The next implemented step is [correctness-only debugging](../docs/VALIDITY_REPAIR.md):
+The next implemented step is [correctness-only debugging](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/docs/VALIDITY_REPAIR.md):
 retain the initial optimization proposal, then allow up to three compiler-error
 corrections and stop at the first proof valid on all required versions. Candidate
 performance is evaluated by the harness afterward and never returned to the
@@ -68,7 +68,7 @@ replanning. The [repair results](../results/one_shot/02_validity_repair/) preser
 their initial direct-output cells and additional request counts. Empty outputs
 without a proposed declaration remain a separate failure mode.
 
-The [combined deterministic experiment](../docs/COMBINED.md) then applies the
+The [combined deterministic experiment](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/docs/COMBINED.md) then applies the
 existing bounded optimizers to valid model proposals, including initially
 inferior ones. An identical pass on each original incumbent provides the control
 needed to distinguish the model branch's contribution from additional

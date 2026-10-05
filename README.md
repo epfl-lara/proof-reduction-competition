@@ -53,6 +53,9 @@ client and its temperature/output-cap settings are retired. Native Lemex sends
 no temperature override; the gateway's effective default is not exposed by the
 CLI. Claude uses `claude-opus-5-5/max`, with normal project configuration and
 authentication discovery. Each provider has separate output and usage evidence.
+Claude's reported API-equivalent cost includes its actual cache durations and
+any auxiliary models. Complete usage from failed calls is also retained. The
+exact DeepSeek gateway price remains unknown.
 
 Every completed condition exports `conditions/MODEL__EFFORT/selected_candidates.jsonl`, with one complete declaration per benchmark ID in the organizer's submission format. Invalid or regressive attempts preserve the best proof passing every required version. In-loop deterministic cleanup is retired.
 
@@ -98,6 +101,7 @@ The generic deterministic API accepts a new competition batch with explicit path
 - [results](results/README.md): experiment index, including [deterministic](results/deterministic/README.md) and [model harness studies](results/harness/README.md).
 - [Sol configuration results and submission](results/harness/05_model_config/README.md): the pre-refactor Sol/max result was 87.342215% combined with 100% compatibility.
 - [Refactor validation and fresh Sol replicate](results/harness/06_refactor_regression/COMPARISON.md): 86.575834% combined, 100% compatibility, 36/36 passing versions; the earlier stronger submission is preserved.
+- [Native provider pilots](results/harness/07_native_agents/README.md): Opus completed one problem; DeepSeek retained an improved proof after a transport failure. Both cohorts are incomplete.
 - [related_work](related_work/README.md): literature, papers and research proposals.
 - [prompts](prompts): the one active revised task policy and strategy bank.
 

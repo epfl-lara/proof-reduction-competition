@@ -22,6 +22,9 @@ from .events import parse_events
 from .execution import Launch
 
 MODEL = "deepseek-ai/DeepSeek-V4.1-Flash"
+# Host admission state must live outside model-writable CLI/cache directories.
+SLOT_DIRECTORY = Path.home() / ".proof-arena/lemex-slots"
+SLOT_COUNT = 5
 
 
 def environment(env_path: Path = ROOT / ".env") -> dict[str, str]:
@@ -94,10 +97,10 @@ def command(
 @contextmanager
 def capacity():
     """At most five native sessions across concurrent host batches on this machine."""
-    directory = ROOT / ".proof-eval/lemex_slots"
+    directory = SLOT_DIRECTORY
     directory.mkdir(parents=True, exist_ok=True)
     while True:
-        for i in range(5):
+        for i in range(SLOT_COUNT):
             lock = (directory / f"{i}.lock").open("a")
             try:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -105,7 +108,9 @@ def capacity():
                 lock.close()
                 continue
             try:
-                yield
+                # The executor also passes this descriptor to the native CLI.
+                # An orphaned live CLI keeps its slot if the host exits.
+                yield lock.fileno()
             finally:
                 lock.close()
             return

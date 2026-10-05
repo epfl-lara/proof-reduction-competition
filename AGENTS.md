@@ -67,6 +67,9 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high`) and Claude Code
   failure. Inspect the terminal result and actual model, not just the exit code.
   Claude's reported cost is a client-side API estimate, not an invoice. Keep
   unknown gateway prices unknown.
+- Preserve reported cache-write durations and reasoning counters. Reasoning is
+  a subset of output, never an extra output charge. Retain recovered tool denials
+  without turning a successful native terminal response into a transport error.
 
 ## Check quality before handing off
 
