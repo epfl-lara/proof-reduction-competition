@@ -3,12 +3,12 @@
 import concurrent.futures
 import copy
 import json
-from pathlib import Path
 import tempfile
 import time
 import unittest
+from pathlib import Path
 
-from proof_eval.api import EvaluationNotReady, Evaluator
+from proof_eval.verification.api import EvaluationNotReady, Evaluator
 
 
 class FakeBackend:
@@ -32,7 +32,9 @@ class FakeBackend:
         if self.change_during_check:
             self.revision += "changed"
         status = self.statuses.get(version, "passed")
-        heartbeats = (self.reference_cost if is_reference else self.candidate_cost)[version]
+        heartbeats = (self.reference_cost if is_reference else self.candidate_cost)[
+            version
+        ]
         return {
             "status": status,
             "passed": status == "passed",
@@ -63,10 +65,16 @@ class EvaluatorTests(unittest.TestCase):
             json.dumps({"name": "toy", "heartbeat": 99999}) + "\n"
         )
         self.config_path = self.root / "environments.json"
-        self.config_path.write_text(json.dumps({"projects": [
-            {"source": "toy-project", "version": version, "path": version}
-            for version in ("v1", "v2")
-        ]}))
+        self.config_path.write_text(
+            json.dumps(
+                {
+                    "projects": [
+                        {"source": "toy-project", "version": version, "path": version}
+                        for version in ("v1", "v2")
+                    ]
+                }
+            )
+        )
         self.backend = FakeBackend()
         self.evaluator = self.make_evaluator()
         self.code = "theorem toy : True := by trivial"
@@ -114,14 +122,17 @@ class EvaluatorTests(unittest.TestCase):
         self.prepare()
         result = self.evaluator.evaluate("toy", self.code)
         self.assertEqual(result["status"], "passed")
-        self.assertEqual(result["scores"], {
-            "length_reduction_pct": 80,
-            "heartbeat_reduction_pct": 75,
-            "compatibility_pct": 100,
-            "combined_pct": 85,
-        })
+        self.assertEqual(
+            result["scores"],
+            {
+                "length_reduction_pct": 80,
+                "heartbeat_reduction_pct": 75,
+                "compatibility_pct": 100,
+                "combined_pct": 85,
+            },
+        )
         self.assertEqual(result["per_version"]["v2"]["heartbeat_reduction_pct"], 50)
-        self.assertAlmostEqual(self.evaluator.reward("toy", self.code), .85)
+        self.assertAlmostEqual(self.evaluator.reward("toy", self.code), 0.85)
         self.assertEqual(len(self.backend.calls), 4)
 
     def test_candidate_cache_can_be_scored_after_reference_is_prepared(self):
@@ -139,7 +150,9 @@ class EvaluatorTests(unittest.TestCase):
         self.assertEqual(result["status"], "incomplete")
         self.assertIsNone(result["scores"]["heartbeat_reduction_pct"])
         self.assertEqual(sum(ref for _, ref, _ in self.backend.calls), 2)
-        self.assertTrue(all(r["reference"] is None for r in result["per_version"].values()))
+        self.assertTrue(
+            all(r["reference"] is None for r in result["per_version"].values())
+        )
 
     def test_changed_dataset_reference_does_not_reuse_baseline(self):
         self.prepare()
@@ -157,7 +170,12 @@ class EvaluatorTests(unittest.TestCase):
         self.assertEqual(result["status"], "incomplete")
         self.assertIsNone(result["scores"]["compatibility_pct"])
         self.assertIsNone(result["scores"]["combined_pct"])
-        self.assertEqual(self.evaluator.reward("toy", self.code, versions="primary", metric="heartbeat"), .75)
+        self.assertEqual(
+            self.evaluator.reward(
+                "toy", self.code, versions="primary", metric="heartbeat"
+            ),
+            0.75,
+        )
         with self.assertRaises(EvaluationNotReady):
             self.evaluator.reward("toy", self.code, versions="primary")
 
@@ -179,7 +197,9 @@ class EvaluatorTests(unittest.TestCase):
         evaluator = self.make_evaluator(environments_path=None)
         result = evaluator.evaluate("toy", self.code)
         self.assertEqual(result["status"], "incomplete")
-        self.assertTrue(all(v["status"] == "unavailable" for v in result["per_version"].values()))
+        self.assertTrue(
+            all(v["status"] == "unavailable" for v in result["per_version"].values())
+        )
         self.assertFalse(self.backend.calls)
         with self.assertRaises(EvaluationNotReady):
             evaluator.reward("toy", self.code)
@@ -219,7 +239,10 @@ class EvaluatorTests(unittest.TestCase):
         self.assertFalse(result["per_version"]["v1"]["cached"])
 
     def test_forbidden_or_changed_statement_zero_without_compilation(self):
-        for code in ("theorem toy : False := by trivial", "theorem toy : True := by sorry"):
+        for code in (
+            "theorem toy : False := by trivial",
+            "theorem toy : True := by sorry",
+        ):
             with self.subTest(code=code):
                 result = self.evaluator.evaluate("toy", code)
                 self.assertEqual(result["status"], "invalid")
@@ -238,7 +261,9 @@ class EvaluatorTests(unittest.TestCase):
         result = self.evaluator.evaluate("toy", self.code)
         self.assertEqual(result["scores"]["heartbeat_reduction_pct"], -400)
         self.assertLess(result["scores"]["combined_pct"], 0)
-        self.assertEqual(self.evaluator.reward("toy", self.code, metric="heartbeat"), -4)
+        self.assertEqual(
+            self.evaluator.reward("toy", self.code, metric="heartbeat"), -4
+        )
 
     def test_zero_baseline_never_yields_nan_or_fabricated_reward(self):
         self.backend.reference_cost["v1"] = 0
@@ -255,21 +280,27 @@ class EvaluatorTests(unittest.TestCase):
         self.assertEqual(prepared["status"], "incomplete")
         self.assertFalse(list((self.root / "cache" / "references").glob("*.json")))
         result = self.evaluator.evaluate("toy", self.code)
-        self.assertTrue(all(r["status"] == "unavailable" for r in result["per_version"].values()))
+        self.assertTrue(
+            all(r["status"] == "unavailable" for r in result["per_version"].values())
+        )
         self.assertFalse(list((self.root / "cache" / "candidates").glob("*.json")))
 
     def test_parallel_reference_requests_measure_once_per_version(self):
-        self.backend.delay = .01
+        self.backend.delay = 0.01
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-            results = list(pool.map(lambda _: self.evaluator.prepare_reference("toy"), range(4)))
+            results = list(
+                pool.map(lambda _: self.evaluator.prepare_reference("toy"), range(4))
+            )
         self.assertTrue(all(result["status"] == "prepared" for result in results))
         self.assertEqual(len(self.backend.calls), 2)
 
     def test_parallel_candidates_compile_once_per_version(self):
         self.prepare()
-        self.backend.delay = .01
+        self.backend.delay = 0.01
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-            results = list(pool.map(lambda _: self.evaluator.evaluate("toy", self.code), range(4)))
+            results = list(
+                pool.map(lambda _: self.evaluator.evaluate("toy", self.code), range(4))
+            )
         self.assertTrue(all(result["status"] == "passed" for result in results))
         self.assertEqual(len(self.backend.calls), 4)
 
@@ -279,7 +310,10 @@ class EvaluatorTests(unittest.TestCase):
         with self.assertRaises(EvaluationNotReady):
             self.evaluator.reward_batch(["toy"], [self.code])
         self.prepare()
-        self.assertEqual(self.evaluator.reward_batch(["toy", "toy"], [self.code, self.code]), [.85, .85])
+        self.assertEqual(
+            self.evaluator.reward_batch(["toy", "toy"], [self.code, self.code]),
+            [0.85, 0.85],
+        )
 
     def test_invalid_version_selection_is_a_caller_error(self):
         for versions in ([], ["v1", "v1"], ["unknown"]):

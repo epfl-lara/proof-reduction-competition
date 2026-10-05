@@ -1,3 +1,5 @@
+> Historical experiment protocol. Its drivers are preserved at [Git checkpoint `bfb2ade6`](https://github.com/epfl-lara/proof-reduction-competition/tree/bfb2ade6); use [ARCHITECTURE.md](ARCHITECTURE.md) for current commands and APIs.
+
 # One-shot context ablation
 
 The harness owns context extraction, generation, verification and score selection.
@@ -80,10 +82,10 @@ selected incumbent/candidate. Generated candidates are never fed to another cell
 `summary.json` and `conditions/` update as results arrive. A finished run means all
 planned cells have terminal records, not that every provider returned a proof.
 
-Use [report_one_shot.py](../src/report_one_shot.py) to build the readable comparisons.
-The [evidence auditor](../src/audit_one_shot.py) checks this warm-up experiment's
+Use [report_one_shot.py](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/src/report_one_shot.py) to build the readable comparisons.
+The [evidence auditor](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/src/audit_one_shot.py) checks this warm-up experiment's
 frozen inputs, requests, references and saved score decisions without running Lean.
-The [failure analyzer](../src/analyze_one_shot_failures.py) keeps evaluator statuses
+The [failure analyzer](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/src/analyze_one_shot_failures.py) keeps evaluator statuses
 separate from heuristic diagnostic categories and reports provider token counts,
 including reasoning exhaustion and unchanged returned incumbents.
 

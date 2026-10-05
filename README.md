@@ -1,261 +1,81 @@
 # Proof Reduction Competition
 
-Workspace for participating in [Lean Refactor Arena](https://huggingface.co/spaces/delta-lab-ai/lean-refactor-arena), part of the AI for Verifiable Coding workshop at NeurIPS 2026.
+Lean proof optimization for [Lean Refactor Arena](https://huggingface.co/spaces/delta-lab-ai/lean-refactor-arena). The active model configurations are **Sol 6.1/max** and **Astra/max**. The default harness uses the revised prompt, source/goal tools, measured score feedback, and deterministic cleanup at the beginning and end.
 
-The task is to refactor existing Lean 4 proofs while preserving their statements, improving proof length, elaboration cost, and compatibility across the listed toolchains. Closed-source and open-source LLM entries compete in separate tracks.
+The warm-up benchmark contains 15 declarations and 36 required version checks. We score candidates against the original dataset token counts and cached local heartbeat measurements. The combined objective is the mean of length reduction, heartbeat reduction and compatibility. Local measurements and organizer scores are reported separately.
 
-## Repository contents
-
-- [RULES.md](RULES.md): competition rules and submission requirements, checked on October 2, 2026, with pinned source links.
-- [data/benchmark_data_warmup.jsonl](data/benchmark_data_warmup.jsonl): the original, unmodified warm-up benchmark.
-- [problems](problems/README.md): all 15 warm-up problems, each with complete `initial.lean`, `deterministic.lean`, and `best.lean` files, scores, and provenance.
-- [data/benchmark_heartbeats.jsonl](data/benchmark_heartbeats.jsonl): the organizer's published reference heartbeat counts, preserved separately from local measurements.
-- [src/proof_eval](src/proof_eval): Python, CLI, and localhost HTTP evaluation API, including training reward adapters.
-- [related_work](related_work/README.md): verified literature, downloadable papers, model feasibility, and the proposed harness/SFT/GRPO plan for both tracks.
-- [results](results/README.md): experiment index; [deterministic](results/deterministic/README.md) contains the warm-up proofs, rejected trials, measurements and reported arena result.
-- [prompts](prompts): the one-shot system prompt and conditional strategy cards; [the context experiment](results/one_shot/README.md) compares cards, goal annotations and measured tactic costs using three original models and a later Qwen3.8 extension.
-- [.gitignore](.gitignore): Python environments, caches, build artifacts, Lean/Lake build outputs, and local credentials.
-
-Each benchmark row specifies its own evaluation versions. The evaluator uses explicitly configured, prebuilt Lean projects at those exact revisions; there is no single repository-wide Lean toolchain. Its Python package has no external runtime dependencies and invokes Lean through Lake.
-
-## Initial benchmark
-
-The warm-up dataset contains **15 declarations**, with three each from Strata, PhysLib, CSLib, ArkLib, and PutnamBench. It totals 17,595 reference proof tokens as reported by the dataset. LeanPool is listed among the competition's sources but has no rows in this warm-up file.
-
-The local file was verified byte-for-byte against the organizer's dataset at Space revision `d9e46ee13c822925fb3031b0a0eac53b51631198`:
-
-- [Pinned upstream dataset](https://huggingface.co/spaces/delta-lab-ai/lean-refactor-arena/blob/d9e46ee13c822925fb3031b0a0eac53b51631198/benchmark_data_warmup.jsonl)
-- Size: 113,826 bytes.
-- SHA-256: `6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804`.
-
-Each JSONL row includes:
-
-| Field | Meaning |
-| --- | --- |
-| `name` | Unique benchmark ID to use in a submission. |
-| `source` | Source corpus. |
-| `statement` | Fixed declaration statement, without `:=` and the proof body. |
-| `src` | Original complete declaration, including its proof. |
-| `proof_length`, `num_lines` | Reference proof token count and declaration line count. |
-| `header` | Imports and options for standalone rows; empty for project-resident rows. |
-| `file_path`, `url` | Source file and repository for project-resident rows. |
-| `start_line`, `end_line` | Declaration location, when present. |
-| `version_info` | Evaluation toolchain labels paired with pinned repository commits. |
-
-For project-resident declarations, evaluation takes place inside the source repository at the specified revisions. For PutnamBench, the row supplies a standalone header and `version_info` identifies Mathlib release revisions. The benchmark file does not include reference heartbeat counts; the organizer stores those separately.
-
-## Participation
-
-1. Read [RULES.md](RULES.md) and prepare the required artifacts for each track you enter.
-2. Use the exact statement from each row and replace only its proof body. Validate in the row's repository context and listed versions.
-3. Produce a UTF-8 JSONL file with a `name` and a `proof` string per submitted declaration. `proof` must contain the complete declaration, not just the tactics.
-4. Upload proofs in the arena's Submit tab. Keep the submission key issued on the first successful upload outside Git.
-5. For the full benchmark, submit the reproduction code archive in the arena and the technical report on OpenReview by the deadline.
-
-The full benchmark is scheduled for **November 1, 2026**, and proofs, code, and reports are due **November 8, 2026**. See the saved rules and live competition page for updates.
-
-## Local evaluation API
-
-Install in the intended Python environment, from this repository:
+## Start here
 
 ```bash
 conda activate af
-python -m pip install -e .
-proof-eval environments
+python -m pip install -e '.[dev]'
+make check
+make test
 ```
 
-Copy [environments.example.json](environments.example.json) to `environments.local.json` and set the paths of prebuilt projects. Each entry identifies a source corpus and version. Project-resident rows require the source repository at the row's exact commit; PutnamBench entries require a project with Mathlib pinned to the row's commit. The evaluator checks toolchains, repository revisions, and dependency manifests and refuses unavailable or changed environments. It never downloads dependencies or changes repository revisions during an evaluation.
+The package has no third-party runtime dependencies. Lean evaluation needs the pinned, prebuilt projects listed in the local environment map. The existing warm-up references are already prepared; search never remeasures them.
 
-The warm-up set has 15 distinct source/version environments and 36 theorem/version checks. One configured version is sufficient for local proof search; all of a theorem's listed versions must be checked to report its compatibility and combined score. `proof-eval environments` lists the required commits and configured paths. Unconfigured environments remain explicitly unavailable.
+```bash
+# Price scenarios from saved traces; no model or Lean calls.
+proof-harness estimate --condition gpt-6.1-sol:max \
+  --output results/harness/my_sol_run
 
-To provision the warm-up environments explicitly, run `python src/setup_benchmark.py`.
-It downloads the pinned toolchains and repositories, obtains Mathlib build caches,
-builds the required source modules, and registers successful builds in the local
-configuration. `--source strata` or `--version v4.26.0` limits setup. Projects and
-logs live under `.proof-eval-projects/`; this can require substantial disk space.
-Evaluation itself continues to use only configured projects.
+# Audit one theorem first, then run all 15. Repeating reuses completed cells.
+proof-harness run --condition gpt-6.1-sol:max --pilot --workers 10 \
+  --output results/harness/my_sol_run
 
-For a new dataset, call [src/run_deterministic_batch.py](src/run_deterministic_batch.py).
-The [batch interface guide](docs/DETERMINISTIC_BATCH.md) covers setup, explicit
-dataset/environment/cache inputs, resume, exit codes and submission export.
-[src/run_experiments.py](src/run_experiments.py) runs a single method. The original
-`run_deterministic.py` supports only linter and simplifier passes; `run_portfolio.py`
-continues the earlier warm-up workflow from stage 02.
-The [experiment guide](results/deterministic/README.md) gives the stage order, commands, objective,
-budgets, and artifact format. It retains the original proof unless a fully checked
-candidate improves the competition's combined score.
-Completed stages have component scores, accepted-edit examples, rejected trials,
-version coverage, and stop reasons. [The evidence auditor](src/audit_experiments.py)
-checks saved proofs, reference values, score arithmetic, and implementation hashes
-without rerunning Lean.
-See [the measured findings](results/deterministic/FINDINGS.md) for the practical conclusions,
-costs, coverage limits, and next isolated experiment.
+# Saved evidence only.
+proof-harness report --output results/harness/my_sol_run
+proof-harness audit --output results/harness/my_sol_run
+```
 
-The [one-shot runner](src/run_one_shot.py) evaluates model edits of a fixed batch
-of incumbents through the existing RCP client. The [runner guide](docs/ONE_SHOT.md)
-documents its independent single-call conditions, 32,768-token output budget,
-saved requests, interruption handling and per-condition submission exports.
-[Context extraction](docs/PROOF_CONTEXT.md) supplies bounded original-proof goals
-and optional tactic-cost observations; candidate acceptance still uses the same
-full-declaration evaluator and cached references.
-The [correctness debugger](docs/VALIDITY_REPAIR.md) adds up to three compiler
-feedback rounds to one optimization proposal. It stops at the first proof that
-passes all required versions, without returning candidate performance to the model.
-The [combined workflow](docs/COMBINED.md) adds a deterministic cleanup of valid
-model proposals and compares it with the same cleanup applied to each incumbent.
+Omit `--condition` to run both active models, or specify `gpt-6-astra:max` for the SOTA condition. Score search has no imposed total token, attempt or wall-time cap. Costs are reported per problem using recorded usage and explicit API-equivalent assumptions; the competition's $3 cap is not enforced by these comparison runs.
 
-The [Codex agent baseline](results/one_shot/09_codex_tools_baselines/PROTOCOL.md)
-uses Astra/max and Luna/max, high and medium with tools for source inspection and
-Lean validation. It compares original proofs with deterministic preprocessing
-and cleanup using the same prompts and cached references. The CLI does not expose
-the RCP experiment's exact output-token and temperature controls. Run or resume
-with `python src/run_codex_baselines_isolated.py --model gpt-6-astra --effort max`;
-audit and report saved results with `python src/report_codex_baselines.py`.
-The isolated launcher keeps shared Lean sources read-only to Codex tools while
-the host handles correctness checks. It preserves the frozen runner and recorded
-requests; see the [Luna recovery](results/one_shot/09_codex_tools_baselines/recovery/README.md).
-The separate [Astra/low comparison](results/one_shot/10_astra_low/README.md)
-uses the same 15 problems and both seeds. Run it with `python src/run_astra_low.py`
-or audit its saved evidence with `python src/run_astra_low.py --report-only`.
-Its initial requests match Astra/max except for reasoning effort.
+Every completed condition exports `conditions/MODEL__EFFORT/selected_candidates.jsonl`, with one complete declaration per benchmark ID in the organizer's submission format. Invalid or regressive attempts preserve the best proof passing every required version. In-loop deterministic cleanup is retired.
 
-The [staged harness experiments](results/harness/README.md) add a structural
-strategy bank, named source/goal tools, and an optional score-feedback loop.
-The correctness-only stage tests Astra/low and Luna/max; the score stage also
-tests Astra/max and returns `(length reduction, heartbeat reduction,
-compatibility)` plus the combined score after each check. It retains the best
-proof passing every version and lets the agent continue without a fixed total
-attempt, token or wall-time budget. Beginning/end deterministic cleanup is now
-the default; in-loop cleanup is retired. The
-[model configuration study](results/harness/05_model_config/PROTOCOL.md) tests
-Sol 6.1/max and Astra/high with that setup. Estimate costs before launching with
-`python src/run_agent_harness.py --estimate-only`, or call the Python API in
-[`proof_eval.costs`](src/proof_eval/costs.py). It reports per-problem estimates
-and flags the $3 cap, including missing usage; it does not enforce a spend limit.
-Run the staged controller with
-`python src/continue_agent_harness.py` only when no copy is already active.
-The [comparison report](results/harness/COMPARISON.md) separates full benchmark
-results from partial searches and improvements after the first valid proposal.
+## APIs and code organization
 
-### Python and reward functions
+All maintained code lives in [src/proof_eval](src/proof_eval). There are dedicated packages for verification, deterministic optimization, provider calls, the model harness, benchmark setup/processing, evidence, and CLI/HTTP interfaces. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for APIs, tool requests, artifacts, resume behavior and the command migration table. [AGENTS.md](AGENTS.md) records implementation and measurement practices. Black, Ruff and pytest run in GitHub Actions using the same `make` commands.
 
 ```python
 from pathlib import Path
 from proof_eval import Evaluator
+from proof_eval.harness.config import RunConfig
+from proof_eval.harness.runner import run
 
-evaluator = Evaluator()  # paths default to this repository's data and local config
-name = "putnam_1964_a4"
+# Candidate scoring / GRPO reward adapter; references are read from the cache.
+evaluator = Evaluator()
+result = evaluator.evaluate("putnam_1964_a4", candidate_code, versions="all")
+reward = evaluator.reward("putnam_1964_a4", candidate_code)
 
-# Setup step: measure the original proof once. Repeated calls reuse the cache.
-evaluator.prepare_reference(name, versions="primary")
-
-# Agent loop: evaluate a full declaration, without re-measuring the reference.
-code = Path("candidate.lean").read_text()
-result = evaluator.evaluate(name, code, versions="primary")
-print(result["scores"])
-print(result["per_version"])
-
-# A reward function for a search or training loop; percentage scaled by 1/100.
-reward = evaluator.reward(name, code, metric="heartbeat", versions="primary")
-
-# When every listed environment is ready:
-# evaluator.prepare_reference(name)  # all listed versions, cached independently
-# result = evaluator.evaluate(name, code)
-# reward = evaluator.reward(name, code)  # combined score / 100
+# Model search uses the same host evaluator and tools.
+report = run(RunConfig(
+    output=Path("results/harness/my_sol_run"),
+    conditions=(("gpt-6.1-sol", "max"),),
+    workers=10,
+    pilot=True,
+))
 ```
 
-`input_kind="body"` accepts a proof body such as `by ...` and attaches the exact benchmark statement. The default `"declaration"` accepts the complete declaration and requires the exact statement. Statements can contain `:=` themselves, so proof extraction uses the dataset's statement boundary.
-
-`versions="primary"` selects the first version in that row's `version_info`; `"all"` is the default, and a list of listed version labels is also accepted. The first version is our explicit local primary for length/heartbeat scoring; it is not a claim about the private arena worker's default. Select a set containing the primary version to obtain top-level length/heartbeat rewards.
-
-`reward_batch(names, codes, **kwargs)` supplies the same interface to a trainer. A GRPO reward function can extract completion code, retain the benchmark ID for each completion, and pass those lists to this method. Arguments such as `metric="length"` or `metric="heartbeat"` with `versions="primary"` support cheaper feedback during search. Compatibility and combined rewards require all listed versions.
-
-Invalid proofs receive `0.0` by default. Negative reductions are preserved, and rewards are not clipped; callers can set `invalid_reward` explicitly when choosing a training reward policy. Missing environments, missing baselines, and incomplete version coverage raise `EvaluationNotReady` for the requested reward rather than being mislabeled as poor model outputs. A candidate timeout counts as failure under the configured, fingerprinted timeout policy; timeouts are not cached.
-
-### Process the benchmark reference values
-
-[src/process_benchmark.py](src/process_benchmark.py) processes the initial dataset and exports one JSONL row per problem:
+`proof-eval` also provides a JSON CLI and localhost HTTP API:
 
 ```bash
-python src/process_benchmark.py --output .proof-eval/benchmark_values.jsonl
-
-# A smaller first run, using the problem's primary version:
-python src/process_benchmark.py --name putnam_1964_a4 --versions primary \
-  --output .proof-eval/putnam_1964_a4_values.jsonl
-```
-
-The export includes the supplied reference token count, published heartbeat count, exact version commits, cached local heartbeat measurements, and measurement provenance. It retains problems with unavailable environments and records their status and diagnostics; absent measurements are `null`. It checkpoints the output atomically as problems finish. Re-running the script reuses the same baseline cache as the API, so an interrupted run does not lose completed measurements. Only an explicit `--refresh` requests re-measurement.
-
-The default processes every problem and every listed version. `--name` may be repeated; `--versions primary` is useful for preparing fast local rewards. Exit code 0 means every requested local measurement is ready; exit code 2 means the JSONL was produced but contains unavailable or failed measurements. Dataset token counts and the published heartbeat file are preserved unchanged.
-
-### CLI and HTTP
-
-```bash
-# Explicit setup, then repeated candidate checks:
-proof-eval prepare putnam_1964_a4 --versions primary
-proof-eval reference putnam_1964_a4 --versions primary
-proof-eval evaluate putnam_1964_a4 --versions primary --code-file candidate.lean
-proof-eval reward putnam_1964_a4 --versions primary --metric heartbeat --code-file candidate.lean
-
-# JSON over localhost for an agent running in another process:
+proof-eval evaluate putnam_1964_a4 --code-file candidate.lean
 proof-eval serve --port 8765 --workers 2
 ```
 
-Global options (`--dataset`, `--heartbeats`, `--environments`, `--cache`, `--timeout`) go before the subcommand. Code can also arrive on stdin; use `--body` for body-only input. CLI results are JSON. A completed evaluation of an invalid proof is a normal result with `status="invalid"`, not a CLI transport error.
+The generic deterministic API accepts a new competition batch with explicit paths and prepared references. See [docs/DETERMINISTIC_BATCH.md](docs/DETERMINISTIC_BATCH.md). `proof-benchmark` processes references once; `proof-setup` builds the pinned source projects. These are explicit setup actions, separate from search.
 
-The HTTP service binds to `127.0.0.1`. `POST /evaluate` accepts a JSON object with `name`, `code`, optional `input_kind`, and optional `versions`; its result is identical to `Evaluator.evaluate`. `POST /reward` additionally accepts `metric` and `invalid_reward`, returning `{"reward": ...}`. `GET /reference?name=...&versions=primary`, `GET /environments`, and `GET /health` are available. Baseline preparation remains an explicit Python/CLI setup operation. An unavailable reward returns HTTP 409; a busy service returns 429.
+## Data, rules and results
 
-For example, from another Python process:
+- [RULES.md](RULES.md): saved competition rules and pinned upstream links.
+- [data/benchmark_data_warmup.jsonl](data/benchmark_data_warmup.jsonl): unmodified warm-up data; SHA-256 `6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804`.
+- [data/benchmark_heartbeats.jsonl](data/benchmark_heartbeats.jsonl): organizer heartbeat references, preserved separately from local ratios.
+- [problems](problems/README.md): all 15 initial, deterministic and best proof examples with provenance.
+- [results](results/README.md): experiment index, including [deterministic](results/deterministic/README.md) and [model harness studies](results/harness/README.md).
+- [Sol configuration results and submission](results/harness/05_model_config/README.md): the pre-refactor Sol/max result was 87.342215% combined with 100% compatibility.
+- [Refactor validation and fresh Sol replicate](results/harness/06_refactor_regression/COMPARISON.md): 86.575834% combined, 100% compatibility, 36/36 passing versions; the earlier stronger submission is preserved.
+- [related_work](related_work/README.md): literature, papers and research proposals.
+- [prompts](prompts): versioned prompts and strategy bank.
 
-```python
-import json
-from pathlib import Path
-from urllib.request import Request, urlopen
-
-payload = {
-    "name": "putnam_1964_a4",
-    "code": Path("candidate.lean").read_text(),
-    "versions": "primary",
-}
-request = Request(
-    "http://127.0.0.1:8765/evaluate",
-    data=json.dumps(payload).encode(),
-    headers={"Content-Type": "application/json"},
-)
-with urlopen(request, timeout=180) as response:
-    result = json.load(response)
-```
-
-### Measurements and reproducibility
-
-The API reports `length_reduction_pct`, `heartbeat_reduction_pct`, `compatibility_pct`, and `combined_pct`. Each reduction is `100 * (1 - candidate / reference)`. Compatibility is the fraction of all listed versions that pass, and the combined score averages the three percentages. Failed primary proofs score zero. A partial or unavailable check leaves unsupported scores as JSON `null`, with diagnostics. Local scores retain full precision for learning; the arena rounds its displayed values.
-
-- **Length:** use the dataset's stored `proof_length` as the reference. Candidate tokenization follows the organizers' [public lexer](https://github.com/delta-lab-ai/lean-refactor/blob/9c98a3a097e53724e35b2a2e7fe316c331efa20a/lean_refactor/cc_agent/scripts/proof_utils.py); all 15 reference counts are covered by regression tests. Comments use a nested, literal-aware scanner.
-- **Heartbeats:** compile the reference once locally, then compare candidates with that cached local value. The evaluator measures a synchronous declaration elaboration using `IO.getNumHeartbeats`, with `Elab.async=false` and `maxHeartbeats=0` inside its wrapper. Imports and setup precede the measurement. Raw counts are retained; `heartbeats` is raw allocations divided by 1,000. An external timeout bounds the entire Lean process. Both reference and candidate use this identical wrapper, even for projects without Mathlib.
-- **Correctness:** Lean must consume exactly one candidate declaration, introduce the expected theorem, and finish without errors. The theorem must not depend transitively on `sorryAx`. The original theorem is replaced in its source context, preventing self-reference to an already imported solution. A conservative local filter also rejects command injection and metric-changing options; its rejection reason is returned.
-- **Cache:** `.proof-eval/` stores local baselines and candidate results, keyed by the benchmark row, pinned environment, measurement implementation, host/architecture, and timeout. Per-key locks and atomic writes allow multiple local processes to reuse it. Changed inputs invalidate reuse. Only explicit `prepare_reference(..., refresh=True)` or `prepare --refresh` re-measures a cached reference. Build artifacts are trusted prebuilt inputs; the evaluator verifies source pins, not how every existing `.olean` was produced.
-
-Heartbeats count allocation work, so they are more stable across hardware than elapsed time, but compiler versions, context, settings, and small runtime differences still matter. Local reference/candidate ratios provide the harness feedback; these are not asserted to reproduce the arena worker's exact counts. Published values are returned as `published_heartbeats` for provenance and never mixed into local heartbeat rewards. See [Lean's heartbeat documentation](https://lean-lang.org/doc/reference/latest/IO/Timing/).
-
-The published heartbeat file is pinned to the same Space revision as the benchmark. Its SHA-256 is `f342873a128281f858b9514ca4f3079dac8703515ff8a5510d5edffeecc0b6cb`.
-
-### Validation
-
-```bash
-python -m pytest -q -k 'not TestRCPLiveIntegration'
-```
-
-The tests cover tokenizer agreement, unchanged statements, malformed and forbidden code, baseline and candidate cache reuse, environment invalidation, incomplete compatibility, reward semantics, HTTP transport, isolated Lean compilation, deterministic proposal scope, checkpoint recovery, independent evidence audits, and running/resuming the full portfolio on a new dataset from outside the repository. Lean integration tests require the toolchain indicated in the test fixture; otherwise they skip explicitly. The command excludes the RCP client's three live model smoke tests; run those explicitly only when model requests are intended. The [saved validation record](results/deterministic/validation/batch_api_test_suite.json) includes the deterministic suite's tested source hashes.
-
-The model/context and correctness-repair additions also cover prompt isolation,
-goal/cost extraction, bounded debugging, first-valid stopping, no-resampling
-resume, pilot reuse, all-version cleanup eligibility, shared deterministic jobs,
-control comparisons and evidence/report arithmetic. The
-[latest offline validation](results/harness/validation/offline_tests.json)
-records **488 passing tests, 102 passing subtests and three deselected live tests**.
-It includes the admission gate, cleanup counterfactual analysis, effort probe,
-paired Codex inputs, source-write isolation, the host validity service, and
-localhost CLI request tests, including Astra/low, with no live model calls.
-The staged harness adds score-tuple semantics, best-proof retention, correctness
-feedback isolation, source-tool scope and exact model/effort/tool-mode routing
-through the installed CLI against a localhost test server.
+Historical study drivers and their dedicated tests were retired during the package cleanup. Their result evidence remains unchanged, and their original sources are saved in Git checkpoint `bfb2ade6` and content-addressed audit snapshots. Current experiments use the maintained APIs and commands above.

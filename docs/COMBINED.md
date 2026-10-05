@@ -1,3 +1,5 @@
+> Historical experiment protocol. Its drivers are preserved at [Git checkpoint `bfb2ade6`](https://github.com/epfl-lara/proof-reduction-competition/tree/bfb2ade6); use [ARCHITECTURE.md](ARCHITECTURE.md) for current commands and APIs.
+
 # Deterministic optimization plus model proposals
 
 The current model experiment starts from the deterministic portfolio's selected
@@ -5,7 +7,7 @@ proofs. Its first combination is therefore:
 
 `deterministic incumbent → one model proposal → correctness-only repair`
 
-[run_combined_matrix.py](../src/run_combined_matrix.py) adds a bounded final
+[run_combined_matrix.py](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/src/run_combined_matrix.py) adds a bounded final
 deterministic pass. It consumes the saved repair matrix and makes no model calls.
 The [experiment protocol](../results/one_shot/04_combined_deterministic/PROTOCOL.md)
 defines the paired control, selection policy and work accounting.

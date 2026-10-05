@@ -1,0 +1,28 @@
+theorem parallelReduction_diamond : Diamond ParallelReduction := by
+  intro a a₁ a₂ h₁ h₂
+  induction h₁ generalizing a₂
+  case refl => exact ⟨a₂, h₂, .refl _⟩
+  all_goals cases h₂
+  case par.par a a' b b' ha' hb' iha ihb a'' b'' ha'' hb'' =>
+    obtain ⟨a₃, ha₁, ha₂⟩ := iha ha''
+    obtain ⟨b₃, hb₁, hb₂⟩ := ihb hb''
+    exact ⟨_, .par ha₁ hb₁, .par ha₂ hb₂⟩
+  case par.red_I a' b b' hb' ihb ha' iha =>
+    cases I_irreducible a' ha'
+    exact ⟨_, .red_I _, hb'⟩
+  case par.red_K a' b b' hb' ihb ha' iha =>
+    obtain ⟨a₂', ha, rfl⟩ := Ka_irreducible _ a' ha'
+    exact ⟨_, .red_K _ _, ha⟩
+  case par.red_S a' b b' hb' ihb a c ha' iha =>
+    obtain ⟨a'', c', ha, hc, rfl⟩ := Sab_irreducible a c a' ha'
+    exact ⟨_, .red_S _ _ _, .par (.par ha hb') (.par hc hb')⟩
+  case red_I.par c a₁' hc ha =>
+    cases I_irreducible c hc
+    exact ⟨_, ha, .red_I _⟩
+  case red_K.par a' c' ha hc =>
+    obtain ⟨a₁', h', rfl⟩ := Ka_irreducible _ a' ha
+    exact ⟨_, h', .red_K _ _⟩
+  case red_S.par a b c d c' hd hc =>
+    obtain ⟨a', b', ha, hb, rfl⟩ := Sab_irreducible a b d hd
+    exact ⟨_, .par (.par ha hc) (.par hb hc), .red_S _ _ _⟩
+  all_goals (refine ⟨_, .refl _, ?_⟩; constructor <;> assumption)

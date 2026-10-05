@@ -1,7 +1,12 @@
 """Safety boundaries for syntax-guided local-fact transformations."""
+
 import unittest
 
-from proof_eval.structural import fact_reuse, local_fact_deletions, wrappers
+from proof_eval.optimization.structural import (
+    fact_reuse,
+    local_fact_deletions,
+    wrappers,
+)
 
 
 def node(kind, path, start, end):
@@ -14,41 +19,75 @@ class SyntaxFixture:
     Endpoints are supplied explicitly: this helper deliberately does not parse
     indentation, identify proof boundaries, or implement any transformations.
     """
+
     def __init__(self, code):
         self.code = code
         self.nodes = [node("null", [0], 0, len(code))]
 
-    def binding(self, name, rhs, *, keyword="have", type_text="", ordinal=0,
-                scope=None, occurrence=0, body=None, parameterized=False):
+    def binding(
+        self,
+        name,
+        rhs,
+        *,
+        keyword="have",
+        type_text="",
+        ordinal=0,
+        scope=None,
+        occurrence=0,
+        body=None,
+        parameterized=False,
+    ):
         start = -1
         for _ in range(occurrence + 1):
             start = self.code.index(keyword + " " + name, start + 1)
         rhs_start = self.code.index(":=", start) + 2
         while self.code[rhs_start].isspace():
             rhs_start += 1
-        assert self.code[rhs_start:rhs_start + len(rhs)] == rhs
+        assert self.code[rhs_start : rhs_start + len(rhs)] == rhs
         end = rhs_start + len(rhs)
         path = (scope or [0]) + [ordinal]
         base = path + [2, 0]
         name_start = start + len(keyword) + 1
         name_end = name_start + len(name)
-        self.nodes.extend([
-            node("Lean.Parser.Tactic.tacticHave__" if keyword == "have" else "Lean.Parser.Tactic.tacticLet__", path, start, end),
-            node("Lean.Parser.Term.letIdDecl", base, name_start, end),
-            node("Lean.Parser.Term.letId", base + [0], name_start, name_end),
-        ])
+        self.nodes.extend(
+            [
+                node(
+                    (
+                        "Lean.Parser.Tactic.tacticHave__"
+                        if keyword == "have"
+                        else "Lean.Parser.Tactic.tacticLet__"
+                    ),
+                    path,
+                    start,
+                    end,
+                ),
+                node("Lean.Parser.Term.letIdDecl", base, name_start, end),
+                node("Lean.Parser.Term.letId", base + [0], name_start, name_end),
+            ]
+        )
         if type_text:
             type_start = self.code.index(type_text, name_end)
-            self.nodes.append(node("null", base + [2], type_start, type_start + len(type_text)))
+            self.nodes.append(
+                node("null", base + [2], type_start, type_start + len(type_text))
+            )
         if parameterized:
             left = self.code.index("(", name_end)
             right = self.code.index(")", left) + 1
             self.nodes.append(node("null", base + [1], left, right))
         if rhs.startswith("by"):
-            self.nodes.append(node("Lean.Parser.Term.byTactic", base + [4], rhs_start, end))
+            self.nodes.append(
+                node("Lean.Parser.Term.byTactic", base + [4], rhs_start, end)
+            )
             if body is not None:
                 begin = self.code.index(body, rhs_start)
-                self.nodes.append(node("Lean.Parser.Tactic.tacticSeq", base + [4, 1], begin, begin + len(body)))
+                self.nodes.append(
+                    node(
+                        "Lean.Parser.Tactic.tacticSeq",
+                        base + [4, 1],
+                        begin,
+                        begin + len(body),
+                    )
+                )
         elif " " in rhs:
             self.nodes.append(node("Lean.Parser.Term.app", base + [4], rhs_start, end))
         return path
@@ -57,7 +96,14 @@ class SyntaxFixture:
         start = -1
         for _ in range(occurrence + 1):
             start = self.code.index(text, start + 1)
-        self.nodes.append(node("Lean.Parser.Tactic.exact", (scope or [0]) + [ordinal], start, start + len(text)))
+        self.nodes.append(
+            node(
+                "Lean.Parser.Tactic.exact",
+                (scope or [0]) + [ordinal],
+                start,
+                start + len(text),
+            )
+        )
 
     @property
     def analysis(self):
@@ -73,7 +119,10 @@ class WrapperTests(unittest.TestCase):
         f.exact("exact α")
         edits = wrappers(code, f.analysis)
         self.assertEqual(len(edits), 1)
-        self.assertEqual(edits[0].apply(code), "theorem π : True := by\n  have β := True.intro\n  exact β\n")
+        self.assertEqual(
+            edits[0].apply(code),
+            "theorem π : True := by\n  have β := True.intro\n  exact β\n",
+        )
 
     def test_comments_do_not_prevent_adjacent_contraction(self):
         code = "by have h := hp; /- comment exact other -/ exact h"
@@ -101,10 +150,15 @@ class WrapperTests(unittest.TestCase):
         code = "by\n  constructor\n  · have h := by\n      trivial\n    exact h\n  · trivial"
         f = SyntaxFixture(code)
         scope = [0, 3, 1, 0, 0]
-        f.nodes.append(node("null", scope, code.index("have h"), code.index("\n  · trivial")))
+        f.nodes.append(
+            node("null", scope, code.index("have h"), code.index("\n  · trivial"))
+        )
         f.binding("h", "by\n      trivial", scope=scope, body="trivial")
         f.exact("exact h", scope=scope)
-        self.assertEqual(wrappers(code, f.analysis)[0].apply(code), "by\n  constructor\n  · trivial\n  · trivial")
+        self.assertEqual(
+            wrappers(code, f.analysis)[0].apply(code),
+            "by\n  constructor\n  · trivial\n  · trivial",
+        )
 
     def test_parameterized_local_fact_is_not_flattened(self):
         code = "by\n  have h (n : Nat) : n = n := by rfl\n  exact h"
@@ -131,13 +185,17 @@ class LocalDeletionTests(unittest.TestCase):
         code = 'by\n  have h := hp\n  have hh := "h"\n  -- h\n  /- h /- h -/ h -/\n  exact hh'
         f = SyntaxFixture(code)
         f.binding("h", "hp")
-        self.assertIn("text_nonreference:h", local_fact_deletions(code, f.analysis)[0].reason)
+        self.assertIn(
+            "text_nonreference:h", local_fact_deletions(code, f.analysis)[0].reason
+        )
 
     def test_semicolon_is_consumed_without_damaging_neighbor(self):
         code = "by have h := hp; exact hp"
         f = SyntaxFixture(code)
         f.binding("h", "hp")
-        self.assertEqual(local_fact_deletions(code, f.analysis)[0].apply(code), "by  exact hp")
+        self.assertEqual(
+            local_fact_deletions(code, f.analysis)[0].apply(code), "by  exact hp"
+        )
 
 
 class ReuseTests(unittest.TestCase):
@@ -150,7 +208,9 @@ class ReuseTests(unittest.TestCase):
         self.assertTrue(any("have h₂ : True := h₁" in e.apply(code) for e in edits))
 
     def test_same_tactic_on_distinct_types_does_not_imply_same_fact(self):
-        code = "by\n  have h₁ : 1 = 1 := by rfl\n  have h₂ : 2 = 2 := by rfl\n  exact h₂"
+        code = (
+            "by\n  have h₁ : 1 = 1 := by rfl\n  have h₂ : 2 = 2 := by rfl\n  exact h₂"
+        )
         f = SyntaxFixture(code)
         f.binding("h₁", "by rfl", type_text=": 1 = 1")
         f.binding("h₂", "by rfl", type_text=": 2 = 2", ordinal=2)
@@ -161,7 +221,12 @@ class ReuseTests(unittest.TestCase):
         f = SyntaxFixture(code)
         f.binding("h₁", "Nat.zero_le 3")
         f.binding("h₂", "Nat.zero_le 3", ordinal=2)
-        self.assertTrue(any("have h₂ := h₁" in edit.apply(code) for edit in fact_reuse(code, f.analysis)))
+        self.assertTrue(
+            any(
+                "have h₂ := h₁" in edit.apply(code)
+                for edit in fact_reuse(code, f.analysis)
+            )
+        )
 
     def test_alias_replaces_complete_identifiers_preserving_comments_literals(self):
         code = 'by\n  have h := hp\n  have hh := "h"\n  -- h is an alias\n  exact (h, hh, Namespace.h)'

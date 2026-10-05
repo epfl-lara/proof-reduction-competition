@@ -3,28 +3,36 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
-from proof_eval.lean_backend import LeanBackend, _masked_comments
+from proof_eval.verification.backend import LeanBackend, _masked_comments
 
 
 def _installed(version):
     if not shutil.which("elan") or not shutil.which("lake"):
         return False
-    output = subprocess.run(["elan", "toolchain", "list"], capture_output=True, text=True).stdout
-    return any(line.split()[0] == f"leanprover/lean4:{version}" for line in output.splitlines() if line.split())
+    output = subprocess.run(
+        ["elan", "toolchain", "list"], capture_output=True, text=True
+    ).stdout
+    return any(
+        line.split()[0] == f"leanprover/lean4:{version}"
+        for line in output.splitlines()
+        if line.split()
+    )
 
 
 class BackendScannerTests(unittest.TestCase):
     def test_nested_comments_and_literal_boundaries(self):
-        source = 'theorem x : «x/-y-/» = r#"-- /- "/-"# := by rfl /- a /- b -/ c -/ -- z\n'
+        source = (
+            'theorem x : «x/-y-/» = r#"-- /- "/-"# := by rfl /- a /- b -/ c -/ -- z\n'
+        )
         masked = _masked_comments(source)
         self.assertEqual(len(source), len(masked))
-        self.assertIn('«x/-y-/»', masked)
+        self.assertIn("«x/-y-/»", masked)
         self.assertIn('r#"-- /- "/-"#', masked)
         self.assertTrue(masked.rstrip().endswith("rfl"))
 
@@ -50,20 +58,53 @@ class LeanIntegrationTests(unittest.TestCase):
         self.directory.cleanup()
 
     def _write_project(self):
-        (self.project / "lean-toolchain").write_text(f"leanprover/lean4:{self.version}\n")
-        (self.project / "lakefile.toml").write_text('name = "proof_eval_test"\nversion = "0.1.0"\n')
-        manifest = {"version": "1.1.0", "name": "proof_eval_test", "lakeDir": ".lake", "packagesDir": ".lake/packages", "packages": []}
+        (self.project / "lean-toolchain").write_text(
+            f"leanprover/lean4:{self.version}\n"
+        )
+        (self.project / "lakefile.toml").write_text(
+            'name = "proof_eval_test"\nversion = "0.1.0"\n'
+        )
+        manifest = {
+            "version": "1.1.0",
+            "name": "proof_eval_test",
+            "lakeDir": ".lake",
+            "packagesDir": ".lake/packages",
+            "packages": [],
+        }
         (self.project / "lake-manifest.json").write_text(json.dumps(manifest))
-        (self.project / "Example.lean").write_text(self.prefix + self.source + self.suffix)
+        (self.project / "Example.lean").write_text(
+            self.prefix + self.source + self.suffix
+        )
         self._git("init", "-q")
-        self._git("add", "lean-toolchain", "lakefile.toml", "lake-manifest.json", "Example.lean")
-        self._git("-c", "user.name=Backend Test", "-c", "user.email=backend@example.invalid", "commit", "-qm", "Fixture")
+        self._git(
+            "add",
+            "lean-toolchain",
+            "lakefile.toml",
+            "lake-manifest.json",
+            "Example.lean",
+        )
+        self._git(
+            "-c",
+            "user.name=Backend Test",
+            "-c",
+            "user.email=backend@example.invalid",
+            "commit",
+            "-qm",
+            "Fixture",
+        )
         commit = self._git("rev-parse", "HEAD")
-        self.row = {"name": "Demo.tiny", "statement": self.source.split(" :=")[0], "src": self.source,
-                    "file_path": "Example.lean", "version_info": [{self.version: commit}]}
+        self.row = {
+            "name": "Demo.tiny",
+            "statement": self.source.split(" :=")[0],
+            "src": self.source,
+            "file_path": "Example.lean",
+            "version_info": [{self.version: commit}],
+        }
 
     def _git(self, *args):
-        result = subprocess.run(["git", "-C", str(self.project), *args], capture_output=True, text=True)
+        result = subprocess.run(
+            ["git", "-C", str(self.project), *args], capture_output=True, text=True
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         return result.stdout.strip()
 
@@ -85,12 +126,19 @@ class LeanIntegrationTests(unittest.TestCase):
     def test_appended_command_is_rejected_by_lean_parser(self):
         result = self.evaluate(self.source + "\n#check Nat")
         self.assertEqual(result["status"], "failed", result["diagnostics"])
-        self.assertTrue(any("exactly one complete declaration" in str(d) for d in result["diagnostics"]))
+        self.assertTrue(
+            any(
+                "exactly one complete declaration" in str(d)
+                for d in result["diagnostics"]
+            )
+        )
 
     def test_unfinished_proof_is_rejected(self):
         result = self.evaluate(self.row["statement"] + " := by sorry")
         self.assertEqual(result["status"], "failed", result["diagnostics"])
-        self.assertTrue(any("depends on sorryAx" in str(d) for d in result["diagnostics"]))
+        self.assertTrue(
+            any("depends on sorryAx" in str(d) for d in result["diagnostics"])
+        )
 
     def test_transitive_sorry_rejected_but_unrelated_sorry_allowed(self):
         self.prefix += "theorem helper (n : Nat) : n = n := by sorry\n"
@@ -99,7 +147,9 @@ class LeanIntegrationTests(unittest.TestCase):
         self.assertEqual(valid["status"], "passed", valid["diagnostics"])
         invalid = self.evaluate(self.row["statement"] + " := by exact helper n")
         self.assertEqual(invalid["status"], "failed", invalid["diagnostics"])
-        self.assertTrue(any("depends on sorryAx" in str(d) for d in invalid["diagnostics"]))
+        self.assertTrue(
+            any("depends on sorryAx" in str(d) for d in invalid["diagnostics"])
+        )
 
     def test_missing_import_is_infrastructure_unavailable(self):
         self.prefix = "import MissingUnbuiltDependency\nnamespace Demo\n"
@@ -114,47 +164,89 @@ class LeanIntegrationTests(unittest.TestCase):
         self.assertEqual(result["status"], "passed", result["diagnostics"])
 
     def test_declaration_doc_comment_and_scoped_option(self):
-        self.prefix += "set_option linter.unusedVariables false in\n/-- Target documentation. -/\n"
+        self.prefix += (
+            "set_option linter.unusedVariables false in\n/-- Target documentation. -/\n"
+        )
         self._write_project()
         result = self.evaluate(self.source)
         self.assertEqual(result["status"], "passed", result["diagnostics"])
 
     def test_quoted_package_name_uses_unquoted_directory(self):
         dependency = self.project / ".lake/packages/a-b"
-        subprocess.run(["git", "clone", "-q", str(self.project), str(dependency)], check=True)
+        subprocess.run(
+            ["git", "clone", "-q", str(self.project), str(dependency)], check=True
+        )
         manifest_path = self.project / "lake-manifest.json"
         manifest = json.loads(manifest_path.read_text())
-        manifest["packages"] = [{"name": "«a-b»", "type": "git", "rev": self._git("rev-parse", "HEAD")}]
+        manifest["packages"] = [
+            {"name": "«a-b»", "type": "git", "rev": self._git("rev-parse", "HEAD")}
+        ]
         manifest_path.write_text(json.dumps(manifest))
         self._git("add", "lake-manifest.json")
-        self._git("-c", "user.name=Backend Test", "-c", "user.email=backend@example.invalid", "commit", "-qm", "Dependency")
+        self._git(
+            "-c",
+            "user.name=Backend Test",
+            "-c",
+            "user.email=backend@example.invalid",
+            "commit",
+            "-qm",
+            "Dependency",
+        )
         self.row["version_info"] = [{self.version: self._git("rev-parse", "HEAD")}]
         environment = self.backend._environment(self.row, self.version, self.project)
         self.assertIn("a-b", environment["dependencies"])
 
     def test_optimizer_syntax_observer_in_both_module_modes(self):
         from proof_eval import Evaluator
-        from proof_eval.optimizer import analyze
+        from proof_eval.optimization.syntax import analyze
+
         for version in ("v4.25.0", "v4.32.0"):
             if not _installed(version):
                 continue
             self.version = version
-            self.prefix = ("import Lean\n" if version == "v4.25.0" else "module\npublic import Lean\npublic section\n") + "namespace Demo\n-- Syntax observer fixture\n"
+            self.prefix = (
+                "import Lean\n"
+                if version == "v4.25.0"
+                else "module\npublic import Lean\npublic section\n"
+            ) + "namespace Demo\n-- Syntax observer fixture\n"
             self._write_project()
             dataset = self.project / "dataset.jsonl"
-            dataset.write_text(json.dumps({**self.row, "source": "fixture", "proof_length": 2}) + "\n")
+            dataset.write_text(
+                json.dumps({**self.row, "source": "fixture", "proof_length": 2}) + "\n"
+            )
             config = self.project / "environments.json"
-            config.write_text(json.dumps({"projects": [{"source": "fixture", "version": version, "path": str(self.project)}]}))
+            config.write_text(
+                json.dumps(
+                    {
+                        "projects": [
+                            {
+                                "source": "fixture",
+                                "version": version,
+                                "path": str(self.project),
+                            }
+                        ]
+                    }
+                )
+            )
             evaluator = Evaluator(dataset, config, self.project / ".cache", timeout=30)
-            analysis = analyze(evaluator, evaluator.dataset.get(self.row["name"]), self.source)
-            self.assertTrue(any(self.source[n["start"]:n["end"]] == "by rfl" for n in analysis["nodes"]))
+            analysis = analyze(
+                evaluator, evaluator.dataset.get(self.row["name"]), self.source
+            )
+            self.assertTrue(
+                any(
+                    self.source[n["start"] : n["end"]] == "by rfl"
+                    for n in analysis["nodes"]
+                )
+            )
 
     def test_candidate_cannot_use_original_target(self):
         result = self.evaluate(self.row["statement"] + " := by exact Demo.tiny n")
         self.assertEqual(result["status"], "failed", result["diagnostics"])
 
     def test_source_drift_is_unavailable(self):
-        (self.project / "Example.lean").write_text("-- changed\n" + self.prefix + self.source + self.suffix)
+        (self.project / "Example.lean").write_text(
+            "-- changed\n" + self.prefix + self.source + self.suffix
+        )
         self.assertEqual(self.evaluate(self.source)["status"], "unavailable")
 
     def test_older_version_with_changed_reference_proof_uses_exact_statement(self):
@@ -167,7 +259,12 @@ class LeanIntegrationTests(unittest.TestCase):
         self.assertEqual(result["details"]["context_mode"], "prefix_only")
 
     def test_wrong_version_is_unavailable(self):
-        self.assertEqual(self.backend.check(self.row, self.source, "v4.27.0", self.project)["status"], "unavailable")
+        self.assertEqual(
+            self.backend.check(self.row, self.source, "v4.27.0", self.project)[
+                "status"
+            ],
+            "unavailable",
+        )
 
     def test_existing_concurrent_temporary_source_does_not_dirty_checkout(self):
         temp = self.project / ("_ProofEval_" + "a" * 32 + ".lean")

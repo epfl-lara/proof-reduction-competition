@@ -4,13 +4,29 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lean-proof-eval"
-version = "0.1.0"
-description = "Local, cached evaluation of Lean Refactor Arena candidates"
+version = "0.2.0"
+description = "Lean Refactor Arena verification, optimization, and agent harness"
 requires-python = ">=3.10"
 dependencies = []
 
+[project.optional-dependencies]
+dev = [
+    "black==26.10.0",
+    "ruff==0.14.14",
+    "pytest>=9.1,<10",
+    "pytest-subtests==0.14.2",
+]
+
 [project.scripts]
-proof-eval = "proof_eval.cli:main"
+proof-eval = "proof_eval.interfaces.cli:main"
+proof-harness = "proof_eval.harness.cli:main"
+proof-deterministic = "proof_eval.optimization.batch:main"
+proof-transform = "proof_eval.optimization.runner:main"
+proof-benchmark = "proof_eval.benchmark.process:main"
+proof-setup = "proof_eval.benchmark.setup:main"
+proof-audit = "proof_eval.evidence.audit:main"
+proof-report = "proof_eval.optimization.reporting:main"
+rcp-chat = "proof_eval.providers.rcp_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -18,3 +34,25 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+addopts = "-m 'not live'"
+markers = ["live: explicit paid model or remote provider integration"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+# This exact source is part of the existing reference environment fingerprints.
+# A new backend release requires separately prepared reference measurements.
+force-exclude = "(/results/|src/proof_eval/verification/backend\\.py$)"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+extend-exclude = ["results", ".proof-eval", ".proof-eval-projects"]
+force-exclude = true
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# Verify correctness rules, but preserve the pinned measurement source bytes.
+"src/proof_eval/verification/backend.py" = ["I"]

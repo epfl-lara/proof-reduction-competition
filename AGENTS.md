@@ -1,0 +1,80 @@
+# Working in this repository
+
+This repository optimizes Lean proofs for Lean Refactor Arena. Read `README.md`
+and `docs/ARCHITECTURE.md` before changing the runtime. The active model conditions
+are **gpt-6.1-sol/max** and **gpt-6-astra/max**. The default search uses the revised
+prompt, score feedback, and deterministic cleanup at the beginning and end.
+
+## Organize code by responsibility
+
+- Put maintained Python code in `src/proof_eval/`. Use its existing packages:
+  `verification`, `optimization`, `providers`, `harness`, `benchmark`, `evidence`,
+  and `interfaces`.
+- Entry points belong in `pyproject.toml` and thin CLI modules. Library modules
+  must never import an executable experiment script. Do not add `src/run_*.py`,
+  per-model drivers, duplicated utilities, or a miscellaneous scripts folder.
+- Keep transport, prompt policy, proof selection, verification, and reporting
+  separate. `harness/search.py` handles one theorem; `harness/runner.py` handles
+  a batch. Reuse `evidence/io.py` for identities and atomic JSON writes.
+- Annotate public interfaces and use explicit configuration objects. Importing a
+  library must not dispatch requests, compile Lean, read credentials, or create
+  result files. Put such work behind explicit calls.
+- Give modules one purpose. Split a growing module when responsibilities diverge;
+  avoid adding another study's orchestration to an existing large file.
+
+## Preserve measurement and experiment contracts
+
+- Never remeasure original proofs implicitly. Preparation is a separate, explicit
+  action; search and reward functions only read cached reference measurements.
+- Keep the dataset's original token denominator. Measure candidates using fresh
+  pinned `lake env lean`, synchronous `Elab.async=false`, and the existing
+  `IO.getNumHeartbeats` wrapper. Timing and `--profile` are not heartbeats.
+- `verification/backend.py` is intentionally byte-frozen: its source hash is part
+  of existing reference fingerprints. Black excludes that single file; Ruff
+  still checks correctness rules. A backend change needs an explicit measurement
+  version and a separately prepared cache, never silent cache substitution.
+- Keep the best proof passing **every required version**, with the configured
+  0.05 percentage-point improvement margin. Preserve a better raw proof if final
+  deterministic cleanup regresses. In-loop deterministic cleanup is retired.
+- Keep prompts, model settings, source projects, denominators, and cohort size
+  fixed for matched experiments. Do not feed another condition's solutions to a
+  model. Report full-cohort means only when the full declared cohort is complete.
+- Model requests need durable started markers, host-owned evidence, output locks,
+  and no automatic resampling of an indeterminate request. Preserve partial work.
+  Codex may use tools; the host checks proofs and owns the ledger. Do not let model
+  processes write the pinned source projects or host evidence.
+- Do not edit pinned runtime or prompt files while an experiment is running.
+  Use a new output directory when code, inputs, settings, or budgets change.
+- Keep historical result/config/request bytes unchanged. Auditors may verify
+  matching sources under `results/deterministic/validation/implementation_snapshots`;
+  they must not execute snapshots. Retired drivers can be recovered from the
+  pre-refactor checkpoint `bfb2ade6` in an isolated checkout.
+- Preserve generated result bytes even when an original proof contains trailing
+  whitespace. `.gitattributes` exempts those archives from Git whitespace checks;
+  Black and Ruff also exclude result archives. Never format saved evidence.
+- Report local and organizer scores separately. API-equivalent prices are
+  estimates, not Codex invoices. The closed-track cap applies to **each problem**;
+  missing usage stays unknown. RCP permits at most five simultaneous requests
+  across the key; do not put credentials in results, logs, or Git.
+
+## Check quality before handing off
+
+Use `conda activate af` here, or a clean Python environment with
+`python -m pip install -e '.[dev]'`.
+
+```bash
+make format   # Black and Ruff import ordering; inspect changes
+make check    # Black --check and Ruff lint
+make test     # pytest; paid remote tests excluded by default
+```
+
+For a focused fix, run the relevant tests first, then the full offline suite when
+interfaces or shared behavior changed. Prefer tests of observable contracts:
+reference reuse, score arithmetic, all-version gating, resume, provider routing,
+tool boundaries, and a small end-to-end batch. Do not add tests that merely repeat
+the implementation or use a paid model call as a default unit test.
+
+Before scaling a model experiment, run `proof-harness run --pilot ...`; it audits
+one theorem per selected condition before continuing. Run `proof-harness audit`
+on completed evidence. State what actually completed, the validation performed,
+and any incomplete outcomes. Keep user-owned untracked files untouched.

@@ -1,3 +1,5 @@
+> Historical experiment protocol. Its drivers are preserved at [Git checkpoint `bfb2ade6`](https://github.com/epfl-lara/proof-reduction-competition/tree/bfb2ade6); use [ARCHITECTURE.md](ARCHITECTURE.md) for current commands and APIs.
+
 # One proposal with correctness-only debugging
 
 The model makes one initial optimization proposal. If that proposal is not valid
@@ -13,7 +15,7 @@ This is one optimization proposal plus debugging, not a single model request.
 
 ## Interface and control flow
 
-[run_validity_repair.py](../src/run_validity_repair.py) reads a frozen one-shot
+[run_validity_repair.py](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/src/run_validity_repair.py) reads a frozen one-shot
 directory. It selects completed initial cells by request hash or by model,
 condition and theorem. For each cell it:
 
@@ -108,7 +110,7 @@ stage-03 directory remains a historical snapshot; resuming it would duplicate
 the continuation's work. The commands below describe the original interface;
 use fresh output directories for a new experiment.
 
-[run_repair_matrix.py](../src/run_repair_matrix.py) can consume initial cells
+[run_repair_matrix.py](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/src/run_repair_matrix.py) can consume initial cells
 while the direct-output runner is still working:
 
 ```bash
@@ -143,7 +145,7 @@ configured theorem. The auditor requires the final initial-result manifest and
 does not invoke Lean or a model. The [full protocol](../results/one_shot/03_repaired_context_ablation/PROTOCOL.md)
 records the measurement boundaries and interpretation limits.
 
-[analyze_repair_budgets.py](../src/analyze_repair_budgets.py) replays saved terminal
+[analyze_repair_budgets.py](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/src/analyze_repair_budgets.py) replays saved terminal
 trajectories at repair budgets 0, 1, 2 and 3, without further calls. It reports
 validity, selected-score gains and additional token use for each prefix. These
 are shared-prefix comparisons, not independently sampled budget experiments;
@@ -151,7 +153,7 @@ full-condition means require every declared theorem.
 
 ## Harness building blocks
 
-[validity_feedback.py](../src/validity_feedback.py) provides two pure helpers:
+[validity_feedback.py](https://github.com/epfl-lara/proof-reduction-competition/blob/bfb2ade6/src/validity_feedback.py) provides two pure helpers:
 
 ```python
 from validity_feedback import all_versions_passed, build_validity_feedback

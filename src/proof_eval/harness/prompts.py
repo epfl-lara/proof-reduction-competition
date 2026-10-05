@@ -1,0 +1,105 @@
+"""Versioned model instructions and context; no other condition's solutions."""
+
+import json
+
+from proof_eval.evidence.io import read
+from proof_eval.paths import ROOT
+from proof_eval.verification.references import original_evaluation
+
+COMMON_TOOLS = """Use the supplied tools with `python tools.py ...` in your workspace:
+  search 'literal symbol or mathematical property' [--version VERSION] [--limit 30]
+  outline relative/source/File.lean [--version VERSION]
+  read relative/source/File.lean [--start 1 --end 180] [--version VERSION]
+  goals candidate.lean
+  check candidate.lean
+  status
+Write a complete replacement declaration to candidate.lean before checking it.
+context.json lists your theorem, source file and pinned projects. Source tools
+also search the pinned project's Lean dependencies. You may use ordinary shell
+source inspection within these paths. All source projects are read-only to tools;
+the host checker supplies Lean validation. Other experiment files and evaluator
+code are out of scope. Do not launch additional models, access the network for
+proofs, run deterministic optimization programs, or modify the tool client.
+Before final output, use `python tools.py finish --reason 'short factual reason'`.
+The final message must be the complete selected Lean declaration, without prose.
+The original seed is already validated and measured. Start checking when you
+have a proposed change; checking the unchanged seed does not discover an improvement.
+"""
+MODE_TOOLS = {
+    "correctness": """Experiment mode: one structural proposal with correctness-only debugging.
+Use source inspection to choose a credible rewrite. Check it and repair compiler
+errors until it passes every required version. Stop at that first valid proposal
+and return it, even if you are unsure whether its score is better. Do not request
+candidate performance measurements or start another optimization after a pass.
+The host will evaluate the score after the proposal has finished.
+""",
+    "score": """Experiment mode: iterative optimization with real score feedback.
+After EVERY proposed change, run `python tools.py check candidate.lean`. The
+response contains (length reduction %, heartbeat reduction %, compatibility %),
+their combined score, correctness feedback, and the best all-version-valid proof
+so far. A failed primary check scores zero. Use the combined score, not just source
+length. Invalid or regressive attempts never replace the saved best proof.
+After a valid result, keep investigating concrete ways to improve it: structural
+alternatives, stronger lemmas, smaller local helpers, focused tactics or explicit
+proof terms. Repair failures and compare the scores of valid alternatives. You
+have no fixed total attempt, token or wall-time budget. Continue while you have
+promising changes; a single failed or worse attempt need not end the search.
+Keep brief factual notes in your workspace on tried changes and measured outcomes
+so you avoid repeating them. Stop when you judge further improvements unlikely,
+or the remaining ideas do not justify more attempts. This is a local stopping
+decision, not a claim of global optimality. Call status to recover the best proof,
+then finish with a short stopping reason and return that exact declaration.
+""",
+}
+
+
+def tool_instructions(mode):
+    if mode not in (*MODE_TOOLS, "score_edges"):
+        raise ValueError("Unsupported or retired search mode: " + mode)
+    if mode == "score_edges":
+        common = COMMON_TOOLS.replace(
+            "The original seed is already validated and measured.",
+            "The supplied seed is already validated and measured.",
+        )
+        placement = """The harness selected the better all-version-valid original or deterministic
+seed before your call and will apply the fixed deterministic portfolio to your
+best checked proof after your call. Reference denominators remain the original.
+"""
+        placement += "Deterministic cleanup is performed only before and after model search; no in-loop deterministic tool is available.\n"
+        return common + "\n" + MODE_TOOLS["score"] + "\n" + placement
+    return COMMON_TOOLS + "\n" + MODE_TOOLS[mode]
+
+
+def messages(pack, seed=None):
+    """Same enhanced task context for both feedback modes; no other-arm outputs."""
+    original = original_evaluation(pack)
+    seed_code, seed_evaluation = seed or (pack["row"]["src"], original)
+    primary = original["primary_version"]
+    payload = {
+        "name": pack["name"],
+        "source": pack["row"]["source"],
+        "required_versions": pack["row"]["version_info"],
+        "exact_statement": pack["row"]["statement"],
+        "incumbent_declaration": seed_code,
+        "incumbent_scores": seed_evaluation["scores"],
+        "reference_denominators": {
+            "tokens": pack["row"]["proof_length"],
+            "primary_heartbeats": original["per_version"][primary]["heartbeats"],
+        },
+        "preceding_source_excerpt": pack["source_context"],
+        "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+        "structural_strategy_cards": read(
+            ROOT / "prompts/structural_strategy_bank_v2.json"
+        )["cards"],
+    }
+    return [
+        {
+            "role": "system",
+            "content": (ROOT / "prompts/agent_refactor_system_v2.md").read_text(),
+        },
+        {
+            "role": "user",
+            "content": "Optimize this declaration using the supplied tools.\n"
+            + json.dumps(payload, ensure_ascii=False, indent=2),
+        },
+    ]

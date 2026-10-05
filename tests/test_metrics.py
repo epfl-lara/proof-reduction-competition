@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
-from proof_eval.dataset import Dataset
-from proof_eval.metrics import reduction_percent, strip_comments, token_count, validate_candidate
-
+from proof_eval.verification.dataset import Dataset
+from proof_eval.verification.metrics import (
+    reduction_percent,
+    strip_comments,
+    token_count,
+    validate_candidate,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK = ROOT / "data" / "benchmark_data_warmup.jsonl"
@@ -73,10 +77,15 @@ class TokenCountTests(unittest.TestCase):
         for text in ('"-- /- hello -/"', 'r#"-- /- hello -/"#', "'\"'", "«a/-b-/»"):
             with self.subTest(text=text):
                 self.assertEqual(strip_comments(text), text)
-        self.assertEqual(strip_comments('"\\\"/-" -- tail'), '"\\\"/-" ')
+        self.assertEqual(strip_comments('"\\"/-" -- tail'), '"\\"/-" ')
 
     def test_unterminated_lexical_forms_rejected(self):
-        for text in ('by /- unfinished', '"unterminated', 'r##"text"#', '«unterminated'):
+        for text in (
+            "by /- unfinished",
+            '"unterminated',
+            'r##"text"#',
+            "«unterminated",
+        ):
             with self.subTest(text=text), self.assertRaises(ValueError):
                 strip_comments(text)
 
@@ -86,15 +95,22 @@ class CandidateTests(unittest.TestCase):
 
     def test_body_and_full_inputs_return_the_same_declaration(self):
         expected = "theorem target : True := by\n  trivial"
-        self.assertEqual(validate_candidate(self.row, expected), (expected, "by\n  trivial"))
-        self.assertEqual(validate_candidate(self.row, "by\n  trivial", "body"), (expected, "by\n  trivial"))
+        self.assertEqual(
+            validate_candidate(self.row, expected), (expected, "by\n  trivial")
+        )
+        self.assertEqual(
+            validate_candidate(self.row, "by\n  trivial", "body"),
+            (expected, "by\n  trivial"),
+        )
 
     def test_assignment_inside_statement_is_not_proof_boundary(self):
         row = {"statement": "theorem target : let n := 1; n = 1"}
         full, body = validate_candidate(row, row["statement"] + " := by rfl")
         self.assertEqual(body, "by rfl")
         self.assertEqual(full, row["statement"] + " := by rfl")
-        real = Dataset(BENCHMARK).get("Binius.BinaryBasefold.fold_advances_evaluation_poly")
+        real = Dataset(BENCHMARK).get(
+            "Binius.BinaryBasefold.fold_advances_evaluation_poly"
+        )
         _, body = validate_candidate(real, real["src"])
         self.assertTrue(body.startswith("by"))
         self.assertEqual(token_count(body), 1906)
@@ -112,19 +128,33 @@ class CandidateTests(unittest.TestCase):
 
     def test_all_official_and_additional_commands_rejected(self):
         bad_bodies = (
-            "by sorry", "by admit", "by exact sorryAx _ false", "by native_decide",
-            "by exact ofReduceBool _", "by exact ofReduceNat _",
-            "by run_elab pure ()", "by run_cmd pure ()", "by exact IO.println x",
-            "by trivial\n#eval 1", "by trivial\n#reduce 1", "by trivial\n#exit",
+            "by sorry",
+            "by admit",
+            "by exact sorryAx _ false",
+            "by native_decide",
+            "by exact ofReduceBool _",
+            "by exact ofReduceNat _",
+            "by run_elab pure ()",
+            "by run_cmd pure ()",
+            "by exact IO.println x",
+            "by trivial\n#eval 1",
+            "by trivial\n#reduce 1",
+            "by trivial\n#exit",
             "by trivial\n#count_heartbeats in theorem t : True := by trivial",
-            "by trivial\n#print axioms target", "by trivial\nnamespace X",
-            "by trivial\nend X", "by trivial\nimport Mathlib",
-            "by trivial\nset_option Elab.async true", "by\n  set_option maxRecDepth 1000 in trivial",
+            "by trivial\n#print axioms target",
+            "by trivial\nnamespace X",
+            "by trivial\nend X",
+            "by trivial\nimport Mathlib",
+            "by trivial\nset_option Elab.async true",
+            "by\n  set_option maxRecDepth 1000 in trivial",
             "by trivial\nlemma other : True := by trivial",
             "by trivial theorem other : True := by trivial",
-            "by trivial\nexample : True := by trivial", "by trivial\ndef foo := 1",
-            "by trivial\nunsafe def foo := 1", "by trivial\naxiom foo : False",
-            "by trivial\nattribute [simp] target", "by trivial\nopen X",
+            "by trivial\nexample : True := by trivial",
+            "by trivial\ndef foo := 1",
+            "by trivial\nunsafe def foo := 1",
+            "by trivial\naxiom foo : False",
+            "by trivial\nattribute [simp] target",
+            "by trivial\nopen X",
             "by trivial\nmacro_rules | `(foo) => `(trivial)",
             "by trivial\ninitialize x : Nat ← pure 0",
             "by trivial\n@[implemented_by foo] def x := 0",
@@ -153,7 +183,10 @@ class CandidateTests(unittest.TestCase):
 
     def test_unbalanced_delimiter_escape_rejected(self):
         for body in ("by trivial)", "(by trivial", "by exact ([)]"):
-            with self.subTest(body=body), self.assertRaisesRegex(ValueError, "Unbalanced"):
+            with (
+                self.subTest(body=body),
+                self.assertRaisesRegex(ValueError, "Unbalanced"),
+            ):
                 validate_candidate(self.row, body, "body")
 
     def test_size_guard_counts_utf8_bytes(self):
@@ -171,8 +204,17 @@ class ReductionTests(unittest.TestCase):
         self.assertIsNone(reduction_percent(10, None))
 
     def test_invalid_measurements_cannot_be_rewards(self):
-        for reference, candidate in ((10, -1), (-1, 10), (10, float("nan")), (float("inf"), 10), (True, 1)):
-            with self.subTest(reference=reference, candidate=candidate), self.assertRaises(ValueError):
+        for reference, candidate in (
+            (10, -1),
+            (-1, 10),
+            (10, float("nan")),
+            (float("inf"), 10),
+            (True, 1),
+        ):
+            with (
+                self.subTest(reference=reference, candidate=candidate),
+                self.assertRaises(ValueError),
+            ):
                 reduction_percent(reference, candidate)
 
 

@@ -6,7 +6,10 @@
   Luna with tools, paired original and deterministic seeds, and validity debugging.
 - [Structural context and score-feedback search](harness/README.md): revised
   prompts and source/goal tools, followed by continued optimization with the
-  measured competition tuple; separate Astra/low, Astra/max and Luna/max results.
+  measured competition tuple, deterministic cleanup and model-cost comparisons.
+- [Sol package-refactor validation](harness/06_refactor_regression/PROTOCOL.md):
+  a fresh Sol 6.1/max replicate through the maintained APIs, with unchanged
+  prompts, cached references and scoring.
 
 - [Deterministic optimization](deterministic/): the complete warm-up portfolio,
   repeated sweeps, candidate proofs, rejected trials, audits and findings.

@@ -1,16 +1,6 @@
 # Deterministic batch interface
 
-Use [src/run_deterministic_batch.py](../src/run_deterministic_batch.py) as the
-harness entry point for a new competition batch. It accepts any nonempty dataset
-in the competition's existing row schema; problem names, sources, problem count
-and required versions come from that file. No warm-up proof IDs or stage inputs
-are built into this interface.
-
-The original [run_deterministic.py](../src/run_deterministic.py) supports only
-`lint` and `simp`. [run_experiments.py](../src/run_experiments.py) runs one of the
-ten methods. [run_portfolio.py](../src/run_portfolio.py) is the earlier warm-up
-continuation workflow, starting from stage 02. Keep these for their historical
-experiments; call the batch interface for a new batch.
+Use `proof-deterministic` or `proof_eval.optimization.batch.run_batch` for a new competition batch. The input follows the competition row schema; names, sources, size and versions come from that file. See [architecture](ARCHITECTURE.md) for package boundaries.
 
 ## Prepare once
 
@@ -19,12 +9,12 @@ with the downloaded competition dataset; it is a placeholder path. Setup require
 the source URLs, exact commits and file context supplied by the competition.
 
 ```bash
-python src/setup_benchmark.py \
+proof-setup \
   --dataset data/full.jsonl \
   --environments environments.full.local.json \
   --root .proof-eval-projects/full --workers 1
 
-python src/process_benchmark.py \
+proof-benchmark \
   --dataset data/full.jsonl \
   --environments environments.full.local.json \
   --cache .proof-eval/full \
@@ -41,7 +31,7 @@ conflicting pins require an adapter before running.
 ## Run or resume
 
 ```bash
-python src/run_deterministic_batch.py \
+proof-deterministic \
   --dataset data/full.jsonl \
   --environments environments.full.local.json \
   --cache .proof-eval/full \
@@ -50,8 +40,8 @@ python src/run_deterministic_batch.py \
   --workers 8 --max-rounds 6 --max-trials 64 --max-sites 6 --max-sweeps 2
 ```
 
-The batch CLI can also run from another working directory: use an absolute script
-path and absolute input/output paths. Relative arguments resolve against the
+The batch CLI can also run from another working directory: use the installed command
+and absolute input/output paths. Relative arguments resolve against the
 caller's directory; child runners execute in the repository. All ten methods run
 from the dataset originals, followed by bounded repeat sweeps. A changed proof is
 retained only when its fully evaluated combined score improves by more than
@@ -104,7 +94,7 @@ result can stop at a configured search limit; it does not certify exhaustion.
 Python callers with this repository's `src` on `PYTHONPATH` can use the same API:
 
 ```python
-from run_deterministic_batch import BatchConfig, run_batch
+from proof_eval.optimization.batch import BatchConfig, run_batch
 
 result = run_batch(BatchConfig(
     dataset="data/full.jsonl",

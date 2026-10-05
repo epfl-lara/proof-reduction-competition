@@ -2,24 +2,20 @@
 
 from __future__ import annotations
 
-import json
 import os
-from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
-from proof_eval.rcp import (
-    DEFAULT_MODEL,
-    DEFAULT_RCP_BASE_URL,
+import pytest
+
+from proof_eval.providers.rcp import (
     DEFAULT_REASONING,
     DEFAULT_REASONING_EFFORT,
     DEFAULT_TEMPERATURE,
-    MODELS,
     RCPChat,
     RCPClient,
     RCPResponse,
-    find_env_file,
     load_rcp_env,
     map_rcp_reasoning,
     normalize_model_name,
@@ -38,7 +34,7 @@ class TestRCPConfigAndEnv(unittest.TestCase):
     def test_parse_env_file_syntax(self):
         content = (
             "# Comment line\n"
-            "export RCP_BASE_URL=\"https://inference.rcp.epfl.ch/v1\"\n"
+            'export RCP_BASE_URL="https://inference.rcp.epfl.ch/v1"\n'
             "export RCP_API_KEY='sk-test-secret-key'\n"
             "PLAIN_VAR=simple_value\n"
             "\n"
@@ -60,7 +56,9 @@ class TestRCPConfigAndEnv(unittest.TestCase):
 
     def test_load_rcp_env_priority_and_safety(self):
         with tempfile.NamedTemporaryFile("w", delete=False) as f:
-            f.write("export RCP_API_KEY=\"sk-from-file\"\nexport RCP_BASE_URL=\"https://custom.rcp/v1\"\n")
+            f.write(
+                'export RCP_API_KEY="sk-from-file"\nexport RCP_BASE_URL="https://custom.rcp/v1"\n'
+            )
             temp_path = f.name
 
         try:
@@ -97,7 +95,9 @@ class TestModelAndReasoningMapping(unittest.TestCase):
     """Test model aliases and reasoning template mapping."""
 
     def test_normalize_model_name(self):
-        self.assertEqual(normalize_model_name("deepseek-flash"), "deepseek-ai/DeepSeek-V4.1-Flash")
+        self.assertEqual(
+            normalize_model_name("deepseek-flash"), "deepseek-ai/DeepSeek-V4.1-Flash"
+        )
         self.assertEqual(normalize_model_name("qwen-397b"), "Qwen/Qwen3.5-397B-A17B")
         self.assertEqual(normalize_model_name("qwen-35b"), "Qwen/Qwen3.6-35B-A3B")
         self.assertEqual(normalize_model_name("qwen-27b"), "Qwen/Qwen3.8-27B")
@@ -111,7 +111,9 @@ class TestModelAndReasoningMapping(unittest.TestCase):
 
     def test_deepseek_reasoning_mapping(self):
         # Reasoning disabled
-        chat_kwargs, extra = map_rcp_reasoning("deepseek-ai/DeepSeek-V4.1-Flash", reasoning=False)
+        chat_kwargs, extra = map_rcp_reasoning(
+            "deepseek-ai/DeepSeek-V4.1-Flash", reasoning=False
+        )
         self.assertFalse(chat_kwargs["enable_thinking"])
 
         # DeepSeek rejects 'medium'; must be mapped to 'high'
@@ -169,7 +171,10 @@ class TestRCPResponseAndHarness(unittest.TestCase):
         self.assertEqual(d["reasoning_content"], "Step 1...")
 
     def test_client_defaults(self):
-        with patch("proof_eval.rcp.load_rcp_env", return_value=("https://test", "sk-test")):
+        with patch(
+            "proof_eval.providers.rcp.load_rcp_env",
+            return_value=("https://test", "sk-test"),
+        ):
             client = RCPClient()
             self.assertEqual(client.default_temperature, 0.3)
             self.assertEqual(client.default_reasoning, True)
@@ -183,10 +188,16 @@ class TestRCPResponseAndHarness(unittest.TestCase):
         client.default_reasoning_effort = "high"
 
         mock_resp1 = RCPResponse(
-            content="Reply 1", reasoning_content="Think 1", model="test", finish_reason="stop"
+            content="Reply 1",
+            reasoning_content="Think 1",
+            model="test",
+            finish_reason="stop",
         )
         mock_resp2 = RCPResponse(
-            content="Reply 2", reasoning_content="Think 2", model="test", finish_reason="stop"
+            content="Reply 2",
+            reasoning_content="Think 2",
+            model="test",
+            finish_reason="stop",
         )
         client.create_chat_completion.side_effect = [mock_resp1, mock_resp2]
 
@@ -205,7 +216,9 @@ class TestRCPResponseAndHarness(unittest.TestCase):
         # Turn 2
         r2 = chat.send("User 2")
         self.assertEqual(r2.content, "Reply 2")
-        self.assertEqual(len(chat.history), 5)  # system, user1, assistant1, user2, assistant2
+        self.assertEqual(
+            len(chat.history), 5
+        )  # system, user1, assistant1, user2, assistant2
 
         # Fork
         forked = chat.fork()
@@ -226,6 +239,7 @@ class TestRCPResponseAndHarness(unittest.TestCase):
         self.assertEqual(chat.history[0]["content"], "Be concise.")
 
 
+@pytest.mark.live
 class TestRCPLiveIntegration(unittest.TestCase):
     """Live smoke checks against EPFL RCP endpoint using repository .env."""
 
@@ -268,4 +282,3 @@ class TestRCPLiveIntegration(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

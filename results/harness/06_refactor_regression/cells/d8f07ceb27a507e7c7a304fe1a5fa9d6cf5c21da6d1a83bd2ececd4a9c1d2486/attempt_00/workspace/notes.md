@@ -1,0 +1,17 @@
+- Replaced nested span induction by span_induction₂; shared sorted-list splitting helper with local l1/l2; factored algebraic expansion. Initial failures: scalar association, smul_comm looping in simp, hidden crAnTimeOrderList definition. Repaired via Algebra.smul_mul_assoc, explicit rw [smul_comm], unfolding list definition.
+- Valid candidate 645 tokens, 13619.472 heartbeats; score 71.5395.
+- Eliminated hcomm helper, rewrote concrete two-operator bracket directly: 611 tokens, 13814.436 heartbeats, score 72.3162. Joining the second pair requires list cons/nil append normalization after moving scalar.
+- Merged bracket normalization simps: 601 tokens, 13717.374 heartbeats, score 72.6670.
+- Used shared sorting helper at the empty list to replace a second explicit insertionSort lemma: 582 tokens, 13599.831 heartbeats, score 73.2806.
+- Transitivity instead of explicitly typed hc: 558 tokens, 13418.237 heartbeats, score 74.0819.
+- Switched linear extension proof to equality of composed bilinear maps and double Basis.ext: 505 tokens, 11133.535 heartbeats, score 77.3443.
+- Stored sorted side blocks in WickAlgebra rather than as lists: 501 tokens, 11021.305 heartbeats, score 77.5428.
+- Replacing the map-application simp by a rw/change with holes timed out (not retained).
+- Direct WickAlgebra supercommutator commutation lemma did not match the free-commutator image; kept center lemma.
+- Strengthening sorting helper to include timeOrderF/sign: valid 509 tokens, 11080.620 heartbeats, score 77.2767 (regressive).
+- Shared sorted list and equal-time predicate: 488 tokens, 11075.830 heartbeats, score 77.8556.
+- Final vector identity needs only rw [smul_sub, smul_comm]: 473 tokens, 11093.013 heartbeats, score 78.2529.
+- Merged expansion with simp using the list supercommutator lemma (bottom-up singleton normalization): 473 tokens, 10723.690 heartbeats, score 78.5456. The concrete operator lemma in the same simp did not match after singleton normalization.
+- Used c in the transitivity target with explicit unfolding: 468 tokens, 10667.725 heartbeats, score 78.7269. Keeping c opaque everywhere left unresolved simp goals, so retained explicit unfolding in the map normalization.
+- Split directly on equality of statistics (instead of negation of disequality): 464 tokens, 10662.780 heartbeats, score 78.8404.
+- Stopping: bilinear basis extension, one shared sorting identity, center commutation, and sign cancellation are all explicit; remaining ideas are small syntactic alternatives with no likely substantial benefit.

@@ -1,0 +1,15 @@
+- Seed: 1366 tokens, 47.1427 combined.
+- Compact derivative proof: early failures missing current-density c and fderiv representation/smul normalizations; repaired.
+- Compact proof with local hB and hg: 532 tokens, 9765 HB, 75.0113 score, valid.
+- Inline generic simp_rw failed (uninstantiated arguments and point-free subtraction do not match).
+- Inline conv using generated Space.fun_deriv_sub: 466 tokens, 10147.824 HB, 76.1419 score, valid.
+- Gauss differentiation via congrArg with explicit pointwise sum and rw fderiv_fun_sum first: 455 tokens, 10077.067 HB, 76.4965 score. Plain simp unfolded inner Space.deriv too early and prevented the sum lemma.
+- Focused inverse/algebra simplification replaces field_simp: 476 tokens, 5753.976 HB, 81.3270 score. fderiv_mul_const already puts inverse before derivative; no extra commutation at hg is needed.
+- Local E abbreviation did not save tokens and required extra closing rfl (focused simplifier does not unfold E); abandoned.
+- Explicit c/n, inferred smoothness/differentiability helper types: 454 tokens, 5405.764 HB, 82.2917 score.
+- Inferred congrArg Gauss equality with unfold Space.div (instead of dsimp/simp): 415 tokens, 5226.803 HB, 83.4603 score.
+- Factored global sum differentiability at t hBs: 419 tokens, 5314.520 HB, 83.2547 score (regression).
+- Gauss congrFun + rw both outer fderiv transformations (no inner expansion): 407 tokens, 5374.072 HB, 83.4727 score; marginal difference below best-selection tolerance.
+- hBt/hJt differentiability specialized at t: 425 tokens, 5306.379 HB, 83.1190 score (regression).
+- Universal hAn smoothness helper: 419 tokens, 5187.929 HB, 83.4111 score (regression).
+- Stopping: derivative identities, pointwise sum representation and focused algebra now remove the original calc blocks; further tested helper/specialization alternatives did not materially improve the saved proof.

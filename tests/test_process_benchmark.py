@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from contextlib import redirect_stderr, redirect_stdout
 import hashlib
 import io
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
 from unittest.mock import patch
 
-from proof_eval.dataset import Dataset
-from process_benchmark import main, parse_versions, process_benchmark
+from proof_eval.benchmark.process import main, parse_versions, process_benchmark
+from proof_eval.verification.dataset import Dataset
 
 
 class FakeEvaluator:
@@ -26,7 +26,11 @@ class FakeEvaluator:
 
     def _selected(self, name, versions):
         listed = [v for item in self.dataset.get(name)["version_info"] for v in item]
-        selected = listed if versions == "all" else listed[:1] if versions == "primary" else list(versions)
+        selected = (
+            listed
+            if versions == "all"
+            else listed[:1] if versions == "primary" else list(versions)
+        )
         if set(selected) - set(listed):
             raise ValueError("Requested version is not listed for problem")
         return selected
@@ -45,11 +49,15 @@ class FakeEvaluator:
             if not cached:
                 self.measurements += 1
                 self.cache[key] = {
-                    "status": "prepared", "heartbeats": 100 + self.measurements,
+                    "status": "prepared",
+                    "heartbeats": 100 + self.measurements,
                     "heartbeats_raw": (100 + self.measurements) * 1000,
                     "environment_fingerprint": {"compiler": "test", "version": version},
-                    "machine": {"host": "test-host"}, "measured_at": "2026-10-02T00:00:00+00:00",
-                    "reference_code_sha256": hashlib.sha256(self.dataset.get(name)["src"].encode()).hexdigest(),
+                    "machine": {"host": "test-host"},
+                    "measured_at": "2026-10-02T00:00:00+00:00",
+                    "reference_code_sha256": hashlib.sha256(
+                        self.dataset.get(name)["src"].encode()
+                    ).hexdigest(),
                     "details": {"measurement_scope": "test"},
                 }
             results[version] = {**self.cache[key], "cached": cached}
@@ -57,10 +65,15 @@ class FakeEvaluator:
 
     def get_reference(self, name, *, versions):
         self.calls.append(("get", name))
-        return {"name": name, "versions": {
-            version: self.cache.get((name, version), {"status": "reference_not_prepared"})
-            for version in self._selected(name, versions)
-        }}
+        return {
+            "name": name,
+            "versions": {
+                version: self.cache.get(
+                    (name, version), {"status": "reference_not_prepared"}
+                )
+                for version in self._selected(name, versions)
+            },
+        }
 
 
 class ProcessBenchmarkTests(unittest.TestCase):
@@ -69,17 +82,28 @@ class ProcessBenchmarkTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
         self.dataset_path = self.root / "benchmark.jsonl"
-        rows = [{
-            "name": name, "source": "toy", "statement": f"theorem {name} : True",
-            "src": f"theorem {name} : True := by trivial", "proof_length": 345,
-            "version_info": [{"v4.0.0": "a" * 40}, {"v4.1.0": "b" * 40}],
-        } for name in ("first", "second")]
-        self.dataset_path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+        rows = [
+            {
+                "name": name,
+                "source": "toy",
+                "statement": f"theorem {name} : True",
+                "src": f"theorem {name} : True := by trivial",
+                "proof_length": 345,
+                "version_info": [{"v4.0.0": "a" * 40}, {"v4.1.0": "b" * 40}],
+            }
+            for name in ("first", "second")
+        ]
+        self.dataset_path.write_text(
+            "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
+        )
         self.evaluator = FakeEvaluator(self.dataset_path)
         self.output = self.root / "results" / "benchmark_values.jsonl"
 
     def read_rows(self):
-        return [json.loads(line) for line in self.output.read_text(encoding="utf-8").splitlines()]
+        return [
+            json.loads(line)
+            for line in self.output.read_text(encoding="utf-8").splitlines()
+        ]
 
     def test_export_schema_uses_fixed_counts_and_local_provenance(self):
         summary = process_benchmark(self.evaluator, self.output)
@@ -92,7 +116,10 @@ class ProcessBenchmarkTests(unittest.TestCase):
         self.assertEqual(row["schema_version"], 1)
         self.assertEqual(row["reference_length_tokens"], 345)
         self.assertIsNone(row["published_heartbeats"])
-        self.assertEqual(row["dataset_sha256"], hashlib.sha256(self.dataset_path.read_bytes()).hexdigest())
+        self.assertEqual(
+            row["dataset_sha256"],
+            hashlib.sha256(self.dataset_path.read_bytes()).hexdigest(),
+        )
         self.assertEqual(row["primary_version"], "v4.0.0")
         value = row["per_version"]["v4.0.0"]
         self.assertEqual(value["source_commit"], "a" * 40)
@@ -101,10 +128,15 @@ class ProcessBenchmarkTests(unittest.TestCase):
         self.assertEqual(value["provenance"]["machine"], {"host": "test-host"})
         self.assertNotIn("src", row)
         self.assertNotIn("statement", row)
-        self.assertEqual(self.evaluator.calls, [
-            ("prepare", "first", False), ("get", "first"),
-            ("prepare", "second", False), ("get", "second"),
-        ])
+        self.assertEqual(
+            self.evaluator.calls,
+            [
+                ("prepare", "first", False),
+                ("get", "first"),
+                ("prepare", "second", False),
+                ("get", "second"),
+            ],
+        )
 
     def test_restart_uses_cache_and_only_refresh_remeasures(self):
         process_benchmark(self.evaluator, self.output)
@@ -112,14 +144,21 @@ class ProcessBenchmarkTests(unittest.TestCase):
         summary = process_benchmark(self.evaluator, self.output)
         self.assertEqual(self.evaluator.measurements, 4)
         self.assertEqual(summary["cached_versions"], 4)
-        self.assertTrue(all(v["cached"] for row in self.read_rows() for v in row["per_version"].values()))
+        self.assertTrue(
+            all(
+                v["cached"]
+                for row in self.read_rows()
+                for v in row["per_version"].values()
+            )
+        )
         summary = process_benchmark(self.evaluator, self.output, refresh=True)
         self.assertEqual(self.evaluator.measurements, 8)
         self.assertEqual(summary["cached_versions"], 0)
 
     def test_missing_environment_retains_problem_and_null_values(self):
         self.evaluator.failures[("first", "v4.1.0")] = {
-            "status": "unavailable", "diagnostics": [{"severity": "error", "data": "No configured project"}],
+            "status": "unavailable",
+            "diagnostics": [{"severity": "error", "data": "No configured project"}],
         }
         summary = process_benchmark(self.evaluator, self.output)
         self.assertEqual(summary["problems"], 2)
@@ -134,7 +173,8 @@ class ProcessBenchmarkTests(unittest.TestCase):
     def test_failed_refresh_preserves_failure_even_when_old_cache_exists(self):
         process_benchmark(self.evaluator, self.output)
         self.evaluator.failures[("first", "v4.0.0")] = {
-            "status": "timeout", "diagnostics": [{"severity": "error", "data": "exceeded 60 seconds"}],
+            "status": "timeout",
+            "diagnostics": [{"severity": "error", "data": "exceeded 60 seconds"}],
         }
         process_benchmark(self.evaluator, self.output, refresh=True)
         failed = self.read_rows()[0]["per_version"]["v4.0.0"]
@@ -158,7 +198,9 @@ class ProcessBenchmarkTests(unittest.TestCase):
         self.assertEqual(self.evaluator.measurements, 4)
 
     def test_named_problem_and_primary_version_restriction(self):
-        summary = process_benchmark(self.evaluator, self.output, names=["second"], versions="primary")
+        summary = process_benchmark(
+            self.evaluator, self.output, names=["second"], versions="primary"
+        )
         self.assertEqual(summary["problems"], 1)
         self.assertEqual(summary["prepared_versions"], 1)
         self.assertEqual(self.read_rows()[0]["requested_versions"], ["v4.0.0"])
@@ -177,9 +219,19 @@ class ProcessBenchmarkTests(unittest.TestCase):
         for path in (environment, heartbeat):
             path.write_text("preserve me", encoding="utf-8")
         original_dataset = self.dataset_path.read_bytes()
-        for output in (self.dataset_path, environment, heartbeat, self.root / "benchmark_heartbeats.jsonl"):
-            with self.subTest(output=output), self.assertRaisesRegex(ValueError, "must not overwrite"):
-                process_benchmark(self.evaluator, output, protected_paths=(environment, heartbeat))
+        for output in (
+            self.dataset_path,
+            environment,
+            heartbeat,
+            self.root / "benchmark_heartbeats.jsonl",
+        ):
+            with (
+                self.subTest(output=output),
+                self.assertRaisesRegex(ValueError, "must not overwrite"),
+            ):
+                process_benchmark(
+                    self.evaluator, output, protected_paths=(environment, heartbeat)
+                )
         self.assertEqual(self.dataset_path.read_bytes(), original_dataset)
         self.assertEqual(environment.read_text(), "preserve me")
         self.assertEqual(heartbeat.read_text(), "preserve me")
@@ -192,14 +244,35 @@ class ProcessBenchmarkTests(unittest.TestCase):
         self.assertEqual(self.output.read_bytes(), original)
 
     def test_cli_summary_and_partial_exit_status(self):
-        self.evaluator.failures[("first", "v4.0.0")] = {"status": "failed", "diagnostics": []}
+        self.evaluator.failures[("first", "v4.0.0")] = {
+            "status": "failed",
+            "diagnostics": [],
+        }
         out = io.StringIO()
-        with patch("process_benchmark.Evaluator", return_value=self.evaluator) as factory, redirect_stdout(out):
-            status = main([
-                "--dataset", str(self.dataset_path), "--output", str(self.output),
-                "--environments", str(self.root / "env.json"), "--cache", str(self.root / "cache"),
-                "--name", "first", "--versions", "primary", "--timeout", "15",
-            ])
+        with (
+            patch(
+                "proof_eval.benchmark.process.Evaluator", return_value=self.evaluator
+            ) as factory,
+            redirect_stdout(out),
+        ):
+            status = main(
+                [
+                    "--dataset",
+                    str(self.dataset_path),
+                    "--output",
+                    str(self.output),
+                    "--environments",
+                    str(self.root / "env.json"),
+                    "--cache",
+                    str(self.root / "cache"),
+                    "--name",
+                    "first",
+                    "--versions",
+                    "primary",
+                    "--timeout",
+                    "15",
+                ]
+            )
         self.assertEqual(status, 2)
         self.assertEqual(json.loads(out.getvalue())["unavailable_versions"], 1)
         self.assertEqual(factory.call_args.kwargs["timeout"], 15.0)
@@ -207,10 +280,20 @@ class ProcessBenchmarkTests(unittest.TestCase):
 
     def test_cli_success_and_errors(self):
         out = io.StringIO()
-        with patch("process_benchmark.Evaluator", return_value=self.evaluator), redirect_stdout(out):
+        with (
+            patch(
+                "proof_eval.benchmark.process.Evaluator", return_value=self.evaluator
+            ),
+            redirect_stdout(out),
+        ):
             self.assertEqual(main(["--output", str(self.output)]), 0)
         err = io.StringIO()
-        with patch("process_benchmark.Evaluator", return_value=self.evaluator), redirect_stderr(err):
+        with (
+            patch(
+                "proof_eval.benchmark.process.Evaluator", return_value=self.evaluator
+            ),
+            redirect_stderr(err),
+        ):
             self.assertEqual(main(["--versions", "v4.0.0,,v4.1.0"]), 2)
         self.assertIn("unique", json.loads(err.getvalue())["error"])
 

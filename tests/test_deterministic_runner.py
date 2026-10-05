@@ -1,12 +1,28 @@
 import unittest
 
-from run_deterministic import aggregate
+from proof_eval.optimization.summary import aggregate
 
 
 def record(name, score, status="passed"):
-    result = {"status": status, "scores": dict.fromkeys(
-        ("length_reduction_pct", "heartbeat_reduction_pct", "compatibility_pct", "combined_pct"), score)}
-    return {"name": name, "initial": result, "final": result, "changed": False, "attempts": 0}
+    result = {
+        "status": status,
+        "scores": dict.fromkeys(
+            (
+                "length_reduction_pct",
+                "heartbeat_reduction_pct",
+                "compatibility_pct",
+                "combined_pct",
+            ),
+            score,
+        ),
+    }
+    return {
+        "name": name,
+        "initial": result,
+        "final": result,
+        "changed": False,
+        "attempts": 0,
+    }
 
 
 class AggregationTests(unittest.TestCase):

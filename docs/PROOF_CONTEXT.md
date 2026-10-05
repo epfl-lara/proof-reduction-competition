@@ -5,7 +5,7 @@ The first model experiment observes the **exact supplied incumbent** before requ
 ## What the harness can call
 
 ```python
-from proof_eval.model_context import build_context
+from proof_eval.verification.context import build_context
 
 context = build_context(
     evaluator, row, incumbent_code,
