@@ -29,6 +29,8 @@ METHOD_MODULES = {
     "simp_min": "lemma_minimization",
     "arith_min": "lemma_minimization",
     "rw_min": "lemma_minimization",
+    "proof_theory": "proof_theory",
+    "golf": "token_golf",
     "lint": "optimizer",
     "simp": "optimizer",
 }
@@ -102,6 +104,19 @@ def discovery(evaluator, row, code, method, budget, *, site_offset=0):
             "joint_then_first",
             {"analysis_requests": calls, "diagnostics": []},
         )
+    if method in {"proof_theory", "golf"}:
+        # Lean-free proposals; every candidate is still compiled and scored.
+        from proof_eval.optimization.proof_theory.rewrites import (
+            joint_group,
+            proof_theory_groups,
+        )
+        from proof_eval.optimization.token_golf import golf_groups
+
+        finder = proof_theory_groups if method == "proof_theory" else golf_groups
+        groups = finder(row, code)
+        if len(groups) > 1:
+            groups.insert(0, joint_group(groups))
+        return groups, "joint_then_first", {"analysis_requests": 0, "diagnostics": []}
     if method not in METHOD_MODULES:
         raise ValueError(f"Unknown optimization method: {method}")
     analysis = analyze(evaluator, row, code)

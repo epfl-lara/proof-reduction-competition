@@ -27,8 +27,11 @@ from .configuration import (
     starting_point,
     structural_control,
 )
+from .final_rewrites import final_rewrites
 from .prompts import messages
+from .restarts import run_restarts
 from .session import ProofSession
+from .tree.search import run_tree
 
 
 def run_cell(
@@ -101,62 +104,110 @@ def run_cell(
                 "seed_evaluation": session.seed_evaluation,
             },
         )
-        generations = []
-        final_code, final_feedback = "", None
-        max_rounds = config["max_outer_correctness_repairs"]
-        for round_number in range(max_rounds + 1):
-            checked_guard()
-            request = deepcopy(initial)
-            if round_number:
-                request[1]["content"] += (
-                    "\nCorrectness repair only. Repair this proposal using the following compiler feedback.\n"
-                    + json.dumps(
-                        {
-                            "previous_declaration": final_code,
-                            "correctness_feedback": final_feedback,
-                        },
-                        ensure_ascii=False,
+        tree_log = None
+        if config.get("tree"):
+
+            def tree_generation(attempt, request, view):
+                checked_guard()
+                return generator(
+                    folder=attempt,
+                    messages=request,
+                    model=model,
+                    effort=effort,
+                    mode=mode,
+                    session=view,
+                    context=context,
+                    expected_cli=config["cli"],
+                    provider=config.get("provider", "codex"),
+                )
+
+            generations, tree_log = run_tree(
+                folder, pack, config, model, effort, session, tree_generation
+            )
+        else:
+            generations = []
+            final_code, final_feedback = "", None
+            max_rounds = config["max_outer_correctness_repairs"]
+            for round_number in range(max_rounds + 1):
+                checked_guard()
+                request = deepcopy(initial)
+                if round_number:
+                    request[1]["content"] += (
+                        "\nCorrectness repair only. Repair this proposal using the following compiler feedback.\n"
+                        + json.dumps(
+                            {
+                                "previous_declaration": final_code,
+                                "correctness_feedback": final_feedback,
+                            },
+                            ensure_ascii=False,
+                        )
                     )
+                    # A failed unverified final is allowed another correctness-only turn.
+                    session.finished = None
+                    (session.folder / "finished.json").unlink(missing_ok=True)
+                generation = generator(
+                    folder=folder / f"attempt_{round_number:02d}",
+                    messages=request,
+                    model=model,
+                    effort=effort,
+                    mode=mode,
+                    session=session,
+                    context=context,
+                    expected_cli=config["cli"],
+                    provider=config.get("provider", "codex"),
                 )
-                # A failed unverified final is allowed another correctness-only turn.
-                session.finished = None
-                (session.folder / "finished.json").unlink(missing_ok=True)
-            generation = generator(
-                folder=folder / f"attempt_{round_number:02d}",
-                messages=request,
-                model=model,
-                effort=effort,
-                mode=mode,
-                session=session,
-                context=context,
-                expected_cli=config["cli"],
-                provider=config.get("provider", "codex"),
-            )
-            generations.append(generation)
-            if generation["status"] != "received":
-                break
-            try:
-                final_code = extract_declaration(
-                    generation["content"], generation["finish_reason"]
+                generations.append(generation)
+                if generation["status"] != "received":
+                    break
+                try:
+                    final_code = extract_declaration(
+                        generation["content"], generation["finish_reason"]
+                    )
+                except ValueError:
+                    final_code = generation["content"]
+                before = len(session.checks)
+                final_feedback = session.check(final_code, origin="final_harness")
+                final_eval = (
+                    session.checks[-1]["evaluation"]
+                    if len(session.checks) > before
+                    else None
                 )
-            except ValueError:
-                final_code = generation["content"]
-            before = len(session.checks)
-            final_feedback = session.check(final_code, origin="final_harness")
-            final_eval = (
-                session.checks[-1]["evaluation"]
-                if len(session.checks) > before
-                else None
+                if mode != "correctness" or session.first_valid_code is not None:
+                    break
+                if final_eval is None or final_eval["status"] not in (
+                    "invalid",
+                    "failed",
+                    "passed",
+                ):
+                    break
+                final_feedback = build_validity_feedback(final_eval, session.versions)
+        restart_log = None
+        if config.get("restart"):
+
+            def restart_generation(attempt, request):
+                checked_guard()
+                return generator(
+                    folder=attempt,
+                    messages=request,
+                    model=model,
+                    effort=effort,
+                    mode=mode,
+                    session=session,
+                    context=context,
+                    expected_cli=config["cli"],
+                    provider=config.get("provider", "codex"),
+                )
+
+            restart_log = run_restarts(
+                folder,
+                pack,
+                config,
+                model,
+                effort,
+                session,
+                generations,
+                restart_generation,
             )
-            if mode != "correctness" or session.first_valid_code is not None:
-                break
-            if final_eval is None or final_eval["status"] not in (
-                "invalid",
-                "failed",
-                "passed",
-            ):
-                break
-            final_feedback = build_validity_feedback(final_eval, session.versions)
         checked_guard()
         before_final_cleanup = {
             "proof": session.best_code,
@@ -164,6 +215,10 @@ def run_cell(
         }
         if mode in DETERMINISTIC_MODES:
             session.deterministic(session.best_code, origin="final_harness")
+        rewrites = None
+        if config.get("final_rewrites") and mode in DETERMINISTIC_MODES:
+            checked_guard()
+            rewrites = final_rewrites(folder / "evidence", pack, evaluator, session)
         control_path, control = historical(pack["name"], model, effort)
         if (
             control_path
@@ -258,6 +313,15 @@ def run_cell(
             },
             "finished_at": now(),
         }
+        if restart_log is not None:
+            result["restarts"] = restart_log
+        if tree_log is not None:
+            result["tree"] = [
+                {k: v for k, v in entry.items() if k != "messages"}
+                for entry in tree_log
+            ]
+        if rewrites is not None:
+            result["final_rewrites"] = rewrites
         if "cost_assumptions" in config:
             result["cost"] = generations_cost(
                 CostConfig(model, effort, **config["cost_assumptions"]),

@@ -15,6 +15,8 @@ from .configuration import (
     DEFAULT_OUTPUT,
     RUN_MODES,
 )
+from .restarts import RestartPolicy
+from .tree.policy import TreeSearch
 
 
 @dataclass(frozen=True)
@@ -34,6 +36,9 @@ class RunConfig:
     )
     action: Literal["run", "estimate", "prepare", "report"] = "run"
     pilot: bool = False
+    restart: RestartPolicy | None = None
+    final_rewrites: bool = False
+    tree: TreeSearch | None = None
 
     def __post_init__(self):
         if self.conditions is None:
@@ -56,3 +61,9 @@ class RunConfig:
             raise ValueError("Lemex permits at most five simultaneous gateway sessions")
         if len(set(self.names)) != len(self.names):
             raise ValueError("Duplicate theorem selection")
+        if self.restart is not None and not isinstance(self.restart, RestartPolicy):
+            raise ValueError("restart must be a RestartPolicy")
+        if self.tree is not None and not isinstance(self.tree, TreeSearch):
+            raise ValueError("tree must be a TreeSearch")
+        if self.restart is not None and self.tree is not None:
+            raise ValueError("Choose either restarted sessions or tree search")

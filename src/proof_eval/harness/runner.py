@@ -41,6 +41,9 @@ def run(args: RunConfig) -> dict:
             packs,
             conditions=conditions,
             provider=args.provider,
+            restart=args.restart,
+            final_rewrites=args.final_rewrites,
+            tree=args.tree,
             base_directory=Path(args.base).resolve(),
             paths={
                 "dataset_path": str(Path(args.dataset).resolve()),

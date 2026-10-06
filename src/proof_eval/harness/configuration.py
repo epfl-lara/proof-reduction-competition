@@ -19,6 +19,7 @@ from proof_eval.verification.references import (
     required_versions,
 )
 
+from .final_rewrites import frozen_record as final_rewrites_record
 from .prompts import tool_instructions
 
 BASE = ROOT / "results/one_shot/01_context_ablation"
@@ -169,6 +170,9 @@ def prepare(
     base_directory=BASE,
     paths=None,
     provider="codex",
+    restart=None,
+    final_rewrites=False,
+    tree=None,
 ):
     if mode not in RUN_MODES:
         raise ValueError("Unsupported or retired search mode: " + mode)
@@ -229,6 +233,18 @@ def prepare(
         "rate_card": rate_card(provider),
     }
     config.update(paths or {})
+    # Opt-in features add keys only when enabled, so existing frozen
+    # configurations remain byte-identical and resumable.
+    if restart is not None and tree is not None:
+        raise ValueError("Choose either restarted sessions or tree search")
+    if restart is not None:
+        config["restart"] = restart.record()
+    if tree is not None:
+        config["tree"] = tree.record()
+    if final_rewrites:
+        if mode not in DETERMINISTIC_MODES:
+            raise ValueError("Final rewrites need a deterministic-edges mode")
+        config["final_rewrites"] = final_rewrites_record()
     if mode in DETERMINISTIC_MODES:
         config.update(
             score_control_sha256={},
