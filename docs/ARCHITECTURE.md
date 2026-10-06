@@ -7,9 +7,9 @@ APIs; no library imports an experiment driver. Historical studies stay in
 | Package | Responsibility | Main API |
 | --- | --- | --- |
 | `verification` | Pinned Lean compilation, token counts, cached references, goal observations | `Evaluator`, `check_references` |
-| `optimization` | Parsed proof edits, tactic discovery, minimization, bounded cleanup, generic deterministic batches | `Budget`, `optimize`, `cleanup_proof`, `BatchConfig`, `run_batch` |
+| `optimization` | Parsed proof edits, tactic discovery, minimization, bounded cleanup, generic deterministic batches, Lean-free proof-theoretic signals, opt-in `proof_theory` and `golf` rewrite methods (not in the default cleanup portfolio) | `Budget`, `optimize`, `cleanup_proof`, `BatchConfig`, `run_batch`, `analyze_proof`, `proof_theory_groups` |
 | `providers` | Native agent CLIs, durable execution/isolation, terminal usage, price estimates | `codex.generate`, `lemex.generate`, `claude.generate`, `CostConfig` |
-| `harness` | Prompt/context policy, tool sessions, one-theorem search, batch coordination and reports | `ProofSession`, `ProofToolService`, `RunConfig`, `run` |
+| `harness` | Prompt/context policy, tool sessions, one-theorem search, opt-in restarts, tree search with policy replay, and final rewrites, batch coordination and reports | `ProofSession`, `ProofToolService`, `RunConfig`, `RestartPolicy`, `TreeSearch`, `dream`, `run` |
 | `benchmark` | Explicit project setup and one-time reference processing | `process_benchmark` |
 | `evidence` | Atomic artifacts, stable hashes and saved-evidence audits | `write_json`, `fingerprint`, `audit` |
 | `interfaces` | Thin CLI and localhost HTTP evaluation interfaces | `proof-eval` |
@@ -113,6 +113,63 @@ evidence and temporarily compiles inside the pinned projects. The model gets
 source and goal tools and ordinary shell tools. Deterministic cleanup is a host
 operation at the end, not an agent tool. The initial seed is the better validated
 original or saved deterministic proof.
+
+## Opt-in restarts and final rewrites
+
+Both features are off by default. When enabled they add one key each to the
+frozen `config.json` (`restart`, `final_rewrites`), so start a new output
+directory and run `--pilot` first.
+
+```bash
+proof-harness run --condition gpt-6.1-sol:max --pilot --workers 10 \
+  --restart-sessions 3 --restart-below 90 --final-rewrites \
+  --output results/harness/08_restarts_rewrites
+```
+
+`harness/restarts.py` starts another agent session from the host's best proof
+after a received final answer, while the best combined score is below the
+threshold, all earlier usage is known, and the recorded cost plus the largest
+earlier session cost stays within $3 per problem. It never follows a failed or
+indeterminate request. Decisions and restart prompts are saved in
+`restarts.json` before each request, so resumes repeat the same bytes. Restart
+sessions use `attempt_01`, `attempt_02`, ...; the first session is unbounded as
+before, so the cap is a projection, not a hard limit.
+
+`harness/final_rewrites.py` runs the engine's `proof_theory` and `golf`
+methods on the best proof after final cleanup and submits the result through
+`ProofSession.check` (origin `final_rewrites`), under the usual all-version
+rule and margin. `optimization/token_golf.py` proposes tokenizer-aware edits:
+`;` to aligned newlines, a final `f a (g x)` argument to `f a $ g x`, and
+redundant outer parentheses in term positions. Results record `restarts` and
+`final_rewrites` only when enabled.
+
+## Opt-in tree search and policy replay
+
+`--tree-expansions N` replaces the single long agent session with a
+host-orchestrated tree (`harness/tree/`). Each expansion is a short agent call
+from a parent proof chosen by a deterministic `FrontierPolicy`, with an
+optional strategy-card focus, and at most `--tree-checks K` checks enforced by
+the host. Nodes are host-ledger check numbers (the seed is node 0). The root
+expansion uses the canonical prompt; later ones add the parent proof and one
+card. The policy stops on its expansion limit, an unreceived expansion, unknown
+usage, a projected budget (`--tree-budget`, spent plus largest expansion), or a
+plateau. Decisions and prompts are saved to `tree.json` before each request.
+Tree search and restarted sessions are mutually exclusive.
+
+```bash
+proof-harness run --condition gpt-6.1-sol:max --pilot --workers 10 \
+  --tree-expansions 5 --tree-checks 6 --tree-budget 1.0 \
+  --output results/harness/09_tree_search
+proof-harness dream --output results/harness/09_tree_search
+```
+
+`proof-harness dream` replays candidate policies over the recorded trees with
+no model or Lean calls, after Dream-RSI's replay simulator, and writes
+`dream.json`. A policy that requests an unrecorded (parent, card) expansion is
+flagged `off_history`; only on-history policies are valid estimates. Replay
+scores are before final cleanup. Short expansions repeat some setup reading, so
+at about $1 per problem they buy roughly as many checks as one long session;
+any gain must come from where the checks are spent.
 
 ## Providers and costs
 
