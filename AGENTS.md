@@ -6,7 +6,8 @@ are **gpt-6.1-sol/max** and **gpt-6-astra/max**. The default search uses the rev
 prompt, score feedback, and deterministic cleanup at the beginning and end.
 There is one canonical prompt in `prompts/refactor_system.md`, with the revised
 V2 five-card context in `prompts/strategy_bank.json`. Provider probes use native
-Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high`) and Claude Code
+Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
+`Qwen/Qwen3.8-Flash-Next/xhigh`) and Claude Code
 (`claude-opus-5-5/max`), keeping the same task and host proof tools.
 
 ## Organize code by responsibility
@@ -47,6 +48,11 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high`) and Claude Code
   and no automatic resampling of an indeterminate request. Preserve partial work.
   Codex may use tools; the host checks proofs and owns the ledger. Do not let model
   processes write the pinned source projects or host evidence.
+- New runs default to a 3420-second (57-minute) whole-problem deadline for all
+  providers, including host tools and final cleanup. Preserve the best fully
+  checked proof when it expires; distinguish a controlled deadline from a
+  missing native final or transport error. Resuming never replenishes a budget.
+  Run from an isolated current runtime copy when other development must continue.
 - Do not edit pinned runtime or prompt files while an experiment is running.
   Use a new output directory when code, inputs, settings, or budgets change.
 - Keep historical result/config/request bytes unchanged. Auditors may verify

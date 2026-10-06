@@ -106,6 +106,10 @@ def test_started_codex_request_is_never_resampled(tmp_path, monkeypatch):
     [
         {"workers": 0},
         {"workers": True},
+        {"problem_timeout_seconds": 0},
+        {"problem_timeout_seconds": float("inf")},
+        {"problem_timeout_seconds": float("nan")},
+        {"problem_timeout_seconds": True},
         {"mode": "score_each"},
         {"conditions": (("gpt-6-astra", "high"),)},
         {"conditions": ()},

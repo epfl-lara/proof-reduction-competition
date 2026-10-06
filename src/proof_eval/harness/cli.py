@@ -41,6 +41,46 @@ def main(argv=None) -> int:
         sub.add_argument("--name", action="append")
         sub.add_argument("--workers", type=int, default=5)
         sub.add_argument(
+            "--problem-timeout-seconds",
+            type=float,
+            default=RunConfig.problem_timeout_seconds,
+            help="Whole-problem wall time, including Lean tools and cleanup (default: 3420 seconds)",
+        )
+        tracking = sub.add_mutually_exclusive_group()
+        tracking.add_argument(
+            "--budget-tracking",
+            choices=("cost", "time"),
+            default=None,
+            help="Force-stop tracking mode: 'cost' or 'time'",
+        )
+        tracking.add_argument(
+            "--track-cost",
+            dest="budget_tracking",
+            action="store_const",
+            const="cost",
+            help="Alias for --budget-tracking cost",
+        )
+        tracking.add_argument(
+            "--track-time",
+            dest="budget_tracking",
+            action="store_const",
+            const="time",
+            help="Alias for --budget-tracking time",
+        )
+        sub.add_argument(
+            "--budget-usd",
+            dest="budget_usd_per_problem",
+            type=float,
+            default=RunConfig.budget_usd_per_problem,
+            help="Per-problem cost budget cap in USD (default: 3.0)",
+        )
+        sub.add_argument(
+            "--max-budget-restarts",
+            type=int,
+            default=RunConfig.max_budget_restarts,
+            help="Restart safety limit when tracking is enabled; 20 permits 21 total attempts",
+        )
+        sub.add_argument(
             "--base",
             type=Path,
             default=BASE,
@@ -75,6 +115,10 @@ def main(argv=None) -> int:
                 for key in (
                     "provider",
                     "workers",
+                    "problem_timeout_seconds",
+                    "budget_tracking",
+                    "budget_usd_per_problem",
+                    "max_budget_restarts",
                     "base",
                     "dataset",
                     "environments",

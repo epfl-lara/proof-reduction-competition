@@ -14,7 +14,9 @@ APIs; no library imports an experiment driver. Historical studies stay in
 | `evidence` | Atomic artifacts, stable hashes and saved-evidence audits | `write_json`, `fingerprint`, `audit` |
 | `interfaces` | Thin CLI and localhost HTTP evaluation interfaces | `proof-eval` |
 
-`harness/search.py` owns one theorem's model request and final cleanup.
+`harness/budget.py` supervises one isolated theorem worker under a durable wall
+deadline. `harness/search.py` owns its model request and final cleanup;
+`harness/outcomes.py` selects the result from verified evidence.
 `harness/runner.py` owns concurrency and the complete declared cohort.
 `harness/agent.py` supplies prompt policy and the tool service to the general
 native agent executor. Provider code does not import the harness or decide which proof
@@ -23,6 +25,10 @@ wins. The host-owned `ProofSession` makes that decision from evaluator results.
 command construction, authentication and event decoding. Codex and Lemex share
 the Responses command builder. A custom agent implementation can be passed as
 `run_cell(..., generator=...)`. The former direct RCP chat client is removed.
+Prepared calls through this API use the same deadline supervisor as batch runs.
+A supplied Python generator runs in an isolated Linux fork worker so its host
+tools and cleanup can also be stopped; return results and durable artifacts
+rather than relying on mutations of objects in the caller's process.
 
 ## Verification and training rewards
 
@@ -107,6 +113,51 @@ Only a proof passing every version and improving the combined score by more than
 attempts preserve the ledger. The original seed is reconstructed from cached
 reference evidence, without compiling it again.
 
+`RunConfig.problem_timeout_seconds` defaults to 3420 (57 minutes) for every
+provider. The budget starts when a worker receives a problem; batch queue time
+and batch reference preflight are separate. Admission, model reasoning, all
+host tools and final cleanup share that one deadline. Status feedback includes
+the remaining seconds. At expiry the supervisor stops only that worker and its
+descendants, including detached agent/Lean processes, then reconstructs the
+best fully checked proof from atomic ledger records. Recovery performs no model
+or Lean calls. Final cleanup may be skipped or interrupted; this is explicit in
+the result and audited. Deadline stops are complete bounded search outcomes,
+with `generation_status="budget_exhausted"` if no native final arrived; transport
+failures and unknown interruptions remain incomplete. Missing usage stays
+unknown. A pilot with no host checks cannot unlock the full cohort.
+
+The 57-minute allocation is our chosen conservative budget derived from the
+saved open-track 48-hour/50-problem total, not an organizer per-problem rule.
+
+`RunConfig.budget_tracking` defaults to `None`: voluntary agent completion ends
+the single native session. Select `"cost"` or `"time"` with `--budget-tracking`,
+`--track-cost` or `--track-time` to admit fresh attempts after successful native
+completion. Transport failures, indeterminate requests and unavailable host
+checks stop admission. Cost tracking also stops on missing cost counters. The fresh prompt has exactly one
+system message and one user message; its incumbent declaration/scores and
+`candidate.lean` come from the best proof in the shared verified ledger.
+`reset_for_attempt()` clears both the finish marker and saved session state.
+No conversation history or previous workspace is passed to the new session.
+
+`budget_usd_per_problem` / `--budget-usd` defaults to $3.00. Cumulative estimates
+include every attempt. Each native Codex session receives the remaining dollars
+converted to weighted input/output tokens, conservatively using cache-write and
+long-context rates. Claude receives `--max-budget-usd` for the remaining dollars.
+These native guards check between upstream responses; an in-flight response can
+overshoot. Native guard exhaustion is a controlled `cost_limit` outcome and is
+never resampled. Missing native terminal usage remains unknown, including on
+controlled stops. `budget_enforced` is true only for time tracking; cost results
+record `hard_cost_cap=false` and `cost_enforcement="native_response_boundaries"`.
+The policy does not claim a strict invoice cap or override sampling defaults.
+
+Time tracking uses the single persisted whole-problem deadline. If none exists,
+the supervisor creates it before dispatch; resume always reuses it. Both modes
+decline another attempt once at most 30 seconds remain for final cleanup and stop after at most
+`max_budget_restarts + 1` attempts (default 21). Exhausted cumulative cost,
+insufficient money for one conservatively priced output token, cleanup reserve,
+unknown usage and the restart safety limit have separate host stopping reasons.
+Final deterministic cleanup receives the best proof found across all attempts.
+
 `ProofToolService` exposes the session over a Unix socket. A standalone
 `harness/client.py` is copied to the model workspace as `tools.py`. Landlock limits
 model-process writes to its workspace/runtime; the host writes measurement
@@ -151,9 +202,10 @@ $5 five-minute writes and $8 one-hour writes, from
 Claude terminal records preserve `modelUsage` and `total_cost_usd`; the reported
 all-model CLI estimate is used for observed totals, with independent aggregate
 repricing shown separately. This is not a subscription invoice. The exact
-DeepSeek gateway price is unverified and remains unknown rather than borrowing
-another model's rate. The $3 limit applies to each problem; these comparisons
-report it without a stopping budget.
+DeepSeek and Qwen gateway prices are unverified and remain unknown rather than
+borrowing another model's rate. The $3 limit applies to each problem. Default
+comparison runs report estimated cost; only opt-in cost tracking admits new
+attempts according to the remaining dollars and enables native spending guards.
 
 Claude usage schema 2 preserves reported one-hour cache writes and the
 `modelUsage` thinking-token subset when it covers all output. One-hour writes
@@ -206,6 +258,16 @@ evidence need investigation; resuming does not authorize resampling.
 source/proof identities, version evidence, cleanup stages, controls and usage.
 It makes no compiler/model calls. Historical source pins resolve to verified,
 content-addressed snapshots rather than importing or executing old drivers.
+
+New schema-4 runs also save one host-owned `attempt.json` per admitted attempt,
+covering prompt identity, incumbent certificate, cleared finish state, check
+boundaries, time allocation, native cost guard and cumulative cost before/after.
+`result.json` embeds these records and the durable `search_stop.json` decision.
+The auditor checks restart admission and fresh context in addition to all
+existing measurement invariants. Deadline recovery can record a stopped
+admission with `dispatch_status="not_dispatched"` if request setup never finished;
+it does not invent a native request or resample it. Historical schemas and
+artifact bytes remain unchanged.
 
 When every cell in a condition completes, reporting exports
 `conditions/MODEL__EFFORT/selected_candidates.jsonl` in organizer submission format:

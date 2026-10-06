@@ -68,7 +68,7 @@ to see cheaper native steps; labelled measurements are not threshold-filtered.
 """
 
 
-def tool_instructions(mode):
+def tool_instructions(mode, *, budget_tracking=None):
     if mode not in (*MODE_TOOLS, "score_edges"):
         raise ValueError("Unsupported or retired search mode: " + mode)
     if mode == "score_edges":
@@ -81,7 +81,13 @@ seed before your call and will apply the fixed deterministic portfolio to your
 best checked proof after your call. Reference denominators remain the original.
 """
         placement += "Deterministic cleanup is performed only before and after model search; no in-loop deterministic tool is available.\n"
-        return common + "\n" + MODE_TOOLS["score"] + "\n" + placement + PROFILE_TOOLS
+        policy = MODE_TOOLS["score"]
+        if budget_tracking is not None:
+            policy = policy.replace(
+                "You\nhave no fixed total attempt, token or wall-time budget.",
+                "Your supplied whole-problem deadline includes host checks and final cleanup.\nThe host may start a fresh attempt from your best verified proof after completion.\nWhen cost tracking is enabled, the native CLI also receives the remaining spending budget.",
+            )
+        return common + "\n" + policy + "\n" + placement + PROFILE_TOOLS
     return (
         COMMON_TOOLS
         + "\n"
@@ -121,3 +127,24 @@ def messages(pack, seed=None):
             + json.dumps(payload, ensure_ascii=False, indent=2),
         },
     ]
+
+
+def budget_suffix(
+    config: dict, budget: dict | None, cost: dict, remaining: float | None, number: int
+) -> str:
+    """Host policy appended to a fresh prompt, also reconstructed by the auditor."""
+    suffix = ""
+    if budget is not None:
+        remaining_note = f" ({remaining:g} seconds remaining)" if number else ""
+        suffix += (
+            f"\nWhole-problem time limit: {budget['timeout_seconds']:g} seconds{remaining_note}, including host checks and final cleanup. "
+            "Use status to see remaining seconds. Leave time for final cleanup; the host keeps the best proof already verified across every required version when the deadline arrives."
+        )
+    if config.get("budget_tracking") == "cost":
+        limit, total = config["budget_usd_per_problem"], cost["total_usd"]
+        suffix += (
+            f"\nWhole-problem cost budget: ${limit:g} USD. "
+            f"Completed attempts used ${total:g}; ${limit - total:g} remains. "
+            "The native cost guard checks between upstream responses; a response already in flight may overshoot."
+        )
+    return suffix

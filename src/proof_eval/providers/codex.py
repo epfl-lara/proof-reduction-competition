@@ -8,6 +8,7 @@ from pathlib import Path
 from . import execution, responses
 from .events import cli_identity, parse_events
 from .execution import Launch
+from .spending import codex_budget_settings
 
 MODELS = {
     "gpt-6-astra": {"max", "high", "low"},
@@ -36,6 +37,7 @@ def generate(**kwargs) -> dict:
                 workspace=workspace,
                 system_file=system_file,
                 last_message=last_message,
+                settings=codex_budget_settings(kwargs.get("cost_budget")),
                 **{k: kwargs[k] for k in ("model", "effort", "mode", "instructions")},
             ),
             environment={

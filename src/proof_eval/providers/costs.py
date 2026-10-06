@@ -27,7 +27,7 @@ SOURCES = {
 CLAUDE_MODEL = "claude-opus-5-5"
 CLAUDE_RATES = (4.0, 0.20, 5.0, 20.0)
 CLAUDE_SOURCE = "https://platform.claude.com/docs/en/about-claude/pricing"
-UNPRICED_MODELS = {"deepseek-ai/DeepSeek-V4.1-Flash"}
+UNPRICED_MODELS = {"deepseek-ai/DeepSeek-V4.1-Flash", "Qwen/Qwen3.8-Flash-Next"}
 TIERS = {"standard": 1.0, "fast": 2.0, "flex": 0.5, "batch": 0.5}
 USAGE_FIELDS = (
     "input_tokens",

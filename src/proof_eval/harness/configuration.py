@@ -20,6 +20,12 @@ from proof_eval.verification.references import (
 )
 
 from .prompts import tool_instructions
+from .tracking import (
+    ATTEMPT_EVIDENCE_VERSION,
+    CLEANUP_RESERVE_SECONDS,
+    BudgetTracking,
+    validate_budgets,
+)
 
 BASE = ROOT / "results/one_shot/01_context_ablation"
 OUTPUTS = {
@@ -130,7 +136,7 @@ def starting_point(pack, mode):
     return pack["row"]["src"], original
 
 
-def preflight_costs(conditions, provider="codex"):
+def preflight_costs(conditions, provider="codex", *, budget_usd: float = 3.0):
     """No model calls or Lean measurements; use complete saved stage-03 traces."""
     source = OUTPUTS["score_edges"]
     source_config = read(source / "config.json")
@@ -150,12 +156,16 @@ def preflight_costs(conditions, provider="codex"):
                 or any(r["status"] != "complete" for r in group)
             ):
                 raise ValueError("Cost scenario needs a complete source cohort")
-            scenarios.append(estimate_configuration(CostConfig(model, effort), group))
+            scenarios.append(
+                estimate_configuration(
+                    CostConfig(model, effort), group, budget_usd=budget_usd
+                )
+            )
     return {
         "rate_card": rate_card(provider),
         "scenarios": scenarios,
         "source_result_sha256": {str(p.relative_to(ROOT)): digest(p) for p in paths},
-        "budget_policy": "Report the $3 cap per problem; no stopping rule is imposed in this configuration comparison.",
+        "budget_policy": f"Report the ${budget_usd:g} cap per problem; no stopping rule is imposed in this configuration comparison.",
         "pricing_assumptions": "Standard, short context per request, no regional premium; API-equivalent, not a Codex invoice.",
     }
 
@@ -169,14 +179,25 @@ def prepare(
     base_directory=BASE,
     paths=None,
     provider="codex",
-):
+    problem_timeout_seconds: float = 57 * 60,
+    budget_tracking: BudgetTracking = None,
+    budget_usd_per_problem: float = 3.0,
+    max_budget_restarts: int = 20,
+) -> dict:
     if mode not in RUN_MODES:
         raise ValueError("Unsupported or retired search mode: " + mode)
     conditions = conditions or DEFAULT_CONDITIONS[provider]
+    validate_budgets(
+        budget_tracking,
+        budget_usd_per_problem,
+        max_budget_restarts,
+        problem_timeout_seconds,
+        conditions,
+    )
     if len({tuple(c) for c in conditions}) != len(conditions):
         raise ValueError("Duplicate model conditions")
     validate(provider, conditions)
-    costs = preflight_costs(conditions, provider)
+    costs = preflight_costs(conditions, provider, budget_usd=budget_usd_per_problem)
     base_directory = base_directory.resolve()
     base = read(base_directory / "config.json")
     if len(packs) != len(base["names"]) or set(packs) != set(base["names"]):
@@ -186,7 +207,8 @@ def prepare(
     for relative, expected in base["code_sha256"].items():
         _implementation(relative, expected, ROOT, SNAPSHOTS, "frozen input preparation")
     config = {
-        "schema_version": 2,
+        "schema_version": 4,
+        "attempt_evidence_version": ATTEMPT_EVIDENCE_VERSION,
         "provider": provider,
         "mode": mode,
         "names": base["names"],
@@ -206,26 +228,38 @@ def prepare(
         "selection_margin_pp": 0.05,
         "deterministic_cleanup": mode in DETERMINISTIC_MODES,
         "candidate_feedback": mode,
-        "max_total_attempts": None,
+        "max_total_attempts": (
+            max_budget_restarts + 1 if budget_tracking is not None else None
+        ),
         "max_total_tokens": None,
-        "generation_timeout": 1800 if mode == "correctness" else None,
+        "generation_timeout": problem_timeout_seconds,
+        "problem_timeout_seconds": problem_timeout_seconds,
+        "time_budget_policy": "one wall deadline per problem, including host tools and final cleanup; retain the best fully verified proof",
         "max_outer_correctness_repairs": 3 if mode == "correctness" else 0,
         "stop": (
             "first valid proposal"
             if mode == "correctness"
-            else "agent completion or explicit finish; provider failures remain distinct"
+            else (
+                "tracked budget, cleanup reserve or restart safety limit; provider failures remain distinct"
+                if budget_tracking is not None
+                else "agent completion, explicit finish or problem deadline; provider failures remain distinct"
+            )
         ),
         "historical_control_sha256": {},
         "structural_control_sha256": {},
-        "tool_instructions": tool_instructions(mode),
+        "tool_instructions": tool_instructions(mode, budget_tracking=budget_tracking),
         "cost_estimate_sha256": fingerprint(costs),
         "cost_assumptions": {
             "service_tier": "standard",
             "context_band": "short",
             "regional_processing": False,
         },
-        "budget_usd_per_problem": 3.0,
-        "budget_enforced": False,
+        "budget_usd_per_problem": float(budget_usd_per_problem),
+        "budget_tracking": budget_tracking,
+        "budget_enforced": budget_tracking == "time",
+        "cost_budget_policy": "native guard between upstream responses plus cumulative attempt admission; an in-flight response may overshoot; unknown usage is never zero",
+        "cleanup_reserve_seconds": CLEANUP_RESERVE_SECONDS,
+        "max_budget_restarts": int(max_budget_restarts),
         "rate_card": rate_card(provider),
     }
     config.update(paths or {})

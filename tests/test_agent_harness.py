@@ -565,9 +565,10 @@ def test_runner_repairs_or_searches_and_resume_does_not_regenerate(
     make_session, tmp_path, monkeypatch, mode, model, effort
 ):
     import proof_eval.harness.search as runner
-    from proof_eval.harness import configuration
+    from proof_eval.evidence.io import digest
+    from proof_eval.harness import configuration, outcomes
 
-    monkeypatch.setattr(runner, "ROOT", tmp_path)
+    monkeypatch.setattr(outcomes, "ROOT", tmp_path)
     monkeypatch.setattr(runner, "guard", lambda *a: None)
     monkeypatch.setattr(
         runner,
@@ -584,7 +585,7 @@ def test_runner_repairs_or_searches_and_resume_does_not_regenerate(
     control_path.write_text("{}")
     has_control = (model, effort) == ("gpt-6-astra", "max")
     monkeypatch.setattr(
-        runner,
+        outcomes,
         "historical",
         lambda *a: (
             (control_path, {"selected_evaluation": evaluation(55)})
@@ -592,12 +593,12 @@ def test_runner_repairs_or_searches_and_resume_does_not_regenerate(
             else (None, None)
         ),
     )
-    monkeypatch.setattr(runner, "structural_control", lambda *a: (None, None))
+    monkeypatch.setattr(outcomes, "structural_control", lambda *a: (None, None))
     config = {
         "mode": mode,
         "max_outer_correctness_repairs": 3 if mode == "correctness" else 0,
         "cli": {},
-        "historical_control_sha256": {"control.json": runner.digest(control_path)},
+        "historical_control_sha256": {"control.json": digest(control_path)},
         "structural_control_sha256": {},
         "cost_assumptions": {},
         "budget_usd_per_problem": 3.0,
@@ -614,7 +615,7 @@ def test_runner_repairs_or_searches_and_resume_does_not_regenerate(
             lambda *a: lambda code: cleanup_result(make_session),
         )
         monkeypatch.setattr(
-            runner,
+            outcomes,
             "score_control",
             lambda *a: (
                 (control_path, {"selected_evaluation": evaluation(72)})
@@ -629,7 +630,7 @@ def test_runner_repairs_or_searches_and_resume_does_not_regenerate(
             deterministic_jobs=str(tmp_path / "jobs"),
             code_sha256={},
             input_sha256={"x": "hash"},
-            score_control_sha256={"control.json": runner.digest(control_path)},
+            score_control_sha256={"control.json": digest(control_path)},
         )
     calls = []
 
@@ -716,6 +717,7 @@ def test_runner_repairs_or_searches_and_resume_does_not_regenerate(
         ("gpt-6.1-sol", "max", "score_edges"),
         ("gpt-6-astra", "high", "score_edges"),
         (lemex.MODEL, "high", "score_edges"),
+        ("Qwen/Qwen3.8-Flash-Next", "xhigh", "score_edges"),
     ],
 )
 def test_real_cli_request_preserves_requested_model_effort_and_mode(
@@ -793,23 +795,23 @@ def test_real_cli_request_preserves_requested_model_effort_and_mode(
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     (tmp_path / "system.txt").write_text("Exact structural benchmark system")
-    if model == lemex.MODEL and shutil.which("lemex") is None:
+    if model in lemex.MODELS and shutil.which("lemex") is None:
         pytest.skip("Installed Lemex CLI unavailable")
     catalog = Path.home() / ".lemex/models.json"
-    if model == lemex.MODEL and not catalog.exists():
+    if model in lemex.MODELS and not catalog.exists():
         pytest.skip("Lemex model catalog unavailable")
-    builder = lemex.command if model == lemex.MODEL else command
+    builder = lemex.command if model in lemex.MODELS else command
     extra = (
         {
             "catalog": catalog,
             "base_url": f"http://127.0.0.1:{server.server_port}/v1",
             "instructions": tool_instructions(mode),
         }
-        if model == lemex.MODEL
+        if model in lemex.MODELS
         else {}
     )
     args = builder(
-        binary=cli_identity("lemex" if model == lemex.MODEL else "codex")["path"],
+        binary=cli_identity("lemex" if model in lemex.MODELS else "codex")["path"],
         workspace=tmp_path,
         system_file=tmp_path / "system.txt",
         last_message=tmp_path / "final.txt",

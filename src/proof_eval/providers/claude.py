@@ -28,6 +28,7 @@ def command(
     model: str,
     effort: str,
     source_projects: list[str],
+    cost_budget: dict | None = None,
 ) -> list[str]:
     if model != MODEL or effort != "max":
         raise ValueError("The Claude condition is claude-opus-5-5/max")
@@ -81,6 +82,10 @@ def command(
     ]
     for directory in sorted({str(workspace), *source_projects}):
         argv += ["--add-dir", directory]
+    if cost_budget is not None:
+        if cost_budget["kind"] != "native_usd":
+            raise ValueError("Expected a native Claude dollar guard")
+        argv += ["--max-budget-usd", str(cost_budget["remaining_usd"])]
     return argv
 
 
@@ -293,6 +298,7 @@ def generate(**kwargs) -> dict:
                 model=kwargs["model"],
                 effort=kwargs["effort"],
                 source_projects=list(kwargs["context"]["source_projects"].values()),
+                cost_budget=kwargs.get("cost_budget"),
             ),
             environment={
                 k: v

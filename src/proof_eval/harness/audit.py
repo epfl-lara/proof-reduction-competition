@@ -14,7 +14,20 @@ from proof_eval.protocol import FIELDS, fingerprint
 from proof_eval.providers import claude
 from proof_eval.providers.costs import CostConfig, generations_cost, rate_card
 from proof_eval.providers.events import parse_events
+from proof_eval.providers.spending import native_cost_stop
 from proof_eval.verification.feedback import all_versions_passed
+
+from .attempts import attempt_folders
+from .tracking_audit import audit_attempts
+
+
+def _compatible_rate_card(saved: dict, current: dict) -> bool:
+    """Adding an unpriced model changes no historical pricing assumption."""
+    return {k: v for k, v in saved.items() if k != "unpriced_models"} == {
+        k: v for k, v in current.items() if k != "unpriced_models"
+    } and set(saved.get("unpriced_models", [])) <= set(
+        current.get("unpriced_models", [])
+    )
 
 
 def _audit_claude_terminal(folder: Path, generation: dict, request: dict) -> None:
@@ -46,6 +59,20 @@ def _audit_claude_terminal(folder: Path, generation: dict, request: dict) -> Non
             "cache_write_ttl_reported",
         ]
     for field in fields:
+        if field == "status" and generation[field] == "budget_exhausted":
+            if generation.get("termination") == "cost_limit":
+                _require(
+                    native_cost_stop("claude", events, request.get("cost_budget"))
+                    and generation["actual_model"] == request["model"],
+                    "Claude cost limit has no native stop evidence",
+                )
+                continue
+            end = read(folder.parent / "budget_end.json")
+            _require(
+                end["exhausted"] is True and parsed[field] != "received",
+                "Claude time limit has no supervised stop evidence",
+            )
+            continue
         _require(
             parsed[field] == generation[field],
             "Claude terminal evidence changed: " + field,
@@ -73,9 +100,10 @@ def audit(output: Path) -> dict:
         )
         _require(
             (
-                costs["rate_card"]
-                == config["rate_card"]
-                == rate_card(config.get("provider", "codex"))
+                costs["rate_card"] == config["rate_card"]
+                and _compatible_rate_card(
+                    config["rate_card"], rate_card(config.get("provider", "codex"))
+                )
             ),
             str("Saved harness evidence is inconsistent at audit line 23"),
         )
@@ -145,6 +173,37 @@ def audit(output: Path) -> dict:
             str("Saved harness evidence is inconsistent at audit line 70"),
         )
         inp = read(path.parent / "input.json")
+        if "problem_timeout_seconds" in config:
+            budget = result["time_budget"]
+            started = read(path.parent / "budget_started.json")
+            _require(
+                all(budget[k] == v for k, v in started.items())
+                and budget["timeout_seconds"] == config["problem_timeout_seconds"]
+                and abs(
+                    budget["deadline_epoch"]
+                    - budget["started_epoch"]
+                    - budget["timeout_seconds"]
+                )
+                < 1e-5,
+                "Whole-problem deadline differs from its frozen configuration",
+            )
+            if budget["exhausted"]:
+                end = read(path.parent / "budget_end.json")
+                _require(
+                    end["exhausted"] is True
+                    and end["work_stopped_epoch"] >= budget["deadline_epoch"]
+                    and result["stop"]["kind"] == "time_limit",
+                    "Deadline outcome has no supervised deadline evidence",
+                )
+            _require(
+                result["generation_status"] != "budget_exhausted"
+                or budget["exhausted"]
+                or (
+                    config.get("budget_tracking") == "cost"
+                    and result["generations"][-1].get("termination") == "cost_limit"
+                ),
+                "A native interruption was mislabeled as a controlled problem deadline",
+            )
         best_code, best_evaluation = (
             inp.get("seed_proof", rows[name]["src"]),
             inp["seed_evaluation"],
@@ -247,12 +306,16 @@ def audit(output: Path) -> dict:
             str("Saved harness evidence is inconsistent at audit line 138"),
         )
         if config.get("deterministic_cleanup"):
-            cleanup_calls = [
-                json.loads(line)
-                for line in (path.parent / "evidence/deterministic.jsonl")
-                .read_text()
-                .splitlines()
-            ]
+            cleanup_calls = (
+                [
+                    json.loads(line)
+                    for line in (path.parent / "evidence/deterministic.jsonl")
+                    .read_text()
+                    .splitlines()
+                ]
+                if (path.parent / "evidence/deterministic.jsonl").exists()
+                else []
+            )
             _require(
                 (result["deterministic_calls"] == len(cleanup_calls)),
                 str("Saved harness evidence is inconsistent at audit line 146"),
@@ -267,7 +330,12 @@ def audit(output: Path) -> dict:
             _require(
                 (
                     len([c for c in cleanup_calls if c["origin"] == "final_harness"])
-                    == 1
+                    == (
+                        0
+                        if result.get("final_cleanup_status")
+                        in ("skipped_time_limit", "interrupted_time_limit")
+                        else 1
+                    )
                 ),
                 str("Saved harness evidence is inconsistent at audit line 150"),
             )
@@ -519,10 +587,22 @@ def audit(output: Path) -> dict:
             rows[name], refs[name], best_code, best_evaluation, str(key) + "/selected"
         )
         cell_generations = []
-        for folder in sorted(path.parent.glob("attempt_*")):
-            req = read(folder / "request.json")
+        for folder in attempt_folders(path.parent):
             gen = read(folder / "generation.json")
             cell_generations.append(gen)
+            if not (folder / "request.json").exists():
+                _require(
+                    config.get("attempt_evidence_version")
+                    and result["time_budget"]["exhausted"]
+                    and gen.get("dispatch_status") == "not_dispatched"
+                    and gen["status"] == "budget_exhausted"
+                    and gen.get("termination") == "problem_deadline"
+                    and not (folder / "request_started.json").exists()
+                    and not (folder / "process.json").exists(),
+                    "Missing request has no host evidence of a deadline before dispatch",
+                )
+                continue
+            req = read(folder / "request.json")
             _require(
                 ((req["model"], req["reasoning_effort"], req["mode"]) == key[1:]),
                 str("Saved harness evidence is inconsistent at audit line 303"),
@@ -545,7 +625,10 @@ def audit(output: Path) -> dict:
                 str("Saved harness evidence is inconsistent at audit line 306"),
             )
             _require(
-                (req["timeout"] == config["generation_timeout"]),
+                (
+                    config.get("attempt_evidence_version")
+                    or req["timeout"] == config["generation_timeout"]
+                ),
                 str("Saved harness evidence is inconsistent at audit line 307"),
             )
             if folder.name == "attempt_00":
@@ -604,7 +687,14 @@ def audit(output: Path) -> dict:
                     )
             requests += 1
         _require(
-            (cell_generations == result["generations"] and cell_generations),
+            (
+                cell_generations == result["generations"]
+                and (
+                    cell_generations
+                    or result.get("time_budget", {}).get("exhausted")
+                    or result["stop"]["kind"] == "cost_reserve"
+                )
+            ),
             str("Saved harness evidence is inconsistent at audit line 335"),
         )
         if "cost_assumptions" in config:
@@ -623,6 +713,7 @@ def audit(output: Path) -> dict:
                 ),
                 str("Saved harness evidence is inconsistent at audit line 337"),
             )
+        audit_attempts(config, result, path.parent, checks, best_at, rows[name])
         cells += 1
     return {
         "status": "passed",

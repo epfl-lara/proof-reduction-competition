@@ -15,6 +15,7 @@ from .configuration import (
     DEFAULT_OUTPUT,
     RUN_MODES,
 )
+from .tracking import validate_budgets
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,10 @@ class RunConfig:
     names: tuple[str, ...] = ()
     mode: str = DEFAULT_MODE
     workers: int = 5
+    problem_timeout_seconds: float = 57 * 60
+    budget_tracking: Literal["cost", "time"] | None = None
+    budget_usd_per_problem: float = 3.0
+    max_budget_restarts: int = 20
     base: Path = BASE
     dataset: Path = ROOT / "data/benchmark_data_warmup.jsonl"
     environments: Path = ROOT / "environments.local.json"
@@ -35,7 +40,7 @@ class RunConfig:
     action: Literal["run", "estimate", "prepare", "report"] = "run"
     pilot: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.conditions is None:
             try:
                 object.__setattr__(
@@ -52,6 +57,13 @@ class RunConfig:
         if not self.conditions or len(set(self.conditions)) != len(self.conditions):
             raise ValueError("Specify nonempty, unique model conditions")
         validate(self.provider, self.conditions)
+        validate_budgets(
+            self.budget_tracking,
+            self.budget_usd_per_problem,
+            self.max_budget_restarts,
+            self.problem_timeout_seconds,
+            self.conditions,
+        )
         if self.provider == "lemex" and self.workers > 5:
             raise ValueError("Lemex permits at most five simultaneous gateway sessions")
         if len(set(self.names)) != len(self.names):

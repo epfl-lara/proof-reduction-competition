@@ -29,7 +29,34 @@ proof-harness report --output results/harness/my_sol_run
 proof-harness audit --output results/harness/my_sol_run
 ```
 
-Omit `--condition` to run both active models, or specify `gpt-6-astra:max` for the SOTA condition. Score search has no imposed total token, attempt or wall-time cap. Costs are reported per problem using recorded usage and explicit API-equivalent assumptions; the competition's $3 cap is not enforced by these comparison runs.
+Omit `--condition` to run both active models, or specify `gpt-6-astra:max` for the SOTA condition. Every new problem has a **57-minute wall-time limit**, including provider admission, Lean tools and final cleanup. The host retains the best proof already verified across all versions when time expires. Override this with `--problem-timeout-seconds` or `RunConfig.problem_timeout_seconds`; resuming never replenishes a started budget. By default, an agent's voluntary completion ends its single attempt. Costs are reported per problem using recorded usage and explicit API-equivalent assumptions.
+
+Enable repeated fresh attempts with an explicit tracking flag and a new output directory:
+
+```bash
+proof-harness run --condition gpt-6.1-sol:max --track-cost --budget-usd 3 \
+  --pilot --output results/harness/my_sol_cost_run
+
+proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
+  --track-time --pilot --workers 5 --output results/harness/my_qwen_time_run
+```
+
+`--budget-tracking cost` and `--budget-tracking time` are the long forms. Each
+successful voluntary completion starts another conversation and workspace from
+the best verified proof while budget remains. The default safety limit is 20
+restarts (21 total attempts), adjustable with `--max-budget-restarts`. Restarts
+stop when at most 30 seconds remain for final cleanup. Failed or indeterminate
+requests and unavailable verification never trigger a retry. Cost tracking also
+stops when cumulative spending is unknown.
+Cost tracking requires a priced model; use time tracking for Lemex models.
+
+Cost tracking passes the remaining budget to the native CLI and sums observed
+costs across attempts. Codex uses a conservative weighted token allowance;
+Claude uses its dollar allowance. Both check between upstream responses, so a
+response already in flight may exceed the target. This is an API-equivalent
+estimate with explicit stop evidence, not a certified hard invoice cap. Native
+limit stops may omit usage; such totals remain unknown. The fixed deadline is
+enforced for all runs, including calls through the Python search API.
 
 There is one active task policy: [refactor_system.md](prompts/refactor_system.md)
 and its five-card [strategy bank](prompts/strategy_bank.json), preserving the
@@ -42,6 +69,10 @@ Native Lemex and Claude Code run the same task with their own shell/edit tools:
 # DeepSeek: existing .env gateway key is passed only to the Lemex child.
 proof-harness run --provider lemex --pilot --workers 5 \
   --output results/harness/my_deepseek_run
+
+# Qwen with the same score, source, goal and tactic-profiling tools.
+proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
+  --pilot --workers 5 --output results/harness/my_qwen_run
 
 # Sign in with `claude auth login` first. Exact Opus 5.5/max, no fallback.
 proof-harness run --provider claude --pilot --workers 5 \

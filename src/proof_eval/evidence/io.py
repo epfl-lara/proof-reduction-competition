@@ -32,17 +32,34 @@ def fingerprint(value) -> str:
     ).hexdigest()
 
 
-def write_json(path: str | Path, data) -> None:
+def _atomic_write(path: str | Path, emit) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(prefix=".record-", suffix=".tmp", dir=path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
-            json.dump(data, stream, indent=2, ensure_ascii=False, allow_nan=False)
-            stream.write("\n")
+            emit(stream)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, path)
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
+
+
+def write_json(path: str | Path, data) -> None:
+    def emit(stream):
+        json.dump(data, stream, indent=2, ensure_ascii=False, allow_nan=False)
+        stream.write("\n")
+
+    _atomic_write(path, emit)
+
+
+def write_jsonl(path: str | Path, records: list[dict]) -> None:
+    """Commit a complete ledger atomically, including under a hard process deadline."""
+
+    def emit(stream):
+        for record in records:
+            stream.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
+
+    _atomic_write(path, emit)

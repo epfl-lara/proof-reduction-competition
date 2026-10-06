@@ -24,6 +24,8 @@ def validate(provider: str, conditions: tuple | list) -> None:
     adapter(provider)
     allowed = set(DEFAULT_CONDITIONS[provider])
     if provider == "lemex":
-        allowed = {(lemex.MODEL, e) for e in ("low", "medium", "high")}
+        allowed = {
+            (model, e) for model, efforts in lemex.MODELS.items() for e in efforts
+        }
     if not conditions or any(tuple(c) not in allowed for c in conditions):
         raise ValueError("Unsupported model/effort for " + provider)

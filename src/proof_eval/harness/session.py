@@ -8,7 +8,7 @@ import time
 from copy import deepcopy
 from pathlib import Path
 
-from proof_eval.evidence.io import fingerprint, now, write_json
+from proof_eval.evidence.io import fingerprint, now, read, write_json, write_jsonl
 from proof_eval.protocol import FIELDS, code_identity, context_for_prompt
 from proof_eval.verification.context import build_context
 from proof_eval.verification.feedback import (
@@ -37,12 +37,16 @@ class ProofSession:
         *,
         seed=None,
         cleanup=None,
+        deadline_at=None,
+        problem_timeout_seconds=None,
     ):
         if mode not in ("correctness", "score", "score_edges"):
             raise ValueError("Unknown feedback mode")
         self.folder = Path(folder)
         self.folder.mkdir(parents=True, exist_ok=True)
         self.pack, self.evaluator, self.mode, self.guard = pack, evaluator, mode, guard
+        self.deadline_at = deadline_at
+        self.problem_timeout_seconds = problem_timeout_seconds
         self.row = pack["row"]
         self.versions = required_versions(pack)
         self.source_tools = SourceTools(evaluator, self.row, self.versions)
@@ -87,6 +91,13 @@ class ProofSession:
             self.first_valid_code = record["code"]
         if record["accepted"]:
             self.best_code, self.best_evaluation = record["code"], record["evaluation"]
+
+    def reset_for_attempt(self) -> None:
+        """Clear the previous finish decision in memory and durable state."""
+        with self.lock:
+            self.finished = None
+            (self.folder / "finished.json").unlink(missing_ok=True)
+            self._save_state()
 
     def _save_state(self):
         write_json(
@@ -167,11 +178,7 @@ class ProofSession:
                 "previous_best_score": previous,
                 "elapsed_seconds": time.monotonic() - started,
             }
-            with (self.folder / "checks.jsonl").open("a") as stream:
-                stream.write(
-                    json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n"
-                )
-                stream.flush()
+            write_jsonl(self.folder / "checks.jsonl", self.checks + [record])
             self._restore(record)
             self._save_state()
             if self.mode == "correctness":
@@ -197,13 +204,19 @@ class ProofSession:
                 "proposal_valid": self.first_valid_code is not None,
                 "message": "Stop after the first valid proposal; no candidate scores are exposed.",
             }
-        return {
+        response = {
             "kind": "lean_optimization_status",
             "attempts": len(self.checks),
             **self._score_view(self.best_evaluation),
             "best_proof": self.best_code,
             "finished": self.finished,
         }
+        if self.deadline_at is not None:
+            response.update(
+                time_remaining_seconds=max(0.0, self.deadline_at - time.time()),
+                problem_timeout_seconds=self.problem_timeout_seconds,
+            )
+        return response
 
     def profile(self, code: str, *, config: ProfileConfig | None = None) -> dict:
         """Record a diagnostic without modifying checks, scores or best proof."""
@@ -233,7 +246,21 @@ class ProofSession:
             self.check(code, origin="deterministic_input")
             before = self.checks[-1]
             valid = before["all_versions_passed"]
+            pending = self.folder / "cleanup_started.json"
+            write_json(
+                pending,
+                {
+                    "input_check": before["number"],
+                    "input_code_sha256": before["code_sha256"],
+                    "before": {
+                        "proof": self.best_code,
+                        "evaluation": self.best_evaluation,
+                    },
+                },
+            )
             job = self.cleanup(code) if valid else None
+            if job is not None:
+                write_json(pending, {**read(pending), "job": job})
             after = None
             if job is not None:
                 require_valid(job["evaluation"], self.row, job["proof"])
@@ -253,11 +280,11 @@ class ProofSession:
                 "counters": job.get("counters", {}) if job else {},
                 "reused": job.get("reused", False) if job else False,
             }
-            with (self.folder / "deterministic.jsonl").open("a") as stream:
-                stream.write(
-                    json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n"
-                )
+            write_jsonl(
+                self.folder / "deterministic.jsonl", self.cleanup_calls + [record]
+            )
             self.cleanup_calls.append(record)
+            pending.unlink(missing_ok=True)
             self.guard()
             self._save_state()
             return {

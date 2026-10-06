@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import fcntl
 import json
-import os
-import signal
 import subprocess
 import sys
 import time
@@ -23,6 +21,8 @@ from proof_eval.paths import PACKAGE
 
 from .contracts import ToolSession
 from .isolation import launch_command
+from .processes import stop_tree
+from .spending import native_cost_stop
 
 
 @dataclass(frozen=True)
@@ -53,6 +53,8 @@ def generate(
     provider: str,
     authentication: str,
     build: Callable[[Path, Path, Path, Path], Launch],
+    timeout: float | None = 57 * 60,
+    cost_budget: dict | None = None,
 ) -> dict:
     folder = Path(folder).resolve()
     folder.mkdir(parents=True, exist_ok=True)
@@ -60,7 +62,6 @@ def generate(
         raise ValueError("Expected system and user messages")
     if identity != expected_cli:
         raise ValueError(f"{provider} executable or configuration changed")
-    timeout = 1800 if mode == "correctness" else None  # Historical control only.
     request = {
         "provider": provider,
         "messages": messages,
@@ -77,6 +78,8 @@ def generate(
         "tool_context": context,
         "auth": authentication,
     }
+    if cost_budget is not None:
+        request["cost_budget"] = cost_budget
     with (folder / ".generation.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         path = folder / "request.json"
@@ -97,7 +100,7 @@ def generate(
         workspace.mkdir(exist_ok=True)
         write_json(workspace / "context.json", context)
         (workspace / "tools.py").write_text((PACKAGE / "harness/client.py").read_text())
-        (workspace / "candidate.lean").write_text(session.seed_code)
+        (workspace / "candidate.lean").write_text(session.best_code)
         system_file, prompt_file = folder / "system.txt", folder / "prompt.txt"
         system_file.write_text(messages[0]["content"])
         prompt_file.write_text(messages[1]["content"])
@@ -147,36 +150,46 @@ def generate(
                 child.communicate(prompt_file.read_text(), timeout=timeout)
                 timed_out = False
             except subprocess.TimeoutExpired:
-                os.killpg(child.pid, signal.SIGTERM)
-                try:
-                    child.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    os.killpg(child.pid, signal.SIGKILL)
-                    child.wait()
+                stop_tree(child.pid)
+                child.wait(timeout=5)
                 timed_out = True
-        if timed_out:
+        try:
+            events = []
+            for line in (folder / "events.jsonl").read_text().splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    events.append(json.loads(line))
+                except json.JSONDecodeError:
+                    if timed_out:
+                        break  # Preserve a killed CLI's unfinished line as raw evidence.
+                    raise
+            final = last_message.read_text() if last_message.exists() else ""
+            result = launch.parse(events, final, child.returncode)
+            if (
+                native_cost_stop(provider, events, cost_budget)
+                and not timed_out
+                and (provider != "claude" or result.get("actual_model") == model)
+            ):
+                result.update(
+                    status="budget_exhausted",
+                    termination="cost_limit",
+                    cost_budget=cost_budget,
+                    error="Native cost guard stopped the attempt; not resampled",
+                )
+            if timed_out:
+                result.update(
+                    status="budget_exhausted",
+                    error="Native agent reached the problem time limit; not resampled",
+                )
+            if result["status"] == "received" and not last_message.exists():
+                last_message.write_text(result["content"])
+        except (OSError, ValueError, KeyError) as error:
             result = {
-                "status": "indeterminate",
+                "status": "budget_exhausted" if timed_out else "transport_error",
+                "error": str(error),
                 "usage": None,
-                "error": "Correctness control timed out; not resampled",
             }
-        else:
-            try:
-                events = [
-                    json.loads(line)
-                    for line in (folder / "events.jsonl").read_text().splitlines()
-                    if line.strip()
-                ]
-                final = last_message.read_text() if last_message.exists() else ""
-                result = launch.parse(events, final, child.returncode)
-                if result["status"] == "received" and not last_message.exists():
-                    last_message.write_text(result["content"])
-            except (OSError, ValueError, KeyError) as error:
-                result = {
-                    "status": "transport_error",
-                    "error": str(error),
-                    "usage": None,
-                }
         result.update(
             provider=provider,
             elapsed_seconds=time.monotonic() - started,

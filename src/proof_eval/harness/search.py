@@ -4,31 +4,33 @@ from __future__ import annotations
 
 import fcntl
 import json
+import time
 from copy import deepcopy
 from pathlib import Path
 
-from proof_eval.evidence.io import digest, fingerprint, now, read, write_json
+from proof_eval.evidence.io import fingerprint, read, write_json
 from proof_eval.optimization.jobs import DeterministicCleanup
-from proof_eval.paths import ROOT
-from proof_eval.protocol import code_identity, extract_declaration
+from proof_eval.protocol import extract_declaration
 from proof_eval.providers.contracts import AgentGenerator
-from proof_eval.providers.costs import CostConfig, generations_cost
+from proof_eval.providers.costs import CostConfig
+from proof_eval.providers.spending import native_cost_guard
 from proof_eval.verification.api import Evaluator
 from proof_eval.verification.feedback import build_validity_feedback
 from proof_eval.verification.references import required_versions
 
 from .agent import generate
+from .attempts import finish_attempt, record_stop, start_attempt
 from .configuration import (
     BASE,
     DETERMINISTIC_MODES,
     guard,
-    historical,
-    score_control,
     starting_point,
-    structural_control,
 )
-from .prompts import messages
+from .limits import time_budget_summary
+from .outcomes import finalize_cell
+from .prompts import budget_suffix, messages
 from .session import ProofSession
+from .tracking import CLEANUP_RESERVE_SECONDS, attempt_cost, stop_decision
 
 
 def run_cell(
@@ -40,6 +42,33 @@ def run_cell(
     evaluator: Evaluator,
     generator: AgentGenerator = generate,
 ) -> dict:
+    """Run a theorem under one durable deadline, including custom generators."""
+    if "problem_timeout_seconds" in config or config.get("budget_tracking") is not None:
+        from .budget import run_cell as supervised_cell
+
+        supervised_config = {"problem_timeout_seconds": 57 * 60, **config}
+        return supervised_cell(
+            output,
+            supervised_config,
+            pack,
+            model,
+            effort,
+            evaluator,
+            generator=None if generator is generate else generator,
+        )
+    return _run_cell(output, config, pack, model, effort, evaluator, generator)
+
+
+def _run_cell(
+    output: Path,
+    config: dict,
+    pack: dict,
+    model: str,
+    effort: str,
+    evaluator: Evaluator,
+    generator: AgentGenerator = generate,
+) -> dict:
+    """Internal worker; new configurations require the supervisor's budget marker."""
     mode = config["mode"]
     folder = output / "cells" / fingerprint((pack["name"], model, effort, mode))
     folder.mkdir(parents=True, exist_ok=True)
@@ -70,6 +99,15 @@ def run_cell(
             cleanup = DeterministicCleanup(
                 config["deterministic_jobs"], pack, evaluator, provenance, checked_guard
             )
+        budget = (
+            read(folder / "budget_started.json")
+            if (folder / "budget_started.json").exists()
+            else None
+        )
+        if "problem_timeout_seconds" in config and budget is None:
+            raise ValueError(
+                "A prepared theorem must run under the durable deadline supervisor"
+            )
         session = ProofSession(
             folder / "evidence",
             pack,
@@ -78,6 +116,8 @@ def run_cell(
             guard=checked_guard,
             seed=seed,
             cleanup=cleanup,
+            deadline_at=budget["deadline_epoch"] if budget else None,
+            problem_timeout_seconds=budget["timeout_seconds"] if budget else None,
         )
         context = {
             "name": pack["name"],
@@ -89,6 +129,9 @@ def run_cell(
             },
         }
         initial = messages(pack, seed=seed) if seed else messages(pack)
+        budget_tracking = config.get("budget_tracking")
+        budget_usd = config.get("budget_usd_per_problem", 3.0)
+        max_restarts = config.get("max_budget_restarts", 20)
         write_json(
             folder / "input.json",
             {
@@ -103,11 +146,46 @@ def run_cell(
         )
         generations = []
         final_code, final_feedback = "", None
-        max_rounds = config["max_outer_correctness_repairs"]
+        max_rounds = (
+            config.get("max_outer_correctness_repairs", 0)
+            if mode == "correctness"
+            else (max_restarts if budget_tracking in ("cost", "time") else 0)
+        )
         for round_number in range(max_rounds + 1):
             checked_guard()
-            request = deepcopy(initial)
-            if round_number:
+            admission_epoch = time.time()
+            remaining = budget["deadline_epoch"] - admission_epoch if budget else None
+            if remaining is not None and remaining <= 0:
+                record_stop(
+                    folder,
+                    {
+                        "kind": "time_limit",
+                        "reason": "Whole-problem wall deadline reached",
+                    },
+                    round_number - 1 if generations else None,
+                    at_epoch=admission_epoch,
+                )
+                break
+            if (
+                round_number
+                and remaining is not None
+                and remaining <= CLEANUP_RESERVE_SECONDS
+            ):
+                record_stop(
+                    folder,
+                    {
+                        "kind": "cleanup_reserve",
+                        "reason": "Remaining whole-problem time is reserved for final cleanup",
+                    },
+                    round_number - 1,
+                    at_epoch=admission_epoch,
+                )
+                break
+            cost_before = attempt_cost(config, model, effort, generations)
+            if round_number == 0:
+                request = deepcopy(initial)
+            elif mode == "correctness":
+                request = deepcopy(initial)
                 request[1]["content"] += (
                     "\nCorrectness repair only. Repair this proposal using the following compiler feedback.\n"
                     + json.dumps(
@@ -118,11 +196,60 @@ def run_cell(
                         ensure_ascii=False,
                     )
                 )
-                # A failed unverified final is allowed another correctness-only turn.
-                session.finished = None
-                (session.folder / "finished.json").unlink(missing_ok=True)
+                session.reset_for_attempt()
+            else:
+                request = messages(
+                    pack, seed=(session.best_code, session.best_evaluation)
+                )
+                session.reset_for_attempt()
+            cost_guard = None
+            if budget_tracking == "cost":
+                total = cost_before["total_usd"]
+                if total is None or total >= budget_usd - 1e-12:
+                    raise RuntimeError(
+                        "Attempt admission requires known spending below the budget"
+                    )
+                cost_guard = native_cost_guard(
+                    config.get("provider", "codex"),
+                    CostConfig(model, effort, **config.get("cost_assumptions", {})),
+                    budget_usd - total,
+                )
+                if cost_guard.get("limit_tokens") == 0:
+                    record_stop(
+                        folder,
+                        {
+                            "kind": "cost_reserve",
+                            "reason": "Remaining estimated budget cannot fund one conservatively priced output token",
+                        },
+                        round_number - 1 if generations else None,
+                    )
+                    break
+            request[1]["content"] += budget_suffix(
+                config, budget, cost_before, remaining, round_number
+            )
+            if round_number == 0:
+                initial = request
+                saved_input = read(folder / "input.json")
+                write_json(folder / "input.json", {**saved_input, "messages": initial})
+            timeout = (
+                min(config["generation_timeout"], max(0.0, remaining))
+                if budget
+                else None
+            )
+            attempt_folder = folder / f"attempt_{round_number:02d}"
+            if config.get("attempt_evidence_version"):
+                start_attempt(
+                    attempt_folder,
+                    session,
+                    request,
+                    round_number,
+                    cost_before,
+                    timeout,
+                    cost_guard,
+                    remaining,
+                )
             generation = generator(
-                folder=folder / f"attempt_{round_number:02d}",
+                folder=attempt_folder,
                 messages=request,
                 model=model,
                 effort=effort,
@@ -131,9 +258,31 @@ def run_cell(
                 context=context,
                 expected_cli=config["cli"],
                 provider=config.get("provider", "codex"),
+                **({"timeout": timeout} if "problem_timeout_seconds" in config else {}),
+                **({"cost_budget": cost_guard} if cost_guard else {}),
+                **(
+                    {"instructions": config["tool_instructions"]}
+                    if "tool_instructions" in config
+                    else {}
+                ),
             )
             generations.append(generation)
             if generation["status"] != "received":
+                cost_after = attempt_cost(config, model, effort, generations)
+                if config.get("attempt_evidence_version"):
+                    finish_attempt(attempt_folder, session, generation, cost_after)
+                record_stop(
+                    folder,
+                    stop_decision(
+                        config,
+                        generation,
+                        cost_after,
+                        unavailable=False,
+                        round_number=round_number,
+                        time_remaining=remaining,
+                    ),
+                    round_number,
+                )
                 break
             try:
                 final_code = extract_declaration(
@@ -148,179 +297,56 @@ def run_cell(
                 if len(session.checks) > before
                 else None
             )
-            if mode != "correctness" or session.first_valid_code is not None:
-                break
-            if final_eval is None or final_eval["status"] not in (
-                "invalid",
-                "failed",
-                "passed",
-            ):
-                break
-            final_feedback = build_validity_feedback(final_eval, session.versions)
+            cost_after = attempt_cost(config, model, effort, generations)
+            if config.get("attempt_evidence_version"):
+                finish_attempt(attempt_folder, session, generation, cost_after)
+            if mode == "correctness":
+                if session.first_valid_code is not None:
+                    break
+                if final_eval is None or final_eval["status"] not in (
+                    "invalid",
+                    "failed",
+                    "passed",
+                ):
+                    break
+                final_feedback = build_validity_feedback(final_eval, session.versions)
+            else:
+                decision_epoch = time.time()
+                stop = stop_decision(
+                    config,
+                    generation,
+                    cost_after,
+                    unavailable=any(
+                        check["evaluation"]["status"] == "incomplete"
+                        for check in session.checks
+                    ),
+                    round_number=round_number,
+                    time_remaining=(
+                        budget["deadline_epoch"] - decision_epoch if budget else None
+                    ),
+                )
+                if stop is not None:
+                    # Default runs retain the model's factual finish reason.
+                    if stop["kind"] == "model_final" and session.finished:
+                        stop = session.finished
+                    record_stop(folder, stop, round_number, at_epoch=decision_epoch)
+                    break
         checked_guard()
         before_final_cleanup = {
             "proof": session.best_code,
             "evaluation": deepcopy(session.best_evaluation),
         }
+        write_json(folder / "before_final_cleanup.json", before_final_cleanup)
         if mode in DETERMINISTIC_MODES:
             session.deterministic(session.best_code, origin="final_harness")
-        control_path, control = historical(pack["name"], model, effort)
-        if (
-            control_path
-            and digest(control_path)
-            != config["historical_control_sha256"][str(control_path.relative_to(ROOT))]
-        ):
-            raise ValueError("Historical control changed")
-        historical_score = (
-            control["selected_evaluation"]["scores"]["combined_pct"]
-            if control
-            else None
+        return finalize_cell(
+            folder,
+            config,
+            pack,
+            model,
+            effort,
+            session,
+            generations,
+            before_final_cleanup,
+            time_budget=time_budget_summary(folder, exhausted=False),
         )
-        first_valid = next(
-            (r for r in session.checks if r["all_versions_passed"]), None
-        )
-        unavailable = any(
-            r["evaluation"]["status"] == "incomplete" for r in session.checks
-        )
-        structural_score = None
-        if mode != "correctness":
-            structural_path, structural = structural_control(
-                pack["name"], model, effort
-            )
-            if structural_path:
-                if (
-                    digest(structural_path)
-                    != config["structural_control_sha256"][
-                        str(structural_path.relative_to(ROOT))
-                    ]
-                ):
-                    raise ValueError("Structural control changed")
-                structural_score = structural["selected_evaluation"]["scores"][
-                    "combined_pct"
-                ]
-        result = {
-            "provider": config.get("provider", "codex"),
-            "name": pack["name"],
-            "model": model,
-            "effort": effort,
-            "mode": mode,
-            "status": (
-                "complete"
-                if generations[-1]["status"] == "received" and not unavailable
-                else "incomplete"
-            ),
-            "generation_status": generations[-1]["status"],
-            "generations": generations,
-            "selected_proof": session.best_code,
-            "selected_evaluation": session.best_evaluation,
-            "first_valid_evaluation": (
-                first_valid["evaluation"] if first_valid else None
-            ),
-            "first_valid_proof": first_valid["code"] if first_valid else None,
-            "historical_score": historical_score,
-            "gain_over_historical_pp": (
-                None
-                if historical_score is None
-                else session.best_evaluation["scores"]["combined_pct"]
-                - historical_score
-            ),
-            "structural_control_score": structural_score,
-            "gain_over_structural_control_pp": (
-                None
-                if structural_score is None
-                else session.best_evaluation["scores"]["combined_pct"]
-                - structural_score
-            ),
-            "score_gain_after_first_valid_pp": (
-                None
-                if first_valid is None
-                else session.best_evaluation["scores"]["combined_pct"]
-                - first_valid["evaluation"]["scores"]["combined_pct"]
-            ),
-            "checks": len(session.checks),
-            "agent_tool_checks": sum(
-                r["origin"] == "agent_tool" for r in session.checks
-            ),
-            "valid_checks": sum(r["all_versions_passed"] for r in session.checks),
-            "improvements": sum(r["accepted"] for r in session.checks),
-            "stop": session.finished
-            or {
-                "kind": (
-                    "model_final"
-                    if generations[-1]["status"] == "received"
-                    else "infrastructure"
-                ),
-                "reason": (
-                    "Agent returned a final declaration"
-                    if generations[-1]["status"] == "received"
-                    else generations[-1].get("error")
-                ),
-            },
-            "finished_at": now(),
-        }
-        if "cost_assumptions" in config:
-            result["cost"] = generations_cost(
-                CostConfig(model, effort, **config["cost_assumptions"]),
-                generations,
-                budget_usd=config["budget_usd_per_problem"],
-            )
-        if mode in DETERMINISTIC_MODES:
-            score_path, control = score_control(pack["name"], model, effort)
-            if (
-                score_path
-                and digest(score_path)
-                != config["score_control_sha256"][str(score_path.relative_to(ROOT))]
-            ):
-                raise ValueError("Score-only control changed")
-            control_score = (
-                control["selected_evaluation"]["scores"]["combined_pct"]
-                if control
-                else None
-            )
-            valid_proposals = {
-                r["code_sha256"]
-                for r in session.checks
-                if r["origin"] in ("agent_tool", "deterministic_input", "final_harness")
-                and r["all_versions_passed"]
-                and not r["duplicate"]
-                and r["code_sha256"] != code_identity(pack["row"], session.seed_code)
-            }
-            tool_calls = [
-                c for c in session.cleanup_calls if c["origin"] == "agent_tool"
-            ]
-            covered = valid_proposals & {
-                c["input_code_sha256"]
-                for c in tool_calls
-                if c["status"] != "skipped_invalid"
-            }
-            result.update(
-                seed_proof=session.seed_code,
-                seed_evaluation=session.seed_evaluation,
-                before_final_cleanup=before_final_cleanup,
-                final_cleanup_gain_pp=session.best_evaluation["scores"]["combined_pct"]
-                - before_final_cleanup["evaluation"]["scores"]["combined_pct"],
-                score_control_score=control_score,
-                gain_over_score_control_pp=(
-                    None
-                    if control_score is None
-                    else session.best_evaluation["scores"]["combined_pct"]
-                    - control_score
-                ),
-                deterministic_calls=len(session.cleanup_calls),
-                deterministic_tool_calls=len(tool_calls),
-                valid_changed_proposals=len(valid_proposals),
-                proposals_with_tool_cleanup=len(covered),
-                deterministic_tool_coverage_pct=(
-                    100 * len(covered) / len(valid_proposals)
-                    if valid_proposals
-                    else None
-                ),
-                incomplete_cleanups=sum(
-                    c["status"] not in ("complete", "skipped_invalid")
-                    for c in session.cleanup_calls
-                ),
-            )
-            if result["incomplete_cleanups"]:
-                result["status"] = "incomplete"
-        write_json(folder / "result.json", result)
-        return result

@@ -22,6 +22,10 @@ from .events import parse_events
 from .execution import Launch
 
 MODEL = "deepseek-ai/DeepSeek-V4.1-Flash"
+MODELS = {
+    MODEL: {"low", "medium", "high"},
+    "Qwen/Qwen3.8-Flash-Next": {"low", "medium", "xhigh"},
+}
 # Host admission state must live outside model-writable CLI/cache directories.
 SLOT_DIRECTORY = Path.home() / ".proof-arena/lemex-slots"
 SLOT_COUNT = 5
@@ -73,11 +77,7 @@ def cli_identity() -> dict:
 def command(
     *, model: str, effort: str, mode: str, catalog: Path, base_url: str, **kwargs
 ) -> list[str]:
-    if (
-        model != MODEL
-        or effort not in {"low", "medium", "high"}
-        or mode != "score_edges"
-    ):
+    if model not in MODELS or effort not in MODELS[model] or mode != "score_edges":
         raise ValueError("Unsupported Lemex model, effort or search mode")
     settings = {
         "model_catalog_json": str(catalog),

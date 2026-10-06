@@ -56,6 +56,9 @@ def _report(output, config):
             "expected": n,
             "complete": complete,
             "incomplete_outcomes": sum(r["status"] != "complete" for r in group),
+            "time_limit_outcomes": sum(
+                r.get("time_budget", {}).get("exhausted") is True for r in group
+            ),
             "mean_scores": {
                 f: (
                     sum(r["selected_evaluation"]["scores"][f] for r in group) / n

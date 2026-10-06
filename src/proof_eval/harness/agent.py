@@ -12,8 +12,9 @@ def command(**kwargs) -> list[str]:
 
 
 def generate(*, provider: str = "codex", **kwargs) -> dict:
+    instructions = kwargs.pop("instructions", None) or tool_instructions(kwargs["mode"])
     return adapter(provider).generate(
         **kwargs,
-        instructions=tool_instructions(kwargs["mode"]),
+        instructions=instructions,
         tool_service=ProofToolService,
     )

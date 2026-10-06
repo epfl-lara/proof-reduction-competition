@@ -11,6 +11,7 @@ from pathlib import Path
 from proof_eval import Evaluator
 from proof_eval.evidence.io import digest, now, read, write_json
 
+from .budget import run_cell
 from .config import RunConfig
 from .configuration import (
     guard,
@@ -19,7 +20,6 @@ from .configuration import (
     prepare,
 )
 from .reporting import report
-from .search import run_cell
 
 
 def run(args: RunConfig) -> dict:
@@ -41,6 +41,10 @@ def run(args: RunConfig) -> dict:
             packs,
             conditions=conditions,
             provider=args.provider,
+            problem_timeout_seconds=args.problem_timeout_seconds,
+            budget_tracking=args.budget_tracking,
+            budget_usd_per_problem=args.budget_usd_per_problem,
+            max_budget_restarts=args.max_budget_restarts,
             base_directory=Path(args.base).resolve(),
             paths={
                 "dataset_path": str(Path(args.dataset).resolve()),
@@ -57,17 +61,6 @@ def run(args: RunConfig) -> dict:
         if args.names and not set(args.names) <= set(config["names"]):
             raise ValueError("Unknown theorem name")
         selected = [n for n in config["names"] if not args.names or n in args.names]
-        if args.pilot:
-            from .audit import audit
-
-            for model, effort in config["conditions"]:
-                pilot = run_cell(
-                    output, config, packs[selected[0]], model, effort, evaluator
-                )
-                if pilot["status"] != "complete":
-                    raise RuntimeError("Pilot incomplete; full cohort was not launched")
-            write_json(output / "pilot_audit.json", audit(output))
-            report(output, config)
         work = [
             (name, model, effort)
             for name in selected
@@ -99,6 +92,22 @@ def run(args: RunConfig) -> dict:
             },
         )
         try:
+            if args.pilot:
+                from .audit import audit
+
+                for model, effort in config["conditions"]:
+                    pilot = run_cell(
+                        output, config, packs[selected[0]], model, effort, evaluator
+                    )
+                    if pilot["status"] != "complete" or (
+                        pilot.get("generation_status") == "budget_exhausted"
+                        and not pilot.get("agent_tool_checks")
+                    ):
+                        raise RuntimeError(
+                            "Pilot incomplete; full cohort was not launched"
+                        )
+                write_json(output / "pilot_audit.json", audit(output))
+                report(output, config)
             with ThreadPoolExecutor(max_workers=args.workers) as pool:
                 futures = {
                     pool.submit(
@@ -142,6 +151,9 @@ def run(args: RunConfig) -> dict:
                         for pending in futures:
                             pending.cancel()
                     report(output, config)
+        except Exception as error:
+            failures.append({"error": f"{type(error).__name__}: {error}"})
+            raise
         finally:
             ended.set()
             thread.join()

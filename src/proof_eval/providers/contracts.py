@@ -8,6 +8,7 @@ from typing import Protocol
 
 class ToolSession(Protocol):
     seed_code: str
+    best_code: str
 
     def dispatch(self, request: dict) -> dict: ...
 
@@ -25,4 +26,7 @@ class AgentGenerator(Protocol):
         context: dict,
         expected_cli: dict,
         provider: str = "codex",
+        timeout: float | None = 57 * 60,
+        cost_budget: dict | None = None,
+        instructions: str | None = None,
     ) -> dict: ...
