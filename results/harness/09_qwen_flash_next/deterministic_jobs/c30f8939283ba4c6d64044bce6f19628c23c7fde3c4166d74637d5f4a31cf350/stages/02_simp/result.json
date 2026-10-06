@@ -1,0 +1,109 @@
+{
+  "name": "interleaved_affine_gaps_imply_tensor_gaps",
+  "source": "arklib",
+  "method": "simp",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 71.61862527716187,
+      "heartbeat_reduction_pct": 63.48384205036353,
+      "compatibility_pct": 100.0,
+      "combined_pct": 78.36748910917514
+    },
+    "candidate": {
+      "length": 384,
+      "code_sha256": "c0dafc7bfa6587e038d81d2c9d3639d092baac42d079616ffc0c95268f5db17e"
+    },
+    "primary_version": "v4.31.0",
+    "per_version": {
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3361.427,
+        "heartbeat_reduction_pct": 63.48384205036353,
+        "cached": true,
+        "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+        "elapsed_seconds": 9.992794079706073,
+        "diagnostics": []
+      },
+      "v4.30.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3390.239,
+        "heartbeat_reduction_pct": 63.20214102854379,
+        "cached": true,
+        "environment_fingerprint": "554e1850835d469c72f5efbcce1fb186712bb08829fcd9e0fd75dee8a3bc2f6c",
+        "elapsed_seconds": 10.490307290107012,
+        "diagnostics": []
+      },
+      "v4.29.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3886.594,
+        "heartbeat_reduction_pct": 62.24023972908841,
+        "cached": true,
+        "environment_fingerprint": "1ab71abdd0714f4a6c78175e8ab5280292bd128b28cdaaa5243d707457481218",
+        "elapsed_seconds": 12.991809234023094,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem interleaved_affine_gaps_imply_tensor_gaps\n    (hC_proximityGapAffineLines : e_ε_correlatedAgreementAffineLinesNat\n      (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n    (h_interleaved_gaps : ∀ m : ℕ, m ≥ 1 →\n      e_ε_correlatedAgreementAffineLinesNat (F := F)\n        (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC ^⋈ (Fin m)) e ε) :\n    ∀ (ϑ : ℕ), (hϑ_gt_0 : ϑ > 0) → δ_ε_multilinearCorrelatedAgreement_Nat (F := F) (A := A)\n      (ι := ι) (C := MC) (ϑ := ϑ) (e := e) (ε := ε) := by\n    classical\n    intro ϑ\n    induction ϑ with\n    | zero =>\n      intro u\n      contradiction\n    | succ ϑ_sub_1 ih =>\n      cases ϑ_sub_1 with\n      | zero =>\n        simp only [zero_add, zero_lt_one, forall_const]\n        intro u hprob_gt\n        simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n          prob_uniform_singleton_finFun_eq (F := F)\n            (P := fun r => distFromCode (affineLineEvaluation (u 0) (u 1) r) MC ≤ e),\n          Nat.cast_one, ENNReal.coe_one, one_mul] at hprob_gt\n        have h_u_eq : u = finMapTwoWords (u 0) (u 1) := by\n          funext rowIdx\n          match rowIdx with\n          | 0 => rfl\n          | 1 => rfl\n        rw [h_u_eq]\n        exact hC_proximityGapAffineLines (u 0) (u 1) hprob_gt\n      | succ ϑ_sub_2 =>\n        intro _ u hP_multilinearCombine_close_gt\n        let ϑ_pred := ϑ_sub_2 + 1\n        let U₀ := (splitHalfRowWiseInterleavedWords (ϑ := ϑ_pred) u).1\n        let U₁ := (splitHalfRowWiseInterleavedWords (ϑ := ϑ_pred) u).2\n        have h_rec (r : Fin (ϑ_pred + 1) → F) : multilinearCombine u r =\n            multilinearCombine (affineLineEvaluation U₀ U₁ (r (Fin.last ϑ_pred)))\n              (fun i => r i.castSucc) := by\n          rw [multilinearCombine_recursive_form]\n          rfl\n        simp_rw [h_rec] at hP_multilinearCombine_close_gt\n        let hP_split_r_last := prob_split_last_uniform_sampling_of_finFun (ϑ := ϑ_pred)\n          (F := F) (P := fun r_last r_init =>\n            distFromCode (multilinearCombine (affineLineEvaluation U₀ U₁ r_last) r_init) MC ≤ e)\n        rw [hP_split_r_last] at hP_multilinearCombine_close_gt\n        let R_star_set := R_star_tensor MC (m:=ϑ_pred) (e:=e) (ε:=ε) U₀ U₁\n        let h_line_close := correlatedAgreement_of_mem_R_star_tensor\n          (ih := fun u_prev => ih (by omega) u_prev) (u := u)\n        apply CA_split_rowwise_implies_CA (u := u) (e := e)\n        apply h_interleaved_gaps (2 ^ ϑ_pred) Nat.one_le_two_pow\n        exact lt_of_le_of_lt'\n          (Pr_le_Pr_of_implies _ (fun r => r ∈ R_star_set) _ fun r hr => h_line_close ⟨r, hr⟩)\n          (prob_R_star_gt_threshold (MC := MC) (ε := ε) (ϑ := ϑ_pred) (u := u) (e := e)\n            hP_multilinearCombine_close_gt)",
+  "rounds": 1,
+  "attempts": 0,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 2,
+  "lean_candidate_checks": 0,
+  "cache_hits": 0,
+  "elapsed_seconds": 9.615,
+  "stop_reason": "no_new_proposals",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 71.61862527716187,
+      "heartbeat_reduction_pct": 63.48384205036353,
+      "compatibility_pct": 100.0,
+      "combined_pct": 78.36748910917514
+    },
+    "candidate": {
+      "length": 384,
+      "code_sha256": "c0dafc7bfa6587e038d81d2c9d3639d092baac42d079616ffc0c95268f5db17e"
+    },
+    "primary_version": "v4.31.0",
+    "per_version": {
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3361.427,
+        "heartbeat_reduction_pct": 63.48384205036353,
+        "cached": true,
+        "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+        "elapsed_seconds": 9.992794079706073,
+        "diagnostics": []
+      },
+      "v4.30.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3390.239,
+        "heartbeat_reduction_pct": 63.20214102854379,
+        "cached": true,
+        "environment_fingerprint": "554e1850835d469c72f5efbcce1fb186712bb08829fcd9e0fd75dee8a3bc2f6c",
+        "elapsed_seconds": 10.490307290107012,
+        "diagnostics": []
+      },
+      "v4.29.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 3886.594,
+        "heartbeat_reduction_pct": 62.24023972908841,
+        "cached": true,
+        "environment_fingerprint": "1ab71abdd0714f4a6c78175e8ab5280292bd128b28cdaaa5243d707457481218",
+        "elapsed_seconds": 12.991809234023094,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": false
+}

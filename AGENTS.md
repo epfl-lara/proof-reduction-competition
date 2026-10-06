@@ -46,6 +46,9 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
   model. Report full-cohort means only when the full declared cohort is complete.
 - Model requests need durable started markers, host-owned evidence, output locks,
   and no automatic resampling of an indeterminate request. Preserve partial work.
+  Observed terminal transient transport failures may use bounded, recorded
+  recovery from the best verified proof under the same deadline. Preserve every
+  failed attempt; cost tracking stops when cumulative usage becomes unknown.
   Codex may use tools; the host checks proofs and owns the ledger. Do not let model
   processes write the pinned source projects or host evidence.
 - New runs default to a 3420-second (57-minute) whole-problem deadline for all

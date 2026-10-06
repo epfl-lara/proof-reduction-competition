@@ -178,6 +178,7 @@ The generic deterministic API accepts a new competition batch with explicit path
 - [Refactor validation and fresh Sol replicate](results/harness/06_refactor_regression/COMPARISON.md): 86.575834% combined, 100% compatibility, 36/36 passing versions; the earlier stronger submission is preserved.
 - [Native provider pilots](results/harness/07_native_agents/README.md): Opus completed one problem; DeepSeek retained an improved proof after a transport failure. Both cohorts are incomplete.
 - [Sol tactic-profiling trial](results/harness/08_tactic_profiles/sol61_max/PROTOCOL.md): 15/15 complete and audited; 86.951351% combined, 100% compatibility. Profiling was used on every problem; one repeat does not establish a causal score gain.
+- [Qwen Flash Next results and submission](results/harness/09_qwen_flash_next/README.md): the combined original/recovery selection reaches 78.219958% locally over all 15 problems, with 100% compatibility and 36/36 passing version checks. The saved-evidence audits and submission provenance are included.
 - [related_work](related_work/README.md): literature, papers and research proposals.
 - [prompts](prompts): the one active revised task policy and strategy bank.
 

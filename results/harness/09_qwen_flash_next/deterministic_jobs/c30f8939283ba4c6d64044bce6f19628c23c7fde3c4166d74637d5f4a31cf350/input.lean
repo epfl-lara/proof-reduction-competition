@@ -1,0 +1,54 @@
+theorem interleaved_affine_gaps_imply_tensor_gaps
+    (hC_proximityGapAffineLines : e_ε_correlatedAgreementAffineLinesNat
+      (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))
+    (h_interleaved_gaps : ∀ m : ℕ, m ≥ 1 →
+      e_ε_correlatedAgreementAffineLinesNat (F := F)
+        (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC ^⋈ (Fin m)) e ε) :
+    ∀ (ϑ : ℕ), (hϑ_gt_0 : ϑ > 0) → δ_ε_multilinearCorrelatedAgreement_Nat (F := F) (A := A)
+      (ι := ι) (C := MC) (ϑ := ϑ) (e := e) (ε := ε) := by
+    classical
+    intro ϑ
+    induction ϑ with
+    | zero =>
+      intro u
+      contradiction
+    | succ ϑ_sub_1 ih =>
+      cases ϑ_sub_1 with
+      | zero =>
+        simp only [zero_add, zero_lt_one, forall_const]
+        intro u hprob_gt
+        simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),
+          prob_uniform_singleton_finFun_eq (F := F)
+            (P := fun r => distFromCode (affineLineEvaluation (u 0) (u 1) r) MC ≤ e),
+          Nat.cast_one, ENNReal.coe_one, one_mul] at hprob_gt
+        have h_u_eq : u = finMapTwoWords (u 0) (u 1) := by
+          funext rowIdx
+          match rowIdx with
+          | 0 => rfl
+          | 1 => rfl
+        rw [h_u_eq]
+        exact hC_proximityGapAffineLines (u 0) (u 1) hprob_gt
+      | succ ϑ_sub_2 =>
+        intro _ u hP_multilinearCombine_close_gt
+        let ϑ_pred := ϑ_sub_2 + 1
+        let U₀ := (splitHalfRowWiseInterleavedWords (ϑ := ϑ_pred) u).1
+        let U₁ := (splitHalfRowWiseInterleavedWords (ϑ := ϑ_pred) u).2
+        have h_rec (r : Fin (ϑ_pred + 1) → F) : multilinearCombine u r =
+            multilinearCombine (affineLineEvaluation U₀ U₁ (r (Fin.last ϑ_pred)))
+              (fun i => r i.castSucc) := by
+          rw [multilinearCombine_recursive_form]
+          rfl
+        simp_rw [h_rec] at hP_multilinearCombine_close_gt
+        let hP_split_r_last := prob_split_last_uniform_sampling_of_finFun (ϑ := ϑ_pred)
+          (F := F) (P := fun r_last r_init =>
+            distFromCode (multilinearCombine (affineLineEvaluation U₀ U₁ r_last) r_init) MC ≤ e)
+        rw [hP_split_r_last] at hP_multilinearCombine_close_gt
+        let R_star_set := R_star_tensor MC (m:=ϑ_pred) (e:=e) (ε:=ε) U₀ U₁
+        let h_line_close := correlatedAgreement_of_mem_R_star_tensor
+          (ih := fun u_prev => ih (by omega) u_prev) (u := u)
+        apply CA_split_rowwise_implies_CA (u := u) (e := e)
+        apply h_interleaved_gaps (2 ^ ϑ_pred) Nat.one_le_two_pow
+        exact lt_of_le_of_lt'
+          (Pr_le_Pr_of_implies _ (fun r => r ∈ R_star_set) _ fun r hr => h_line_close ⟨r, hr⟩)
+          (prob_R_star_gt_threshold (MC := MC) (ε := ε) (ϑ := ϑ_pred) (u := u) (e := e)
+            hP_multilinearCombine_close_gt)

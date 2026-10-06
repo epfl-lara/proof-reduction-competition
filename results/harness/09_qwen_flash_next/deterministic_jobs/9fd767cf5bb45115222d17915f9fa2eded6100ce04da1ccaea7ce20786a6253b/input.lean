@@ -1,0 +1,20 @@
+open OldExpressions in
+theorem substOldPostSubset:
+  (Imperative.HasVarsPure.getVars (P:=Expression)
+    (substOld h2 (Lambda.LExpr.fvar m h1 ty) post)).Subset
+    (Imperative.HasVarsPure.getVars (P:=Expression) post ++ [h1]) := by
+  have o2 : ∀ {A B a b S : List Expression.Ident}, A ⊆ a ++ S → B ⊆ b ++ S → A ++ B ⊆ a ++ b ++ S := by grind
+  unfold Imperative.HasVarsPure.getVars
+  induction post with
+  | const _ _ | op _ _ _ | bvar _ _ | fvar _ _ _ => exact List.subset_append_left _ _
+  | abs _ _ _ ih => exact ih
+  | ite _ c t f ic it iff => exact o2 (o2 ic it) iff
+  | quant _ _ _ tr e iq ie => exact o2 iq ie
+  | eq _ e₁ e₂ i₁ i₂ => exact o2 i₁ i₂
+  | app _ fn arg ifn ia =>
+      unfold substOld
+      split
+      · split
+        · exact List.subset_append_right _ _
+        · exact List.subset_append_left _ _
+      · exact o2 ifn ia

@@ -1,0 +1,590 @@
+{
+  "at": "2026-10-06T15:06:16.501377+00:00",
+  "code": "theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by\n  profile_tactic \"unfold1\" in\n  unfold fiberwiseClose at h_fw_dist_lt\n  profile_tactic \"unfold2\" in\n  unfold hammingClose\n  profile_tactic \"letCi\" in\n  let C_i := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩\n  profile_tactic \"letDfw\" in\n  let d_fw := fiberwiseDistance 𝔽q β (i := i) steps h_i_add_steps f\n  profile_tactic \"letDi\" in\n  let d_i := BBF_CodeDistance ℓ 𝓡 ⟨i, by omega⟩\n  profile_tactic \"letDis\" in\n  let d_is := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩\n  profile_tactic \"hpos\" in\n  have hpos : 0 < d_i := Nat.succ_pos _\n  profile_tactic \"hsb\" in\n  have hsb : ∀ a : ℕ, ↑i + steps ≤ a → a - (↑i + steps) + steps = a - ↑i := by\n    intro a ha\n    rw [Nat.sub_add_eq_sub_sub_rev _ _ _ (Nat.le_add_left _ _) ha, Nat.add_sub_cancel]\n  profile_tactic \"halg\" in\n  have halg : (d_is - 1) * 2 ^ steps = d_i - 1 := by\n    dsimp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n    rw [Nat.sub_mul, ← Nat.pow_add, ← Nat.pow_add,\n      hsb _ (Nat.le_trans h_i_add_steps (Nat.le_add_right _ _)), hsb _ h_i_add_steps]\n  profile_tactic \"obtain\" in\n  obtain ⟨g', hg', hmin⟩ : ∃ g' ∈ C_i,\n      d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard := by\n    have hne : Set.Nonempty ((fun (g : C_i) =>\n        (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ) :=\n      Set.image_nonempty.mpr Set.univ_nonempty\n    rcases Nat.sInf_mem hne with ⟨w, _, hw⟩\n    exact ⟨w, w.property, hw.symm⟩\n  profile_tactic \"letY\" in\n  let Y := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g'\n  profile_tactic \"letdH\" in\n  let dH := Δ₀(f, ↑C_i)\n  profile_tactic \"hcount\" in\n  have hcount : hammingDist f g' ≤ Y.ncard * 2 ^ steps := by\n    let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n    let s := Finset.univ.filter (fun x => f x ≠ g' x)\n    show s.card ≤ Y.ncard * 2 ^ steps\n    rw [mul_comm]\n    refine (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans\n      (Nat.mul_le_mul_left (2 ^ steps) ?_)\n    · have hsub : s.filter (fun a => q a = b) ⊆\n          (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n            qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps)\n              (h_i_add_steps := fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := b) k := by\n        intro x hx\n        exact Finset.mem_image.mpr ⟨pointToIterateQuotientIndex (i := ⟨i, by omega⟩)\n            (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x), Finset.mem_univ _,\n          (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := x) (y := b)).mp\n            (Finset.mem_filter.mp hx).2.symm⟩\n      exact Nat.le_trans (Finset.card_le_card hsub)\n        (Finset.card_image_le.trans (by rw [Finset.card_univ, Fintype.card_fin]))\n    · rw [← Set.ncard_coe_finset]\n      refine Set.ncard_le_ncard ?_\n      intro y hy\n      obtain ⟨x, hx, rfl⟩ := Finset.mem_image.mp hy\n      exact ⟨x, rfl, (Finset.mem_filter.mp hx).2⟩\n  profile_tactic \"hbridge\" in\n  have hbridge : dH ≤ ↑(d_fw * 2 ^ steps) := by\n    refine le_trans (Code.distFromCode_le_dist_to_mem f g' hg') ?_\n    rw [hmin]\n    exact ENat.coe_le_coe.mpr hcount\n  profile_tactic \"hnat\" in\n  have hnat : 2 * (d_fw * 2 ^ steps) ≤ d_i - 1 := by\n    rw [← Nat.mul_assoc, ← halg]\n    exact Nat.mul_le_mul_right _ (Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt))\n  profile_tactic \"h2\" in\n  have h2 : (2 : ℕ∞) * dH ≤ ↑(2 * (d_fw * 2 ^ steps)) :=\n    (mul_le_mul_left' hbridge 2).trans ((ENat.coe_mul _ _).symm).le\n  profile_tactic \"finalex\" in\n  exact lt_of_le_of_lt h2 (ENat.coe_lt_coe.mpr (Nat.lt_of_le_pred hpos hnat))\n",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+    "version": "v4.31.0",
+    "proof_sha256": "0ccd876d5d527f3cac33805d25f2b5cf5bb81ab317cac1e7cd6efc798eb521ab",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": null,
+      "threshold_raw": 1000000,
+      "limit": 20
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end_local_scope 1",
+        "header_truncated": false,
+        "raw": 1225,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ section",
+        "header_truncated": false,
+        "raw": 1228,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 1000000",
+        "header_truncated": false,
+        "raw": 62,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [],
+                            "class": "Elab.step",
+                            "header": "✅️ obtain ⟨g', hg', hmin⟩ : ∃ g' ∈ C_i, d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard :=\n  by\n  have hne :\n    Set.Nonempty ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ) :=\n    Set.image_nonempty.mpr Set.univ_nonempty\n  rcases Nat.sInf_mem hne with ⟨w, _, hw⟩\n  exact ⟨w, w.property, hw.symm⟩",
+                            "header_truncated": false,
+                            "raw": 1099863,
+                            "tag": "Lean.Parser.Tactic.obtain"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ profile_tactic \"obtain\" in\n  obtain ⟨g', hg', hmin⟩ : ∃ g' ∈ C_i, d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard :=\n    by\n    have hne :\n      Set.Nonempty ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ) :=\n      Set.image_nonempty.mpr Set.univ_nonempty\n    rcases Nat.sInf_mem hne with ⟨w, _, hw⟩\n    exact ⟨w, w.property, hw.symm⟩",
+                        "header_truncated": false,
+                        "raw": 1100240,
+                        "tag": "tacticProfile_tactic_In_"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [],
+                                                                                "class": "Elab.step",
+                                                                                "header": "✅️ \n  have hsub :\n    s.filter (fun a => q a = b) ⊆\n      (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n        qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps :=\n          fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := b) k :=\n    by\n    intro x hx\n    exact\n      Finset.mem_image.mpr\n        ⟨pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x),\n          Finset.mem_univ _,\n          (is_fiber_iff_",
+                                                                                "header_truncated": true,
+                                                                                "raw": 1121103,
+                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "✅️ \n  have hsub :\n    s.filter (fun a => q a = b) ⊆\n      (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n        qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps :=\n          fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := b) k :=\n    by\n    intro x hx\n    exact\n      Finset.mem_image.mpr\n        ⟨pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x),\n          Finset.mem_univ _,\n          (is_fiber_iff_",
+                                                                            "header_truncated": true,
+                                                                            "raw": 1121190,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ ·\n  have hsub :\n    s.filter (fun a => q a = b) ⊆\n      (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n        qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps :=\n          fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := b) k :=\n    by\n    intro x hx\n    exact\n      Finset.mem_image.mpr\n        ⟨pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x),\n          Finset.mem_univ _,\n          (is_fiber_iff",
+                                                                        "header_truncated": true,
+                                                                        "raw": 1121335,
+                                                                        "tag": "Lean.cdot"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ \n  let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n  let s := Finset.univ.filter (fun x => f x ≠ g' x)\n  show s.card ≤ Y.ncard * 2 ^ steps\n  rw [mul_comm]\n  refine (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans (Nat.mul_le_mul_left (2 ^ steps) ?_)\n  · have hsub :\n      s.filter (fun a => q a = b) ⊆\n        (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n          qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_ste",
+                                                                    "header_truncated": true,
+                                                                    "raw": 2063335,
+                                                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ \n  let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n  let s := Finset.univ.filter (fun x => f x ≠ g' x)\n  show s.card ≤ Y.ncard * 2 ^ steps\n  rw [mul_comm]\n  refine (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans (Nat.mul_le_mul_left (2 ^ steps) ?_)\n  · have hsub :\n      s.filter (fun a => q a = b) ⊆\n        (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n          qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_ste",
+                                                                "header_truncated": true,
+                                                                "raw": 2063424,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ (\n  let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n  let s := Finset.univ.filter (fun x => f x ≠ g' x)\n  show s.card ≤ Y.ncard * 2 ^ steps\n  rw [mul_comm]\n  refine (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans (Nat.mul_le_mul_left (2 ^ steps) ?_)\n  · have hsub :\n      s.filter (fun a => q a = b) ⊆\n        (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n          qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_st",
+                                                            "header_truncated": true,
+                                                            "raw": 2063515,
+                                                            "tag": "Lean.Parser.Tactic.paren"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ with_annotate_state\"by\"\n  ( let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n    let s := Finset.univ.filter (fun x => f x ≠ g' x)\n    show s.card ≤ Y.ncard * 2 ^ steps\n    rw [mul_comm]\n    refine\n      (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans (Nat.mul_le_mul_left (2 ^ steps) ?_)\n    · have hsub :\n        s.filter (fun a => q a = b) ⊆\n          (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n            qMap_total_fiber 𝔽q β (i ",
+                                                        "header_truncated": true,
+                                                        "raw": 2063611,
+                                                        "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ with_annotate_state\"by\"\n    ( let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n      let s := Finset.univ.filter (fun x => f x ≠ g' x)\n      show s.card ≤ Y.ncard * 2 ^ steps\n      rw [mul_comm]\n      refine\n        (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans (Nat.mul_le_mul_left (2 ^ steps) ?_)\n      · have hsub :\n          s.filter (fun a => q a = b) ⊆\n            (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n              qMap_",
+                                                    "header_truncated": true,
+                                                    "raw": 2063698,
+                                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "✅️ with_annotate_state\"by\"\n    ( let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n      let s := Finset.univ.filter (fun x => f x ≠ g' x)\n      show s.card ≤ Y.ncard * 2 ^ steps\n      rw [mul_comm]\n      refine\n        (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans (Nat.mul_le_mul_left (2 ^ steps) ?_)\n      · have hsub :\n          s.filter (fun a => q a = b) ⊆\n            (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n              qMap_",
+                                                "header_truncated": true,
+                                                "raw": 2063783,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n      let s := Finset.univ.filter (fun x => f x ≠ g' x)\n      show s.card ≤ Y.ncard * 2 ^ steps\n      rw [mul_comm]\n      refine\n        (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans (Nat.mul_le_mul_left (2 ^ steps) ?_)\n      · have hsub :\n          s.filter (fun a => q a = b) ⊆\n            (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n   ",
+                                            "header_truncated": true,
+                                            "raw": 2063953,
+                                            "tag": "Lean.Parser.Tactic.case"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have hcount : hammingDist f g' ≤ Y.ncard * 2 ^ steps := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n        let s := Finset.univ.filter (fun x => f x ≠ g' x)\n        show s.card ≤ Y.ncard * 2 ^ steps\n        rw [mul_comm]\n        refine\n          (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans\n            (Nat.mul_le_mul_left (2 ^",
+                                        "header_truncated": true,
+                                        "raw": 2166565,
+                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have hcount : hammingDist f g' ≤ Y.ncard * 2 ^ steps := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n        let s := Finset.univ.filter (fun x => f x ≠ g' x)\n        show s.card ≤ Y.ncard * 2 ^ steps\n        rw [mul_comm]\n        refine\n          (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans\n            (Nat.mul_le_mul_left (2 ^",
+                                    "header_truncated": true,
+                                    "raw": 2166656,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have hcount : hammingDist f g' ≤ Y.ncard * 2 ^ steps := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n        let s := Finset.univ.filter (fun x => f x ≠ g' x)\n        show s.card ≤ Y.ncard * 2 ^ steps\n        rw [mul_comm]\n        refine\n          (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans\n            (Nat.mul_le_mul_left",
+                                "header_truncated": true,
+                                "raw": 2166784,
+                                "tag": "Lean.Parser.Tactic.focus"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ have hcount : hammingDist f g' ≤ Y.ncard * 2 ^ steps :=\n  by\n  let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n  let s := Finset.univ.filter (fun x => f x ≠ g' x)\n  show s.card ≤ Y.ncard * 2 ^ steps\n  rw [mul_comm]\n  refine (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans (Nat.mul_le_mul_left (2 ^ steps) ?_)\n  · have hsub :\n      s.filter (fun a => q a = b) ⊆\n        (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n          qMap_total_f",
+                            "header_truncated": true,
+                            "raw": 2166969,
+                            "tag": "Lean.Parser.Tactic.tacticHave__"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ profile_tactic \"hcount\" in\n  have hcount : hammingDist f g' ≤ Y.ncard * 2 ^ steps :=\n    by\n    let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n    let s := Finset.univ.filter (fun x => f x ≠ g' x)\n    show s.card ≤ Y.ncard * 2 ^ steps\n    rw [mul_comm]\n    refine\n      (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans (Nat.mul_le_mul_left (2 ^ steps) ?_)\n    · have hsub :\n        s.filter (fun a => q a = b) ⊆\n          (Finset.univ : Finset (Fi",
+                        "header_truncated": true,
+                        "raw": 2167344,
+                        "tag": "tacticProfile_tactic_In_"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "✅️ \n  profile_tactic \"unfold1\" in unfold fiberwiseClose at h_fw_dist_lt\n  profile_tactic \"unfold2\" in unfold hammingClose\n  profile_tactic \"letCi\" in let C_i := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩\n  profile_tactic \"letDfw\" in let d_fw := fiberwiseDistance 𝔽q β (i := i) steps h_i_add_steps f\n  profile_tactic \"letDi\" in let d_i := BBF_CodeDistance ℓ 𝓡 ⟨i, by omega⟩\n  profile_tactic \"letDis\" in let d_is := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩\n  profile_tactic \"h",
+                    "header_truncated": true,
+                    "raw": 5670822,
+                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "✅️ \n  profile_tactic \"unfold1\" in unfold fiberwiseClose at h_fw_dist_lt\n  profile_tactic \"unfold2\" in unfold hammingClose\n  profile_tactic \"letCi\" in let C_i := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩\n  profile_tactic \"letDfw\" in let d_fw := fiberwiseDistance 𝔽q β (i := i) steps h_i_add_steps f\n  profile_tactic \"letDi\" in let d_i := BBF_CodeDistance ℓ 𝓡 ⟨i, by omega⟩\n  profile_tactic \"letDis\" in let d_is := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩\n  profile_tactic \"h",
+                "header_truncated": true,
+                "raw": 5670910,
+                "tag": "Lean.Parser.Tactic.tacticSeq"
+              }
+            ],
+            "class": "Elab.definition.value",
+            "header": "✅️ Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+            "header_truncated": false,
+            "raw": 5688039,
+            "tag": ""
+          }
+        ],
+        "class": "Elab.command",
+        "header": "✅️ /-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\nthen `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\ntheorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n    (h_i_add_steps : i.val + steps ≤ ℓ) (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n    (h_fw_dist_lt :\n      fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps)\n        (f := f)) :\n ",
+        "header_truncated": true,
+        "raw": 6563287,
+        "tag": "Lean.Parser.Command.theorem"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option maxHeartbeats✝ 0 in\n/-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\nthen `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\ntheorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n    (h_i_add_steps : i.val + steps ≤ ℓ) (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n    (h_fw_dist_lt :\n      fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) (i := i) (steps := steps) (h_i_add_steps := h_i_a",
+        "header_truncated": true,
+        "raw": 6566926,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option Elab.async✝ false in\nset_option maxHeartbeats✝ 0 in\n/-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\nthen `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\ntheorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n    (h_i_add_steps : i.val + steps ≤ ℓ) (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n    (h_fw_dist_lt :\n      fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) (i := i) (steps :",
+        "header_truncated": true,
+        "raw": 6570563,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ #proof_eval_measure \"PROOF_EVAL_47d4f6ea4bec45178e949ce1b4076d88\" target\n  \"Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius\" end 77269 in\n  /-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\n  then `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\n  theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n      (h_i_add_steps : i.val + steps ≤ ℓ) (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i,",
+        "header_truncated": true,
+        "raw": 6729790,
+        "tag": "«command#proof_eval_measure_Target_End_In_»"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 1000000 in\n#proof_eval_measure \"PROOF_EVAL_47d4f6ea4bec45178e949ce1b4076d88\" target\n  \"Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius\" end 77269 in\n  /-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\n  then `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\n  theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n      (h_i_add_steps : i.val + steps ≤ ℓ) (f : OracleFunc",
+        "header_truncated": true,
+        "raw": 6733534,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end",
+        "header_truncated": false,
+        "raw": 898,
+        "tag": "Lean.Parser.Command.end"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.useHeartbeats✝ true in\nset_option trace.profiler.threshold✝ 1000000 in\n#proof_eval_measure \"PROOF_EVAL_47d4f6ea4bec45178e949ce1b4076d88\" target\n  \"Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius\" end 77269 in\n  /-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\n  then `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\n  theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n      (h",
+        "header_truncated": true,
+        "raw": 1,
+        "tag": "Lean.Parser.Command.in"
+      }
+    ],
+    "hotspots": [
+      {
+        "node_id": 4,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.value",
+        "syntax_kind": "",
+        "snippet": "✅️ Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+        "snippet_truncated": false,
+        "heartbeats_raw": 5688039,
+        "heartbeats": 5688.039,
+        "inclusive": true
+      },
+      {
+        "node_id": 9,
+        "parent_id": 4,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "tacticProfile_tactic_In_",
+        "snippet": "✅️ profile_tactic \"hcount\" in\n  have hcount : hammingDist f g' ≤ Y.ncard * 2 ^ steps :=\n    by\n    let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n    let s := Finset.univ.filter (fun x => f x ≠ g' x)\n    show s.card ≤ Y.ncard * 2 ^ steps\n    rw [mul_comm]\n    refine\n      (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans (Nat.mul_le_mul_left (2 ^ steps) ?_)\n    · have hsub :\n        s.filter (fun a => q a = b) ⊆\n          (Finset.univ : Finset (Fi",
+        "snippet_truncated": true,
+        "heartbeats_raw": 2167344,
+        "heartbeats": 2167.344,
+        "inclusive": true
+      },
+      {
+        "node_id": 10,
+        "parent_id": 9,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have hcount : hammingDist f g' ≤ Y.ncard * 2 ^ steps :=\n  by\n  let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n  let s := Finset.univ.filter (fun x => f x ≠ g' x)\n  show s.card ≤ Y.ncard * 2 ^ steps\n  rw [mul_comm]\n  refine (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans (Nat.mul_le_mul_left (2 ^ steps) ?_)\n  · have hsub :\n      s.filter (fun a => q a = b) ⊆\n        (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n          qMap_total_f",
+        "snippet_truncated": true,
+        "heartbeats_raw": 2166969,
+        "heartbeats": 2166.969,
+        "inclusive": true
+      },
+      {
+        "node_id": 11,
+        "parent_id": 10,
+        "depth": 6,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have hcount : hammingDist f g' ≤ Y.ncard * 2 ^ steps := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n        let s := Finset.univ.filter (fun x => f x ≠ g' x)\n        show s.card ≤ Y.ncard * 2 ^ steps\n        rw [mul_comm]\n        refine\n          (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans\n            (Nat.mul_le_mul_left",
+        "snippet_truncated": true,
+        "heartbeats_raw": 2166784,
+        "heartbeats": 2166.784,
+        "inclusive": true
+      },
+      {
+        "node_id": 14,
+        "parent_id": 11,
+        "depth": 9,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.case",
+        "snippet": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n      let s := Finset.univ.filter (fun x => f x ≠ g' x)\n      show s.card ≤ Y.ncard * 2 ^ steps\n      rw [mul_comm]\n      refine\n        (Finset.card_le_mul_card_image (f := q) s (2 ^ steps) fun b _ => ?_).trans (Nat.mul_le_mul_left (2 ^ steps) ?_)\n      · have hsub :\n          s.filter (fun a => q a = b) ⊆\n            (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n   ",
+        "snippet_truncated": true,
+        "heartbeats_raw": 2063953,
+        "heartbeats": 2063.953,
+        "inclusive": true
+      },
+      {
+        "node_id": 21,
+        "parent_id": 14,
+        "depth": 16,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.cdot",
+        "snippet": "✅️ ·\n  have hsub :\n    s.filter (fun a => q a = b) ⊆\n      (Finset.univ : Finset (Fin (2 ^ steps))).image fun k =>\n        qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps :=\n          fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := b) k :=\n    by\n    intro x hx\n    exact\n      Finset.mem_image.mpr\n        ⟨pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x),\n          Finset.mem_univ _,\n          (is_fiber_iff",
+        "snippet_truncated": true,
+        "heartbeats_raw": 1121335,
+        "heartbeats": 1121.335,
+        "inclusive": true
+      },
+      {
+        "node_id": 7,
+        "parent_id": 4,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "tacticProfile_tactic_In_",
+        "snippet": "✅️ profile_tactic \"obtain\" in\n  obtain ⟨g', hg', hmin⟩ : ∃ g' ∈ C_i, d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard :=\n    by\n    have hne :\n      Set.Nonempty ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ) :=\n      Set.image_nonempty.mpr Set.univ_nonempty\n    rcases Nat.sInf_mem hne with ⟨w, _, hw⟩\n    exact ⟨w, w.property, hw.symm⟩",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1100240,
+        "heartbeats": 1100.24,
+        "inclusive": true
+      },
+      {
+        "node_id": 8,
+        "parent_id": 7,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.obtain",
+        "snippet": "✅️ obtain ⟨g', hg', hmin⟩ : ∃ g' ∈ C_i, d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard :=\n  by\n  have hne :\n    Set.Nonempty ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ) :=\n    Set.image_nonempty.mpr Set.univ_nonempty\n  rcases Nat.sInf_mem hne with ⟨w, _, hw⟩\n  exact ⟨w, w.property, hw.symm⟩",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1099863,
+        "heartbeats": 1099.863,
+        "inclusive": true
+      }
+    ],
+    "marks": [
+      {
+        "end": 513,
+        "heartbeats_raw": 1218,
+        "label": "unfold1",
+        "label_truncated": false,
+        "start": 446,
+        "succeeded": true,
+        "heartbeats": 1.218,
+        "inclusive": true,
+        "line": 7
+      },
+      {
+        "end": 565,
+        "heartbeats_raw": 2420,
+        "label": "unfold2",
+        "label_truncated": false,
+        "start": 516,
+        "succeeded": true,
+        "heartbeats": 2.42,
+        "inclusive": true,
+        "line": 9
+      },
+      {
+        "end": 669,
+        "heartbeats_raw": 126542,
+        "label": "letCi",
+        "label_truncated": false,
+        "start": 568,
+        "succeeded": true,
+        "heartbeats": 126.542,
+        "inclusive": true,
+        "line": 11
+      },
+      {
+        "end": 766,
+        "heartbeats_raw": 41371,
+        "label": "letDfw",
+        "label_truncated": false,
+        "start": 672,
+        "succeeded": true,
+        "heartbeats": 41.371,
+        "inclusive": true,
+        "line": 13
+      },
+      {
+        "end": 842,
+        "heartbeats_raw": 104293,
+        "label": "letDi",
+        "label_truncated": false,
+        "start": 769,
+        "succeeded": true,
+        "heartbeats": 104.293,
+        "inclusive": true,
+        "line": 15
+      },
+      {
+        "end": 932,
+        "heartbeats_raw": 85289,
+        "label": "letDis",
+        "label_truncated": false,
+        "start": 845,
+        "succeeded": true,
+        "heartbeats": 85.289,
+        "inclusive": true,
+        "line": 17
+      },
+      {
+        "end": 999,
+        "heartbeats_raw": 18151,
+        "label": "hpos",
+        "label_truncated": false,
+        "start": 935,
+        "succeeded": true,
+        "heartbeats": 18.151,
+        "inclusive": true,
+        "line": 19
+      },
+      {
+        "end": 1206,
+        "heartbeats_raw": 152527,
+        "label": "hsb",
+        "label_truncated": false,
+        "start": 1002,
+        "succeeded": true,
+        "heartbeats": 152.527,
+        "inclusive": true,
+        "line": 21
+      },
+      {
+        "end": 1489,
+        "heartbeats_raw": 167599,
+        "label": "halg",
+        "label_truncated": false,
+        "start": 1209,
+        "succeeded": true,
+        "heartbeats": 167.599,
+        "inclusive": true,
+        "line": 25
+      },
+      {
+        "end": 1903,
+        "heartbeats_raw": 1099933,
+        "label": "obtain",
+        "label_truncated": false,
+        "start": 1492,
+        "succeeded": true,
+        "heartbeats": 1099.933,
+        "inclusive": true,
+        "line": 30
+      },
+      {
+        "end": 1998,
+        "heartbeats_raw": 49732,
+        "label": "letY",
+        "label_truncated": false,
+        "start": 1906,
+        "succeeded": true,
+        "heartbeats": 49.732,
+        "inclusive": true,
+        "line": 38
+      },
+      {
+        "end": 2050,
+        "heartbeats_raw": 534948,
+        "label": "letdH",
+        "label_truncated": false,
+        "start": 2001,
+        "succeeded": true,
+        "heartbeats": 534.948,
+        "inclusive": true,
+        "line": 40
+      },
+      {
+        "end": 3396,
+        "heartbeats_raw": 2167037,
+        "label": "hcount",
+        "label_truncated": false,
+        "start": 2053,
+        "succeeded": true,
+        "heartbeats": 2167.037,
+        "inclusive": true,
+        "line": 42
+      },
+      {
+        "end": 3592,
+        "heartbeats_raw": 195650,
+        "label": "hbridge",
+        "label_truncated": false,
+        "start": 3399,
+        "succeeded": true,
+        "heartbeats": 195.65,
+        "inclusive": true,
+        "line": 66
+      },
+      {
+        "end": 3794,
+        "heartbeats_raw": 183862,
+        "label": "hnat",
+        "label_truncated": false,
+        "start": 3595,
+        "succeeded": true,
+        "heartbeats": 183.862,
+        "inclusive": true,
+        "line": 71
+      },
+      {
+        "end": 3944,
+        "heartbeats_raw": 663343,
+        "label": "h2",
+        "label_truncated": false,
+        "start": 3797,
+        "succeeded": true,
+        "heartbeats": 663.343,
+        "inclusive": true,
+        "line": 75
+      },
+      {
+        "end": 4052,
+        "heartbeats_raw": 70948,
+        "label": "finalex",
+        "label_truncated": false,
+        "start": 3947,
+        "succeeded": true,
+        "heartbeats": 70.948,
+        "inclusive": true,
+        "line": 78
+      }
+    ],
+    "profile_heartbeats_raw": 6570904,
+    "profile_heartbeats": 6570.904,
+    "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+    "cache_key": "bb6bdaa1983378198ff7227f7b3b4c6ebcaeaf2c0f3970d84bccb47f30d6dabc",
+    "status": "ok",
+    "available_hotspots": 8,
+    "hotspots_truncated": false,
+    "mark_count": 17,
+    "marks_truncated": false,
+    "partial": false,
+    "diagnostics": [],
+    "context_mode": "full_file_replacement",
+    "returncode": 0,
+    "elapsed_seconds": 6.016884548589587
+  }
+}

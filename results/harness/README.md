@@ -14,7 +14,16 @@ at the beginning and end. Historical conditions below remain separate evidence.
 | [06: package refactor replicate](06_refactor_regression/PROTOCOL.md) | Sol 6.1/max | Same prompts, references and search settings through the maintained APIs | 15 |
 | [07: native provider agents](07_native_agents/PROTOCOL.md) | DeepSeek V4.1 Flash/high via Lemex, Opus 5.5/max via Claude Code | Same V2 task, tools, score search and edge cleanup | 15 per model |
 | [08: tactic profiling](08_tactic_profiles/sol61_max/README.md) | Sol 6.1/max | Source and goal tools plus tactic heartbeat diagnostics | 15 |
+| [09: Qwen results and submission](09_qwen_flash_next/README.md) | Qwen3.8-Flash-Next/xhigh via Lemex | Profiling, score feedback, edge cleanup; audited original/recovery selection | 15 |
 | [11: Google Antigravity](11_antigravity/README.md) | Gemini 3.8 Flash/high via `agy` | $3 estimated per problem, streamed budget guard, two workers; 5 complete and 10 interrupted | 15 |
+
+The [Qwen submission](09_qwen_flash_next/submission.jsonl) reaches
+**78.219958% locally**, with 100% compatibility and **36/36** passing version
+checks. It combines ten original results with five improved recovery results;
+the five recovery problems received additional budgets. All three saved-evidence
+audits passed. The [manifest](09_qwen_flash_next/submission_manifest.json) pins
+every selected proof and its source; this portfolio is separate from a single-run
+model comparison.
 
 The [tactic-profiling trial](08_tactic_profiles/sol61_max/PROTOCOL.md) completed
 15/15 problems and passed its saved-evidence audit. Its combined score was
@@ -76,8 +85,12 @@ better all-version-valid original or saved D0 declaration. D0 comes from the
 completed deterministic experiments; references are never remeasured. The same
 bounded ten-method pass runs at the end. Every replacement must pass all required
 versions and improve the combined score by more than 0.05 percentage points.
-Search has no imposed total attempt, token or wall-time budget; costs are reported
-per problem under explicit API-equivalent assumptions, rather than as invoices.
+Historical searches had no imposed wall-time budget. New runs default to a
+57-minute whole-problem deadline, retaining the best fully verified proof when
+time expires. A native final normally ends the search; bounded transport recovery
+shares the same deadline. Optional budget tracking admits fresh optimization
+attempts under an explicit restart limit. Costs are reported per problem under
+explicit API-equivalent assumptions, rather than as invoices.
 
 Each run pins code, prompts, source projects, inputs, denominators, CLI identity
 and cost assumptions. The host owns the best-proof ledger and evaluation evidence;
