@@ -1,0 +1,109 @@
+{
+  "name": "Binius.BinaryBasefold.fold_advances_evaluation_poly",
+  "source": "arklib",
+  "method": "reuse",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 86.93599160545645,
+      "heartbeat_reduction_pct": 87.03160557101208,
+      "compatibility_pct": 100.0,
+      "combined_pct": 91.32253239215618
+    },
+    "candidate": {
+      "length": 249,
+      "code_sha256": "55b489509d4e884f3af352a0ec2fef3995dbce5ad66e06f57296e582b02b957c"
+    },
+    "primary_version": "v4.31.0",
+    "per_version": {
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 5871.255,
+        "heartbeat_reduction_pct": 87.03160557101208,
+        "cached": true,
+        "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+        "elapsed_seconds": 5.607266442850232,
+        "diagnostics": []
+      },
+      "v4.30.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 6217.54,
+        "heartbeat_reduction_pct": 86.68263783129497,
+        "cached": true,
+        "environment_fingerprint": "554e1850835d469c72f5efbcce1fb186712bb08829fcd9e0fd75dee8a3bc2f6c",
+        "elapsed_seconds": 5.749880155548453,
+        "diagnostics": []
+      },
+      "v4.29.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7169.494,
+        "heartbeat_reduction_pct": 85.57772219187586,
+        "cached": true,
+        "environment_fingerprint": "1ab71abdd0714f4a6c78175e8ab5280292bd128b28cdaaa5243d707457481218",
+        "elapsed_seconds": 7.027764156460762,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "theorem fold_advances_evaluation_poly\n  (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡)\n  (coeffs : Fin (2 ^ (ℓ - ↑i)) → L) (r_chal : L) :\n  let P_i : L[X] := intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i, by\n    exact Nat.lt_trans (n := i) (k := ℓ+1) (m := ℓ) (h₁ := i.isLt) (by exact Nat.lt_add_one ℓ)\n  ⟩) coeffs\n  let f_i := fun (x : (sDomain 𝔽q β h_ℓ_add_R_rate)\n      ⟨i, by exact Nat.lt_trans (n := i) (k := r) (m := ℓ) (h₁ := by omega) (by omega)⟩) =>\n    P_i.eval (x.val : L)\n  let f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)\n  let new_coeffs := fun j : Fin (2^(ℓ - (i + 1))) =>\n    (1 - r_chal) * (coeffs ⟨j.val * 2, by\n      rw [←Nat.add_zero (j.val * 2)]\n      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))\n        (i := 0) (by omega) (by omega)\n    ⟩) +\n    r_chal * (coeffs ⟨j.val * 2 + 1, by\n      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))\n        (i := 1) (by omega) (by omega)\n    ⟩)\n  let P_i_plus_1 :=\n    intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i+1, by omega⟩) new_coeffs\n  ∀ (y : (sDomain 𝔽q β h_ℓ_add_R_rate)\n    ⟨i+1, by omega⟩), f_i_plus_1 y = P_i_plus_1.eval y.val := by\n  intro P f f' new P' y\n  let fiber := qMap_total_fiber 𝔽q β ⟨i, by omega⟩ 1 h_i_succ_lt y\n  let P₀ := evenRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  let P₁ := oddRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  have he (k : Fin 2) : P.eval (fiber k).val =\n      P₀.eval y.val + (fiber k).val * P₁.eval y.val := by\n    have hq : (qMap 𝔽q β ⟨i, by omega⟩).eval (fiber k).val = y.val := by\n      simpa only [iteratedQuotientMap_k_eq_1_is_qMap, Subtype.eq_iff] using\n        (generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 i.isLt\n          (fiber k) y ⟨k, rfl⟩).symm\n    simp only [P, evaluation_poly_split_identity, Polynomial.eval_add, eval_comp, Polynomial.eval_mul,\n      Polynomial.eval_X, hq, P₀, P₁]\n  have hp : P'.eval y.val = (1 - r_chal) * P₀.eval y.val + r_chal * P₁.eval y.val := by\n    simp only [P', new, P₀, P₁, intermediateEvaluationPoly, evenRefinement, oddRefinement,\n      Fin.eta, Polynomial.eval_finset_sum, Polynomial.eval_mul, Polynomial.eval_C, add_mul,\n      mul_assoc, mul_sum, Finset.sum_add_distrib]\n    rfl\n  dsimp only [f', fold, f]\n  rw [he, he, hp]\n  simp only [fiber, qMap_total_fiber_one_level_eq 𝔽q β i i.isLt,\n    Fin2ToF2, Ne.symm Fin.zero_ne_one, ↓reduceIte, Submodule.coe_add, Submodule.coe_smul]\n  simp only [zero_smul, one_smul, zero_add, get_sDomain_first_basis_eq_1]\n  ring",
+  "rounds": 1,
+  "attempts": 0,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 1,
+  "lean_candidate_checks": 0,
+  "cache_hits": 0,
+  "elapsed_seconds": 0.403,
+  "stop_reason": "no_new_proposals",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 86.93599160545645,
+      "heartbeat_reduction_pct": 87.03160557101208,
+      "compatibility_pct": 100.0,
+      "combined_pct": 91.32253239215618
+    },
+    "candidate": {
+      "length": 249,
+      "code_sha256": "55b489509d4e884f3af352a0ec2fef3995dbce5ad66e06f57296e582b02b957c"
+    },
+    "primary_version": "v4.31.0",
+    "per_version": {
+      "v4.31.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 5871.255,
+        "heartbeat_reduction_pct": 87.03160557101208,
+        "cached": true,
+        "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+        "elapsed_seconds": 5.607266442850232,
+        "diagnostics": []
+      },
+      "v4.30.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 6217.54,
+        "heartbeat_reduction_pct": 86.68263783129497,
+        "cached": true,
+        "environment_fingerprint": "554e1850835d469c72f5efbcce1fb186712bb08829fcd9e0fd75dee8a3bc2f6c",
+        "elapsed_seconds": 5.749880155548453,
+        "diagnostics": []
+      },
+      "v4.29.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7169.494,
+        "heartbeat_reduction_pct": 85.57772219187586,
+        "cached": true,
+        "environment_fingerprint": "1ab71abdd0714f4a6c78175e8ab5280292bd128b28cdaaa5243d707457481218",
+        "elapsed_seconds": 7.027764156460762,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": false
+}

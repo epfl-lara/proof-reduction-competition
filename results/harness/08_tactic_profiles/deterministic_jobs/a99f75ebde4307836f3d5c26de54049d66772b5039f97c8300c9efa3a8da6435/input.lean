@@ -1,0 +1,41 @@
+lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d}
+    {𝓕 : FreeSpace}
+    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d)
+    (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J)
+    (t : Time) (x : Space d) (i : Fin d) :
+    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =
+      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -
+      𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -
+      𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by
+  have hA2 : ContDiff ℝ 2 A := hA.of_le (right_eq_inf.mp rfl)
+  have hA3 : ContDiff ℝ 3 A := hA.of_le (right_eq_inf.mp rfl)
+  have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) :=
+    electricField_apply_contDiff_space hA3 t
+  have hEd (j k : Fin d) := Space.deriv_differentiable (hEs j) k
+  have hB (j : Fin d) := magneticFieldMatrix_contDiff (n := 2) (c := 𝓕.c) A hA3 (j, i)
+  have hd (j : Fin d) := Space.time_deriv_comm_space_deriv (i := j) (hB j) t x
+  simp only [time_deriv_magneticFieldMatrix A hA2, Space.fun_deriv_sub, hEd,
+    Pi.sub_apply, Space.deriv_commute, hEs] at hd
+  have hg : (∇ ⬝ A.electricField 𝓕.c t) =
+      𝓕.ε₀⁻¹ • J.chargeDensity 𝓕.c t :=
+    funext fun y => (((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1).trans
+      (div_eq_inv_mul _ _)
+  unfold Space.div at hg
+  have hs := congrArg (fun f => fderiv ℝ f x (Space.basis i)) hg
+  simp only [fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt),
+    fderiv_const_smul_field, _root_.sum_apply, _root_.smul_apply, Pi.smul_apply, smul_eq_mul,
+    ← Space.deriv_eq] at hs
+  conv_lhs =>
+    enter [1, s]
+    rw [Time.deriv_euclid (electricField_differentiable_time hA2 x),
+      time_deriv_electricField_of_isExtrema hA J hJ h]
+  have ht := ((HasFDerivAt.fun_sum (u := Finset.univ)
+    fun j _ => (Space.space_deriv_differentiable_time (i := j) (hB j) x t).hasFDerivAt).const_mul (1 / (𝓕.μ₀ * 𝓕.ε₀))).fun_sub
+      ((LorentzCurrentDensity.currentDensity_apply_differentiable_time
+        (c := 𝓕.c) (hJ.differentiable (by decide)) x i t).hasFDerivAt.const_mul (1 / 𝓕.ε₀))
+  conv_lhs =>
+    rw [Time.deriv_eq, ht.fderiv]
+    simp only [_root_.sub_apply, _root_.smul_apply, _root_.sum_apply, smul_eq_mul,
+      ← Time.deriv_eq, hd, Finset.sum_sub_distrib, hs]
+  simp only [FreeSpace.c_sq, mul_comm 𝓕.ε₀ 𝓕.μ₀, div_eq_mul_inv, mul_inv_rev, mul_assoc, mul_sub,
+    inv_mul_cancel₀ 𝓕.μ₀_ne_zero, mul_one, one_mul]

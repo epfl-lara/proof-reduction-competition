@@ -11,7 +11,7 @@ import pytest
 from proof_eval.evidence.io import digest, fingerprint, read
 from proof_eval.harness.config import RunConfig
 from proof_eval.harness.configuration import load_inputs, starting_point
-from proof_eval.harness.prompts import messages, tool_instructions
+from proof_eval.harness.prompts import PROFILE_TOOLS, messages, tool_instructions
 from proof_eval.paths import PACKAGE, ROOT
 from proof_eval.providers import codex, execution
 
@@ -34,12 +34,13 @@ def test_measurement_source_still_matches_every_saved_reference():
     assert len(pins) == 36 and set(pins) == {expected}
 
 
-def test_full_sol_prompt_and_tool_instructions_match_the_checkpoint():
+def test_sol_prompt_preserved_and_only_profile_tools_extend_the_checkpoint():
     old = ROOT / "results/harness/05_model_config"
     assert (
-        tool_instructions("score_edges")
+        tool_instructions("score_edges").removesuffix(PROFILE_TOOLS)
         == read(old / "config.json")["tool_instructions"]
     )
+    assert PROFILE_TOOLS not in tool_instructions("correctness")
     for name, pack in load_inputs().items():
         previous = read(
             old

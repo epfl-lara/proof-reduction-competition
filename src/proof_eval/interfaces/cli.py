@@ -47,6 +47,21 @@ def main(argv=None):
                 default="combined",
             )
             sub.add_argument("--invalid-reward", type=float, default=0.0)
+    profiling = commands.add_parser(
+        "profile", help="Diagnostic tactic heartbeat hotspots"
+    )
+    profiling.add_argument("name", help="Exact benchmark theorem ID")
+    profiling.add_argument(
+        "--code-file", default="-", help="Lean declaration, or - for stdin"
+    )
+    profiling.add_argument(
+        "--version", help="One required version; defaults to primary"
+    )
+    profiling.add_argument("--threshold-raw", type=int, default=10_000)
+    profiling.add_argument("--limit", type=int, default=20)
+    profiling.add_argument(
+        "--output", help="Save the complete diagnostic trace as JSON"
+    )
     server = commands.add_parser("serve", help="Start the localhost JSON HTTP API")
     server.add_argument("--port", type=int, default=8765)
     server.add_argument("--workers", type=int, default=2)
@@ -66,6 +81,25 @@ def main(argv=None):
             return 0
         if args.command == "environments":
             result = evaluator.environments()
+        elif args.command == "profile":
+            from proof_eval.evidence.io import write_json
+            from proof_eval.verification.profile_trace import profile_view
+            from proof_eval.verification.profiling import ProfileConfig, profile
+
+            code = (
+                sys.stdin.read()
+                if args.code_file == "-"
+                else Path(args.code_file).read_text()
+            )
+            diagnostic = profile(
+                evaluator,
+                args.name,
+                code,
+                config=ProfileConfig(args.version, args.threshold_raw, args.limit),
+            )
+            if args.output:
+                write_json(args.output, diagnostic)
+            result = profile_view(diagnostic)
         else:
             versions = (
                 args.versions.split(",") if "," in args.versions else args.versions

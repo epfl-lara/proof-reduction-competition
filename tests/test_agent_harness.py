@@ -467,6 +467,95 @@ def test_prompts_have_tools_and_no_target_answer_examples():
     )
 
 
+def test_profile_tool_is_host_owned_and_cannot_replace_best(
+    make_session, monkeypatch, tmp_path
+):
+    session = make_session("score_edges")
+    before = session.status()
+    calls = []
+
+    def profiling(evaluator, name, code, *, config):
+        calls.append((name, code, config))
+        return {
+            "kind": "lean_heartbeat_profile",
+            "status": "ok",
+            "diagnostic_only": True,
+            "trace": [{"host": "complete trace"}],
+            "hotspots": [{"heartbeats": 123.4}],
+        }
+
+    monkeypatch.setattr(toolmod, "profile", profiling)
+    request = {"op": "profile", "code": ORIGINAL, "threshold_raw": 500, "limit": 3}
+    feedback = session.dispatch(request)
+    assert feedback["diagnostic_only"] and "trace" not in feedback
+    assert (
+        session.status() == before
+        and not session.checks
+        and not make_session.evaluator.calls
+    )
+    evidence = json.loads(
+        (session.folder / "profiles" / (feedback["evidence_id"] + ".json")).read_text()
+    )
+    assert evidence["code"] == ORIGINAL and evidence["profile"]["trace"]
+    assert calls[0][2].threshold_raw == 500 and calls[0][2].limit == 3
+    with pytest.raises(ValueError, match="invalid fields"):
+        session.dispatch({**request, "name": "unrelated"})
+    with pytest.raises(ValueError, match="correctness-only"):
+        make_session("correctness", tmp_path / "correctness").dispatch(request)
+    session.dispatch({"op": "finish", "reason": "done"})
+    with pytest.raises(ValueError, match="finished"):
+        session.dispatch(request)
+
+
+def test_workspace_profile_client_routes_options_and_writes_only_host_evidence(
+    make_session, monkeypatch, tmp_path
+):
+    session = make_session("score_edges")
+    received = []
+
+    def profiling(evaluator, name, code, *, config):
+        received.append(config)
+        assert code == ORIGINAL
+        return {
+            "kind": "lean_heartbeat_profile",
+            "status": "ok",
+            "trace": [],
+            "marks": [],
+        }
+
+    monkeypatch.setattr(toolmod, "profile", profiling)
+    work = tmp_path / "workspace"
+    work.mkdir()
+    (work / "tools.py").write_text(
+        (Path(__file__).parents[1] / "src/proof_eval/harness/client.py").read_text()
+    )
+    (work / "candidate.lean").write_text(ORIGINAL)
+    with ProofToolService(session, work):
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(work / "tools.py"),
+                "profile",
+                "candidate.lean",
+                "--version",
+                "v2",
+                "--threshold-raw",
+                "123",
+                "--limit",
+                "2",
+            ],
+            cwd=tmp_path,
+            text=True,
+            capture_output=True,
+            timeout=15,
+        )
+    assert proc.returncode == 0, proc.stderr
+    assert json.loads(proc.stdout)["status"] == "ok"
+    assert received[0].version == "v2" and received[0].threshold_raw == 123
+    assert list((session.folder / "profiles").glob("*.json"))
+    assert not (work / "profiles").exists() and not session.checks
+
+
 @pytest.mark.parametrize("mode", ["correctness", "score", "score_edges"])
 @pytest.mark.parametrize(
     "model,effort",

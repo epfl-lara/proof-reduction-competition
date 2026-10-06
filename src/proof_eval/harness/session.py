@@ -8,13 +8,15 @@ import time
 from copy import deepcopy
 from pathlib import Path
 
-from proof_eval.evidence.io import now, write_json
+from proof_eval.evidence.io import fingerprint, now, write_json
 from proof_eval.protocol import FIELDS, code_identity, context_for_prompt
 from proof_eval.verification.context import build_context
 from proof_eval.verification.feedback import (
     all_versions_passed,
     build_validity_feedback,
 )
+from proof_eval.verification.profile_trace import profile_view
+from proof_eval.verification.profiling import ProfileConfig, profile
 from proof_eval.verification.references import (
     original_evaluation,
     require_valid,
@@ -203,6 +205,21 @@ class ProofSession:
             "finished": self.finished,
         }
 
+    def profile(self, code: str, *, config: ProfileConfig | None = None) -> dict:
+        """Record a diagnostic without modifying checks, scores or best proof."""
+        with self.lock:
+            if self.mode == "correctness":
+                raise ValueError("Profiling is unavailable in correctness-only mode")
+            if self.finished:
+                raise ValueError("Session already finished")
+            self.guard()
+            result = profile(self.evaluator, self.pack["name"], code, config=config)
+            self.guard()
+            evidence = {"at": now(), "code": code, "profile": result}
+            identity = fingerprint(evidence)
+            write_json(self.folder / "profiles" / f"{identity}.json", evidence)
+            return {**profile_view(result), "evidence_id": identity}
+
     def deterministic(self, code: str, *, origin: str = "agent_tool") -> dict:
         """Host-only final cleanup, preserving raw and cleaned evidence."""
         with self.lock:
@@ -272,6 +289,22 @@ class ProofSession:
             return self.check(request["code"])
         if op == "status" and set(request) == {"op"}:
             return self.status()
+        if (
+            op == "profile"
+            and {"op", "code"} <= set(request)
+            and set(request) <= {"op", "code", "version", "threshold_raw", "limit"}
+            and isinstance(request["code"], str)
+        ):
+            return self.profile(
+                request["code"],
+                config=ProfileConfig(
+                    **{
+                        key: value
+                        for key, value in request.items()
+                        if key not in {"op", "code"}
+                    }
+                ),
+            )
         if op == "finish" and set(request) == {"op", "reason"}:
             if not isinstance(request["reason"], str) or not request["reason"].strip():
                 raise ValueError("Provide a short factual stopping reason")

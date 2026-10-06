@@ -11,6 +11,13 @@ def main():
     commands = parser.add_subparsers(dest="op", required=True)
     for op in ("check", "goals"):
         commands.add_parser(op).add_argument("file")
+    profile = commands.add_parser(
+        "profile", help="Diagnostic tactic heartbeat hotspots"
+    )
+    profile.add_argument("file")
+    profile.add_argument("--version")
+    profile.add_argument("--threshold-raw", type=int, default=10_000)
+    profile.add_argument("--limit", type=int, default=20)
     commands.add_parser("status")
     commands.add_parser("finish").add_argument("--reason", required=True)
     search = commands.add_parser("search")
@@ -28,7 +35,7 @@ def main():
             sub.add_argument("--end", type=int, default=180)
     args = vars(parser.parse_args())
     workspace = Path(__file__).resolve().parent
-    if args["op"] in ("check", "goals"):
+    if args["op"] in ("check", "goals", "profile"):
         path = Path(args.pop("file"))
         if not path.is_absolute():
             path = workspace / path

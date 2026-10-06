@@ -16,6 +16,7 @@ from proof_eval.verification.context import (
     build_context,
 )
 from proof_eval.verification.metrics import token_count
+from proof_eval.verification.profiling import ProfileConfig, profile
 
 
 def test_goal_truncation_preserves_target_under_long_context():
@@ -87,16 +88,21 @@ def test_parser_bounds_repeated_sites_and_never_fakes_missing_costs():
 
 
 @pytest.fixture
-def context_fixture(tmp_path):
+def context_fixture(tmp_path, request):
+    options = getattr(request, "param", "v4.25.0")
+    version = options["version"] if isinstance(options, dict) else options
+    documentation = (
+        options.get("documentation", "") if isinstance(options, dict) else ""
+    )
     if not shutil.which("elan") or not shutil.which("lake"):
         pytest.skip("Lean/Lake unavailable")
-    if "leanprover/lean4:v4.25.0" not in subprocess.check_output(
+    if f"leanprover/lean4:{version}" not in subprocess.check_output(
         ["elan", "toolchain", "list"], text=True
     ):
-        pytest.skip("Lean v4.25.0 unavailable")
+        pytest.skip(f"Lean {version} unavailable")
     project = tmp_path / "project"
     project.mkdir()
-    (project / "lean-toolchain").write_text("leanprover/lean4:v4.25.0\n")
+    (project / "lean-toolchain").write_text(f"leanprover/lean4:{version}\n")
     (project / "lakefile.toml").write_text('name = "context_test"\nversion = "0.1.0"\n')
     (project / "lake-manifest.json").write_text(
         json.dumps(
@@ -110,7 +116,7 @@ def context_fixture(tmp_path):
         )
     )
     code = "theorem context_α (n : Nat) : n = n := by\n  have h : n = n := by rfl\n  exact h"
-    (project / "Example.lean").write_text("import Lean\n" + code + "\n")
+    (project / "Example.lean").write_text("import Lean\n" + documentation + code + "\n")
 
     def git(*args):
         return subprocess.check_output(
@@ -135,7 +141,7 @@ def context_fixture(tmp_path):
         "src": code,
         "proof_length": token_count(code.split(" :=", 1)[1]),
         "file_path": "Example.lean",
-        "version_info": [{"v4.25.0": git("rev-parse", "HEAD")}],
+        "version_info": [{version: git("rev-parse", "HEAD")}],
     }
     dataset = tmp_path / "data.jsonl"
     dataset.write_text(json.dumps(row, ensure_ascii=False) + "\n")
@@ -146,7 +152,7 @@ def context_fixture(tmp_path):
                 "projects": [
                     {
                         "source": row["source"],
-                        "version": "v4.25.0",
+                        "version": version,
                         "path": str(project),
                     }
                 ]
@@ -211,3 +217,139 @@ def test_real_cache_invalidation_and_unavailable_are_explicit(context_fixture):
     ):
         with pytest.raises(ValueError):
             build_context(evaluator, row, code, **kwargs)
+
+
+@pytest.mark.parametrize(
+    "context_fixture",
+    [
+        "v4.25.0",
+        "v4.26.0",
+        "v4.32.0",
+        "v4.33.0-rc2",
+    ],
+    indirect=True,
+)
+def test_real_profile_and_labels_reuse_diagnostics_without_touching_scores(
+    context_fixture, monkeypatch
+):
+    evaluator, row, code = context_fixture
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError(
+            "Profiling must never score candidates or prepare/read references"
+        )
+
+    monkeypatch.setattr(evaluator, "evaluate", forbidden)
+    monkeypatch.setattr(evaluator, "prepare_reference", forbidden)
+    monkeypatch.setattr(evaluator, "get_reference", forbidden)
+    monkeypatch.setattr(evaluator.backend, "check", forbidden)
+    original = profile(
+        evaluator, row["name"], code, config=ProfileConfig(threshold_raw=0)
+    )
+    assert original["status"] == "ok", original["diagnostics"]
+    assert any(item["snippet"] == "exact h" for item in original["hotspots"])
+    labelled = code.replace("by rfl", 'by profile_tactic "inner" in rfl').replace(
+        "exact h", 'profile_tactic "finish proof" in exact h'
+    )
+    marked = profile(evaluator, row["name"], labelled)
+    assert marked["status"] == "ok", marked["diagnostics"]
+    assert [mark["label"] for mark in marked["marks"]] == ["inner", "finish proof"]
+    assert all(
+        mark["succeeded"] and mark["heartbeats_raw"] > 0 for mark in marked["marks"]
+    )
+    assert marked["cache_key"] != original["cache_key"]
+    assert original["profile_heartbeats"] == original["profile_heartbeats_raw"] / 1000
+    assert not (evaluator.store.root / "references").exists()
+    assert not (evaluator.store.root / "candidates").exists()
+    assert not list(next(iter(evaluator.projects.values())).glob("_ProofEval_*.lean"))
+    monkeypatch.setattr("proof_eval.verification.profiling._run", forbidden)
+    assert profile(evaluator, row["name"], labelled)["cached"]
+
+
+def test_real_profile_failure_is_partial_and_not_cached(context_fixture):
+    evaluator, row, code = context_fixture
+    failed = profile(
+        evaluator, row["name"], code.replace("exact h", "unknown_profile_tactic")
+    )
+    assert failed["status"] == "failed", failed["diagnostics"]
+    assert failed["partial"] and failed["diagnostics"]
+    assert failed["profile_heartbeats"] is None
+    assert not evaluator.store.read("profiles", failed["cache_key"])
+    with pytest.raises(ValueError, match="preserve the exact"):
+        profile(evaluator, row["name"], "theorem unrelated : True := by trivial")
+
+
+def test_real_nested_profile_labels_preserve_both_branch_invocations(context_fixture):
+    evaluator, row, _ = context_fixture
+    code = row["statement"] + """ := by
+  have h : True ∧ True := by
+    profile_tactic "whole block" in (constructor <;> profile_tactic "branch" in trivial)
+  rfl"""
+    result = profile(evaluator, row["name"], code, config=ProfileConfig(limit=1))
+    assert result["status"] == "ok", result["diagnostics"]
+    assert [mark["label"] for mark in result["marks"]] == [
+        "branch",
+        "branch",
+        "whole block",
+    ]
+    assert result["mark_count"] == 3 and result["marks_truncated"]
+    assert result["marks"][0]["start"] == result["marks"][1]["start"]
+    assert result["marks"][2]["heartbeats_raw"] > sum(
+        mark["heartbeats_raw"] for mark in result["marks"][:2]
+    )
+
+
+@pytest.mark.parametrize(
+    "context_fixture",
+    [
+        {
+            "version": "v4.25.0",
+            "documentation": "/-- A documented declaration with α. -/\n",
+        }
+    ],
+    indirect=True,
+)
+def test_real_profile_labels_keep_coordinates_when_source_has_documentation(
+    context_fixture,
+):
+    evaluator, row, code = context_fixture
+    labelled = code.replace("exact h", 'profile_tactic "finish proof" in exact h')
+    result = profile(evaluator, row["name"], labelled)
+    assert result["status"] == "ok", result["diagnostics"]
+    mark = result["marks"][0]
+    assert mark["start"] == labelled.index("profile_tactic")
+    assert mark["end"] == len(labelled) and mark["line"] == 3
+
+
+def test_profile_cli_prints_bounded_feedback_and_saves_full_evidence(
+    context_fixture, monkeypatch, tmp_path, capsys
+):
+    from proof_eval.interfaces import cli
+
+    evaluator, row, code = context_fixture
+    monkeypatch.setattr(cli, "Evaluator", lambda *args, **kwargs: evaluator)
+    candidate = tmp_path / "candidate.lean"
+    candidate.write_text(code)
+    output = tmp_path / "profile.json"
+    assert (
+        cli.main(
+            [
+                "profile",
+                row["name"],
+                "--code-file",
+                str(candidate),
+                "--threshold-raw",
+                "0",
+                "--limit",
+                "1",
+                "--output",
+                str(output),
+            ]
+        )
+        == 0
+    )
+    feedback = json.loads(capsys.readouterr().out)
+    saved = json.loads(output.read_text())
+    assert feedback["status"] == saved["status"] == "ok"
+    assert "trace" not in feedback and saved["trace"]
+    assert len(feedback["hotspots"]) == 1 and feedback["hotspots_truncated"]

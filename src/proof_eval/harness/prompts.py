@@ -52,6 +52,21 @@ then finish with a short stopping reason and return that exact declaration.
 """,
 }
 
+PROFILE_TOOLS = """
+For heartbeat hotspots, run `python tools.py profile candidate.lean`
+[--version VERSION] [--threshold-raw 10000] [--limit 20]. This explicitly compiles
+one diagnostic version and returns expensive tactics and elaboration/kernel
+phases. Costs are inclusive: parents include children. Raw counters / 1000 are
+the heartbeat units used by check; profiling adds overhead and never changes
+the saved scores or best proof. Use check to measure any proposed improvement.
+To label a tactic or block in a diagnostic copy, use
+`profile_tactic "label" in simp [lemmas]` or
+`profile_tactic "label" in (tactic1; tactic2)` inside the proof.
+The profile response reports each observed label's heartbeat cost and line.
+Remove these wrappers before check and final output. Lower the raw threshold
+to see cheaper native steps; labelled measurements are not threshold-filtered.
+"""
+
 
 def tool_instructions(mode):
     if mode not in (*MODE_TOOLS, "score_edges"):
@@ -66,8 +81,13 @@ seed before your call and will apply the fixed deterministic portfolio to your
 best checked proof after your call. Reference denominators remain the original.
 """
         placement += "Deterministic cleanup is performed only before and after model search; no in-loop deterministic tool is available.\n"
-        return common + "\n" + MODE_TOOLS["score"] + "\n" + placement
-    return COMMON_TOOLS + "\n" + MODE_TOOLS[mode]
+        return common + "\n" + MODE_TOOLS["score"] + "\n" + placement + PROFILE_TOOLS
+    return (
+        COMMON_TOOLS
+        + "\n"
+        + MODE_TOOLS[mode]
+        + (PROFILE_TOOLS if mode == "score" else "")
+    )
 
 
 def messages(pack, seed=None):

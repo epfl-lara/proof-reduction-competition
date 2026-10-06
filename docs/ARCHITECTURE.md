@@ -6,7 +6,7 @@ APIs; no library imports an experiment driver. Historical studies stay in
 
 | Package | Responsibility | Main API |
 | --- | --- | --- |
-| `verification` | Pinned Lean compilation, token counts, cached references, goal observations | `Evaluator`, `check_references` |
+| `verification` | Pinned Lean compilation, token counts, cached references, goal observations, heartbeat diagnostics | `Evaluator`, `check_references`, `profile` |
 | `optimization` | Parsed proof edits, tactic discovery, minimization, bounded cleanup, generic deterministic batches | `Budget`, `optimize`, `cleanup_proof`, `BatchConfig`, `run_batch` |
 | `providers` | Native agent CLIs, durable execution/isolation, terminal usage, price estimates | `codex.generate`, `lemex.generate`, `claude.generate`, `CostConfig` |
 | `harness` | Prompt/context policy, tool sessions, one-theorem search, batch coordination and reports | `ProofSession`, `ProofToolService`, `RunConfig`, `run` |
@@ -93,6 +93,7 @@ the tool API used by the host. `dispatch()` accepts these exact JSON operations:
 | `check` | `code` | Score tuple, total, correctness, pass rate, best proof |
 | `status` | none | Current best proof and measured scores |
 | `goals` | `code` | Lean goal observations without performance measurements |
+| `profile` | `code`, optional `version`, `threshold_raw`, `limit` | Bounded inclusive tactic/phase heartbeat diagnostics; no score or selection changes |
 | `search` | `query`, optional `version`, `limit` | Literal search in pinned Lean sources |
 | `read` | `path`, optional `version`, `start`, `end` | Bounded source excerpt |
 | `outline` | `path`, optional `version` | Declaration locations |
@@ -113,6 +114,15 @@ evidence and temporarily compiles inside the pinned projects. The model gets
 source and goal tools and ordinary shell tools. Deterministic cleanup is a host
 operation at the end, not an agent tool. The initial seed is the better validated
 original or saved deterministic proof.
+
+`verification/profiling.py` runs explicit diagnostic compilations using native
+heartbeat traces and optional `profile_tactic "label" in tac` annotations.
+`verification/profile_trace.py` builds bounded rankings from structured trace
+trees. The separate profile cache and host-owned `profiles/` evidence retain
+proof/environment/configuration identities. This operation neither reads nor
+writes reference measurements, and correctness-only sessions reject it. Costs
+include diagnostic overhead and nested work; candidate scores still come only
+from `check`. See [PROFILING.md](PROFILING.md) for units, examples and limitations.
 
 ## Providers and costs
 

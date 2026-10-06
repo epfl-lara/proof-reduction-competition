@@ -13,6 +13,13 @@ at the beginning and end. Historical conditions below remain separate evidence.
 | [05: model configuration and cost](05_model_config/PROTOCOL.md) | Sol 6.1/max, Astra/high | Beginning/end cleanup plus score search and cost reporting | 30 |
 | [06: package refactor replicate](06_refactor_regression/PROTOCOL.md) | Sol 6.1/max | Same prompts, references and search settings through the maintained APIs | 15 |
 | [07: native provider agents](07_native_agents/PROTOCOL.md) | DeepSeek V4.1 Flash/high via Lemex, Opus 5.5/max via Claude Code | Same V2 task, tools, score search and edge cleanup | 15 per model |
+| [08: tactic profiling](08_tactic_profiles/sol61_max/README.md) | Sol 6.1/max | Source and goal tools plus tactic heartbeat diagnostics | 15 |
+
+The [tactic-profiling trial](08_tactic_profiles/sol61_max/PROTOCOL.md) completed
+15/15 problems and passed its saved-evidence audit. Its combined score was
+**86.951351%**, with 100% compatibility. Sol profiled every problem; heartbeat
+reduction was essentially unchanged from the previous replicate, and one repeat
+does not isolate a causal tool benefit.
 
 Stages 01–06 are complete and audited. The [refactor replicate](06_refactor_regression/COMPARISON.md)
 reached **86.575834% combined**, with 100% compatibility and 36/36 passing version

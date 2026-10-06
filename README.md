@@ -87,8 +87,14 @@ report = run(RunConfig(
 
 ```bash
 proof-eval evaluate putnam_1964_a4 --code-file candidate.lean
+proof-eval profile putnam_1964_a4 --code-file candidate.lean --output profile.json
 proof-eval serve --port 8765 --workers 2
 ```
+
+Models can use `python tools.py profile candidate.lean` to find tactic heartbeat
+hotspots, or add `profile_tactic "label" in tac` in a diagnostic copy to measure
+a chosen tactic or block. Costs are inclusive and include profiling overhead;
+`check` still owns scoring and proof selection. See [tactic profiling](docs/PROFILING.md).
 
 The generic deterministic API accepts a new competition batch with explicit paths and prepared references. See [docs/DETERMINISTIC_BATCH.md](docs/DETERMINISTIC_BATCH.md). `proof-benchmark` processes references once; `proof-setup` builds the pinned source projects. These are explicit setup actions, separate from search.
 
@@ -102,6 +108,7 @@ The generic deterministic API accepts a new competition batch with explicit path
 - [Sol configuration results and submission](results/harness/05_model_config/README.md): the pre-refactor Sol/max result was 87.342215% combined with 100% compatibility.
 - [Refactor validation and fresh Sol replicate](results/harness/06_refactor_regression/COMPARISON.md): 86.575834% combined, 100% compatibility, 36/36 passing versions; the earlier stronger submission is preserved.
 - [Native provider pilots](results/harness/07_native_agents/README.md): Opus completed one problem; DeepSeek retained an improved proof after a transport failure. Both cohorts are incomplete.
+- [Sol tactic-profiling trial](results/harness/08_tactic_profiles/sol61_max/PROTOCOL.md): 15/15 complete and audited; 86.951351% combined, 100% compatibility. Profiling was used on every problem; one repeat does not establish a causal score gain.
 - [related_work](related_work/README.md): literature, papers and research proposals.
 - [prompts](prompts): the one active revised task policy and strategy bank.
 

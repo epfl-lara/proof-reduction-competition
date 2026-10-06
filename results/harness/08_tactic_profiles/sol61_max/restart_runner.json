@@ -1,0 +1,28 @@
+{
+  "pid": 1005886,
+  "started_at": "2026-10-06T11:44:13.864313+00:00",
+  "command": [
+    "/localhome/milikic/miniconda3/envs/af/bin/python",
+    "-c",
+    "\nfrom __future__ import annotations\nimport json\nimport os\nfrom collections import Counter\nfrom pathlib import Path\nfrom proof_eval.evidence.io import digest, now, read, write_json\nfrom proof_eval.harness.audit import audit\nfrom proof_eval.harness.config import RunConfig\nfrom proof_eval.harness.runner import run\nfrom proof_eval.paths import ROOT\nfrom proof_eval.providers.registry import adapter\n\noutput=Path('/localhome/milikic/proof-reduction-competition/results/harness/08_tactic_profiles/sol61_max')\nconfig=read(output/'config.json');preflight=read(output/'restart_preflight.json')\nassert ROOT==Path(preflight['runtime'])\nassert adapter('codex').cli_identity()==config['cli']\nfor relative,expected in config['code_sha256'].items(): assert digest(ROOT/relative)==expected,relative\nnames=tuple(preflight['remaining'])\nassert len(names)==6\nstarted_at=now()\nwrite_json(output/'restart_progress.json',{\n 'status':'running','pid':os.getpid(),'started_at':started_at,\n 'remaining':list(names),'preserved_completed_cells':9,'workers':5,'audit_after_run':True,\n 'runtime':str(ROOT),'cli':config['cli'],\n})\nerror=None\ntry:\n result=run(RunConfig(\n  output=output,conditions=((\"gpt-6.1-sol\",\"max\"),),provider='codex',names=names,workers=5,\n  base=Path(config['base_directory']),dataset=Path(config['dataset_path']),\n  environments=Path(config['environments_path']),cache=Path('/localhome/milikic/proof-reduction-competition/.proof-eval'),\n  references=Path(config['references_path']),\n ))\nexcept Exception as exception:\n error=type(exception).__name__+': '+str(exception)\n result=read(output/'report.json')\naudit_result=None;audit_error=None\ntry:\n audit_result=audit(output)\n write_json(output/'restart_audit.json',audit_result)\n write_json(output/'audit.json',audit_result)\nexcept Exception as exception:\n audit_error=type(exception).__name__+': '+str(exception)\n write_json(output/'restart_audit_error.json',{'at':now(),'error':audit_error})\nchanged=[relative for relative,expected in preflight['completed_file_sha256'].items() if digest(output/relative)!=expected]\nconfig_unchanged=digest(output/'config.json')==preflight['config_sha256']\nreferences_unchanged=digest(config['references_path'])==config['references_sha256']\nprofiles=[];statuses=Counter()\nfor cell in sorted((output/'cells').iterdir()):\n inp=cell/'input.json'\n if not inp.exists(): continue\n entries=[];counts=Counter();marked=0\n for path in sorted((cell/'evidence/profiles').glob('*.json')):\n  value=read(path)['profile'];counts[value['status']]+=1;statuses[value['status']]+=1\n  marked+=bool(value.get('mark_count'));entries.append(str(path.relative_to(output)))\n profiles.append({'name':read(inp)['name'],'snapshots':len(entries),'statuses':dict(counts),'marked_snapshots':marked,'evidence':entries})\nwrite_json(output/'profile_usage_after_restart.json',{\n 'at':now(),'total_snapshots':sum(c['snapshots'] for c in profiles),\n 'theorems_with_profiles':sum(c['snapshots']>0 for c in profiles),'statuses':dict(statuses),'cells':profiles,\n})\ncondition=result['conditions'][0]\nbaseline=output.parents[1]/'06_refactor_regression'\nprevious=next(c for c in read(baseline/'report.json')['conditions'] if c['model']=='gpt-6.1-sol' and c['effort']=='max')\ndelta=None\nif condition['complete'] and previous['complete']:\n delta={k:condition['mean_scores'][k]-previous['mean_scores'][k] for k in condition['mean_scores']}\nwrite_json(output/'comparison_after_restart.json',{\n 'at':now(),'baseline':str(baseline),'previous_complete':previous['complete'],'current_complete':condition['complete'],\n 'previous_mean_scores':previous['mean_scores'],'current_mean_scores':condition['mean_scores'],'delta_percentage_points':delta,\n 'interpretation':'One stochastic repeat with profiler access; this comparison does not isolate a causal profiler effect.',\n})\ncomplete=error is None and audit_result is not None and condition['complete'] and not changed and config_unchanged and references_unchanged\nterminal={\n 'status':'complete' if complete else 'incomplete','pid':os.getpid(),'started_at':started_at,'finished_at':now(),\n 'selected_names':list(names),'terminal_cells':result['terminal_cells'],'planned_cells':result['planned_cells'],\n 'condition_complete':condition['complete'],'mean_scores':condition['mean_scores'],\n 'audit':audit_result,'run_error':error,'audit_error':audit_error,\n 'changed_completed_files':changed,'config_unchanged':config_unchanged,'references_unchanged':references_unchanged,\n}\nwrite_json(output/'restart_progress.json',terminal)\nprint(json.dumps(terminal),flush=True)\nraise SystemExit(0 if complete else 1)\n"
+  ],
+  "cwd": "/localhome/milikic/.proof-arena/runtimes/sol61_profiles_resume_20261006T114255Z",
+  "pythonpath": "/localhome/milikic/.proof-arena/runtimes/sol61_profiles_resume_20261006T114255Z/src",
+  "pinned_cli": {
+    "path": "/localhome/milikic/.codex/packages/standalone/releases/0.160.0-x86_64-unknown-linux-musl/bin/codex",
+    "sha256": "12eb3e81114588aca3b7998f4f19e8997b056aca08e57a7ca7c8a3ec8c652aad",
+    "version": "codex-cli 0.160.0"
+  },
+  "selected_names": [
+    "Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+    "Binius.BinaryBasefold.fold_advances_evaluation_poly",
+    "interleaved_affine_gaps_imply_tensor_gaps",
+    "putnam_1964_a4",
+    "putnam_1964_b2",
+    "putnam_1995_a3"
+  ],
+  "workers": 5,
+  "log": "/localhome/milikic/proof-reduction-competition/results/harness/08_tactic_profiles/sol61_max/restart.log",
+  "audit_after_run": true,
+  "preserved_completed_cells": 9
+}
