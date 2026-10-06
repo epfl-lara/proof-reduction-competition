@@ -1,0 +1,55 @@
+lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp}
+    (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :
+    ι 𝓣ᶠ(a * [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * b) =
+    ι ([ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by
+  let q := @ι 𝓕
+  let c := [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF
+  have qm := map_mul q
+  have qs := map_smul q
+  let m := @mulLinearMap 𝓕
+  suffices h : (m.comp (m.flip c)).compr₂ₛₗ (q.toLinearMap.comp timeOrderF) =
+      m.compr₂ₛₗ (q.toLinearMap.comp ((m c).comp timeOrderF)) from
+    congrArg (· a b) h
+  apply ofCrAnListFBasis.ext
+  intro φs'
+  apply ofCrAnListFBasis.ext
+  intro φs
+  dsimp only [m, LinearMap.compr₂ₛₗ_apply, LinearMap.comp_apply, LinearMap.flip_apply,
+    mulLinearMap_apply, AlgHom.toLinearMap_apply]
+  simp only [ofListBasis_eq_ofList]
+  let s := (φs' ++ φs).insertionSort crAnTimeOrderRel
+  let eqt := fun c : 𝓕.CrAnFieldOp => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ
+  let l1 := ofCrAnListF (List.takeWhile (fun c => ¬ crAnTimeOrderRel φ c) s ++
+    List.filter eqt φs')
+  let l2 := ofCrAnListF (List.filter eqt φs ++
+    List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬ crAnTimeOrderRel c φ) s)
+  have ht (l : List 𝓕.CrAnFieldOp) (hl : ∀ c ∈ l, eqt c) :
+      𝓣ᶠ(ofCrAnListF φs' * ofCrAnListF l * ofCrAnListF φs) =
+      crAnTimeOrderSign (φs' ++ l ++ φs) •
+        (l1 * ofCrAnListF l * l2) := by
+    rw [← ofCrAnListF_append, ← ofCrAnListF_append, timeOrderF_ofCrAnListF, crAnTimeOrderList,
+      insertionSort_of_eq_list (h := hl)]
+    simp only [List.append_assoc, ofCrAnListF_append, l1, l2, s, eqt, mul_assoc]
+  have h0 := ht [] (by simp)
+  simp only [List.append_nil, List.nil_append, ofCrAnListF_nil, mul_one] at h0
+  have h12 := ht [φ, ψ] (by simp [eqt, hφψ, hψφ])
+  have h21 := ht [ψ, φ] (by simp [eqt, hφψ, hψφ])
+  simp only [List.append_assoc, List.cons_append, List.nil_append,
+    ofCrAnListF_cons, ofCrAnListF_nil, mul_one] at h12 h21
+  rw [← crAnTimeOrderSign_swap_eq_time hφψ hψφ] at h21
+  trans q (crAnTimeOrderSign (φs' ++ φ :: ψ :: φs) •
+    (l1 * c * l2))
+  · apply congrArg q
+    simp only [c, superCommuteF_ofCrAnOpF_ofCrAnOpF, mul_sub, sub_mul,
+      Algebra.mul_smul_comm, Algebra.smul_mul_assoc, timeOrderF.map_sub,
+      timeOrderF.map_smul, h12, h21, smul_sub]
+    rw [smul_comm]
+  simp only [qs, qm]
+  rw [ Subalgebra.mem_center_iff.mp
+    (show q c ∈ _ from ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ), mul_assoc, ← qm]
+  by_cases hq : (𝓕 |>ₛ φ) = (𝓕 |>ₛ ψ)
+  · rw [crAnTimeOrderSign, Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ
+      hq.symm, h0, qs, Algebra.mul_smul_comm]
+    rfl
+  · simp only [(show q c = 0 from ι_superCommuteF_of_diff_statistic hq), zero_mul,
+      smul_zero]

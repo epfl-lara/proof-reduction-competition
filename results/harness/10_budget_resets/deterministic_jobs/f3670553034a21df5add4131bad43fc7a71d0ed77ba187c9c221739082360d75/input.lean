@@ -1,0 +1,22 @@
+theorem putnam_1995_a3
+(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)
+(digits_to_num : (Fin 9 → ℤ) → ℤ)
+(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)
+(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))
+: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by
+  intro d e f h
+  have step {a b} (hab : relation a b) i :
+      7 ∣ b i * 10 ^ i.1 - a i * 10 ^ i.1 + digits_to_num a := by
+    refine (((hrelation a b).mp hab).2 i).trans (dvd_of_eq ?_)
+    apply sub_eq_iff_eq_add.mp
+    rw [hdigits_to_num, ← Finset.sum_sub_distrib]
+    simp only [ite_mul, ite_sub, sub_self, Fintype.sum_ite_eq']
+  have hs := Finset.dvd_sum (R := ℤ) (s := Finset.univ) (fun i _ => step h.1 i)
+  simp only [Finset.sum_add_distrib, Finset.sum_sub_distrib,
+    Finset.sum_const, Finset.card_fin,
+    ← congrFun hdigits_to_num] at hs
+  intro i
+  apply (IsCoprime.pow_right (n := i.1)
+    (show Nat.Coprime 7 10 from rfl).isCoprime).dvd_of_dvd_mul_right
+  exact ((hs.sub ((step h.1 i).add (step h.2 i))).sub
+    (dvd_mul_right 7 (digits_to_num d))).trans (dvd_of_eq (by ring1))

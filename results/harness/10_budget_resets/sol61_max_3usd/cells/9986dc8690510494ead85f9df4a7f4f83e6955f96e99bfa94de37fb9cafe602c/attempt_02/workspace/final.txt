@@ -1,0 +1,26 @@
+```lean
+lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by
+  generalize eq : [] = Γ at der
+  have lc := der.wf.2.1
+  induction der <;> subst eq
+  case var => contradiction
+  case sub ih => exact ih rfl lc
+  case' app l r ih_l ih_r =>
+    cases ih_l rfl l.wf.2.1
+    case' inl => have := ih_r rfl r.wf.2.1
+  case' tapp der _ ih | let' der _ ih _ | inl der _ ih | inr der _ ih |
+      case der _ _ ih _ _ =>
+    cases ih rfl der.wf.2.1
+  case' case.inl val =>
+    obtain ⟨s, rfl | rfl⟩ := der.canonical_form_sum val <;> cases val
+  all_goals first
+  | left
+    constructor
+    assumption
+  | right
+    try simp only [body_let, body_case] at lc
+    cases lc
+    aesop (config := { enableSimp := false })
+      (add norm forward [canonical_form_abs, canonical_form_tabs],
+        100% Red)
+```

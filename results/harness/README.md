@@ -15,6 +15,7 @@ at the beginning and end. Historical conditions below remain separate evidence.
 | [07: native provider agents](07_native_agents/PROTOCOL.md) | DeepSeek V4.1 Flash/high via Lemex, Opus 5.5/max via Claude Code | Same V2 task, tools, score search and edge cleanup | 15 per model |
 | [08: tactic profiling](08_tactic_profiles/sol61_max/README.md) | Sol 6.1/max | Source and goal tools plus tactic heartbeat diagnostics | 15 |
 | [09: Qwen results and submission](09_qwen_flash_next/README.md) | Qwen3.8-Flash-Next/xhigh via Lemex | Profiling, score feedback, edge cleanup; audited original/recovery selection | 15 |
+| [10: fresh budgeted attempts](10_budget_resets/sol61_max_3usd/PROTOCOL.md) | Sol 6.1/max | Fresh context from the best verified proof; cumulative $3 target and 57 minutes per problem | 15 |
 | [11: Google Antigravity](11_antigravity/README.md) | Gemini 3.8 Flash/high via `agy` | $3 estimated per problem, streamed budget guard, two workers; 5 complete and 10 interrupted | 15 |
 
 The [Qwen submission](09_qwen_flash_next/submission.jsonl) reaches
@@ -24,6 +25,11 @@ the five recovery problems received additional budgets. All three saved-evidence
 audits passed. The [manifest](09_qwen_flash_next/submission_manifest.json) pins
 every selected proof and its source; this portfolio is separate from a single-run
 model comparison.
+
+The [fresh-attempt trial](10_budget_resets/sol61_max_3usd/COMPARISON.md) compares
+the new budget tracking policy with stage 08 and records the verified gains after
+each problem's first attempt. Its report and comparison update from saved
+evidence; full-cohort scores require all 15 outcomes and a passed audit.
 
 The [tactic-profiling trial](08_tactic_profiles/sol61_max/PROTOCOL.md) completed
 15/15 problems and passed its saved-evidence audit. Its combined score was
