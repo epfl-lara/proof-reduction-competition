@@ -11,6 +11,7 @@ from proof_eval.optimization.cleanup import BUDGET, METHODS
 from proof_eval.paths import PACKAGE, ROOT, SNAPSHOTS
 from proof_eval.providers.costs import CostConfig, estimate_configuration, rate_card
 from proof_eval.providers.registry import DEFAULT_CONDITIONS, adapter, validate
+from proof_eval.providers.retries import REQUEST_MAX_RETRIES, STREAM_MAX_RETRIES
 from proof_eval.verification.feedback import all_versions_passed
 from proof_eval.verification.references import (
     check_references,
@@ -19,6 +20,8 @@ from proof_eval.verification.references import (
     required_versions,
 )
 
+from .carryover import freeze_carryover, restore_deadlines
+from .incumbents import freeze_incumbents, saved_incumbent
 from .prompts import tool_instructions
 from .tracking import (
     ATTEMPT_EVIDENCE_VERSION,
@@ -166,7 +169,11 @@ def preflight_costs(conditions, provider="codex", *, budget_usd: float = 3.0):
         "scenarios": scenarios,
         "source_result_sha256": {str(p.relative_to(ROOT)): digest(p) for p in paths},
         "budget_policy": f"Report the ${budget_usd:g} cap per problem; no stopping rule is imposed in this configuration comparison.",
-        "pricing_assumptions": "Standard, short context per request, no regional premium; API-equivalent, not a Codex invoice.",
+        "pricing_assumptions": (
+            "Standard Gemini API rates effective through 2026-12-31; API-equivalent, not verified Antigravity billing; cache storage excluded."
+            if provider == "agy"
+            else "Standard, short context per request, no regional premium; API-equivalent, not a Codex invoice."
+        ),
     }
 
 
@@ -183,6 +190,9 @@ def prepare(
     budget_tracking: BudgetTracking = None,
     budget_usd_per_problem: float = 3.0,
     max_budget_restarts: int = 20,
+    max_transport_restarts: int = 2,
+    incumbents_from: Path | None = None,
+    carry_budgets_from: Path | None = None,
 ) -> dict:
     if mode not in RUN_MODES:
         raise ValueError("Unsupported or retired search mode: " + mode)
@@ -207,7 +217,7 @@ def prepare(
     for relative, expected in base["code_sha256"].items():
         _implementation(relative, expected, ROOT, SNAPSHOTS, "frozen input preparation")
     config = {
-        "schema_version": 4,
+        "schema_version": 5,
         "attempt_evidence_version": ATTEMPT_EVIDENCE_VERSION,
         "provider": provider,
         "mode": mode,
@@ -229,7 +239,9 @@ def prepare(
         "deterministic_cleanup": mode in DETERMINISTIC_MODES,
         "candidate_feedback": mode,
         "max_total_attempts": (
-            max_budget_restarts + 1 if budget_tracking is not None else None
+            (max_budget_restarts if budget_tracking is not None else 0)
+            + max_transport_restarts
+            + 1
         ),
         "max_total_tokens": None,
         "generation_timeout": problem_timeout_seconds,
@@ -257,12 +269,39 @@ def prepare(
         "budget_usd_per_problem": float(budget_usd_per_problem),
         "budget_tracking": budget_tracking,
         "budget_enforced": budget_tracking == "time",
-        "cost_budget_policy": "native guard between upstream responses plus cumulative attempt admission; an in-flight response may overshoot; unknown usage is never zero",
+        "cost_budget_policy": (
+            "Host watches streamed usage at Gemini API-equivalent rates and stops the child at the remaining per-problem cap; cumulative attempt admission shares the same budget; an in-flight response may overshoot; unknown usage is never zero"
+            if provider == "agy" and budget_tracking == "cost"
+            else "native guard between upstream responses plus cumulative attempt admission; an in-flight response may overshoot; unknown usage is never zero"
+        ),
         "cleanup_reserve_seconds": CLEANUP_RESERVE_SECONDS,
         "max_budget_restarts": int(max_budget_restarts),
+        "max_transport_restarts": int(max_transport_restarts),
+        "transport_recovery_version": 1,
+        "native_retry_limits": (
+            {
+                "request_max_retries": REQUEST_MAX_RETRIES,
+                "stream_max_retries": STREAM_MAX_RETRIES,
+            }
+            if provider == "lemex"
+            else None
+        ),
+        "transport_recovery_policy": "Bounded backoff after observed terminal transient errors; reuse the best verified proof and the same deadline; never resample indeterminate requests",
         "rate_card": rate_card(provider),
     }
     config.update(paths or {})
+    if type(max_transport_restarts) is not int or not 0 <= max_transport_restarts <= 20:
+        raise ValueError("max_transport_restarts must be an integer between 0 and 20")
+    config["incumbent_sources"] = freeze_incumbents(incumbents_from, config, packs)
+    if carry_budgets_from is not None:
+        if incumbents_from is not None:
+            raise ValueError(
+                "Budget carryover already reuses prior verified incumbents"
+            )
+        config["budget_carryover"] = freeze_carryover(carry_budgets_from, config, packs)
+        config["incumbent_sources"].update(config["budget_carryover"])
+    if config["incumbent_sources"]:
+        config["seed"] = "best_original_deterministic_or_prior_same_condition"
     if mode in DETERMINISTIC_MODES:
         config.update(
             score_control_sha256={},
@@ -296,6 +335,7 @@ def prepare(
         raise ValueError("Frozen experiment configuration changed")
     write_json(output / "cost_estimate.json", costs)
     write_json(path, config)
+    restore_deadlines(output, config)
     return config
 
 
@@ -327,3 +367,5 @@ def guard(config, pack, evaluator):
     ):
         raise ValueError("Frozen preparation changed")
     check_references(evaluator, pack, read(base_directory / "config.json"))
+    for model, effort in config["conditions"]:
+        saved_incumbent(config, pack, model, effort)

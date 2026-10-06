@@ -8,7 +8,10 @@ from pathlib import Path
 from proof_eval.evidence.audit import _require
 from proof_eval.evidence.io import fingerprint, read
 from proof_eval.protocol import code_identity
+from proof_eval.providers import agy
 from proof_eval.providers.costs import CostConfig
+from proof_eval.providers.monitoring import read_events, verified_stream_stop
+from proof_eval.providers.retries import recovery_count
 from proof_eval.providers.spending import native_cost_guard, native_cost_stop
 
 from .attempts import attempt_folders
@@ -40,7 +43,9 @@ def audit_attempts(
     tracking = config.get("budget_tracking")
     if config["mode"] == "score_edges":
         _require(
-            len(records) <= (config["max_budget_restarts"] + 1 if tracking else 1),
+            len(records)
+            <= (config["max_budget_restarts"] + 1 if tracking else 1)
+            + config.get("max_transport_restarts", 0),
             "Attempt count exceeds the configured restart policy",
         )
     previous_end = 0
@@ -122,9 +127,28 @@ def audit_attempts(
                 },
                 "Restart changed the fixed theorem context or denominators",
             )
+            previous = result["generations"][number - 1]
+            permitted = stop_decision(
+                config,
+                previous,
+                attempt_cost(
+                    config,
+                    result["model"],
+                    result["effort"],
+                    result["generations"][:number],
+                    name=result["name"],
+                ),
+                unavailable=any(
+                    check["evaluation"]["status"] == "incomplete"
+                    for check in checks[:start]
+                ),
+                round_number=number - 1,
+                time_remaining=record["deadline_epoch"] - record["admitted_epoch"],
+                transport_restarts_used=recovery_count(result["generations"][:number]),
+            )
             _require(
-                result["generations"][number - 1]["status"] == "received",
-                "A failed or indeterminate request was resampled",
+                permitted is None,
+                "A failed or indeterminate request was resampled outside the recovery policy",
             )
             _require(
                 not any(
@@ -139,13 +163,18 @@ def audit_attempts(
                 "A request restarted inside the cleanup reserve",
             )
         before = attempt_cost(
-            config, result["model"], result["effort"], result["generations"][:number]
+            config,
+            result["model"],
+            result["effort"],
+            result["generations"][:number],
+            name=result["name"],
         )
         after = attempt_cost(
             config,
             result["model"],
             result["effort"],
             result["generations"][: number + 1],
+            name=result["name"],
         )
         _require(
             messages[1]["content"][len(prefix) + end_of_payload :]
@@ -213,15 +242,15 @@ def audit_attempts(
             "Native cost guard differs from the remaining problem budget",
         )
         if generation.get("termination") == "cost_limit":
-            events = [
-                json.loads(line)
-                for line in (attempt / "events.jsonl").read_text().splitlines()
-                if line.strip()
-            ]
+            events = read_events(attempt / "events.jsonl", allow_partial=True)
             _require(
                 tracking == "cost"
-                and native_cost_stop(config["provider"], events, guard),
-                "Controlled cost stop has no native budget evidence",
+                and (
+                    verified_stream_stop(attempt, events, guard, agy.stream_usage)
+                    if config["provider"] == "agy"
+                    else native_cost_stop(config["provider"], events, guard)
+                ),
+                "Controlled cost stop has no budget evidence",
             )
     if records and not result["time_budget"]["exhausted"]:
         stop = read(folder / "search_stop.json")
@@ -241,6 +270,7 @@ def audit_attempts(
             ),
             round_number=len(records) - 1,
             time_remaining=records[-1]["deadline_epoch"] - stop["at_epoch"],
+            transport_restarts_used=recovery_count(result["generations"]),
         )
         _require(
             expected is not None
@@ -258,14 +288,20 @@ def audit_attempts(
             tracking == "cost"
             and result["stop"]["kind"] == "cost_reserve"
             and read(folder / "search_stop.json") == result["stop"]
-            and native_cost_guard(
-                config["provider"],
-                CostConfig(
-                    result["model"], result["effort"], **config["cost_assumptions"]
-                ),
-                config["budget_usd_per_problem"],
-            ).get("limit_tokens")
-            == 0,
+            and (
+                attempt_cost(
+                    config, result["model"], result["effort"], [], name=result["name"]
+                )["total_usd"]
+                >= config["budget_usd_per_problem"] - 1e-12
+                or native_cost_guard(
+                    config["provider"],
+                    CostConfig(
+                        result["model"], result["effort"], **config["cost_assumptions"]
+                    ),
+                    config["budget_usd_per_problem"],
+                ).get("limit_tokens")
+                == 0
+            ),
             "A search without requests has no budget admission evidence",
         )
     if tracking:

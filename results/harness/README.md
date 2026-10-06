@@ -14,6 +14,7 @@ at the beginning and end. Historical conditions below remain separate evidence.
 | [06: package refactor replicate](06_refactor_regression/PROTOCOL.md) | Sol 6.1/max | Same prompts, references and search settings through the maintained APIs | 15 |
 | [07: native provider agents](07_native_agents/PROTOCOL.md) | DeepSeek V4.1 Flash/high via Lemex, Opus 5.5/max via Claude Code | Same V2 task, tools, score search and edge cleanup | 15 per model |
 | [08: tactic profiling](08_tactic_profiles/sol61_max/README.md) | Sol 6.1/max | Source and goal tools plus tactic heartbeat diagnostics | 15 |
+| [11: Google Antigravity](11_antigravity/README.md) | Gemini 3.8 Flash/high via `agy` | $3 estimated per problem, streamed budget guard, two workers; 5 complete and 10 interrupted | 15 |
 
 The [tactic-profiling trial](08_tactic_profiles/sol61_max/PROTOCOL.md) completed
 15/15 problems and passed its saved-evidence audit. Its combined score was

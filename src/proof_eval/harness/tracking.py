@@ -6,7 +6,10 @@ from math import isfinite
 from typing import Literal, Sequence
 
 from proof_eval.providers.costs import UNPRICED_MODELS, CostConfig, generations_cost
+from proof_eval.providers.retries import retryable_transport_failure
 from proof_eval.providers.spending import native_cost_guard
+
+from .carryover import carried_generations
 
 BudgetTracking = Literal["cost", "time"] | None
 CLEANUP_RESERVE_SECONDS = 30.0
@@ -38,14 +41,26 @@ def validate_budgets(
                 )
 
 
-def attempt_cost(config: dict, model: str, effort: str, generations: list) -> dict:
-    if not generations:
+def attempt_cost(
+    config: dict,
+    model: str,
+    effort: str,
+    generations: list,
+    *,
+    name: str | None = None,
+    final: bool = False,
+) -> dict:
+    prior = carried_generations(config, name, model, effort) if name is not None else []
+    if config.get("budget_carryover") and name is None:
+        raise ValueError("A theorem name is required for carried budget accounting")
+    if not generations and not prior and not final:
         return {"status": "not_started", "total_usd": 0.0, "attempts": 0}
-    return generations_cost(
+    cost = generations_cost(
         CostConfig(model, effort, **config.get("cost_assumptions", {})),
-        generations,
+        prior + generations,
         budget_usd=config.get("budget_usd_per_problem", 3.0),
     )
+    return {**cost, "carried_attempts": len(prior)} if prior else cost
 
 
 def stop_decision(
@@ -56,20 +71,33 @@ def stop_decision(
     unavailable: bool,
     round_number: int,
     time_remaining: float | None,
+    transport_restarts_used: int = 0,
 ) -> dict | None:
-    """Only a determinate successful request with usable host checks may restart."""
+    """Admit successful optimization restarts or bounded terminal-error recovery."""
     termination = generation.get("termination")
     if termination == "cost_limit":
-        return {"kind": "cost_limit", "reason": "Native cost guard stopped the attempt"}
-    if generation["status"] != "received":
-        return {"kind": "infrastructure", "reason": generation.get("error")}
+        return {
+            "kind": "cost_limit",
+            "reason": (
+                "Host stream cost guard stopped the attempt"
+                if config.get("provider") == "agy"
+                else "Native cost guard stopped the attempt"
+            ),
+        }
     if unavailable:
         return {
             "kind": "infrastructure",
             "reason": "Host verification is unavailable; no further request was sampled",
         }
     tracking = config.get("budget_tracking")
-    if tracking is None:
+    recoverable = retryable_transport_failure(generation)
+    if generation["status"] != "received" and (
+        not recoverable
+        or not config.get("max_transport_restarts", 0)
+        or time_remaining is None
+    ):
+        return {"kind": "infrastructure", "reason": generation.get("error")}
+    if generation["status"] == "received" and tracking is None:
         return {"kind": "model_final", "reason": "Agent returned a final declaration"}
     if tracking == "cost":
         total = cost.get("total_usd")
@@ -98,7 +126,14 @@ def stop_decision(
             "kind": "cleanup_reserve",
             "reason": "Remaining whole-problem time is reserved for final cleanup",
         }
-    if round_number >= config.get("max_budget_restarts", 20):
+    if recoverable:
+        if transport_restarts_used >= config.get("max_transport_restarts", 0):
+            return {
+                "kind": "transport_recovery_limit",
+                "reason": "Configured terminal transport recovery limit reached",
+            }
+        return None
+    if round_number - transport_restarts_used >= config.get("max_budget_restarts", 20):
         return {
             "kind": "restart_limit",
             "reason": "Configured restart safety limit reached",

@@ -11,13 +11,17 @@ from proof_eval.evidence.io import digest, read, write_json
 from proof_eval.harness.session import code_identity
 from proof_eval.paths import ROOT
 from proof_eval.protocol import FIELDS, fingerprint
-from proof_eval.providers import claude
-from proof_eval.providers.costs import CostConfig, generations_cost, rate_card
+from proof_eval.providers import agy, claude
+from proof_eval.providers.costs import rate_card
 from proof_eval.providers.events import parse_events
+from proof_eval.providers.monitoring import read_events, verified_stream_stop
 from proof_eval.providers.spending import native_cost_stop
 from proof_eval.verification.feedback import all_versions_passed
 
 from .attempts import attempt_folders
+from .carryover import audit_deadline
+from .incumbents import select_seed
+from .tracking import attempt_cost
 from .tracking_audit import audit_attempts
 
 
@@ -76,6 +80,65 @@ def _audit_claude_terminal(folder: Path, generation: dict, request: dict) -> Non
         _require(
             parsed[field] == generation[field],
             "Claude terminal evidence changed: " + field,
+        )
+
+
+def _audit_agy_terminal(folder: Path, generation: dict, request: dict) -> None:
+    events = read_events(
+        folder / "events.jsonl",
+        allow_partial=generation["status"] == "budget_exhausted",
+    )
+    if generation.get("requested_model") is not None:
+        _require(
+            generation["requested_model"]
+            == agy.slug(request["model"], request["reasoning_effort"]),
+            "Antigravity requested model differs from its frozen configuration",
+        )
+    parsed = agy.parse_events(
+        events,
+        generation.get("content", ""),
+        generation["returncode"],
+        requested_slug=generation.get("requested_model"),
+    )
+    fields = [
+        "status",
+        "returncode",
+        "requested_model",
+        "actual_model",
+        "conversation_id",
+        "agy_result",
+        "agy_usage",
+        "token_usage",
+        "usage_complete",
+        "cache_write_reported",
+        "completed_turns",
+        "tool_items",
+        "tool_item_types",
+        "denied_actions",
+    ]
+    for field in fields:
+        if field == "status" and generation[field] == "budget_exhausted":
+            if generation.get("termination") == "cost_limit":
+                _require(
+                    verified_stream_stop(
+                        folder, events, request.get("cost_budget"), agy.stream_usage
+                    )
+                    and generation["host_cost_stop_sha256"]
+                    == fingerprint(read(folder / "cost_stop.json"))
+                    and generation["actual_model"]
+                    in (None, generation["requested_model"]),
+                    "Antigravity cost limit has no host stream stop evidence",
+                )
+                continue
+            end = read(folder.parent / "budget_end.json")
+            _require(
+                end["exhausted"] is True and parsed[field] != "received",
+                "Antigravity time limit has no supervised stop evidence",
+            )
+            continue
+        _require(
+            parsed[field] == generation[field],
+            "Antigravity terminal evidence changed: " + field,
         )
 
 
@@ -173,6 +236,7 @@ def audit(output: Path) -> dict:
             str("Saved harness evidence is inconsistent at audit line 70"),
         )
         inp = read(path.parent / "input.json")
+        audit_deadline(config, result, path.parent)
         if "problem_timeout_seconds" in config:
             budget = result["time_budget"]
             started = read(path.parent / "budget_started.json")
@@ -208,6 +272,25 @@ def audit(output: Path) -> dict:
             inp.get("seed_proof", rows[name]["src"]),
             inp["seed_evaluation"],
         )
+        if config.get("incumbent_sources"):
+            from .configuration import load_inputs, starting_point
+
+            pack = load_inputs(Path(config["base_directory"]))[name]
+            _require(
+                fingerprint(pack) == config["input_sha256"][name],
+                "Frozen incumbent preparation changed",
+            )
+            expected_seed = select_seed(
+                config,
+                pack,
+                result["model"],
+                result["effort"],
+                starting_point(pack, config["mode"]),
+            )
+            _require(
+                (best_code, best_evaluation) == expected_seed,
+                "Initial proof differs from its frozen same-condition incumbent",
+            )
         outcomes += _evaluation(
             rows[name], refs[name], best_code, best_evaluation, str(key)
         )
@@ -616,6 +699,43 @@ def audit(output: Path) -> dict:
                 "Request provider differs from its frozen configuration",
             )
             _require(req["cli"] == config["cli"], "Request CLI identity changed")
+            if config.get("transport_recovery_version") and config.get(
+                "provider", "codex"
+            ) in ("codex", "lemex"):
+                events = []
+                event_path = folder / "events.jsonl"
+                _require(
+                    event_path.exists()
+                    or (
+                        result["time_budget"]["exhausted"]
+                        and not (folder / "request_started.json").exists()
+                    ),
+                    "Native event evidence is missing after dispatch",
+                )
+                for line in (
+                    event_path.read_text().splitlines() if event_path.exists() else []
+                ):
+                    try:
+                        events.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        _require(
+                            result["time_budget"]["exhausted"],
+                            "Native event stream was truncated without a deadline stop",
+                        )
+                        break
+                parsed = parse_events(
+                    events, gen.get("content", ""), gen.get("returncode", 0)
+                )
+                for field in (
+                    "events_errors",
+                    "recovered_transport_errors",
+                    "usage_complete",
+                    "usage_incomplete_reason",
+                ):
+                    _require(
+                        parsed.get(field) == gen.get(field),
+                        "Native retry evidence changed: " + field,
+                    )
             _require(
                 (req["messages"][0] == inp["messages"][0]),
                 str("Saved harness evidence is inconsistent at audit line 305"),
@@ -642,6 +762,12 @@ def audit(output: Path) -> dict:
                 and gen["status"] != "received"
             ):
                 _audit_claude_terminal(folder, gen, req)
+            if (
+                config.get("provider") == "agy"
+                and gen["status"] != "received"
+                and "agy_usage" in gen
+            ):
+                _audit_agy_terminal(folder, gen, req)
             if gen["status"] == "received":
                 _require(
                     (
@@ -653,6 +779,8 @@ def audit(output: Path) -> dict:
                 if "cost_assumptions" in config:
                     if config.get("provider", "codex") == "claude":
                         _audit_claude_terminal(folder, gen, req)
+                    elif config.get("provider", "codex") == "agy":
+                        _audit_agy_terminal(folder, gen, req)
                     else:
                         events = [
                             json.loads(line)
@@ -701,14 +829,13 @@ def audit(output: Path) -> dict:
             _require(
                 (
                     result["cost"]
-                    == generations_cost(
-                        CostConfig(
-                            result["model"],
-                            result["effort"],
-                            **config["cost_assumptions"],
-                        ),
+                    == attempt_cost(
+                        config,
+                        result["model"],
+                        result["effort"],
                         cell_generations,
-                        budget_usd=config["budget_usd_per_problem"],
+                        name=result["name"],
+                        final=True,
                     )
                 ),
                 str("Saved harness evidence is inconsistent at audit line 337"),

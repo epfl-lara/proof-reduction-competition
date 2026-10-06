@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import execution, responses
 from .events import cli_identity, parse_events
+from .events import terminal as terminal
 from .execution import Launch
 from .spending import codex_budget_settings
 

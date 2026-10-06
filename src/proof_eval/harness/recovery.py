@@ -6,12 +6,15 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
-from proof_eval.evidence.io import now, read, write_json, write_jsonl
+from proof_eval.evidence.io import fingerprint, now, read, write_json, write_jsonl
+from proof_eval.providers.monitoring import verified_stream_stop
 from proof_eval.providers.registry import adapter
+from proof_eval.providers.retries import reconnect_notice
 from proof_eval.verification.api import Evaluator
 
 from .attempts import attempt_folders, finish_attempt
 from .configuration import starting_point
+from .incumbents import select_seed
 from .limits import time_budget_summary
 from .outcomes import finalize_cell
 from .prompts import messages
@@ -43,6 +46,7 @@ def _generation(folder: Path, provider: str) -> dict:
         except json.JSONDecodeError:
             # A killed CLI can leave a partial last line; keep its raw bytes.
             break
+    module = adapter(provider)
     final_path = folder / "workspace/final.txt"
     final = final_path.read_text() if final_path.exists() else ""
     if not final:
@@ -53,17 +57,45 @@ def _generation(folder: Path, provider: str) -> dict:
             and e.get("item", {}).get("type") == "agent_message"
         ]
         final = answers[-1] if answers else ""
-    parsed = adapter(provider).parse_events(events, final, 0)
+        if not final and provider == "agy":
+            responses = [
+                e["result"].get("response", "")
+                for e in events
+                if module.terminal(e) and isinstance(e.get("result"), dict)
+            ]
+            final = responses[-1] if responses else ""
+    kwargs = {}
+    if provider == "agy":
+        request = read(folder / "request.json")
+        kwargs["requested_slug"] = module.slug(
+            request["model"], request["reasoning_effort"]
+        )
+    parsed = module.parse_events(events, final, 0, **kwargs)
     if parsed["status"] == "received":
         final_path.write_text(parsed["content"])
-    elif not parsed.get("events_errors") and not any(
-        e.get("type") == "result" for e in events
-    ):
+    elif (
+        not parsed.get("events_errors")
+        or all(reconnect_notice(e) for e in parsed["events_errors"])
+    ) and not any(module.terminal(e) for e in events):
         parsed.update(
             status="budget_exhausted",
             error="Whole-problem wall deadline reached; not resampled",
         )
     parsed.update(provider=provider, finished_at=now(), termination="problem_deadline")
+    if (
+        provider == "agy"
+        and verified_stream_stop(
+            folder, events, request.get("cost_budget"), module.stream_usage
+        )
+        and parsed.get("actual_model") in (None, kwargs["requested_slug"])
+    ):
+        parsed.update(
+            status="budget_exhausted",
+            termination="cost_limit",
+            cost_budget=request["cost_budget"],
+            host_cost_stop_sha256=fingerprint(read(folder / "cost_stop.json")),
+            error="Host stream cost guard stopped the attempt; not resampled",
+        )
     write_json(path, parsed)
     return parsed
 
@@ -81,6 +113,7 @@ def recover_cell(
     if not end["exhausted"]:
         raise ValueError("Deadline recovery requires a supervised deadline stop")
     seed = starting_point(pack, config["mode"])
+    seed = select_seed(config, pack, model, effort, seed)
     session = ProofSession(
         folder / "evidence", pack, evaluator, config["mode"], seed=seed
     )
@@ -110,7 +143,13 @@ def recover_cell(
                     attempt,
                     session,
                     generations[index],
-                    attempt_cost(config, model, effort, generations[: index + 1]),
+                    attempt_cost(
+                        config,
+                        model,
+                        effort,
+                        generations[: index + 1],
+                        name=pack["name"],
+                    ),
                 )
     pending = session.folder / "cleanup_started.json"
     if pending.exists() and not session.cleanup_calls:

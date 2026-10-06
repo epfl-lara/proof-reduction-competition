@@ -1,0 +1,58 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "fundamental_theorem_of_variational_calculus'",
+  "source": "physlib",
+  "required_versions": [
+    {
+      "v4.32.0": "c48433678e8fb6306ebcd48453300c8e16058a62"
+    }
+  ],
+  "exact_statement": "lemma fundamental_theorem_of_variational_calculus' {f : Y → V}\n    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]\n    [OpensMeasurableSpace Y]\n    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :\n    f = 0",
+  "incumbent_declaration": "lemma fundamental_theorem_of_variational_calculus' {f : Y → V}\n    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]\n    [OpensMeasurableSpace Y]\n    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :\n    f = 0 := by\n  by_contra h₀\n  obtain ⟨x₀, hx0⟩ := Function.ne_iff.mp h₀\n  have hpos : 0 < ⟪f x₀, f x₀⟫_ℝ :=\n    lt_of_le_of_ne real_inner_self_nonneg' (Ne.symm (mt inner_self_eq_zero'.1 hx0))\n  have hinner_cont := Continuous.inner' (𝕜 := ℝ) _ (fun _ => f x₀) hf continuous_const\n  obtain ⟨δ, hδ_pos, inner_pos_V⟩ :=\n    Metric.isOpen_iff.mp (isOpen_lt continuous_const hinner_cont) x₀ hpos\n  haveI := hasContDiffBump_of_innerProductSpace Y\n  let φ : ContDiffBump x₀ := ⟨δ / 2, δ, half_pos hδ_pos, half_lt_self hδ_pos⟩\n  have hg_test : IsTestFunction (fun x => φ x • f x₀) :=\n    IsTestFunction.smul_right ⟨φ.contDiff, φ.hasCompactSupport⟩ contDiff_const\n  have h_nonneg : 0 ≤ fun x => φ x * ⟪f x, f x₀⟫_ℝ := by\n    intro x\n    by_cases hx : φ x = 0\n    · simp [hx]\n    · exact mul_nonneg φ.nonneg (inner_pos_V (φ.support_eq.subset hx)).le\n  have integral_pos : 0 < ∫ x, φ x * ⟪f x, f x₀⟫_ℝ ∂μ :=\n    Continuous.integral_pos_of_hasCompactSupport_nonneg_nonzero\n      (φ.continuous.mul hinner_cont)\n      (φ.hasCompactSupport.mono fun _ h => (mul_ne_zero_iff.mp h).1)\n      h_nonneg\n      (mul_pos (φ.pos_of_mem_ball (Metric.mem_ball_self hδ_pos)) hpos).ne'\n  exact integral_pos.ne' (by simpa only [inner_smul_right'] using hg _ hg_test)",
+  "incumbent_scores": {
+    "length_reduction_pct": 72.97297297297297,
+    "heartbeat_reduction_pct": 81.70851058293383,
+    "compatibility_pct": 100.0,
+    "combined_pct": 84.89382785196894
+  },
+  "reference_denominators": {
+    "tokens": 851,
+    "primary_heartbeats": 11951.837
+  },
+  "preceding_source_excerpt": "/-\nCopyright (c) 2025 Tomas Skrivan. All rights reserved.\nReleased under Apache 2.0 license as described in the file LICENSE.\nAuthors: Tomas Skrivan, Joseph Tooby-Smith\n-/\nmodule\n\npublic import Physlib.Mathematics.VariationalCalculus.IsTestFunction\npublic import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct\n\nimport Lean\n\n/-!\n\n# Fundamental lemma of the calculus of variations\n\nThe key took in variational calculus is:\n```\n∀ h, ∫ x, f x * h x = 0 → f = 0\n```\nwhich allows use to go from reasoning about integrals to reasoning about functions.\n\n## Overview of variational calculus\n\nThe variational calculus API in Physlib is designed to match and formalize the physicists intuition\nof variational calculus. It is not designed to be a general API for variational calculus.\n\nWithin variational caclulus we are interested in function transformations, `F : (X → U) → (Y → V)`.\nIn physics this functional is often of the form `L : (Time → U) → Time → ℝ`,\nwhich represents the Lagrangian of a system. We will use this to explain the formalization\nwithin this API.\n\nThe action is nominally given by\n$$S[u] = \\int L(u, t) dt,$$\nhowever it is convenient to\nintroduce another function `φ` and define the action as\n$$S[u] = \\int φ(t) L(u, t) dt.$$\nIn the end we will set `φ := fun _ => 1`.\n\nWe now consider $$\\frac{\\partial}{\\partial s} S[u + s * \\delta u]$$ at `s = 0`,\nwhich is the variational derivative of `S` at `u` in the direction `δu`.\nThis is equal to\n$$\n\\int φ(t) * \\left. \\frac{\\partial}{\\partial s} L(u + s * \\delta u, t)\\right|_{s = 0}dt\n$$\nLet us denote the function\n$$\n\\delta u,\\, t \\mapsto \\left. \\frac{\\partial}{\\partial s} L(u + s * \\delta u, t)\\right|_{s = 0}\n$$ as `Lᵤ : (Time → U) → (Time → ℝ)`.\nThen the variational derivative is\n$$\\int φ (t) Lᵤ(δu, t) dt.$$\n\nIt may then be possible to find a function `Gᵤ : (Time → ℝ) → Time → U`\nsuch that\n$$\n\\int φ(t) Lᵤ(δu, t) dt = \\int \\langle Gᵤ(φ, t), δu(t)\\rangle dt\n$$\nThis is usually done by integration by parts.\n\nWe now set `φ := fun _ => 1` and get `grad u := Gᵤ (fun _ => 1)`, which is the\nvariational gradient at `u`. The Euler–Lagrange equations, for example, are then `grad u = 0`.\n\nIn our API, the relationship between\n- `Lᵤ` and `Gᵤ` is captured by the `HasVarAdjoint`.\n- `L` and `Gᵤ` by `HasVarAdjDeriv`.\n- `L` and `grad u` by `HasVarGradientAt`.\n\nIn practice we assume that `L` has a certain locality property\n`IsLocalizedFunctionTransform`, which allows us to work with functions\n`φ` and `δu` which have compact support.\n\nThis API assumes that `U` is an inner-product space. This can be considered as the full\nconfiguration space, or a local chart thereof.\n\n## References\n\n- https://leanprover.zulipchat.com/#narrow/channel/479953-Physlib/topic/Variational.20Calculus/with/529022834\n\n-/\n\n@[expose] public section\n\nopen MeasureTheory InnerProductSpace InnerProductSpace'\n\nvariable\n  {X} [NormedAddCommGroup X] [NormedSpace ℝ X] [MeasurableSpace X]\n  {V} [NormedAddCommGroup V] [NormedSpace ℝ V] [InnerProductSpace' ℝ V]\n  {Y} [NormedAddCommGroup Y] [InnerProductSpace ℝ Y] [FiniteDimensional ℝ Y][MeasurableSpace Y]",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly extracts an invariant, typing rule, normalization fact, or relation from a separate hypothesis.",
+      "action": "Inspect the inductive evidence and consider induction on that evidence so its constructors provide the invariant and recursive hypotheses together.",
+      "check": "Verify dependent indices, generalized variables and induction hypotheses. A different induction is useful only if it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "explicit_witnesses",
+      "trigger": "Broad automation discovers constructors, witnesses, case facts or canonical forms that are already apparent from the argument.",
+      "action": "Read the constructors and supporting lemmas; supply explicit witnesses, projections and theorem applications. Leave focused arithmetic and simplification to automation.",
+      "check": "A slightly longer source can win on heartbeats. Do not replace every tactic blindly; check the whole declaration and version compatibility."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a finite counting, continuity, support, span, recurrence or quotient argument.",
+      "action": "Choose a representation that lets an existing library theorem do the central work. Search by the mathematical property and the types of the objects, not only the target theorem name.",
+      "check": "Prove the connection to the new representation locally, account for conversion overhead, and verify the exact assumptions."
+    }
+  ]
+}
+Whole-problem time limit: 3420 seconds (2508.33 seconds remaining), including host checks and final cleanup. Use status to see remaining seconds. Leave time for final cleanup; the host keeps the best proof already verified across every required version when the deadline arrives.
+Whole-problem cost budget: $3 USD. Completed attempts used $1.74842; $1.25158 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

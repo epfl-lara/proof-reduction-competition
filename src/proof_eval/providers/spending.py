@@ -7,10 +7,11 @@ Codex charges all prefill conservatively, including cached input.
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from decimal import ROUND_FLOOR, Decimal
 from math import isfinite
 
-from .costs import RATES, TIERS, CostConfig
+from .costs import GEMINI_MODEL, RATES, TIERS, CostConfig, rate_card
 
 
 def native_cost_guard(provider: str, config: CostConfig, remaining_usd: float) -> dict:
@@ -22,6 +23,14 @@ def native_cost_guard(provider: str, config: CostConfig, remaining_usd: float) -
         raise ValueError("Remaining cost budget must be positive and finite")
     if provider == "claude":
         return {"kind": "native_usd", "remaining_usd": remaining_usd}
+    if provider == "agy" and config.model == GEMINI_MODEL:
+        return {
+            "kind": "host_stream_usd",
+            "remaining_usd": remaining_usd,
+            "configuration": asdict(config),
+            "rate_card": rate_card("agy"),
+            "pricing": "standard_gemini_api_equivalent",
+        }
     if provider != "codex" or config.model not in RATES:
         raise ValueError("Native cost tracking is unavailable for this provider/model")
     multiplier = Decimal(str(TIERS[config.service_tier])) * (

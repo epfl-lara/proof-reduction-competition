@@ -27,7 +27,14 @@ SOURCES = {
 CLAUDE_MODEL = "claude-opus-5-5"
 CLAUDE_RATES = (4.0, 0.20, 5.0, 20.0)
 CLAUDE_SOURCE = "https://platform.claude.com/docs/en/about-claude/pricing"
-UNPRICED_MODELS = {"deepseek-ai/DeepSeek-V4.1-Flash", "Qwen/Qwen3.8-Flash-Next"}
+GEMINI_MODEL = "gemini-3.8-flash"
+GEMINI_RATES = (0.75, 0.075, 0.75, 3.75)
+GEMINI_SOURCE = "https://ai.google.dev/gemini-api/docs/pricing"
+GEMINI_RATE_DATE = "2026-10-06"
+UNPRICED_MODELS = {
+    "deepseek-ai/DeepSeek-V4.1-Flash",
+    "Qwen/Qwen3.8-Flash-Next",
+}
 TIERS = {"standard": 1.0, "fast": 2.0, "flex": 0.5, "batch": 0.5}
 USAGE_FIELDS = (
     "input_tokens",
@@ -47,7 +54,7 @@ class CostConfig:
     regional_processing: bool = False
 
     def __post_init__(self):
-        if self.model not in {*RATES, CLAUDE_MODEL, *UNPRICED_MODELS}:
+        if self.model not in {*RATES, CLAUDE_MODEL, GEMINI_MODEL, *UNPRICED_MODELS}:
             raise ValueError("No verified price for exact model: " + self.model)
         if self.reasoning_effort not in ("low", "medium", "high", "xhigh", "max"):
             raise ValueError("Unsupported reasoning effort")
@@ -59,6 +66,12 @@ class CostConfig:
             self.service_tier == "flex" or self.regional_processing
         ):
             raise ValueError("Claude flex/regional pricing is not verified")
+        if self.model == GEMINI_MODEL and (
+            self.service_tier != "standard" or self.regional_processing
+        ):
+            raise ValueError(
+                "The Gemini estimate uses standard, non-regional API rates"
+            )
 
 
 def rate_card(provider: str = "codex") -> dict:
@@ -86,8 +99,27 @@ def rate_card(provider: str = "codex") -> dict:
             "unit": "per_million_tokens",
             "rates": {},
             "sources": {},
-            "unpriced_models": sorted(UNPRICED_MODELS),
+            # Retain the historical Lemex card; Gemini's API proxy does not
+            # establish a price for this gateway.
+            "unpriced_models": sorted(UNPRICED_MODELS | {GEMINI_MODEL}),
             "reason": "No verified price for this exact gateway model. Usage is recorded; price remains unknown.",
+        }
+    if provider == "agy":
+        return {
+            "verified_at": GEMINI_RATE_DATE,
+            "effective_through": "2026-12-31",
+            "currency": "USD",
+            "unit": "per_million_tokens",
+            "rates": {
+                GEMINI_MODEL: dict(
+                    zip(
+                        ("input", "cached_input", "cache_write", "output"), GEMINI_RATES
+                    )
+                )
+            },
+            "sources": {GEMINI_MODEL: GEMINI_SOURCE},
+            "gateway_price_verified": False,
+            "basis": "Standard Gemini API-equivalent estimate; Antigravity billing and backend identity are unverified. Cache storage charges are excluded.",
         }
     if provider != "codex":
         raise ValueError("Unknown cost provider: " + provider)
@@ -134,10 +166,14 @@ def _parts(config, usage, *, all_uncached_are_writes=False, long_context=False):
     multiplier = Decimal(str(TIERS[config.service_tier])) * (
         Decimal("1.1") if config.regional_processing else 1
     )
-    raw_rates = CLAUDE_RATES if config.model == CLAUDE_MODEL else RATES[config.model]
+    raw_rates = (
+        CLAUDE_RATES
+        if config.model == CLAUDE_MODEL
+        else GEMINI_RATES if config.model == GEMINI_MODEL else RATES[config.model]
+    )
     prices = [Decimal(str(r)) * multiplier for r in raw_rates]
     long_context = long_context or config.context_band == "long"
-    if long_context and config.model != CLAUDE_MODEL:
+    if long_context and config.model in RATES:
         prices = [p * (Decimal("1.5") if i == 3 else 2) for i, p in enumerate(prices)]
     reads, writes = usage["cached_input_tokens"], usage["cache_write_input_tokens"]
     ordinary = usage["input_tokens"] - reads - writes
@@ -195,7 +231,7 @@ def estimate_codex_cost(
             "over_budget_at_assumed_rates": None,
             "reason": "No verified price for exact model: " + config.model,
         }
-    if scope == "request" and config.model != CLAUDE_MODEL:
+    if scope == "request" and config.model in RATES:
         config = CostConfig(
             **{
                 **asdict(config),
@@ -209,10 +245,16 @@ def estimate_codex_cost(
         "basis": "public_api_equivalent",
         "configuration": asdict(config),
         "rate_card_date": (
-            "2026-10-05" if config.model == CLAUDE_MODEL else RATE_CARD_DATE
+            "2026-10-05"
+            if config.model == CLAUDE_MODEL
+            else GEMINI_RATE_DATE if config.model == GEMINI_MODEL else RATE_CARD_DATE
         ),
         "source": (
-            CLAUDE_SOURCE if config.model == CLAUDE_MODEL else SOURCES[config.model]
+            CLAUDE_SOURCE
+            if config.model == CLAUDE_MODEL
+            else (
+                GEMINI_SOURCE if config.model == GEMINI_MODEL else SOURCES[config.model]
+            )
         ),
         "usage": usage,
         "usage_scope": scope,
@@ -227,13 +269,23 @@ def estimate_codex_cost(
         "all_requests_long_context_usd": sum(
             _parts(config, usage, long_context=True).values()
         ),
-        "assumptions": [
-            "Reasoning is included in output tokens.",
-            "Local Lean checks carry no model API charge; their returned text is counted in subsequent input.",
-            "Service tier and region are pricing assumptions, not verified billing metadata.",
-            "For aggregates, the selected context band is an assumption for every underlying request.",
-            "Codex subscription charges and future API cache-write behavior are not inferred.",
-        ]
+        "assumptions": (
+            [
+                "Standard Gemini 3.8 Flash API rates effective through 2026-12-31 are a proxy, not an Antigravity invoice.",
+                "The CLI selection does not attest the served backend model or API service tier.",
+                "Reasoning is included in output tokens; input includes cached reads.",
+                "Context caching storage charges and subscription pricing are not reported or inferred.",
+                "Local Lean checks carry no model API charge; returned text is counted in subsequent input.",
+            ]
+            if config.model == GEMINI_MODEL
+            else [
+                "Reasoning is included in output tokens.",
+                "Local Lean checks carry no model API charge; their returned text is counted in subsequent input.",
+                "Service tier and region are pricing assumptions, not verified billing metadata.",
+                "For aggregates, the selected context band is an assumption for every underlying request.",
+                "Codex subscription charges and future API cache-write behavior are not inferred.",
+            ]
+        )
         + (
             [
                 "Reported one-hour Claude cache writes use $8/M; remaining writes use $5/M."
@@ -258,6 +310,8 @@ def generations_cost(config: CostConfig, generations, *, budget_usd=3.0):
             continue
         for k in USAGE_FIELDS:
             totals[k] += usage[k]
+        if generation.get("usage_complete") is False:
+            unknown.append(i)
         ttl_reported |= "cache_write_1h_input_tokens" in usage
         ttl_values.append(
             usage.get("cache_write_1h_input_tokens", 0)

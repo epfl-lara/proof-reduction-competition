@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 from copy import deepcopy
+from functools import partial
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
@@ -23,7 +24,7 @@ from proof_eval.harness.configuration import load_inputs, prepare
 from proof_eval.harness.service import ProofToolService
 from proof_eval.paths import ROOT
 from proof_eval.protocol import code_identity
-from proof_eval.providers import claude, codex, execution
+from proof_eval.providers import agy, claude, codex, execution
 from proof_eval.providers.costs import CostConfig, estimate_token_cost
 from proof_eval.providers.events import cli_identity, parse_events
 from proof_eval.providers.spending import (
@@ -79,6 +80,7 @@ def tracking_run(tmp_path, monkeypatch):
     )
     identity = {"path": sys.executable, "version": "local-test", "sha256": "local-test"}
     monkeypatch.setattr(codex, "cli_identity", lambda: identity)
+    monkeypatch.setattr(agy, "cli_identity", lambda: identity)
 
     def make(
         *,
@@ -87,10 +89,12 @@ def tracking_run(tmp_path, monkeypatch):
         restarts=20,
         timeout=3600.0,
         cleanup=True,
+        transport_restarts=2,
         provider="codex",
+        incumbents_from=None,
     ):
         output = tmp_path / "run"
-        model, effort = MODEL, EFFORT
+        model, effort = (agy.MODEL, "high") if provider == "agy" else (MODEL, EFFORT)
         config = prepare(
             output,
             "score_edges",
@@ -100,6 +104,8 @@ def tracking_run(tmp_path, monkeypatch):
             budget_tracking=tracking,
             budget_usd_per_problem=usd,
             max_budget_restarts=restarts,
+            max_transport_restarts=transport_restarts,
+            incumbents_from=incumbents_from,
             problem_timeout_seconds=timeout,
             paths={
                 "dataset_path": str(ROOT / "data/benchmark_data_warmup.jsonl"),
@@ -176,23 +182,38 @@ def fake_native(run, *, usage=USAGE, events=None):
                     sys.executable,
                     "-c",
                     FAKE_AGENT.split("events=")[0]
-                    + "\nprint(sys.argv[4]); raise SystemExit(1)",
+                    + "\nprint(sys.argv[4]); raise SystemExit(int(sys.argv[5]))",
                     run.saved["selected_proof"],
                     str(last_message),
                     json.dumps(usage),
                     "\n".join(json.dumps(event) for event in events),
+                    (
+                        "0"
+                        if run.config["provider"] == "agy"
+                        and events[-1].get("result", {}).get("status") == "SUCCESS"
+                        else "1"
+                    ),
                 ]
             return execution.Launch(
                 argv=argv,
                 environment=dict(os.environ),
                 runtime_paths=(),
                 cwd=workspace,
-                parse=parse_events,
+                parse=(
+                    partial(
+                        agy.parse_events, requested_slug=agy.slug(run.model, run.effort)
+                    )
+                    if run.config["provider"] == "agy"
+                    else parse_events
+                ),
+                stream_usage=(
+                    agy.stream_usage if run.config["provider"] == "agy" else None
+                ),
             )
 
         return execution.generate(
             **{key: value for key, value in kwargs.items() if key != "provider"},
-            provider="codex",
+            provider=run.config["provider"],
             authentication="local-test-only",
             identity=run.identity,
             tool_service=ProofToolService,
@@ -215,6 +236,221 @@ def run_worker(run, generator):
         run.evaluator,
         generator,
     )
+
+
+def test_agy_host_cost_stop_keeps_verified_proof_and_audits_partial_usage(tracking_run):
+    from functools import partial
+
+    run = tracking_run(provider="agy", usd=1.0)
+    initial = {
+        "event": "init",
+        "conversation_id": "conv",
+        "init": {"model": "gemini-3.8-flash-high"},
+    }
+
+    def update(index, ordinary, output, state):
+        return {
+            "event": "step_update",
+            "step_update": {
+                "conversation_id": "conv",
+                "step_index": index,
+                "state": state,
+                "step_type": "agent_response",
+                "usage": {
+                    "input_tokens": ordinary,
+                    "cache_read_tokens": 0,
+                    "output_tokens": output,
+                    "thinking_tokens": 0,
+                },
+            },
+        }
+
+    events = [
+        initial,
+        update(0, 750000, 0, "ACTIVE"),
+        update(0, 750000, 0, "DONE"),
+        update(1, 700000, 100000, "DONE"),
+    ]
+    code = (
+        FAKE_AGENT.split("events=")[0].replace(
+            "Path(sys.argv[2]).write_text(sys.argv[1])", ""
+        )
+        + """
+import time
+events=json.loads(sys.argv[4])
+for event in events[:3]: print(json.dumps(event),flush=True)
+time.sleep(0.5)
+print(json.dumps(events[-1]),flush=True)
+sys.stdout.write('{"event":'); sys.stdout.flush()
+time.sleep(1000)
+"""
+    )
+
+    def generator(**kwargs):
+        def build(workspace, system_file, last_message, folder):
+            return execution.Launch(
+                argv=[
+                    sys.executable,
+                    "-c",
+                    code,
+                    run.saved["selected_proof"],
+                    str(last_message),
+                    "{}",
+                    json.dumps(events),
+                ],
+                environment=dict(os.environ),
+                runtime_paths=(),
+                cwd=workspace,
+                parse=partial(agy.parse_events, requested_slug="gemini-3.8-flash-high"),
+                stream_usage=agy.stream_usage,
+            )
+
+        return execution.generate(
+            **{key: value for key, value in kwargs.items() if key != "provider"},
+            provider="agy",
+            identity=run.identity,
+            authentication="local-test-only",
+            tool_service=ProofToolService,
+            build=build,
+        )
+
+    started = time.monotonic()
+    result = run_worker(run, generator)
+    assert time.monotonic() - started < 5
+    assert result["status"] == "complete" and result["stop"]["kind"] == "cost_limit"
+    assert result["selected_proof"] == run.saved["selected_proof"]
+    assert len(result["attempts"]) == 1 and result["agent_tool_checks"] == 1
+    assert result["budget_outcome"]["cost_enforcement"] == "host_stream_usage"
+    assert result["cost"]["status"] == "unknown_usage"
+    assert result["cost"]["known_usage_estimate"]["total_usd"] == pytest.approx(1.4625)
+    stop_file = run.folder / "attempt_00/cost_stop.json"
+    stop = read(stop_file)
+    assert stop["event_count"] == 4
+    assert stop["estimate"]["total_usd"] == pytest.approx(1.4625)
+    assert audit(run.output)["status"] == "passed"
+    stop["event_count"] = 3
+    write_json(stop_file, stop)
+    with pytest.raises(ValueError, match="stop evidence"):
+        audit(run.output)
+
+
+def _agy_carry_events(run, *, success=False, usage=None):
+    return [
+        {
+            "event": "init",
+            "conversation_id": "carry-test",
+            "init": {"model": "gemini-3.8-flash-high"},
+        },
+        {
+            "event": "result",
+            "result": {
+                "conversation_id": "carry-test",
+                "status": "SUCCESS" if success else "ERROR",
+                "response": run.saved["selected_proof"] if success else "",
+                "usage": (
+                    usage
+                    if usage is not None
+                    else {
+                        "input_tokens": 200000,
+                        "cache_read_tokens": 100000,
+                        "output_tokens": 80000,
+                        "thinking_tokens": 5000,
+                    }
+                ),
+            },
+        },
+    ]
+
+
+def _continue_with_carried_budget(run):
+    write_json(run.output / "run.json", {"status": "failed"})
+    output = run.output.parent / "continued"
+    config = prepare(
+        output,
+        "score_edges",
+        load_inputs(),
+        provider="agy",
+        conditions=[(run.model, run.effort)],
+        budget_tracking="cost",
+        budget_usd_per_problem=run.config["budget_usd_per_problem"],
+        problem_timeout_seconds=run.config["problem_timeout_seconds"],
+        max_budget_restarts=0,
+        carry_budgets_from=run.output,
+        paths={key: run.config[key] for key in ("dataset_path", "environments_path")},
+    )
+    return SimpleNamespace(
+        **{
+            **vars(run),
+            "output": output,
+            "config": config,
+            "folder": output / "cells" / run.folder.name,
+        }
+    )
+
+
+def test_new_runtime_carries_failed_spend_deadline_and_best_same_condition_proof(
+    tracking_run,
+):
+    run = tracking_run(provider="agy", usd=3, restarts=0)
+    first = run_worker(run, fake_native(run, events=_agy_carry_events(run)))
+    assert first["status"] == "incomplete"
+    assert first["cost"]["total_usd"] == pytest.approx(0.4575)
+    prior_hash = digest(run.folder / "result.json")
+    original_budget = read(run.folder / "budget_started.json")
+    continued = _continue_with_carried_budget(run)
+    assert read(continued.folder / "budget_started.json") == original_budget
+    second = run_worker(
+        continued,
+        fake_native(continued, events=_agy_carry_events(continued, success=True)),
+    )
+    assert second["status"] == "complete" and len(second["generations"]) == 1
+    assert second["cost"]["carried_attempts"] == 1
+    assert second["cost"]["total_usd"] == pytest.approx(0.915)
+    assert second["attempts"][0]["cost_budget"]["remaining_usd"] == pytest.approx(
+        2.5425
+    )
+    assert second["attempts"][0]["cost_before"]["total_usd"] == pytest.approx(0.4575)
+    assert second["seed_proof"] == first["selected_proof"]
+    assert digest(run.folder / "result.json") == prior_hash
+    assert audit(continued.output)["status"] == "passed"
+    changed = read(continued.folder / "budget_started.json")
+    changed["deadline_epoch"] += 60
+    write_json(continued.folder / "budget_started.json", changed)
+    with pytest.raises(ValueError, match="deadline was replenished"):
+        audit(continued.output)
+
+
+def test_unknown_prior_usage_blocks_budget_carryover(tracking_run):
+    run = tracking_run(provider="agy", usd=3, restarts=0)
+    first = run_worker(run, fake_native(run, events=_agy_carry_events(run, usage={})))
+    assert first["cost"]["total_usd"] is None
+    with pytest.raises(ValueError, match="unknown cumulative spending"):
+        _continue_with_carried_budget(run)
+
+
+def test_spent_prior_budget_cannot_dispatch_another_request(tracking_run):
+    run = tracking_run(provider="agy", usd=3, restarts=0)
+    events = _agy_carry_events(
+        run,
+        usage={
+            "input_tokens": 4000000,
+            "cache_read_tokens": 0,
+            "output_tokens": 0,
+            "thinking_tokens": 0,
+        },
+    )
+    first = run_worker(run, fake_native(run, events=events))
+    assert first["cost"]["total_usd"] == 3
+    continued = _continue_with_carried_budget(run)
+
+    def forbidden(**kwargs):
+        raise AssertionError("Spent budgets cannot dispatch another request")
+
+    second = run_worker(continued, forbidden)
+    assert second["status"] == "complete" and second["stop"]["kind"] == "cost_reserve"
+    assert second["cost"]["total_usd"] == 3 and second["cost"]["carried_attempts"] == 1
+    assert not second["generations"] and not second["attempts"]
+    assert audit(continued.output)["status"] == "passed"
 
 
 def test_native_restarts_are_audited_and_resume_without_requests(tracking_run):
@@ -333,6 +569,85 @@ def test_infrastructure_does_not_restart(tracking_run, status):
     result = run_worker(run, generator)
     assert len(calls) == 1 and result["status"] == "incomplete"
     assert result["stop"]["kind"] == "infrastructure"
+
+
+TRANSIENT_ERROR = "stream disconnected before completion: Transport error: network error: error decoding response body"
+
+
+def transient_events(message=TRANSIENT_ERROR):
+    return [
+        *[
+            dict(type="error", message=f"Reconnecting... {number}/5")
+            for number in range(1, 6)
+        ],
+        dict(type="error", message=message),
+        dict(type="turn.failed", error=dict(message=message)),
+    ]
+
+
+def test_terminal_transport_recovery_preserves_proof_deadline_and_unknown_usage(
+    tracking_run, monkeypatch
+):
+    monkeypatch.setattr(search, "RECOVERY_BACKOFF_SECONDS", 0)
+    run = tracking_run(tracking=None)
+    failed, success = fake_native(run, events=transient_events()), fake_native(run)
+
+    def generator(**kwargs):
+        return (failed if kwargs["folder"].name == "attempt_00" else success)(**kwargs)
+
+    result = run_worker(run, generator)
+    assert result["status"] == "complete"
+    assert [g["status"] for g in result["generations"]] == [
+        "transport_error",
+        "received",
+    ]
+    first, second = result["attempts"]
+    assert second["incumbent_proof"] == run.saved["selected_proof"]
+    assert second["deadline_epoch"] == first["deadline_epoch"]
+    assert second["generation_timeout_seconds"] < first["generation_timeout_seconds"]
+    assert result["cost"]["total_usd"] is None
+    assert result["cost"]["unknown_attempt_indices"] == [0]
+    assert audit(run.output)["requests"] == 2
+
+
+def test_terminal_transport_recovery_is_bounded(tracking_run, monkeypatch):
+    monkeypatch.setattr(search, "RECOVERY_BACKOFF_SECONDS", 0)
+    run = tracking_run(tracking=None, transport_restarts=1)
+    result = run_worker(run, fake_native(run, events=transient_events()))
+    assert len(result["generations"]) == 2
+    assert result["status"] == "incomplete"
+    assert result["stop"]["kind"] == "transport_recovery_limit"
+    assert audit(run.output)["requests"] == 2
+
+
+def test_unknown_spending_prevents_transport_recovery_in_cost_mode(tracking_run):
+    run = tracking_run()
+    result = run_worker(run, fake_native(run, events=transient_events()))
+    assert len(result["generations"]) == 1
+    assert result["stop"]["kind"] == "unknown_usage"
+    assert audit(run.output)["requests"] == 1
+
+
+def test_permanent_transport_failure_does_not_retry(tracking_run):
+    run = tracking_run(tracking=None)
+    result = run_worker(
+        run,
+        fake_native(run, events=transient_events("unexpected status 401 Unauthorized")),
+    )
+    assert len(result["generations"]) == 1
+    assert result["stop"]["kind"] == "infrastructure"
+    assert audit(run.output)["requests"] == 1
+
+
+def test_saved_same_condition_proof_is_used_without_reevaluation(tracking_run):
+    run = tracking_run(
+        tracking=None, incumbents_from=ROOT / "results/harness/06_refactor_regression"
+    )
+    result = run_worker(run, fake_native(run))
+    inp = read(run.folder / "input.json")
+    assert inp["seed_proof"] == run.saved["selected_proof"]
+    assert result["attempts"][0]["incumbent_proof"] == run.saved["selected_proof"]
+    assert audit(run.output)["status"] == "passed"
 
 
 def test_missing_usage_stops_with_an_unknown_cost(tracking_run):

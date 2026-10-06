@@ -16,11 +16,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from proof_eval.evidence.io import now, write_json
+from proof_eval.evidence.io import fingerprint, now, write_json
 from proof_eval.paths import PACKAGE
 
 from .contracts import ToolSession
 from .isolation import launch_command
+from .monitoring import UsageReader, communicate_with_budget, read_events
 from .processes import stop_tree
 from .spending import native_cost_stop
 
@@ -35,6 +36,7 @@ class Launch:
     cwd: Path
     parse: Callable[[list[dict], str, int], dict]
     capacity: Callable[[], AbstractContextManager] = nullcontext
+    stream_usage: UsageReader | None = None
 
 
 def generate(
@@ -146,42 +148,66 @@ def generate(
                 pass_fds=() if capacity_fd is None else (capacity_fd,),
             )
             write_json(folder / "process.json", {"pid": child.pid, "started_at": now()})
+            cost_stop = None
+            monitor_error = None
             try:
-                child.communicate(prompt_file.read_text(), timeout=timeout)
+                if cost_budget is not None and cost_budget["kind"] == "host_stream_usd":
+                    if launch.stream_usage is None:
+                        raise ValueError("Host stream guard requires a usage decoder")
+                    cost_stop = communicate_with_budget(
+                        child,
+                        prompt_file.read_text(),
+                        timeout,
+                        folder,
+                        cost_budget,
+                        launch.stream_usage,
+                    )
+                else:
+                    child.communicate(prompt_file.read_text(), timeout=timeout)
                 timed_out = False
             except subprocess.TimeoutExpired:
                 stop_tree(child.pid)
                 child.wait(timeout=5)
                 timed_out = True
+            except (OSError, ValueError, KeyError) as error:
+                stop_tree(child.pid)
+                child.wait(timeout=5)
+                monitor_error = str(error)
+                timed_out = False
         try:
-            events = []
-            for line in (folder / "events.jsonl").read_text().splitlines():
-                if not line.strip():
-                    continue
-                try:
-                    events.append(json.loads(line))
-                except json.JSONDecodeError:
-                    if timed_out:
-                        break  # Preserve a killed CLI's unfinished line as raw evidence.
-                    raise
+            events = read_events(
+                folder / "events.jsonl",
+                allow_partial=timed_out or cost_stop is not None,
+            )
             final = last_message.read_text() if last_message.exists() else ""
             result = launch.parse(events, final, child.returncode)
             if (
-                native_cost_stop(provider, events, cost_budget)
+                (
+                    native_cost_stop(provider, events, cost_budget)
+                    or cost_stop is not None
+                )
                 and not timed_out
                 and (provider != "claude" or result.get("actual_model") == model)
+                and (
+                    provider != "agy"
+                    or result.get("actual_model") in (None, model + "-" + effort)
+                )
             ):
                 result.update(
                     status="budget_exhausted",
                     termination="cost_limit",
                     cost_budget=cost_budget,
-                    error="Native cost guard stopped the attempt; not resampled",
+                    error="Cost guard stopped the attempt; not resampled",
                 )
+                if cost_stop is not None:
+                    result["host_cost_stop_sha256"] = fingerprint(cost_stop)
             if timed_out:
                 result.update(
                     status="budget_exhausted",
                     error="Native agent reached the problem time limit; not resampled",
                 )
+            if monitor_error is not None:
+                result.update(status="transport_error", error=monitor_error)
             if result["status"] == "received" and not last_message.exists():
                 last_message.write_text(result["content"])
         except (OSError, ValueError, KeyError) as error:

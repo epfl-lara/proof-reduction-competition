@@ -190,6 +190,11 @@ def _result_usage(result: dict, schema_version: int) -> dict:
     }
 
 
+def terminal(event: object) -> bool:
+    """The Claude Code terminal result record, recognized by recovery."""
+    return isinstance(event, dict) and event.get("type") == "result"
+
+
 def parse_events(
     events: list[dict],
     final: str,

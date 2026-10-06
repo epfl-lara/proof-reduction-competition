@@ -45,10 +45,32 @@ proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
 successful voluntary completion starts another conversation and workspace from
 the best verified proof while budget remains. The default safety limit is 20
 restarts (21 total attempts), adjustable with `--max-budget-restarts`. Restarts
-stop when at most 30 seconds remain for final cleanup. Failed or indeterminate
-requests and unavailable verification never trigger a retry. Cost tracking also
-stops when cumulative spending is unknown.
+stop when at most 30 seconds remain for final cleanup. Indeterminate requests,
+permanent failures and unavailable verification never trigger a retry. Cost
+tracking also stops when cumulative spending is unknown.
 Cost tracking requires a priced model; use time tracking for Lemex models.
+
+Transient gateway failures have separate recovery limits. Lemex allows four
+HTTP retries and five stream retries within its native conversation. After an
+observed terminal transient failure, the host permits up to two new sessions
+from the best verified proof, with bounded backoff and the same problem deadline.
+Use `--max-transport-restarts 0` to disable host recovery. Successful native
+completion still ends a default run; transport recovery does not enable repeated
+optimization attempts. Reconnect notifications remain in the evidence, and
+unreported usage from interrupted responses stays unknown.
+
+For an explicitly authorized new run after an old interruption, pass
+`--incumbents-from results/harness/prior_run` and a new `--output`. The harness
+pins and validates that condition's saved proofs, reference identities and
+theorem context without remeasurement. The new run receives a fresh time budget;
+all automatic recoveries inside it share that one budget. Other model conditions
+cannot supply its proofs.
+
+To continue a stopped cost-tracked run after a runtime fix without replenishing
+its budget, use `--carry-budgets-from results/harness/prior_run` with a new output.
+The harness audits and pins prior evidence, counts every prior attempt, restores
+the original deadline, and reuses that condition's best verified proof. Unknown
+cumulative spending or an unfinished prior request blocks continuation.
 
 Cost tracking passes the remaining budget to the native CLI and sums observed
 costs across attempts. Codex uses a conservative weighted token allowance;
@@ -63,7 +85,7 @@ and its five-card [strategy bank](prompts/strategy_bank.json), preserving the
 revised V2 contents used for the recent Sol runs. There is no prompt-version or
 search-mode selector. All providers use score feedback and cleanup at the edges.
 
-Native Lemex and Claude Code run the same task with their own shell/edit tools:
+Native Lemex, Claude Code and Google Antigravity run the same task with their own shell/edit tools:
 
 ```bash
 # DeepSeek: existing .env gateway key is passed only to the Lemex child.
@@ -77,6 +99,10 @@ proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
 # Sign in with `claude auth login` first. Exact Opus 5.5/max, no fallback.
 proof-harness run --provider claude --pilot --workers 5 \
   --output results/harness/my_opus_run
+
+# Antigravity `agy` with an existing Google login. Exact Gemini 3.8 Flash/high.
+proof-harness run --provider agy --pilot --workers 2 --track-cost --budget-usd 3 \
+  --output results/harness/my_antigravity_run
 ```
 
 Lemex defaults to `deepseek-ai/DeepSeek-V4.1-Flash/high`. The direct RCP chat
@@ -85,8 +111,20 @@ no temperature override; the gateway's effective default is not exposed by the
 CLI. Claude uses `claude-opus-5-5/max`, with normal project configuration and
 authentication discovery. Each provider has separate output and usage evidence.
 Claude's reported API-equivalent cost includes its actual cache durations and
-any auxiliary models. Complete usage from failed calls is also retained. The
-exact DeepSeek gateway price remains unknown.
+any auxiliary models. Antigravity uses `gemini-3.8-flash/high` (the suffixed
+`--model` slug, no separate effort flag) and prints stream-json evidence from an
+existing `agy` login; its system policy, tool instructions and user message are
+merged into one prompt and therefore reach the model as user-level instructions.
+Complete usage from failed calls is also retained. The exact DeepSeek gateway
+price and the exact Antigravity price remain unknown. Antigravity cost tracking
+uses an explicit standard Gemini API-equivalent estimate: $0.75/M ordinary
+input, $0.075/M cached input, and $3.75/M output including thinking, effective
+through December 31, 2026. A host supervisor watches the streamed usage and
+stops the native process at its remaining per-problem budget. Repeated step
+snapshots are counted once; terminal usage replaces the step subtotal. An
+in-flight response can overshoot, and cache-storage/subscription charges are
+not inferred. Missing terminal usage remains unknown, with the observed
+subtotal retained. See [Google pricing](https://ai.google.dev/gemini-api/docs/pricing).
 
 Every completed condition exports `conditions/MODEL__EFFORT/selected_candidates.jsonl`, with one complete declaration per benchmark ID in the organizer's submission format. Invalid or regressive attempts preserve the best proof passing every required version. In-loop deterministic cleanup is retired.
 

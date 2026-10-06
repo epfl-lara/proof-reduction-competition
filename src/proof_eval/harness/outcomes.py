@@ -7,7 +7,6 @@ from pathlib import Path
 from proof_eval.evidence.io import digest, now, read, write_json
 from proof_eval.paths import ROOT
 from proof_eval.protocol import code_identity
-from proof_eval.providers.costs import CostConfig, generations_cost
 
 from .attempts import attempt_folders
 from .configuration import (
@@ -17,6 +16,7 @@ from .configuration import (
     structural_control,
 )
 from .session import ProofSession
+from .tracking import attempt_cost
 
 
 def finalize_cell(
@@ -145,10 +145,8 @@ def finalize_cell(
         "finished_at": now(),
     }
     if "cost_assumptions" in config:
-        result["cost"] = generations_cost(
-            CostConfig(model, effort, **config["cost_assumptions"]),
-            generations,
-            budget_usd=config["budget_usd_per_problem"],
+        result["cost"] = attempt_cost(
+            config, model, effort, generations, name=pack["name"], final=True
         )
     if config.get("budget_tracking") is not None:
         result["budget_tracking"] = config["budget_tracking"]
@@ -156,7 +154,11 @@ def finalize_cell(
             "stop_kind": result["stop"]["kind"],
             "cost_known": result.get("cost", {}).get("total_usd") is not None,
             "cost_enforcement": (
-                "native_response_boundaries"
+                (
+                    "host_stream_usage"
+                    if config.get("provider") == "agy"
+                    else "native_response_boundaries"
+                )
                 if config["budget_tracking"] == "cost"
                 else "whole_problem_deadline"
             ),
@@ -171,6 +173,7 @@ def finalize_cell(
         "unknown_usage",
         "unknown_cost",
         "unknown_price",
+        "transport_recovery_limit",
     ):
         result["status"] = "incomplete"
     if mode in DETERMINISTIC_MODES:

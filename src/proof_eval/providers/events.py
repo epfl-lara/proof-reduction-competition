@@ -5,6 +5,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from .retries import reconnect_notice
+
 DISABLED = (
     "apps",
     "plugins",
@@ -31,15 +33,21 @@ def cli_identity(name: str = "codex") -> dict:
     }
 
 
+def terminal(event: object) -> bool:
+    """The Codex/Lemex Responses terminal record, recognized by recovery."""
+    return isinstance(event, dict) and event.get("type") == "turn.completed"
+
+
 def parse_events(events, final, returncode):
     turns = [e for e in events if e.get("type") == "turn.completed"]
     bad = [e for e in events if e.get("type") in {"error", "turn.failed"}]
+    recovered = [e for e in bad if reconnect_notice(e)]
     items = [e["item"] for e in events if e.get("type") == "item.completed"]
     tools = [e for e in items if e.get("type") not in {"agent_message", "reasoning"}]
     messages = [e.get("text", "") for e in items if e.get("type") == "agent_message"]
     if (
         returncode
-        or bad
+        or len(bad) != len(recovered)
         or len(turns) != 1
         or not final.strip()
         or not messages
@@ -55,7 +63,7 @@ def parse_events(events, final, returncode):
             "usage": turns[-1].get("usage") if turns else None,
         }
     usage = turns[0].get("usage", {})
-    return {
+    result = {
         "status": "received",
         "content": final,
         "finish_reason": "stop",
@@ -70,3 +78,11 @@ def parse_events(events, final, returncode):
         "tool_items": len(tools),
         "tool_item_types": [t.get("type") for t in tools],
     }
+    if recovered:
+        result.update(
+            events_errors=bad,
+            recovered_transport_errors=recovered,
+            usage_complete=False,
+            usage_incomplete_reason="Native terminal counters may omit interrupted upstream responses",
+        )
+    return result

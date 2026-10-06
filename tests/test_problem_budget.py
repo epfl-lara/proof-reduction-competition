@@ -92,6 +92,7 @@ def _run_test_cell(output, config, pack, model, effort, evaluator, *, generator)
         ("cleanup", "codex"),
         ("generation", "lemex"),
         ("generation", "claude"),
+        ("generation", "agy"),
     ],
 )
 def test_hard_deadline_retains_best_and_kills_detached_tools(
@@ -218,6 +219,28 @@ def test_qwen_native_configuration_and_unknown_price():
     assert cost["status"] == "unknown_price" and cost["total_usd"] is None
     with pytest.raises(ValueError, match="Unsupported model/effort"):
         RunConfig(provider="lemex", conditions=(("Qwen/Qwen3.8-Flash-Next", "high"),))
+
+
+def test_agy_native_configuration_and_api_equivalent_cost_budget():
+    config = RunConfig(provider="agy")
+    assert config.conditions == (("gemini-3.8-flash", "high"),)
+    assert config.problem_timeout_seconds == 3420
+    cost = estimate_token_cost(
+        CostConfig(*config.conditions[0]),
+        {
+            "input_tokens": 10,
+            "output_tokens": 20,
+            "cached_input_tokens": 0,
+            "cache_write_input_tokens": 0,
+            "reasoning_output_tokens": 0,
+        },
+    )
+    assert cost["status"] == "estimated"
+    assert cost["total_usd"] == pytest.approx((10 * 0.75 + 20 * 3.75) / 1e6)
+    with pytest.raises(ValueError, match="Unsupported model/effort"):
+        RunConfig(provider="agy", conditions=(("gemini-3.8-flash", "max"),))
+    tracked = RunConfig(provider="agy", budget_tracking="cost")
+    assert tracked.budget_usd_per_problem == 3.0
 
 
 def test_adding_unpriced_qwen_keeps_legacy_deepseek_auditable():

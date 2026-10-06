@@ -8,7 +8,7 @@ APIs; no library imports an experiment driver. Historical studies stay in
 | --- | --- | --- |
 | `verification` | Pinned Lean compilation, token counts, cached references, goal observations, heartbeat diagnostics | `Evaluator`, `check_references`, `profile` |
 | `optimization` | Parsed proof edits, tactic discovery, minimization, bounded cleanup, generic deterministic batches | `Budget`, `optimize`, `cleanup_proof`, `BatchConfig`, `run_batch` |
-| `providers` | Native agent CLIs, durable execution/isolation, terminal usage, price estimates | `codex.generate`, `lemex.generate`, `claude.generate`, `CostConfig` |
+| `providers` | Native agent CLIs, durable execution/isolation, terminal usage, price estimates | `codex.generate`, `lemex.generate`, `claude.generate`, `agy.generate`, `CostConfig` |
 | `harness` | Prompt/context policy, tool sessions, one-theorem search, batch coordination and reports | `ProofSession`, `ProofToolService`, `RunConfig`, `run` |
 | `benchmark` | Explicit project setup and one-time reference processing | `process_benchmark` |
 | `evidence` | Atomic artifacts, stable hashes and saved-evidence audits | `write_json`, `fingerprint`, `audit` |
@@ -21,7 +21,7 @@ deadline. `harness/search.py` owns its model request and final cleanup;
 `harness/agent.py` supplies prompt policy and the tool service to the general
 native agent executor. Provider code does not import the harness or decide which proof
 wins. The host-owned `ProofSession` makes that decision from evaluator results.
-`providers/execution.py` owns durable execution; the three provider adapters own
+`providers/execution.py` owns durable execution; the four provider adapters own
 command construction, authentication and event decoding. Codex and Lemex share
 the Responses command builder. A custom agent implementation can be passed as
 `run_cell(..., generator=...)`. The former direct RCP chat client is removed.
@@ -83,9 +83,10 @@ and `incumbent` evaluation including references, and `source_context`. The defau
 uses the already frozen warm-up packs. Pass another directory with `base=...` or
 `--base` for another prepared batch; references are still required in the cache.
 
-Set `provider="lemex"` or `provider="claude"` to select a native CLI. Omitted
-conditions default to DeepSeek V4.1 Flash/high or Opus 5.5/max respectively;
-Codex defaults remain Sol 6.1/max and Astra/max. Only the active `score_edges`
+Set `provider="lemex"`, `provider="claude"` or `provider="agy"` to select a
+native CLI. Omitted conditions default to DeepSeek V4.1 Flash/high, Opus
+5.5/max or Gemini 3.8 Flash/high respectively; Codex defaults remain Sol
+6.1/max and Astra/max. Only the active `score_edges`
 policy can be launched. Historical modes remain readable by the evidence auditor.
 The canonical prompt and bank retain the revised V2 bytes. Provider wrapper
 instructions may describe a different command working directory; they do not
@@ -132,8 +133,9 @@ saved open-track 48-hour/50-problem total, not an organizer per-problem rule.
 `RunConfig.budget_tracking` defaults to `None`: voluntary agent completion ends
 the single native session. Select `"cost"` or `"time"` with `--budget-tracking`,
 `--track-cost` or `--track-time` to admit fresh attempts after successful native
-completion. Transport failures, indeterminate requests and unavailable host
-checks stop admission. Cost tracking also stops on missing cost counters. The fresh prompt has exactly one
+completion. Indeterminate requests, permanent failures and unavailable host
+checks stop admission. Terminal transient transport failures have the separate
+bounded recovery policy below. Cost tracking also stops on missing cost counters. The fresh prompt has exactly one
 system message and one user message; its incumbent declaration/scores and
 `candidate.lean` come from the best proof in the shared verified ledger.
 `reset_for_attempt()` clears both the finish marker and saved session state.
@@ -149,6 +151,35 @@ never resampled. Missing native terminal usage remains unknown, including on
 controlled stops. `budget_enforced` is true only for time tracking; cost results
 record `hard_cost_cap=false` and `cost_enforcement="native_response_boundaries"`.
 The policy does not claim a strict invoice cap or override sampling defaults.
+
+`RunConfig.max_transport_restarts` defaults to two. `providers/retries.py`
+classifies observed terminal transient failures; incomplete request markers,
+authentication/model failures and malformed finals are excluded. Native Lemex
+uses four HTTP retries and five stream retries. A successful final following a
+native reconnect remains successful, with the reconnect events preserved and
+`usage_complete=false` because interrupted upstream usage may be unreported.
+Host recovery after native exhaustion starts a fresh session from the shared
+best-proof ledger with bounded backoff, never a replenished deadline. The attempt
+auditor checks each admission, predecessor failure, incumbent and time budget.
+Cost tracking admits no recovery when cumulative spending is unknown.
+
+`RunConfig.incumbents_from` / `--incumbents-from` supports an explicitly launched
+new output using a previous run's best proofs. `harness/incumbents.py` pins the
+source result/configuration bytes, requires the same provider/model/effort,
+theorem preparation and cached reference identities, and rejects proofs missing
+any required version. Runtime guards and the auditor verify those pins. This
+allocates a new problem budget only in the new output; historical evidence and
+budgets remain unchanged. A better original/deterministic seed is still retained.
+
+`RunConfig.carry_budgets_from` / `--carry-budgets-from` instead continues a
+stopped cost-tracked run under a new runtime and output without resetting its
+allocation. `harness/carryover.py` audits the source run and pins its result,
+configuration and deadline bytes. Cumulative pricing includes all prior
+generations, including failed calls; the original problem deadline is restored.
+The same-condition best verified proof supplies the incumbent. Changed fixed
+inputs, unknown cumulative usage, active batches and started cells without a
+terminal result block continuation. Audit checks both the carried spending and
+the unchanged deadline.
 
 Time tracking uses the single persisted whole-problem deadline. If none exists,
 the supervisor creates it before dispatch; resume always reuses it. Both modes
@@ -241,6 +272,28 @@ and cost are preserved and checked. A successful native result may include
 recovered tool denials; those remain in its evidence. Errors, limits, missing or
 inconsistent session IDs and model mismatches leave an incomplete outcome.
 See [headless Claude Code](https://code.claude.com/docs/en/headless).
+
+Antigravity launches the installed `agy` CLI in print mode with stream-json
+output, the exact `gemini-3.8-flash-high` model slug and `code` agent. Its print
+mode has no system-prompt channel, so the harness system policy, tool
+instructions and user message are merged into one inline `-p` argument and
+reach the model as user-level instructions; `-p=@file` is a file reference and
+is not used. Each request records the `init.model` selection evidence, which
+proves the requested selection propagated but not the backend identity. Usage
+is normalized by adding reported cache reads back into input (cache writes are
+unreported); complete usage from failed calls is retained. Terminal status,
+conversation identity, final content, denials and supervised deadlines are
+audited, and the exact Antigravity billed price stays unknown. Opt-in cost
+tracking uses the frozen standard Gemini API rates ($0.75/M input, $0.075/M
+cached reads, $3.75/M output including thinking; effective through 2026-12-31)
+as an explicit API-equivalent proxy. The host supervisor tails `events.jsonl`,
+replaces repeated per-step usage snapshots, and stops the native child when
+observed spending reaches the remaining per-problem cap. Terminal cumulative
+usage replaces rather than adds to the step subtotal. `cost_progress.json`
+records the observed lower bound; `cost_stop.json` pins the event prefix,
+remaining guard, usage and estimate behind a controlled stop. Offline audit
+reconstructs that stop without calling a model or Lean. Unreported in-flight
+usage and cache storage remain unknown, so this is not a hard invoice ceiling.
 
 ## Artifacts and resuming
 

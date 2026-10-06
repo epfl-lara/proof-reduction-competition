@@ -3,6 +3,7 @@ import sys
 
 import pytest
 
+from proof_eval.providers import agy
 from proof_eval.providers.isolation import abi_version, launch_command
 
 
@@ -66,3 +67,40 @@ def test_misconfigured_writable_ancestor_is_rejected(tmp_path, landlock):
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
     assert result.returncode != 0
     assert "overlaps a protected source tree" in result.stderr
+
+
+def test_agy_can_allocate_a_pty_while_sources_and_host_evidence_stay_readonly(
+    tmp_path, landlock
+):
+    source = tmp_path / "source"
+    workspace = tmp_path / "workspace"
+    source.mkdir()
+    workspace.mkdir()
+    protected_file = source / "Original.lean"
+    protected_file.write_text("original")
+    evidence = tmp_path / "generation.json"
+    evidence.write_text("host evidence")
+    script = """
+import os, pty, sys
+from pathlib import Path
+master, slave = pty.openpty()
+slave_name = os.ttyname(slave)
+reopened = os.open(slave_name, os.O_RDWR)
+os.write(master, b'command output\\n')
+assert os.read(slave, 100) == b'command output\\n'
+for fd in (reopened, master, slave): os.close(fd)
+for filename in sys.argv[1:]:
+    try: Path(filename).write_text('bad')
+    except PermissionError: pass
+    else: raise AssertionError('protected write was allowed')
+"""
+    command = launch_command(
+        [sys.executable, "-c", script, str(protected_file), str(evidence)],
+        workspace,
+        [source],
+        runtime_paths=agy.runtime_paths(),
+    )
+    result = subprocess.run(command, capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stderr
+    assert protected_file.read_text() == "original"
+    assert evidence.read_text() == "host evidence"

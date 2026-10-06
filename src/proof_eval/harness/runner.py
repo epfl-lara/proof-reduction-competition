@@ -45,6 +45,9 @@ def run(args: RunConfig) -> dict:
             budget_tracking=args.budget_tracking,
             budget_usd_per_problem=args.budget_usd_per_problem,
             max_budget_restarts=args.max_budget_restarts,
+            max_transport_restarts=args.max_transport_restarts,
+            incumbents_from=args.incumbents_from,
+            carry_budgets_from=args.carry_budgets_from,
             base_directory=Path(args.base).resolve(),
             paths={
                 "dataset_path": str(Path(args.dataset).resolve()),

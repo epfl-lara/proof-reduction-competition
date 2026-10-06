@@ -87,6 +87,22 @@ def main(argv=None) -> int:
             help="Frozen prepared inputs and their config.json",
         )
         sub.add_argument("--dataset", type=Path, default=RunConfig.dataset)
+        sub.add_argument(
+            "--max-transport-restarts",
+            type=int,
+            default=RunConfig.max_transport_restarts,
+            help="Fresh sessions after terminal transient failures, sharing the original deadline (default: 2)",
+        )
+        sub.add_argument(
+            "--incumbents-from",
+            type=Path,
+            help="Seed from saved, verified results for the same model condition; use a new output",
+        )
+        sub.add_argument(
+            "--carry-budgets-from",
+            type=Path,
+            help="Carry known prior spend, original deadlines and same-condition proofs into a new runtime/output",
+        )
         sub.add_argument("--environments", type=Path, default=RunConfig.environments)
         sub.add_argument("--cache", type=Path, default=RunConfig.cache)
         sub.add_argument("--references", type=Path, default=RunConfig.references)
@@ -119,6 +135,9 @@ def main(argv=None) -> int:
                     "budget_tracking",
                     "budget_usd_per_problem",
                     "max_budget_restarts",
+                    "max_transport_restarts",
+                    "incumbents_from",
+                    "carry_budgets_from",
                     "base",
                     "dataset",
                     "environments",

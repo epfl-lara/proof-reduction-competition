@@ -22,7 +22,7 @@ from .tracking import validate_budgets
 class RunConfig:
     output: Path = DEFAULT_OUTPUT
     conditions: tuple[tuple[str, str], ...] | None = None
-    provider: Literal["codex", "lemex", "claude"] = "codex"
+    provider: Literal["codex", "lemex", "claude", "agy"] = "codex"
     names: tuple[str, ...] = ()
     mode: str = DEFAULT_MODE
     workers: int = 5
@@ -30,6 +30,9 @@ class RunConfig:
     budget_tracking: Literal["cost", "time"] | None = None
     budget_usd_per_problem: float = 3.0
     max_budget_restarts: int = 20
+    max_transport_restarts: int = 2
+    incumbents_from: Path | None = None
+    carry_budgets_from: Path | None = None
     base: Path = BASE
     dataset: Path = ROOT / "data/benchmark_data_warmup.jsonl"
     environments: Path = ROOT / "environments.local.json"
@@ -66,5 +69,16 @@ class RunConfig:
         )
         if self.provider == "lemex" and self.workers > 5:
             raise ValueError("Lemex permits at most five simultaneous gateway sessions")
+        if (
+            type(self.max_transport_restarts) is not int
+            or not 0 <= self.max_transport_restarts <= 20
+        ):
+            raise ValueError(
+                "max_transport_restarts must be an integer between 0 and 20"
+            )
         if len(set(self.names)) != len(self.names):
             raise ValueError("Duplicate theorem selection")
+        if self.carry_budgets_from is not None and self.incumbents_from is not None:
+            raise ValueError(
+                "Budget carryover already reuses prior verified incumbents"
+            )

@@ -1,0 +1,60 @@
+Checking candidate proof across all required versions...
+I'm waiting for the check to complete across all required versions.
+Checking the updated candidate proof across all required versions...
+Checking the golfed candidate proof across all required versions...
+Checking the fixed candidate proof across all required versions...
+Testing case abs L h in candidate proof...
+Checking candidate proof with anonymous hypotheses...
+Checking goals on candidate.lean...
+Checking candidate proof after omitting unused binders...
+Checking candidate proof with cases val...
+Checking candidate proof without type annotations on b₂ and b₃...
+```lean
+lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by
+  generalize eq : [] = Γ at der
+  induction der <;> subst eq
+  case var mem => cases mem
+  case app _ _ _ _ l r ih_l ih_r =>
+    right
+    rcases ih_l rfl with val_l | ⟨_, red_l⟩
+    · rcases ih_r rfl with val_r | ⟨_, red_r⟩
+      · obtain ⟨_, _, rfl⟩ := l.canonical_form_abs val_l
+        exact ⟨_, .abs val_l.lc val_r⟩
+      · exact ⟨_, .appᵣ val_l red_r⟩
+    · exact ⟨_, .appₗ r.wf.2.1 red_l⟩
+  case tapp _ _ _ _ der sub ih =>
+    right
+    have h := (Sub.wf _ _ _ sub).2.1.lc
+    rcases ih rfl with val | ⟨_, red⟩
+    · obtain ⟨_, _, rfl⟩ := der.canonical_form_tabs val
+      exact ⟨_, .tabs val.lc h⟩
+    · exact ⟨_, .tapp h red⟩
+  case let' _ _ t₂ _ L der h ih _ =>
+    right
+    have b₂ : t₂.body := ⟨L, fun _ m => (h _ m).wf.2.1⟩
+    rcases ih rfl with val | ⟨_, red⟩
+    · exact ⟨_, .let_body val b₂⟩
+    · exact ⟨_, .let_bind red b₂⟩
+  case inl _ _ ih =>
+    rcases ih rfl with val | ⟨_, red⟩
+    · exact .inl (.inl val)
+    · exact .inr ⟨_, .inl red⟩
+  case inr _ _ ih =>
+    rcases ih rfl with val | ⟨_, red⟩
+    · exact .inl (.inr val)
+    · exact .inr ⟨_, .inr red⟩
+  case case _ _ _ t₂ _ t₃ L der h₂ h₃ ih _ _ =>
+    right
+    have b₂ : t₂.body := ⟨L, fun _ m => (h₂ _ m).wf.2.1⟩
+    have b₃ : t₃.body := ⟨L, fun _ m => (h₃ _ m).wf.2.1⟩
+    rcases ih rfl with val | ⟨_, red⟩
+    · obtain ⟨_, rfl | rfl⟩ := der.canonical_form_sum val
+      · cases val; exact ⟨_, .case_inl ‹_› b₂ b₃⟩
+      · cases val; exact ⟨_, .case_inr ‹_› b₂ b₃⟩
+    · exact ⟨_, .case red b₂ b₃⟩
+  case sub _ _ ih => exact ih rfl
+  case abs =>
+    exact .inl (.abs (Typing.abs _ ‹_›).wf.2.1)
+  case tabs =>
+    exact .inl (.tabs (Typing.tabs _ ‹_›).wf.2.1)
+```

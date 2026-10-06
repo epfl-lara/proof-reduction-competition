@@ -19,7 +19,9 @@ from proof_eval.paths import ROOT
 from . import execution, responses
 from .events import cli_identity as executable_identity
 from .events import parse_events
+from .events import terminal as terminal
 from .execution import Launch
+from .retries import REQUEST_MAX_RETRIES, STREAM_MAX_RETRIES
 
 MODEL = "deepseek-ai/DeepSeek-V4.1-Flash"
 MODELS = {
@@ -88,8 +90,8 @@ def command(
         "model_providers.lemex_gateway.wire_api": "responses",
         "model_providers.lemex_gateway.requires_openai_auth": False,
         "model_providers.lemex_gateway.supports_websockets": False,
-        "model_providers.lemex_gateway.request_max_retries": 0,
-        "model_providers.lemex_gateway.stream_max_retries": 0,
+        "model_providers.lemex_gateway.request_max_retries": REQUEST_MAX_RETRIES,
+        "model_providers.lemex_gateway.stream_max_retries": STREAM_MAX_RETRIES,
     }
     return responses.command(model=model, effort=effort, settings=settings, **kwargs)
 

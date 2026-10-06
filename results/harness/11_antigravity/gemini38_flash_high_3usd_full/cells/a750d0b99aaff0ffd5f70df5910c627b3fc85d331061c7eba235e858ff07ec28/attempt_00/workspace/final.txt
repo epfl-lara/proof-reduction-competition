@@ -1,0 +1,28 @@
+```lean
+theorem InitsUpdatesComm
+  {P : PureExpr} {σ σ' σ'' : SemanticStore P}
+  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :
+  UpdateStates σ ks vs σ' →
+  InitStates σ' ks' vs' σ'' →
+  ∃ σ₁,
+    σ₁ = (updatedStates σ ks' vs') ∧
+    InitStates σ ks' vs' σ₁ ∧
+    UpdateStates σ₁ ks vs σ'' := fun Hup Hinit =>
+  let Hl := InitStatesLength Hinit
+  let Hnd := InitStatesNodup Hinit
+  ⟨_, rfl, updatedStatesInit Hl (UpdateStatesNotDefMonotone' (InitStatesNotDefined Hinit) Hup) Hnd, by
+    induction Hup generalizing σ''
+    case update_none =>
+      cases InitStatesUpdated Hinit
+      constructor
+    case update_some σ x v σ₀ xs vs σ₁ Hup Hups ih =>
+      have Hnotdef := UpdateStateNotDefMonotone' (UpdateStatesNotDefMonotone' (InitStatesNotDefined Hinit) Hups) Hup
+      refine .update_some ?_ (ih Hinit)
+      simp [UpdateStateUpdated Hup, updatedStates]
+      cases Hup with
+      | update Hold =>
+      rw [← updatedStateComm']
+      . exact updatedStateUpdate (InitStatesSomeMonotone Hold (updatedStatesInit Hl Hnotdef Hnd))
+      . rw [List.unzip_zip Hl]
+        exact fun Hin => nomatch Hold.symm.trans (Hnotdef x Hin)⟩
+```

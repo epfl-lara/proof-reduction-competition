@@ -1,0 +1,30 @@
+I have launched the profiling task and will evaluate the results once complete.
+```lean
+open OldExpressions in
+theorem substOldPostSubset:
+  (Imperative.HasVarsPure.getVars (P:=Expression)
+    (substOld h2 (Lambda.LExpr.fvar m h1 ty) post)).Subset
+    (Imperative.HasVarsPure.getVars (P:=Expression) post ++ [h1]) := by
+  have step : ∀ {a b c d}, a ⊆ b ++ [h1] → c ⊆ d ++ [h1] → a ++ c ⊆ b ++ d ++ [h1] :=
+    fun hA hB x h => match List.mem_append.mp h with
+    | .inl ha => match List.mem_append.mp (hA ha) with
+      | .inl hb => List.mem_append_left _ (List.mem_append_left _ hb)
+      | .inr h => List.mem_append_right _ h
+    | .inr hc => match List.mem_append.mp (hB hc) with
+      | .inl hd => List.mem_append_left _ (List.mem_append_right _ hd)
+      | .inr h => List.mem_append_right _ h
+  induction post
+  case const | op | bvar => exact List.Subset.empty
+  case fvar => exact List.subset_append_left _ _
+  case abs ih => exact ih
+  case eq ih1 ih2 => exact step ih1 ih2
+  case quant trih eih => exact step trih eih
+  case ite cih tih eih => exact step (step cih tih) eih
+  case app ih1 ih2 =>
+    dsimp [substOld]
+    split
+    · split
+      · exact List.subset_append_right _ _
+      · exact List.subset_append_left _ _
+    · exact step ih1 ih2
+```

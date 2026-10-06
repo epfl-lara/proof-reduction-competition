@@ -13,6 +13,7 @@ from proof_eval.optimization.jobs import DeterministicCleanup
 from proof_eval.protocol import extract_declaration
 from proof_eval.providers.contracts import AgentGenerator
 from proof_eval.providers.costs import CostConfig
+from proof_eval.providers.retries import RECOVERY_BACKOFF_SECONDS
 from proof_eval.providers.spending import native_cost_guard
 from proof_eval.verification.api import Evaluator
 from proof_eval.verification.feedback import build_validity_feedback
@@ -26,6 +27,7 @@ from .configuration import (
     guard,
     starting_point,
 )
+from .incumbents import select_seed
 from .limits import time_budget_summary
 from .outcomes import finalize_cell
 from .prompts import budget_suffix, messages
@@ -82,6 +84,8 @@ def _run_cell(
 
         checked_guard()
         seed = starting_point(pack, mode) if mode in DETERMINISTIC_MODES else None
+        if seed is not None:
+            seed = select_seed(config, pack, model, effort, seed)
         cleanup = None
         if seed is not None:
             base = read(Path(config.get("base_directory", BASE)) / "config.json")
@@ -151,6 +155,8 @@ def _run_cell(
             if mode == "correctness"
             else (max_restarts if budget_tracking in ("cost", "time") else 0)
         )
+        max_rounds += config.get("max_transport_restarts", 0)
+        transport_restarts_used = 0
         for round_number in range(max_rounds + 1):
             checked_guard()
             admission_epoch = time.time()
@@ -181,7 +187,9 @@ def _run_cell(
                     at_epoch=admission_epoch,
                 )
                 break
-            cost_before = attempt_cost(config, model, effort, generations)
+            cost_before = attempt_cost(
+                config, model, effort, generations, name=pack["name"]
+            )
             if round_number == 0:
                 request = deepcopy(initial)
             elif mode == "correctness":
@@ -205,6 +213,20 @@ def _run_cell(
             cost_guard = None
             if budget_tracking == "cost":
                 total = cost_before["total_usd"]
+                if (
+                    round_number == 0
+                    and total is not None
+                    and total >= budget_usd - 1e-12
+                ):
+                    record_stop(
+                        folder,
+                        {
+                            "kind": "cost_reserve",
+                            "reason": "Prior spending already reached the problem budget",
+                        },
+                        None,
+                    )
+                    break
                 if total is None or total >= budget_usd - 1e-12:
                     raise RuntimeError(
                         "Attempt admission requires known spending below the budget"
@@ -268,21 +290,35 @@ def _run_cell(
             )
             generations.append(generation)
             if generation["status"] != "received":
-                cost_after = attempt_cost(config, model, effort, generations)
+                cost_after = attempt_cost(
+                    config, model, effort, generations, name=pack["name"]
+                )
                 if config.get("attempt_evidence_version"):
                     finish_attempt(attempt_folder, session, generation, cost_after)
-                record_stop(
-                    folder,
-                    stop_decision(
-                        config,
-                        generation,
-                        cost_after,
-                        unavailable=False,
-                        round_number=round_number,
-                        time_remaining=remaining,
+                decision_epoch = time.time()
+                stop = stop_decision(
+                    config,
+                    generation,
+                    cost_after,
+                    unavailable=any(
+                        check["evaluation"]["status"] == "incomplete"
+                        for check in session.checks
                     ),
-                    round_number,
+                    round_number=round_number,
+                    time_remaining=(
+                        budget["deadline_epoch"] - decision_epoch if budget else None
+                    ),
+                    transport_restarts_used=transport_restarts_used,
                 )
+                if stop is None:
+                    delay = RECOVERY_BACKOFF_SECONDS * 2 ** min(
+                        transport_restarts_used, 5
+                    )
+                    transport_restarts_used += 1
+                    # The supervisor owns this wait and retains the same deadline.
+                    time.sleep(delay)
+                    continue
+                record_stop(folder, stop, round_number, at_epoch=decision_epoch)
                 break
             try:
                 final_code = extract_declaration(
@@ -297,7 +333,9 @@ def _run_cell(
                 if len(session.checks) > before
                 else None
             )
-            cost_after = attempt_cost(config, model, effort, generations)
+            cost_after = attempt_cost(
+                config, model, effort, generations, name=pack["name"]
+            )
             if config.get("attempt_evidence_version"):
                 finish_attempt(attempt_folder, session, generation, cost_after)
             if mode == "correctness":
@@ -324,6 +362,7 @@ def _run_cell(
                     time_remaining=(
                         budget["deadline_epoch"] - decision_epoch if budget else None
                     ),
+                    transport_restarts_used=transport_restarts_used,
                 )
                 if stop is not None:
                     # Default runs retain the model's factual finish reason.
