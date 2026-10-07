@@ -23,6 +23,12 @@ from .semantic import discover
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
+    replay_command = commands.add_parser("replay", help="Replay saved evidence offline")
+    replay_command.add_argument("--run", type=Path, action="append", required=True)
+    replay_command.add_argument("--protocol", type=Path, required=True)
+    replay_command.add_argument("--output", type=Path, required=True)
+    replay_command.add_argument("--pilot", action="store_true")
+    replay_command.add_argument("--descriptive-only", action="store_true")
     for action in ("run", "prepare", "estimate", "report", "audit"):
         sub = commands.add_parser(action)
         sub.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
@@ -125,9 +131,35 @@ def main(argv=None) -> int:
             )
     args = parser.parse_args(argv)
     try:
+        if args.command == "replay":
+            from .replay_reporting import run_replay
+
+            result = run_replay(
+                args.run,
+                args.protocol,
+                args.output,
+                pilot=args.pilot,
+                descriptive_only=args.descriptive_only,
+            )
+            print(
+                json.dumps(
+                    {"status": result["status"], "gate": result["gate"]["verdict"]}
+                )
+            )
+            return 0
         output = args.output.resolve()
         if args.command == "audit":
-            result = audit(output)
+            saved_report = (
+                read(output / "report.json")
+                if (output / "report.json").exists()
+                else {}
+            )
+            if "protocol_sha256" in saved_report:
+                from .replay_reporting import audit_replay
+
+                result = audit_replay(output)
+            else:
+                result = audit(output)
             write_json(output / "audit.json", result)
         elif args.command == "report":
             result = report(output, read(output / "config.json"))

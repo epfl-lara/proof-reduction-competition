@@ -1,0 +1,1767 @@
+/localhome/milikic/miniconda3/envs/af/bin/python -m pytest -q
+................................................................... [ 15%]
+.....................FFFFFFFFFFFFFFFFFFFFFFFF....................... [ 30%]
+.....ssss....................................sssssssssssssss [ 43%]
+s..................................ssssssssss......................... [ 59%]
+...............................................FFF............... [ 73%]
+...................................................................s..s. [ 90%]
+............................................                             [100%]
+=================================== FAILURES ===================================
+____ test_agy_host_cost_stop_keeps_verified_proof_and_audits_partial_usage _____
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd297cf40>
+
+    def test_agy_host_cost_stop_keeps_verified_proof_and_audits_partial_usage(tracking_run):
+        from functools import partial
+    
+        run = tracking_run(provider="agy", usd=1.0)
+        initial = {
+            "event": "init",
+            "conversation_id": "conv",
+            "init": {"model": "gemini-3.8-flash-high"},
+        }
+    
+        def update(index, ordinary, output, state):
+            return {
+                "event": "step_update",
+                "step_update": {
+                    "conversation_id": "conv",
+                    "step_index": index,
+                    "state": state,
+                    "step_type": "agent_response",
+                    "usage": {
+                        "input_tokens": ordinary,
+                        "cache_read_tokens": 0,
+                        "output_tokens": output,
+                        "thinking_tokens": 0,
+                    },
+                },
+            }
+    
+        events = [
+            initial,
+            update(0, 750000, 0, "ACTIVE"),
+            update(0, 750000, 0, "DONE"),
+            update(1, 700000, 100000, "DONE"),
+        ]
+        code = (
+            FAKE_AGENT.split("events=")[0].replace(
+                "Path(sys.argv[2]).write_text(sys.argv[1])", ""
+            )
+            + """
+    import time
+    events=json.loads(sys.argv[4])
+    for event in events[:3]: print(json.dumps(event),flush=True)
+    time.sleep(0.5)
+    print(json.dumps(events[-1]),flush=True)
+    sys.stdout.write('{"event":'); sys.stdout.flush()
+    time.sleep(1000)
+    """
+        )
+    
+        def generator(**kwargs):
+            def build(workspace, system_file, last_message, folder):
+                return execution.Launch(
+                    argv=[
+                        sys.executable,
+                        "-c",
+                        code,
+                        run.saved["selected_proof"],
+                        str(last_message),
+                        "{}",
+                        json.dumps(events),
+                    ],
+                    environment=dict(os.environ),
+                    runtime_paths=(),
+                    cwd=workspace,
+                    parse=partial(agy.parse_events, requested_slug="gemini-3.8-flash-high"),
+                    stream_usage=agy.stream_usage,
+                )
+    
+            return execution.generate(
+                **{key: value for key, value in kwargs.items() if key != "provider"},
+                provider="agy",
+                identity=run.identity,
+                authentication="local-test-only",
+                tool_service=ProofToolService,
+                build=build,
+            )
+    
+        started = time.monotonic()
+>       result = run_worker(run, generator)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:318: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd30f8500>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_ test_new_runtime_carries_failed_spend_deadline_and_best_same_condition_proof _
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd28e5d00>
+
+    def test_new_runtime_carries_failed_spend_deadline_and_best_same_condition_proof(
+        tracking_run,
+    ):
+        run = tracking_run(provider="agy", usd=3, restarts=0)
+>       first = run_worker(run, fake_native(run, events=_agy_carry_events(run)))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:395: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2d56330>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_______________ test_unknown_prior_usage_blocks_budget_carryover _______________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd26f5800>
+
+    def test_unknown_prior_usage_blocks_budget_carryover(tracking_run):
+        run = tracking_run(provider="agy", usd=3, restarts=0)
+>       first = run_worker(run, fake_native(run, events=_agy_carry_events(run, usage={})))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:425: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd35cd8e0>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+___________ test_spent_prior_budget_cannot_dispatch_another_request ____________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd2e4f060>
+
+    def test_spent_prior_budget_cannot_dispatch_another_request(tracking_run):
+        run = tracking_run(provider="agy", usd=3, restarts=0)
+        events = _agy_carry_events(
+            run,
+            usage={
+                "input_tokens": 4000000,
+                "cache_read_tokens": 0,
+                "output_tokens": 0,
+                "thinking_tokens": 0,
+            },
+        )
+>       first = run_worker(run, fake_native(run, events=events))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:442: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd35cd8e0>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_________ test_native_restarts_are_audited_and_resume_without_requests _________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd297dd00>
+
+    def test_native_restarts_are_audited_and_resume_without_requests(tracking_run):
+        run = tracking_run()
+>       result = search.run_cell(
+            run.output, run.config, run.pack, MODEL, EFFORT, run.evaluator, fake_native(run)
+        )
+
+tests/test_budget_tracking.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/proof_eval/harness/search.py:52: in run_cell
+    return supervised_cell(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+output = PosixPath('/tmp/pytest-of-milikic/pytest-4104/test_native_restarts_are_audit0/run')
+config = {'problem_timeout_seconds': 3600.0, 'schema_version': 5, 'attempt_evidence_version': 1, 'provider': 'codex', ...}
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+model = 'gpt-6.1-sol', effort = 'max'
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2d36840>
+generator = <function fake_native.<locals>.generator at 0x76fbd28e7c40>
+
+    def run_cell(
+        output: Path,
+        config: dict,
+        pack: dict,
+        model: str,
+        effort: str,
+        evaluator: Evaluator,
+        *,
+        generator: AgentGenerator | None = None,
+    ) -> dict:
+        """A fixed deadline includes provider admission, Lean calls and final cleanup."""
+        folder = (
+            output / "cells" / fingerprint((pack["name"], model, effort, config["mode"]))
+        )
+        folder.mkdir(parents=True, exist_ok=True)
+        with (folder / ".budget.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if (folder / "result.json").exists():
+                return read(folder / "result.json")
+            if (folder / "budget_end.json").exists():
+                return recover_cell(folder, config, pack, model, effort, evaluator)
+            if (folder / "cell_process.json").exists():
+                raise RuntimeError(
+                    "Started theorem worker has no terminal result; not restarted or resampled"
+                )
+            request = {
+                "output": str(output),
+                "config": config,
+                "pack": pack,
+                "model": model,
+                "effort": effort,
+                "evaluator": {
+                    "dataset_path": str(evaluator.dataset.path),
+                    "environments_path": config.get(
+                        "environments_path", str(ROOT / "environments.local.json")
+                    ),
+                    "cache_dir": str(evaluator.store.root),
+                    "timeout": evaluator.timeout,
+                },
+            }
+            manifest = folder / "cell_request.json"
+            write_json(manifest, request)
+            budget = start_budget(folder, config["problem_timeout_seconds"])
+            with (
+                (folder / "worker.stdout.log").open("w") as out,
+                (folder / "worker.stderr.log").open("w") as err,
+            ):
+                if generator is None:
+                    child = subprocess.Popen(
+                        [
+                            sys.executable,
+                            "-m",
+                            "proof_eval.interfaces.worker",
+                            str(manifest),
+                        ],
+                        stdout=out,
+                        stderr=err,
+                        start_new_session=True,
+                        pass_fds=(lock.fileno(),),
+                    )
+                else:
+                    child = _CustomWorker(
+                        (output, config, pack, model, effort, evaluator),
+                        generator,
+                        out,
+                        err,
+                    )
+                write_json(
+                    folder / "cell_process.json", {"pid": child.pid, "started_at": now()}
+                )
+                try:
+                    child.wait(timeout=max(0.0, budget["deadline_epoch"] - time.time()))
+                except subprocess.TimeoutExpired:
+                    stopped = time.time()
+                    owned = stop_tree(child.pid)
+                    child.wait(timeout=5)
+                    write_json(
+                        folder / "budget_end.json",
+                        {
+                            "exhausted": True,
+                            "work_stopped_epoch": stopped,
+                            "at": now(),
+                            **owned,
+                        },
+                    )
+                    # Only delete compiler temporaries belonging to this worker in pinned projects.
+                    projects = set(evaluator.projects.values())
+                    for source in owned["temporary_sources"]:
+                        path = Path(source)
+                        if path.parent in projects:
+                            path.unlink(missing_ok=True)
+                    if (folder / "result.json").exists():
+                        return read(folder / "result.json")
+                    return recover_cell(folder, config, pack, model, effort, evaluator)
+            if child.returncode:
+>               raise RuntimeError(
+                    f"Theorem worker exited {child.returncode}; inspect {folder / 'worker.stderr.log'}"
+                )
+E               RuntimeError: Theorem worker exited 1; inspect /tmp/pytest-of-milikic/pytest-4104/test_native_restarts_are_audit0/run/cells/0ab8abffb5b700bfd6e26e11b877dfb48b634b7b58bb444339c80da2b031c4ea/worker.stderr.log
+
+src/proof_eval/harness/budget.py:153: RuntimeError
+----------------------------- Captured stderr call -----------------------------
+Process ForkProcess-1:
+Traceback (most recent call last):
+  File "/localhome/milikic/miniconda3/envs/af/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/localhome/milikic/miniconda3/envs/af/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/localhome/milikic/proof-replay-phase0/src/proof_eval/harness/budget.py", line 55, in _custom_worker
+    _run_cell(*arguments, generator=generator)
+  File "/localhome/milikic/proof-replay-phase0/src/proof_eval/harness/search.py", line 85, in _run_cell
+    checked_guard()
+  File "/localhome/milikic/proof-replay-phase0/src/proof_eval/harness/search.py", line 83, in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/localhome/milikic/proof-replay-phase0/src/proof_eval/harness/configuration.py", line 369, in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+  File "/localhome/milikic/proof-replay-phase0/src/proof_eval/verification/references.py", line 102, in check_references
+    raise ValueError(f"Cached reference unavailable: {name}/{version}")
+ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+_ test_legacy_completion_and_restart_cap_have_factual_stops[None-20-agent_decision] _
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd2d88cc0>
+tracking = None, restarts = 20, expected = 'agent_decision'
+
+    @pytest.mark.parametrize(
+        "tracking,restarts,expected",
+        [(None, 20, "agent_decision"), ("cost", 1, "restart_limit")],
+    )
+    def test_legacy_completion_and_restart_cap_have_factual_stops(
+        tracking_run, tracking, restarts, expected
+    ):
+        run = tracking_run(tracking=tracking, restarts=restarts, usd=3.0)
+>       result = run_worker(run, fake_native(run))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:546: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd4bb9fd0>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_ test_legacy_completion_and_restart_cap_have_factual_stops[cost-1-restart_limit] _
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd297da80>
+tracking = 'cost', restarts = 1, expected = 'restart_limit'
+
+    @pytest.mark.parametrize(
+        "tracking,restarts,expected",
+        [(None, 20, "agent_decision"), ("cost", 1, "restart_limit")],
+    )
+    def test_legacy_completion_and_restart_cap_have_factual_stops(
+        tracking_run, tracking, restarts, expected
+    ):
+        run = tracking_run(tracking=tracking, restarts=restarts, usd=3.0)
+>       result = run_worker(run, fake_native(run))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:546: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd0680170>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+____________ test_infrastructure_does_not_restart[transport_error] _____________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd29707c0>
+status = 'transport_error'
+
+    @pytest.mark.parametrize(
+        "status", ["transport_error", "indeterminate", "model_mismatch"]
+    )
+    def test_infrastructure_does_not_restart(tracking_run, status):
+        run = tracking_run(cleanup=False)
+        calls = []
+    
+        def generator(**kwargs):
+            calls.append(kwargs)
+            return {"status": status, "error": "Unavailable transport"}
+    
+>       result = run_worker(run, generator)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:569: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2a75b50>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_____________ test_infrastructure_does_not_restart[indeterminate] ______________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd2a4c360>
+status = 'indeterminate'
+
+    @pytest.mark.parametrize(
+        "status", ["transport_error", "indeterminate", "model_mismatch"]
+    )
+    def test_infrastructure_does_not_restart(tracking_run, status):
+        run = tracking_run(cleanup=False)
+        calls = []
+    
+        def generator(**kwargs):
+            calls.append(kwargs)
+            return {"status": status, "error": "Unavailable transport"}
+    
+>       result = run_worker(run, generator)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:569: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd3eabb00>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_____________ test_infrastructure_does_not_restart[model_mismatch] _____________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd2a4f4c0>
+status = 'model_mismatch'
+
+    @pytest.mark.parametrize(
+        "status", ["transport_error", "indeterminate", "model_mismatch"]
+    )
+    def test_infrastructure_does_not_restart(tracking_run, status):
+        run = tracking_run(cleanup=False)
+        calls = []
+    
+        def generator(**kwargs):
+            calls.append(kwargs)
+            return {"status": status, "error": "Unavailable transport"}
+    
+>       result = run_worker(run, generator)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:569: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2e41d30>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_ test_terminal_transport_recovery_preserves_proof_deadline_and_unknown_usage __
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd297d4e0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76fbd2c0b3e0>
+
+    def test_terminal_transport_recovery_preserves_proof_deadline_and_unknown_usage(
+        tracking_run, monkeypatch
+    ):
+        monkeypatch.setattr(search, "RECOVERY_BACKOFF_SECONDS", 0)
+        run = tracking_run(tracking=None)
+        failed, success = fake_native(run, events=transient_events()), fake_native(run)
+    
+        def generator(**kwargs):
+            return (failed if kwargs["folder"].name == "attempt_00" else success)(**kwargs)
+    
+>       result = run_worker(run, generator)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:598: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2de6510>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_________________ test_terminal_transport_recovery_is_bounded __________________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd2d8b560>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76fbd2935e50>
+
+    def test_terminal_transport_recovery_is_bounded(tracking_run, monkeypatch):
+        monkeypatch.setattr(search, "RECOVERY_BACKOFF_SECONDS", 0)
+        run = tracking_run(tracking=None, transport_restarts=1)
+>       result = run_worker(run, fake_native(run, events=transient_events()))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:616: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd290eb10>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+________ test_unknown_spending_prevents_transport_recovery_in_cost_mode ________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd2e4e700>
+
+    def test_unknown_spending_prevents_transport_recovery_in_cost_mode(tracking_run):
+        run = tracking_run()
+>       result = run_worker(run, fake_native(run, events=transient_events()))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:625: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd34e0d40>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_______________ test_permanent_transport_failure_does_not_retry ________________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd2d8a200>
+
+    def test_permanent_transport_failure_does_not_retry(tracking_run):
+        run = tracking_run(tracking=None)
+>       result = run_worker(
+            run,
+            fake_native(run, events=transient_events("unexpected status 401 Unauthorized")),
+        )
+
+tests/test_budget_tracking.py:633: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2ca4230>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_________ test_saved_same_condition_proof_is_used_without_reevaluation _________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd29722a0>
+
+    def test_saved_same_condition_proof_is_used_without_reevaluation(tracking_run):
+        run = tracking_run(
+            tracking=None, incumbents_from=ROOT / "results/harness/06_refactor_regression"
+        )
+>       result = run_worker(run, fake_native(run))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:646: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2d232c0>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+________________ test_missing_usage_stops_with_an_unknown_cost _________________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd04e0540>
+
+    def test_missing_usage_stops_with_an_unknown_cost(tracking_run):
+        run = tracking_run()
+>       result = run_worker(run, fake_native(run, usage={}))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:655: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2d35ee0>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_______ test_time_tracking_reserves_cleanup_time_after_native_completion _______
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd28e51c0>
+
+    def test_time_tracking_reserves_cleanup_time_after_native_completion(tracking_run):
+        run = tracking_run(tracking="time", timeout=20.0)
+>       result = run_worker(run, fake_native(run))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:664: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2ff2c30>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+__ test_audit_uses_budget_decision_time_when_writing_crosses_cleanup_reserve ___
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd2a4fe20>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76fbd2933380>
+
+    def test_audit_uses_budget_decision_time_when_writing_crosses_cleanup_reserve(
+        tracking_run, monkeypatch
+    ):
+        run = tracking_run(tracking="time", restarts=0, timeout=120.0)
+        finish, stop = search.finish_attempt, search.record_stop
+    
+        def finish_before_reserve(*args):
+            record = finish(*args)
+            monkeypatch.setattr(search.time, "time", lambda: record["deadline_epoch"] - 31)
+            return record
+    
+        def write_after_reserve(folder, decision, number, **kwargs):
+            deadline = read(run.folder / "budget_started.json")["deadline_epoch"]
+            monkeypatch.setattr(search.time, "time", lambda: deadline - 29)
+            return stop(folder, decision, number, **kwargs)
+    
+        monkeypatch.setattr(search, "finish_attempt", finish_before_reserve)
+        monkeypatch.setattr(search, "record_stop", write_after_reserve)
+>       result = run_worker(run, fake_native(run))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:690: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd307b680>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+______________ test_tiny_cost_budget_does_not_dispatch_a_request _______________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd2e4f240>
+
+    def test_tiny_cost_budget_does_not_dispatch_a_request(tracking_run):
+        run = tracking_run(usd=1e-9, cleanup=False)
+    
+        def forbidden(**kwargs):
+            raise AssertionError("No money remains for a native response")
+    
+>       result = run_worker(run, forbidden)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:702: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2d33920>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_ test_unavailable_verification_prevents_a_successful_response_from_restarting _
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd04e34c0>
+
+    def test_unavailable_verification_prevents_a_successful_response_from_restarting(
+        tracking_run,
+    ):
+        run = tracking_run(cleanup=False)
+        unavailable = deepcopy(run.saved["selected_evaluation"])
+        unavailable.update(
+            status="incomplete", scores={key: None for key in unavailable["scores"]}
+        )
+        for outcome in unavailable["per_version"].values():
+            outcome.update(status="incomplete", passed=None, error="Compiler unavailable")
+        run.evaluator.evaluate = lambda *a, **k: unavailable
+        calls = []
+    
+        def generator(**kwargs):
+            calls.append(kwargs)
+            return {
+                "status": "received",
+                "content": run.saved["selected_proof"],
+                "finish_reason": "stop",
+                "codex_usage": USAGE,
+            }
+    
+>       result = run_worker(run, generator)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:731: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd290cda0>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+____________ test_exact_cost_cap_stops_without_marking_an_overspend ____________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd297f060>
+
+    def test_exact_cost_cap_stops_without_marking_an_overspend(tracking_run):
+        run = tracking_run(
+            usd=estimate_token_cost(CostConfig(MODEL, EFFORT), USAGE)["total_usd"]
+        )
+>       result = run_worker(run, fake_native(run))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:741: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2926420>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+_________ test_only_explicit_native_budget_events_are_controlled[True] _________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd29702c0>
+budget_failure = True
+
+    @pytest.mark.parametrize("budget_failure", [True, False])
+    def test_only_explicit_native_budget_events_are_controlled(
+        tracking_run, budget_failure
+    ):
+        run = tracking_run()
+        message = (
+            "shared rollout token budget exhausted" if budget_failure else "connection lost"
+        )
+        events = [
+            {"type": "error", "message": message},
+            {"type": "turn.failed", "error": {"message": message}},
+        ]
+>       result = run_worker(run, fake_native(run, events=events))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:759: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd26d4200>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+________ test_only_explicit_native_budget_events_are_controlled[False] _________
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd2d8bec0>
+budget_failure = False
+
+    @pytest.mark.parametrize("budget_failure", [True, False])
+    def test_only_explicit_native_budget_events_are_controlled(
+        tracking_run, budget_failure
+    ):
+        run = tracking_run()
+        message = (
+            "shared rollout token budget exhausted" if budget_failure else "connection lost"
+        )
+        events = [
+            {"type": "error", "message": message},
+            {"type": "turn.failed", "error": {"message": message}},
+        ]
+>       result = run_worker(run, fake_native(run, events=events))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_budget_tracking.py:759: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_budget_tracking.py:230: in run_worker
+    return search._run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd281a360>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+____ test_public_custom_generator_is_stopped_at_the_whole_problem_deadline _____
+
+tracking_run = <function tracking_run.<locals>.make at 0x76fbd28e76a0>
+
+    def test_public_custom_generator_is_stopped_at_the_whole_problem_deadline(tracking_run):
+        run = tracking_run(tracking="time", timeout=1.0, cleanup=False)
+    
+        def generator(**kwargs):
+            kwargs["session"].check(run.saved["selected_proof"])
+            detached = subprocess.Popen(
+                [sys.executable, "-c", "import time; time.sleep(1000)"],
+                start_new_session=True,
+            )
+            write_json(kwargs["folder"] / "detached.json", {"pid": detached.pid})
+            time.sleep(1000)
+    
+        started = time.monotonic()
+>       result = search.run_cell(
+            run.output, run.config, run.pack, MODEL, EFFORT, run.evaluator, generator
+        )
+
+tests/test_budget_tracking.py:783: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/proof_eval/harness/search.py:52: in run_cell
+    return supervised_cell(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+output = PosixPath('/tmp/pytest-of-milikic/pytest-4104/test_public_custom_generator_i0/run')
+config = {'problem_timeout_seconds': 1.0, 'schema_version': 5, 'attempt_evidence_version': 1, 'provider': 'codex', ...}
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+model = 'gpt-6.1-sol', effort = 'max'
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd28f1430>
+generator = <function test_public_custom_generator_is_stopped_at_the_whole_problem_deadline.<locals>.generator at 0x76fbd2d1c400>
+
+    def run_cell(
+        output: Path,
+        config: dict,
+        pack: dict,
+        model: str,
+        effort: str,
+        evaluator: Evaluator,
+        *,
+        generator: AgentGenerator | None = None,
+    ) -> dict:
+        """A fixed deadline includes provider admission, Lean calls and final cleanup."""
+        folder = (
+            output / "cells" / fingerprint((pack["name"], model, effort, config["mode"]))
+        )
+        folder.mkdir(parents=True, exist_ok=True)
+        with (folder / ".budget.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if (folder / "result.json").exists():
+                return read(folder / "result.json")
+            if (folder / "budget_end.json").exists():
+                return recover_cell(folder, config, pack, model, effort, evaluator)
+            if (folder / "cell_process.json").exists():
+                raise RuntimeError(
+                    "Started theorem worker has no terminal result; not restarted or resampled"
+                )
+            request = {
+                "output": str(output),
+                "config": config,
+                "pack": pack,
+                "model": model,
+                "effort": effort,
+                "evaluator": {
+                    "dataset_path": str(evaluator.dataset.path),
+                    "environments_path": config.get(
+                        "environments_path", str(ROOT / "environments.local.json")
+                    ),
+                    "cache_dir": str(evaluator.store.root),
+                    "timeout": evaluator.timeout,
+                },
+            }
+            manifest = folder / "cell_request.json"
+            write_json(manifest, request)
+            budget = start_budget(folder, config["problem_timeout_seconds"])
+            with (
+                (folder / "worker.stdout.log").open("w") as out,
+                (folder / "worker.stderr.log").open("w") as err,
+            ):
+                if generator is None:
+                    child = subprocess.Popen(
+                        [
+                            sys.executable,
+                            "-m",
+                            "proof_eval.interfaces.worker",
+                            str(manifest),
+                        ],
+                        stdout=out,
+                        stderr=err,
+                        start_new_session=True,
+                        pass_fds=(lock.fileno(),),
+                    )
+                else:
+                    child = _CustomWorker(
+                        (output, config, pack, model, effort, evaluator),
+                        generator,
+                        out,
+                        err,
+                    )
+                write_json(
+                    folder / "cell_process.json", {"pid": child.pid, "started_at": now()}
+                )
+                try:
+                    child.wait(timeout=max(0.0, budget["deadline_epoch"] - time.time()))
+                except subprocess.TimeoutExpired:
+                    stopped = time.time()
+                    owned = stop_tree(child.pid)
+                    child.wait(timeout=5)
+                    write_json(
+                        folder / "budget_end.json",
+                        {
+                            "exhausted": True,
+                            "work_stopped_epoch": stopped,
+                            "at": now(),
+                            **owned,
+                        },
+                    )
+                    # Only delete compiler temporaries belonging to this worker in pinned projects.
+                    projects = set(evaluator.projects.values())
+                    for source in owned["temporary_sources"]:
+                        path = Path(source)
+                        if path.parent in projects:
+                            path.unlink(missing_ok=True)
+                    if (folder / "result.json").exists():
+                        return read(folder / "result.json")
+                    return recover_cell(folder, config, pack, model, effort, evaluator)
+            if child.returncode:
+>               raise RuntimeError(
+                    f"Theorem worker exited {child.returncode}; inspect {folder / 'worker.stderr.log'}"
+                )
+E               RuntimeError: Theorem worker exited 1; inspect /tmp/pytest-of-milikic/pytest-4104/test_public_custom_generator_i0/run/cells/0ab8abffb5b700bfd6e26e11b877dfb48b634b7b58bb444339c80da2b031c4ea/worker.stderr.log
+
+src/proof_eval/harness/budget.py:153: RuntimeError
+----------------------------- Captured stderr call -----------------------------
+Process ForkProcess-2:
+Traceback (most recent call last):
+  File "/localhome/milikic/miniconda3/envs/af/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/localhome/milikic/miniconda3/envs/af/lib/python3.12/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/localhome/milikic/proof-replay-phase0/src/proof_eval/harness/budget.py", line 55, in _custom_worker
+    _run_cell(*arguments, generator=generator)
+  File "/localhome/milikic/proof-replay-phase0/src/proof_eval/harness/search.py", line 85, in _run_cell
+    checked_guard()
+  File "/localhome/milikic/proof-replay-phase0/src/proof_eval/harness/search.py", line 83, in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/localhome/milikic/proof-replay-phase0/src/proof_eval/harness/configuration.py", line 369, in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+  File "/localhome/milikic/proof-replay-phase0/src/proof_eval/verification/references.py", line 102, in check_references
+    raise ValueError(f"Cached reference unavailable: {name}/{version}")
+ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+___________ test_budget_tracking_cost_restarts_from_best_declaration ___________
+
+tmp_path = PosixPath('/tmp/pytest-of-milikic/pytest-4104/test_budget_tracking_cost_rest0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76fbd0683170>
+
+    def test_budget_tracking_cost_restarts_from_best_declaration(tmp_path, monkeypatch):
+        import json
+    
+        from proof_eval.harness import search
+    
+        name = "CallElimCorrect.substOldPostSubset"
+        model, effort = ("gpt-6.1-sol", "max")
+        output = tmp_path / "run"
+        packs = load_inputs()
+        identity = {"path": sys.executable, "version": "test", "sha256": "test"}
+        monkeypatch.setattr(adapter("codex"), "cli_identity", lambda: identity)
+        config = prepare(
+            output,
+            "score_edges",
+            packs,
+            conditions=[(model, effort)],
+            provider="codex",
+            budget_tracking="cost",
+            budget_usd_per_problem=1.0,
+            problem_timeout_seconds=3600.0,
+            paths={
+                "dataset_path": str(ROOT / "data/benchmark_data_warmup.jsonl"),
+                "environments_path": str(ROOT / "environments.local.json"),
+            },
+        )
+        evaluator = Evaluator(
+            ROOT / "data/benchmark_data_warmup.jsonl",
+            ROOT / "environments.local.json",
+            ROOT / ".proof-eval",
+        )
+        saved = read(
+            ROOT
+            / "results/harness/06_refactor_regression/cells"
+            / fingerprint((name, "gpt-6.1-sol", "max", "score_edges"))
+            / "result.json"
+        )
+        evaluator.evaluate = lambda *a, **k: saved["selected_evaluation"]
+        monkeypatch.setattr(search, "DeterministicCleanup", lambda *a: lambda code: None)
+    
+        invocations = []
+    
+        def mock_generator(*, folder, messages, session, **kwargs):
+            invocations.append(
+                {"folder": folder, "messages": messages, "best": session.best_code}
+            )
+            if len(invocations) == 1:
+                session.check(saved["selected_proof"])
+            return {
+                "status": "received",
+                "content": session.best_code,
+                "finish_reason": "stop",
+                "codex_usage": {
+                    "input_tokens": 100000,
+                    "cached_input_tokens": 90000,
+                    "cache_write_input_tokens": 0,
+                    "output_tokens": 50000,
+                    "reasoning_output_tokens": 30000,
+                },
+            }
+    
+        monkeypatch.setattr(search, "generate", mock_generator)
+>       result = _run_test_cell(
+            output,
+            config,
+            packs[name],
+            model,
+            effort,
+            evaluator,
+            generator=mock_generator,
+        )
+
+tests/test_problem_budget.py:314: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_problem_budget.py:83: in _run_test_cell
+    return _run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2c09310>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+___________________ test_budget_tracking_disabled_by_default ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-milikic/pytest-4104/test_budget_tracking_disabled_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76fbd2c08b00>
+
+    def test_budget_tracking_disabled_by_default(tmp_path, monkeypatch):
+        from proof_eval.harness import search
+    
+        name = "CallElimCorrect.substOldPostSubset"
+        model, effort = ("gpt-6.1-sol", "max")
+        output = tmp_path / "run"
+        packs = load_inputs()
+        identity = {"path": sys.executable, "version": "test", "sha256": "test"}
+        monkeypatch.setattr(adapter("codex"), "cli_identity", lambda: identity)
+        config = prepare(
+            output,
+            "score_edges",
+            packs,
+            conditions=[(model, effort)],
+            provider="codex",
+            budget_tracking=None,
+            budget_usd_per_problem=3.0,
+            problem_timeout_seconds=3600.0,
+            paths={
+                "dataset_path": str(ROOT / "data/benchmark_data_warmup.jsonl"),
+                "environments_path": str(ROOT / "environments.local.json"),
+            },
+        )
+        evaluator = Evaluator(
+            ROOT / "data/benchmark_data_warmup.jsonl",
+            ROOT / "environments.local.json",
+            ROOT / ".proof-eval",
+        )
+        saved = read(
+            ROOT
+            / "results/harness/06_refactor_regression/cells"
+            / fingerprint((name, "gpt-6.1-sol", "max", "score_edges"))
+            / "result.json"
+        )
+        evaluator.evaluate = lambda *a, **k: saved["selected_evaluation"]
+        monkeypatch.setattr(search, "DeterministicCleanup", lambda *a: lambda code: None)
+    
+        invocations = []
+    
+        def mock_generator(*, folder, messages, session, **kwargs):
+            invocations.append(folder)
+            return {
+                "status": "received",
+                "content": session.best_code,
+                "finish_reason": "stop",
+                "codex_usage": {
+                    "input_tokens": 10000,
+                    "cached_input_tokens": 5000,
+                    "cache_write_input_tokens": 0,
+                    "output_tokens": 1000,
+                    "reasoning_output_tokens": 500,
+                },
+            }
+    
+>       result = _run_test_cell(
+            output,
+            config,
+            packs[name],
+            model,
+            effort,
+            evaluator,
+            generator=mock_generator,
+        )
+
+tests/test_problem_budget.py:396: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_problem_budget.py:83: in _run_test_cell
+    return _run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd2f2d340>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+____________ test_budget_tracking_time_restarts_while_time_remains _____________
+
+tmp_path = PosixPath('/tmp/pytest-of-milikic/pytest-4104/test_budget_tracking_time_rest0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76fbd290cf80>
+
+    def test_budget_tracking_time_restarts_while_time_remains(tmp_path, monkeypatch):
+        from proof_eval.harness import search
+    
+        name = "CallElimCorrect.substOldPostSubset"
+        model, effort = ("gpt-6.1-sol", "max")
+        output = tmp_path / "run"
+        packs = load_inputs()
+        identity = {"path": sys.executable, "version": "test", "sha256": "test"}
+        monkeypatch.setattr(adapter("codex"), "cli_identity", lambda: identity)
+        config = prepare(
+            output,
+            "score_edges",
+            packs,
+            conditions=[(model, effort)],
+            provider="codex",
+            budget_tracking="time",
+            problem_timeout_seconds=3600.0,
+            paths={
+                "dataset_path": str(ROOT / "data/benchmark_data_warmup.jsonl"),
+                "environments_path": str(ROOT / "environments.local.json"),
+            },
+        )
+        evaluator = Evaluator(
+            ROOT / "data/benchmark_data_warmup.jsonl",
+            ROOT / "environments.local.json",
+            ROOT / ".proof-eval",
+        )
+        saved = read(
+            ROOT
+            / "results/harness/06_refactor_regression/cells"
+            / fingerprint((name, "gpt-6.1-sol", "max", "score_edges"))
+            / "result.json"
+        )
+        evaluator.evaluate = lambda *a, **k: saved["selected_evaluation"]
+        monkeypatch.setattr(search, "DeterministicCleanup", lambda *a: lambda code: None)
+    
+        invocations = []
+        fake_time = [0.0]
+    
+        def mock_time():
+            return fake_time[0]
+    
+        monkeypatch.setattr(search.time, "time", mock_time)
+    
+        def mock_generator(*, folder, messages, session, **kwargs):
+            invocations.append(folder)
+            if len(invocations) == 1:
+                fake_time[0] = 100.0
+            else:
+                fake_time[0] = 3590.0
+            return {
+                "status": "received",
+                "content": session.best_code,
+                "finish_reason": "stop",
+                "codex_usage": {
+                    "input_tokens": 1000,
+                    "cached_input_tokens": 500,
+                    "cache_write_input_tokens": 0,
+                    "output_tokens": 100,
+                    "reasoning_output_tokens": 50,
+                },
+            }
+    
+>       result = _run_test_cell(
+            output,
+            config,
+            packs[name],
+            model,
+            effort,
+            evaluator,
+            generator=mock_generator,
+        )
+
+tests/test_problem_budget.py:472: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_problem_budget.py:83: in _run_test_cell
+    return _run_cell(
+src/proof_eval/harness/search.py:85: in _run_cell
+    checked_guard()
+src/proof_eval/harness/search.py:83: in checked_guard
+    return guard(config, pack, evaluator)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/proof_eval/harness/configuration.py:369: in guard
+    check_references(evaluator, pack, read(base_directory / "config.json"))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+evaluator = <proof_eval.verification.api.Evaluator object at 0x76fbd06832c0>
+pack = {'name': 'CallElimCorrect.substOldPostSubset', 'row': {'name': 'CallElimCorrect.substOldPostSubset', 'source': 'strata...version': 1, 'name': 'CallElimCorrect.substOldPostSubset', 'status': 'passed', 'primary_version': 'v4.26.0', ...}, ...}
+base_config = {'schema_version': 1, 'dataset_sha256': '6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804', 'input_sha...197dffabb3807fb', 'environment_config_sha256': '1be61739dd36e9c743589af8e1595e356510838364f9ea727a1eae3682007b83', ...}
+
+    def check_references(evaluator, pack, base_config):
+        """Compare saved reference metadata; this function never compiles a proof."""
+        name = pack["name"]
+        current = evaluator.get_reference(name)["versions"]
+        saved_checks = pack["incumbent"]["per_version"]
+        if set(current) != set(saved_checks) or set(current) != set(
+            base_config["contexts"][name]
+        ):
+            raise ValueError("Cached reference version cohort changed: " + name)
+        for version, saved in saved_checks.items():
+            if current[version].get("status") != "prepared":
+>               raise ValueError(f"Cached reference unavailable: {name}/{version}")
+E               ValueError: Cached reference unavailable: CallElimCorrect.substOldPostSubset/v4.26.0
+
+src/proof_eval/verification/references.py:102: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_budget_tracking.py::test_agy_host_cost_stop_keeps_verified_proof_and_audits_partial_usage
+FAILED tests/test_budget_tracking.py::test_new_runtime_carries_failed_spend_deadline_and_best_same_condition_proof
+FAILED tests/test_budget_tracking.py::test_unknown_prior_usage_blocks_budget_carryover
+FAILED tests/test_budget_tracking.py::test_spent_prior_budget_cannot_dispatch_another_request
+FAILED tests/test_budget_tracking.py::test_native_restarts_are_audited_and_resume_without_requests
+FAILED tests/test_budget_tracking.py::test_legacy_completion_and_restart_cap_have_factual_stops[None-20-agent_decision]
+FAILED tests/test_budget_tracking.py::test_legacy_completion_and_restart_cap_have_factual_stops[cost-1-restart_limit]
+FAILED tests/test_budget_tracking.py::test_infrastructure_does_not_restart[transport_error]
+FAILED tests/test_budget_tracking.py::test_infrastructure_does_not_restart[indeterminate]
+FAILED tests/test_budget_tracking.py::test_infrastructure_does_not_restart[model_mismatch]
+FAILED tests/test_budget_tracking.py::test_terminal_transport_recovery_preserves_proof_deadline_and_unknown_usage
+FAILED tests/test_budget_tracking.py::test_terminal_transport_recovery_is_bounded
+FAILED tests/test_budget_tracking.py::test_unknown_spending_prevents_transport_recovery_in_cost_mode
+FAILED tests/test_budget_tracking.py::test_permanent_transport_failure_does_not_retry
+FAILED tests/test_budget_tracking.py::test_saved_same_condition_proof_is_used_without_reevaluation
+FAILED tests/test_budget_tracking.py::test_missing_usage_stops_with_an_unknown_cost
+FAILED tests/test_budget_tracking.py::test_time_tracking_reserves_cleanup_time_after_native_completion
+FAILED tests/test_budget_tracking.py::test_audit_uses_budget_decision_time_when_writing_crosses_cleanup_reserve
+FAILED tests/test_budget_tracking.py::test_tiny_cost_budget_does_not_dispatch_a_request
+FAILED tests/test_budget_tracking.py::test_unavailable_verification_prevents_a_successful_response_from_restarting
+FAILED tests/test_budget_tracking.py::test_exact_cost_cap_stops_without_marking_an_overspend
+FAILED tests/test_budget_tracking.py::test_only_explicit_native_budget_events_are_controlled[True]
+FAILED tests/test_budget_tracking.py::test_only_explicit_native_budget_events_are_controlled[False]
+FAILED tests/test_budget_tracking.py::test_public_custom_generator_is_stopped_at_the_whole_problem_deadline
+FAILED tests/test_problem_budget.py::test_budget_tracking_cost_restarts_from_best_declaration
+FAILED tests/test_problem_budget.py::test_budget_tracking_disabled_by_default
+FAILED tests/test_problem_budget.py::test_budget_tracking_time_restarts_while_time_remains
+27 failed, 387 passed, 32 skipped, 102 subtests passed in 33.46s
+make: *** [Makefile:14: test] Error 1

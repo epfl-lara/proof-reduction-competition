@@ -1,5 +1,17 @@
 # Runtime architecture
 
+Saved host evidence can also be analyzed with `proof-harness replay --run RUN
+--protocol PROTOCOL --output NEW_DIRECTORY`. The immutable chain loader,
+prefix-only stopping policies, and reporting live in `harness/discovery_tree.py`,
+`harness/replay.py`, and `harness/replay_reporting.py`. Replay dispatches no model
+or Lean calls, verifies raw identity before policy comparisons, and fingerprints
+its read-only inputs. A cut that removes an accepted improvement cannot reveal
+later restarts; matching parent proof hashes permit only recorded continuations.
+Splicing assumes unchanged behavior under shifted remaining-time prompts.
+Reinvestment and interpolated cost are separately labelled model estimates.
+`proof-harness audit --output REPLAY_DIRECTORY` checks saved replay fingerprints
+and report arithmetic. See stage 14's pre-registered protocol and outputs.
+
 The maintained runtime is one installable package. CLI commands call library
 APIs; no library imports an experiment driver. Historical studies stay in
 `results/`; their retired source can be recovered from checkpoint `bfb2ade6`.

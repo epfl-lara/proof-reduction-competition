@@ -19,6 +19,7 @@ at the beginning and end. Historical conditions below remain separate evidence.
 | [11: Google Antigravity](11_antigravity/README.md) | Gemini 3.8 Flash/high via `agy` | $3 estimated per problem, streamed budget guard, two workers; 5 complete and 10 interrupted | 15 |
 | [12: local discovery tools](12_source_discovery/README.md) | Qwen3.8-Flash-Next/xhigh via Lemex | Literal dependency search and frozen semantic discovery; 15/15 complete, 78.815525% locally | 15 |
 | [13: web discovery tools](13_web_search/README.md) | Qwen3.8-Flash-Next/xhigh via Lemex | Matched web-enabled trial stopped by user at 7/15; no full-cohort mean | 15 |
+| [14: offline stagnation replay](14_replay_stagnation/PROTOCOL.md) | Sol 6.1/max; Qwen/Gemini descriptive | Saved evidence only, no model or Lean calls; pre-registered stopping-policy gate | 45 Sol cells |
 
 The [Qwen submission](09_qwen_flash_next/submission.jsonl) reaches
 **78.219958% locally**, with 100% compatibility and **36/36** passing version
