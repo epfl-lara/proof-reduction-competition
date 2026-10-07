@@ -1,0 +1,64 @@
+lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d}
+    {𝓕 : FreeSpace}
+    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d)
+    (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J)
+    (t : Time) (x : Space d) (i : Fin d) :
+    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =
+      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -
+      𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -
+      𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by
+  have hc : 1 / (𝓕.μ₀ * 𝓕.ε₀) = 𝓕.c ^ 2 := by rw [mul_comm, ← FreeSpace.c_sq]
+  have hc2 : 1 / 𝓕.ε₀ = 𝓕.c ^ 2 * 𝓕.μ₀ := by
+    rw [FreeSpace.c_sq, div_mul_eq_mul_div, mul_div_mul_right _ _ 𝓕.μ₀_ne_zero]
+  have hA1 : ∂ₜ (A.electricField 𝓕.c · x i) = fun s =>
+      1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x -
+        1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i :=
+    funext fun s => (Time.deriv_euclid (electricField_differentiable_time
+        (hA.of_le ENat.LEInfty.out) x) s).trans
+      (time_deriv_electricField_of_isExtrema hA J hJ h s x i)
+  have hBt : ∀ j, Differentiable ℝ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) :=
+    fun j => Space.space_deriv_differentiable_time (i := j)
+      (magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) (j, i)) x
+  have hJt : Differentiable ℝ (fun s => J.currentDensity 𝓕.c s x i) :=
+    LorentzCurrentDensity.currentDensity_apply_differentiable_time
+      (hJ.differentiable (by decide)) x i
+  have hEs : ∀ j, ContDiff ℝ 2 (fun y => A.electricField 𝓕.c t y j) :=
+    fun j => electricField_apply_contDiff_space (i := j) (hA.of_le (right_eq_inf.mp rfl)) t
+  have hEd : ∀ j k, Differentiable ℝ (∂[k] (fun y => A.electricField 𝓕.c t y j)) :=
+    fun j k => Space.deriv_differentiable (hEs j) k
+  have hg : ∇ ⬝ A.electricField 𝓕.c t = 𝓕.ε₀⁻¹ • J.chargeDensity 𝓕.c t :=
+    funext fun y => ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).1 h t y).1.trans
+      (div_eq_inv_mul _ _)
+  have lin {F G : Time → ℝ} (a b : ℝ) (hF : DifferentiableAt ℝ F t) (hG : DifferentiableAt ℝ G t) :
+      Time.deriv (fun s => a * F s - b * G s) t = a * Time.deriv F t - b * Time.deriv G t :=
+    congrArg (fun L : Time →L[ℝ] ℝ => L 1)
+      ((hF.hasFDerivAt.const_mul a).sub (hG.hasFDerivAt.const_mul b)).fderiv
+  have hsumB : (∑ j, ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t)
+      = ∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i) - ∂[i] (A.electricField 𝓕.c t · j)) x :=
+    (Finset.sum_congr rfl fun j _ => Space.time_deriv_comm_space_deriv
+        (magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) (j, i)) t x).trans
+      (Finset.sum_congr rfl fun j _ => congrFun (congrArg (∂[j]) (funext fun y =>
+          time_deriv_magneticFieldMatrix A (hA.of_le ENat.LEInfty.out) t y j i)) x)
+  have hdiv : (∑ j, ∂[j] (∂[i] (A.electricField 𝓕.c t · j)) x)
+      = ∂[i] (∇ ⬝ A.electricField 𝓕.c t) x := by
+    show (∑ j, ∂[j] (∂[i] (A.electricField 𝓕.c t · j)) x)
+        = ∂[i] (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) x
+    rw [Finset.sum_congr rfl fun j _ =>
+        congrFun (Space.deriv_commute (u := j) (v := i) _ (hEs j)) x]
+    conv_rhs => rw [Space.deriv_eq_fderiv_basis,
+        fderiv_fun_sum (x := x) fun j _ => (hEd j j).differentiableAt]
+    simp only [Space.deriv_eq_fderiv_basis, FunLike.coe_sum, Finset.sum_apply]
+  have hg2 : ∂[i] (∇ ⬝ A.electricField 𝓕.c t) x = 𝓕.ε₀⁻¹ * ∂[i] (J.chargeDensity 𝓕.c t ·) x :=
+    congrFun ((congrArg (∂[i]) hg).trans
+      (Space.deriv_const_smul 𝓕.ε₀⁻¹ (LorentzCurrentDensity.chargeDensity_differentiable_space
+        (hJ.differentiable (by decide)) t))) x
+  have hs : (∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i) - ∂[i] (A.electricField 𝓕.c t · j)) x)
+      = ∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x - 𝓕.ε₀⁻¹ * ∂[i] (J.chargeDensity 𝓕.c t ·) x := by
+    rw [Finset.sum_congr rfl fun j _ =>
+        congrFun (Space.deriv_sub (u := j) _ _ (hEd i j) (hEd j i)) x]
+    simp only [Pi.sub_apply, Finset.sum_sub_distrib]
+    rw [hdiv, hg2]
+  rw [hA1, lin _ _ ((Differentiable.fun_sum fun j _ => hBt j).differentiableAt)
+    hJt.differentiableAt, Time.deriv_fun_sum _ _ fun j _ => (hBt j).differentiableAt]
+  rw [hsumB, hs, hc, hc2, mul_sub, div_eq_mul_inv]
+  ring

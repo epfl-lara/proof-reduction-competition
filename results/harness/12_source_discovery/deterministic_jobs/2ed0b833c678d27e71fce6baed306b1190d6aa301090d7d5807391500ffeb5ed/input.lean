@@ -1,0 +1,15 @@
+theorem bisimilarity_congr_choice :
+    (p ~[lts (defs := defs)] q) → (choice p r) ~[lts (defs := defs)] (choice q r) := by
+  intro h
+  refine HomBisimilarity.symm_simulation ▸ ⟨_, ChoiceBisim.choice h, ?_, ?_⟩
+  constructor
+  rintro _ _ (h|h)
+  exact .choice h.symm
+  exact .bisim h.symm
+  rintro a b (hpq|hpq) μ c htr
+  cases htr
+  · rename_i htr
+    exact (hpq.follow_fst htr).imp fun _ => And.imp Tr.choiceL ChoiceBisim.bisim
+  · rename_i htr
+    exact ⟨c, Tr.choiceR htr, .bisim (HomBisimilarity.refl c)⟩
+  exact (hpq.follow_fst htr).imp fun _ => .imp_right ChoiceBisim.bisim

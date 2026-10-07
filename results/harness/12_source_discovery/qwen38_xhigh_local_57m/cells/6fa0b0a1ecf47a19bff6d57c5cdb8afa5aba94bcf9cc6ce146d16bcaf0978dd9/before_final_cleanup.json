@@ -1,0 +1,190 @@
+{
+  "proof": "lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d}\n    {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d)\n    (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J)\n    (t : Time) (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -\n      𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n      𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n  have hA2 : ContDiff ℝ 2 A := hA.of_le (right_eq_inf.mp rfl)\n  have hA3 : ContDiff ℝ 3 A := hA.of_le (right_eq_inf.mp rfl)\n  have hdJ : Differentiable ℝ J := hJ.differentiable (by simp)\n  have hc : 1 / (𝓕.μ₀ * 𝓕.ε₀) = 𝓕.c ^ 2 := by rw [mul_comm, FreeSpace.c_sq]\n  have he : 1 / 𝓕.ε₀ = 𝓕.c ^ 2 * 𝓕.μ₀ := by rw [FreeSpace.c_sq]; simp [mul_comm, mul_assoc, mul_left_comm]\n  let B : Fin d → Time → Space d → ℝ := fun j s y => A.magneticFieldMatrix 𝓕.c s y (j, i)\n  have hB : ∀ j, ContDiff ℝ 2 ↿ (B j) := fun j => magneticFieldMatrix_contDiff _ hA3 (j, i)\n  let E : Fin d → Space d → ℝ := fun k y => A.electricField 𝓕.c t y k\n  have hE : ∀ j, ContDiff ℝ 2 (E j) := fun j => electricField_apply_contDiff_space hA3 t\n  let F : Time → ℝ := fun s => ∑ j, ∂[j] (B j s) x\n  let G : Time → ℝ := fun s => J.currentDensity 𝓕.c s x i\n  have hF : Differentiable ℝ F :=\n    Differentiable.fun_sum fun j _ => Space.space_deriv_differentiable_time (hB j) x\n  have hG : Differentiable ℝ G :=\n    LorentzCurrentDensity.currentDensity_apply_differentiable_time hdJ x i\n  have h1 : ∂ₜ (A.electricField 𝓕.c · x i) = fun s => 𝓕.c ^ 2 * F s - 𝓕.c ^ 2 * 𝓕.μ₀ * G s := by\n    funext s\n    rw [← he, ← hc]\n    exact (Time.deriv_euclid (electricField_differentiable_time hA2 x) s).trans\n      (time_deriv_electricField_of_isExtrema hA J hJ h s x i)\n  have h2 : ∂ₜ (fun s => 𝓕.c ^ 2 * F s - 𝓕.c ^ 2 * 𝓕.μ₀ * G s) t\n      = 𝓕.c ^ 2 * ∂ₜ F t - 𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ G t := by\n    rw [Time.deriv_eq, fderiv_fun_sub (hF.differentiableAt.const_mul _)\n      (hG.differentiableAt.const_mul _),\n      fderiv_const_mul hF.differentiableAt _, fderiv_const_mul hG.differentiableAt _]\n    simp only [_root_.sub_apply, _root_.smul_apply, smul_eq_mul, ← Time.deriv_eq]\n  have h3 : ∂ₜ F t = ∑ j, ∂[j] (fun y => ∂ₜ (B j · y) t) x :=\n    (Time.deriv_fun_sum Finset.univ (fun j s => ∂[j] (B j s) x)\n      (fun j _ => (Space.space_deriv_differentiable_time (hB j) x).differentiableAt)).trans\n      (Finset.sum_congr rfl fun j _ => Space.time_deriv_comm_space_deriv (hB j) t x)\n  have h4 : ∑ j, ∂[j] (fun y => ∂ₜ (B j · y) t) x = ∑ j, ∂[j] (∂[j] (E i) - ∂[i] (E j)) x :=\n    Finset.sum_congr rfl fun j _ => congrArg (fun f => ∂[j] f x)\n      (funext fun y => time_deriv_magneticFieldMatrix A hA2 t y j i)\n  have h5 : ∑ j, ∂[j] (∂[j] (E i) - ∂[i] (E j)) x\n      = ∑ j, ∂[j] (∂[j] (E i)) x - ∑ j, ∂[j] (∂[i] (E j)) x := by\n    rw [← Finset.sum_sub_distrib]\n    exact Finset.sum_congr rfl fun j _ =>\n      congrFun (Space.deriv_sub _ _ (Space.deriv_differentiable (hE i) j)\n        (Space.deriv_differentiable (hE j) i)) x\n  have h6 : ∑ j, ∂[j] (∂[i] (E j)) x = ∂[i] (fun y => ∑ j, ∂[j] (E j) y) x := by\n    refine (Finset.sum_congr rfl fun j _ => congrFun (Space.deriv_commute _ (hE j)) x).trans ?_\n    rw [Space.deriv_eq_fderiv_basis,\n      fderiv_fun_sum fun j _ => (Space.deriv_differentiable (hE j) j).differentiableAt]\n    simp only [FunLike.coe_sum, Finset.sum_apply, ← Space.deriv_eq_fderiv_basis]\n  have h7 : ∂[i] (fun y => ∑ j, ∂[j] (E j) y) x\n      = 1 / 𝓕.ε₀ * ∂[i] (fun y => J.chargeDensity 𝓕.c t y) x := by\n    have hd : (fun y => ∑ j, ∂[j] (E j) y) = (1 / 𝓕.ε₀) • (fun y => J.chargeDensity 𝓕.c t y) := by\n      funext y\n      show (∇ ⬝ (A.electricField 𝓕.c t)) y = (1 / 𝓕.ε₀) * J.chargeDensity 𝓕.c t y\n      rw [((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1, div_eq_mul_inv]\n      ring\n    rw [hd, Space.deriv_const_smul (1 / 𝓕.ε₀)\n      (LorentzCurrentDensity.chargeDensity_differentiable_space hdJ t),\n      Pi.smul_apply, smul_eq_mul]\n  rw [h1, h2, h3, h4, h5, h6, h7, ← he]\n  simp only [div_eq_mul_inv]\n  ring\n",
+  "evaluation": {
+    "schema_version": 1,
+    "name": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+    "status": "passed",
+    "primary_version": "v4.32.0",
+    "requested_versions": [
+      "v4.32.0"
+    ],
+    "all_versions": [
+      "v4.32.0"
+    ],
+    "measurement": "local_cached_reference",
+    "reference": {
+      "length": 1372,
+      "published_heartbeats": 26970
+    },
+    "candidate": {
+      "length": 934,
+      "code_sha256": "5df3c58fe5b4b0551dd934273f0fa195ff1ce2b34b825b7c495e4694c320f697"
+    },
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 6791.726,
+        "heartbeats_raw": 6791726,
+        "diagnostics": [
+          {
+            "caption": "",
+            "data": "PROOF_EVAL_cf6464abc4174a978d1753e094772c2e:6791726",
+            "endPos": {
+              "column": 6,
+              "line": 464
+            },
+            "fileName": "_ProofEval_cf6464abc4174a978d1753e094772c2e.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "[anonymous]",
+            "pos": {
+              "column": 0,
+              "line": 398
+            },
+            "severity": "information"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  mul_assoc\n\nHint: Omit it from the simp argument list.\n  simp [mul_comm,\n  ̲  ̲ ̲ ̲m̵u̵l̵_̵a̵s̵s̵o̵c̵,̵ ̵mul_left_comm]\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 90,
+              "line": 412
+            },
+            "fileName": "_ProofEval_cf6464abc4174a978d1753e094772c2e.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 81,
+              "line": 412
+            },
+            "severity": "warning"
+          },
+          {
+            "caption": "",
+            "data": "This simp argument is unused:\n  mul_left_comm\n\nHint: Omit it from the simp argument list.\n  simp [mul_comm,\n  ̲  ̲ ̲ ̲m̵u̵l̵_̵a̵s̵s̵o̵c̵,̵ ̵m̵u̵l̵_̵l̵e̵f̵t̵_̵c̵o̵m̵m̵]̵m̲u̲l̲_̲a̲s̲s̲o̲c̲]̲\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
+            "endPos": {
+              "column": 105,
+              "line": 412
+            },
+            "fileName": "_ProofEval_cf6464abc4174a978d1753e094772c2e.lean",
+            "isSilent": false,
+            "keepFullRange": false,
+            "kind": "linter.unusedSimpArgs",
+            "pos": {
+              "column": 92,
+              "line": 412
+            },
+            "severity": "warning"
+          }
+        ],
+        "elapsed_seconds": 5.266927737742662,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "details": {
+          "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/physlib-v4.32.0",
+          "version": "v4.32.0",
+          "source_commit": "c48433678e8fb6306ebcd48453300c8e16058a62",
+          "toolchain": "leanprover/lean4:v4.32.0",
+          "compiler_version": "Lean (version 4.32.0, x86_64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)",
+          "dependencies": {
+            "mathlib": "81a5d257c8e410db227a6665ed08f64fea08e997",
+            "doc-gen4": "092d6318789e7bb9160ade1e85bdbcc0abfd7f6e",
+            "plausible": "e12c1910fe855cbfc38803cd4e55543906d5fa62",
+            "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+            "importGraph": "7e9612bf0b9ee66db3cb5b9988a35afc706f5a12",
+            "proofwidgets": "6e311e2a844da9b2cc3971187df2fe0066947b93",
+            "aesop": "a7dbf0c63b694e47f425f3dcddbc0e178bb432d3",
+            "Qq": "38d591e778f100aec9762bb582f9c7f55f50e9dc",
+            "batteries": "023ce7d62a0531e22a5331e20b587817a80d49ff",
+            "leansqlite": "b2e8105c3507d81adaa531fda5990d14b631528f",
+            "Cli": "88679d088c9720c27ebdf2ba4dafe17341747f94",
+            "UnicodeBasic": "947120c17904da8fc89abe3616d57e1c3e13aa9c",
+            "BibtexQuery": "b648facb6be09a29be636bbc02d28ddee77565c7",
+            "MD4Lean": "31907cc18f48a95384f99cee5582c00fb39e0f67"
+          },
+          "configuration_sha256": {
+            "lakefile.toml": "363203af4cc4973b3185fa72cb9592e070aeba7a3c6bfa16e97ad96fd85a0105",
+            "lake-manifest.json": "a9531c3978f21e50cb72cc89c2a7644b296bee59a7f2ff92ca2408aac4a67311"
+          },
+          "lake": "/localhome/milikic/.elan/bin/lake",
+          "timeout_seconds": 60.0,
+          "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+          "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+          "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+          "maxHeartbeats": 0,
+          "Elab.async": false,
+          "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+          "context_mode": "full_file_replacement",
+          "candidate_start_line": 399,
+          "original_file_path": "Physlib/Electromagnetism/Dynamics/IsExtrema.lean",
+          "exit_code": 0
+        },
+        "cached": false,
+        "reference": {
+          "name": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+          "version": "v4.32.0",
+          "status": "prepared",
+          "heartbeats": 26982.141,
+          "heartbeats_raw": 26982141,
+          "length": 1372,
+          "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+          "measured_at": "2026-10-02T15:10:32.018449+00:00",
+          "reference_code_sha256": "9839fbd7f2dedf9c22190403722dc98210c990a14188a042ddf41ab5e050496c",
+          "machine": {
+            "host": "larapc2",
+            "system": "Linux",
+            "machine": "x86_64"
+          },
+          "details": {
+            "project_dir": "/localhome/milikic/proof-reduction-competition/.proof-eval-projects/physlib-v4.32.0",
+            "version": "v4.32.0",
+            "source_commit": "c48433678e8fb6306ebcd48453300c8e16058a62",
+            "toolchain": "leanprover/lean4:v4.32.0",
+            "compiler_version": "Lean (version 4.32.0, x86_64-unknown-linux-gnu, commit 8c9756b28d64dab099da31a4c09229a9e6a2ef35, Release)",
+            "dependencies": {
+              "mathlib": "81a5d257c8e410db227a6665ed08f64fea08e997",
+              "doc-gen4": "092d6318789e7bb9160ade1e85bdbcc0abfd7f6e",
+              "plausible": "e12c1910fe855cbfc38803cd4e55543906d5fa62",
+              "LeanSearchClient": "c5d5b8fe6e5158def25cd28eb94e4141ad97c843",
+              "importGraph": "7e9612bf0b9ee66db3cb5b9988a35afc706f5a12",
+              "proofwidgets": "6e311e2a844da9b2cc3971187df2fe0066947b93",
+              "aesop": "a7dbf0c63b694e47f425f3dcddbc0e178bb432d3",
+              "Qq": "38d591e778f100aec9762bb582f9c7f55f50e9dc",
+              "batteries": "023ce7d62a0531e22a5331e20b587817a80d49ff",
+              "leansqlite": "b2e8105c3507d81adaa531fda5990d14b631528f",
+              "Cli": "88679d088c9720c27ebdf2ba4dafe17341747f94",
+              "UnicodeBasic": "947120c17904da8fc89abe3616d57e1c3e13aa9c",
+              "BibtexQuery": "b648facb6be09a29be636bbc02d28ddee77565c7",
+              "MD4Lean": "31907cc18f48a95384f99cee5582c00fb39e0f67"
+            },
+            "configuration_sha256": {
+              "lakefile.toml": "363203af4cc4973b3185fa72cb9592e070aeba7a3c6bfa16e97ad96fd85a0105",
+              "lake-manifest.json": "a9531c3978f21e50cb72cc89c2a7644b296bee59a7f2ff92ca2408aac4a67311"
+            },
+            "lake": "/localhome/milikic/.elan/bin/lake",
+            "timeout_seconds": 60.0,
+            "measurement": "synchronous declaration elaboration; IO.getNumHeartbeats delta / 1000",
+            "measurement_wrapper_sha256": "1d958d7f92a2e5d29e55426b91e89832c5a4ba99e55326ae202244504cf20177",
+            "backend_implementation_sha256": "b79a7f93ddc7c11a75760fec8243947bd50f6cc2bd70f5a7741da60958136542",
+            "maxHeartbeats": 0,
+            "Elab.async": false,
+            "build_artifacts": "trusted prebuilt artifacts; source revisions verified",
+            "context_mode": "full_file_replacement",
+            "candidate_start_line": 399,
+            "original_file_path": "Physlib/Electromagnetism/Dynamics/IsExtrema.lean",
+            "exit_code": 0
+          }
+        },
+        "heartbeat_reduction_pct": 74.82880991541776
+      }
+    },
+    "diagnostics": [],
+    "scores": {
+      "length_reduction_pct": 31.924198250728864,
+      "heartbeat_reduction_pct": 74.82880991541776,
+      "compatibility_pct": 100.0,
+      "combined_pct": 68.91766938871554
+    }
+  }
+}

@@ -1,0 +1,30 @@
+
+
+```lean
+open OldExpressions in
+theorem substOldPostSubset:
+  (Imperative.HasVarsPure.getVars (P:=Expression)
+    (substOld h2 (Lambda.LExpr.fvar m h1 ty) post)).Subset
+    (Imperative.HasVarsPure.getVars (P:=Expression) post ++ [h1]) := by
+  have key : ∀ e L, Lambda.LExpr.LExpr.getVars e ⊆ L →
+      Lambda.LExpr.LExpr.getVars (substOld h2 (Lambda.LExpr.fvar m h1 ty) e) ⊆ L ++ [h1] := by
+    intro e L h
+    induction e with
+    | const | bvar | op | fvar => exact List.subset_append_of_subset_left _ h
+    | abs _ _ _ ih => exact ih h
+    | eq _ _ _ ih1 ih2 | quant _ _ _ _ _ ih1 ih2 =>
+        simp only [Lambda.LExpr.LExpr.getVars, List.append_subset] at h
+        exact List.append_subset.mpr ⟨ih1 h.1, ih2 h.2⟩
+    | ite _ _ _ _ ih1 ih2 ih3 =>
+        simp only [Lambda.LExpr.LExpr.getVars, List.append_subset] at h
+        exact List.append_subset.mpr ⟨List.append_subset.mpr ⟨ih1 h.1.1, ih2 h.1.2⟩, ih3 h.2⟩
+    | app _ e1 e2 ih1 ih2 =>
+        dsimp only [substOld]
+        · split
+          · split
+            · exact List.subset_append_right _ _
+            · exact List.subset_append_of_subset_left _ h
+          · exact List.append_subset.mpr
+              ⟨ih1 (List.append_subset.mp h).1, ih2 (List.append_subset.mp h).2⟩
+  exact key post _ (List.Subset.refl _)
+```

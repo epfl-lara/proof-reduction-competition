@@ -17,6 +17,8 @@ at the beginning and end. Historical conditions below remain separate evidence.
 | [09: Qwen results and submission](09_qwen_flash_next/README.md) | Qwen3.8-Flash-Next/xhigh via Lemex | Profiling, score feedback, edge cleanup; audited original/recovery selection | 15 |
 | [10: fresh budgeted attempts](10_budget_resets/sol61_max_3usd/PROTOCOL.md) | Sol 6.1/max | Fresh context from the best verified proof; cumulative $3 target and 57 minutes per problem | 15 |
 | [11: Google Antigravity](11_antigravity/README.md) | Gemini 3.8 Flash/high via `agy` | $3 estimated per problem, streamed budget guard, two workers; 5 complete and 10 interrupted | 15 |
+| [12: local discovery tools](12_source_discovery/README.md) | Qwen3.8-Flash-Next/xhigh via Lemex | Literal dependency search and frozen semantic discovery; 15/15 complete, 78.815525% locally | 15 |
+| [13: web discovery tools](13_web_search/README.md) | Qwen3.8-Flash-Next/xhigh via Lemex | Matched web-enabled trial stopped by user at 7/15; no full-cohort mean | 15 |
 
 The [Qwen submission](09_qwen_flash_next/submission.jsonl) reaches
 **78.219958% locally**, with 100% compatibility and **36/36** passing version

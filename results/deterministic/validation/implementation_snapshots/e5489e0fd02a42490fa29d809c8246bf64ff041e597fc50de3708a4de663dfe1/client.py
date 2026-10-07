@@ -1,0 +1,72 @@
+"""Standalone workspace client for the host's proof and source tools."""
+
+import argparse
+import json
+import socket
+from pathlib import Path
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="op", required=True)
+    for op in ("check", "goals"):
+        commands.add_parser(op).add_argument("file")
+    profile = commands.add_parser(
+        "profile", help="Diagnostic tactic heartbeat hotspots"
+    )
+    profile.add_argument("file")
+    profile.add_argument("--version")
+    profile.add_argument("--threshold-raw", type=int, default=10_000)
+    profile.add_argument("--limit", type=int, default=20)
+    commands.add_parser("status")
+    commands.add_parser("finish").add_argument("--reason", required=True)
+    search = commands.add_parser("search")
+    search.add_argument("query")
+    search.add_argument("--version")
+    search.add_argument("--limit", type=int, default=30)
+    sem = commands.add_parser(
+        "semantic_search", help="Semantic concept search in Mathlib and dependencies"
+    )
+    sem.add_argument("query")
+    sem.add_argument("--limit", type=int, default=10)
+    sem.add_argument("--package", action="append", dest="packages")
+    sem.add_argument("--version")
+    web_search = commands.add_parser("web_search", help="Public web discovery")
+    web_search.add_argument("query")
+    web_search.add_argument("--limit", type=int, default=5)
+    web_search.add_argument("--domain", action="append", dest="domains")
+    web_open = commands.add_parser("web_open", help="Read a public HTTPS source")
+    web_open.add_argument("url")
+    web_open.add_argument("--start", type=int, default=1)
+    web_open.add_argument("--end", type=int, default=180)
+    for op in ("read", "outline"):
+        sub = commands.add_parser(op)
+        sub.add_argument(
+            "path", help="Lean source path, relative to the pinned project"
+        )
+        sub.add_argument("--version")
+        if op == "read":
+            sub.add_argument("--start", type=int, default=1)
+            sub.add_argument("--end", type=int, default=180)
+    args = {k: v for k, v in vars(parser.parse_args()).items() if v is not None}
+    workspace = Path(__file__).resolve().parent
+    if args["op"] in ("check", "goals", "profile"):
+        path = Path(args.pop("file"))
+        if not path.is_absolute():
+            path = workspace / path
+        args["code"] = path.read_text()
+    endpoint = json.loads((workspace / "tool_service.json").read_text())
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        # Individual Lean checks retain the evaluator's existing timeout.
+        # Waiting for the host is not an optimization budget.
+        client.connect(endpoint["socket"])
+        client.sendall(json.dumps(args, ensure_ascii=False).encode() + b"\n")
+        with client.makefile("rb") as stream:
+            result = json.loads(stream.readline(4 * 1024 * 1024))
+    print(json.dumps(result, ensure_ascii=False))
+    if result.get("kind") == "tool_error":
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()

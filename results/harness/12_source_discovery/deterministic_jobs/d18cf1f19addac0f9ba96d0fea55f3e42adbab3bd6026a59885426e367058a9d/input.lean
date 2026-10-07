@@ -1,0 +1,19 @@
+lemma fundamental_theorem_of_variational_calculus' {f : Y → V}
+    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]
+    [OpensMeasurableSpace Y]
+    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :
+    f = 0 := by
+  funext x₀
+  by_contra hx0
+  have hi : Continuous (⟪f ·, f x₀⟫_ℝ) := by fun_prop
+  have h0 : 0 < ⟪f x₀, f x₀⟫_ℝ :=
+    lt_of_le_of_ne real_inner_self_nonneg' (Ne.symm (inner_self_eq_zero'.not.mpr hx0))
+  obtain ⟨δ, hδ, hpos⟩ := Metric.eventually_nhds_iff_ball.mp (continuousAt_const.eventually_lt hi.continuousAt h0)
+  let φ : ContDiffBump x₀ := ⟨δ / 2, δ, half_pos hδ, half_lt_self hδ⟩
+  exact ne_of_gt ((φ.continuous.mul hi).integral_pos_of_hasCompactSupport_nonneg_nonzero
+      φ.hasCompactSupport.mul_right
+      (fun x => if h : φ x = 0 then by simp [h]
+        else mul_nonneg φ.nonneg (hpos x (φ.support_eq ▸ Function.mem_support.mpr h)).le)
+      (mul_ne_zero (φ.pos_of_mem_ball (Metric.mem_ball_self hδ)).ne' h0.ne'))
+    ((integral_congr_ae (ae_of_all _ fun _ => (inner_smul_right' _ _ _).symm)).trans
+      (hg _ (IsTestFunction.smul_right ⟨φ.contDiff, φ.hasCompactSupport⟩ contDiff_const)))

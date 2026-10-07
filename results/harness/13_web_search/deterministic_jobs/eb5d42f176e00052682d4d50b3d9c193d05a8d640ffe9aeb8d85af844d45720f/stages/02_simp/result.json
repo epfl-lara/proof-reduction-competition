@@ -1,0 +1,69 @@
+{
+  "name": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+  "source": "physlib",
+  "method": "simp",
+  "initial": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 32.434402332361515,
+      "heartbeat_reduction_pct": 73.73679872179157,
+      "compatibility_pct": 100.0,
+      "combined_pct": 68.72373368471769
+    },
+    "candidate": {
+      "length": 927,
+      "code_sha256": "2186c668b5a55fd8908e54b10df5fb3485ffbce127638a70ca82e026a5224fd8"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7086.374,
+        "heartbeat_reduction_pct": 73.73679872179157,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 5.265271568670869,
+        "diagnostics": []
+      }
+    }
+  },
+  "proof": "lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d}\n    {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d)\n    (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J)\n    (t : Time) (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -\n      𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n      𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n  have hc : 1 / (𝓕.μ₀ * 𝓕.ε₀) = 𝓕.c ^ 2 := by rw [mul_comm, ← FreeSpace.c_sq]\n  have hc2 : 1 / 𝓕.ε₀ = 𝓕.c ^ 2 * 𝓕.μ₀ := by\n    rw [FreeSpace.c_sq, div_mul_eq_mul_div, mul_div_mul_right _ _ 𝓕.μ₀_ne_zero]\n  have hA1 : ∂ₜ (A.electricField 𝓕.c · x i) = fun s =>\n      1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x -\n        1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i :=\n    funext fun s => (Time.deriv_euclid (electricField_differentiable_time\n        (hA.of_le ENat.LEInfty.out) x) s).trans\n      (time_deriv_electricField_of_isExtrema hA J hJ h s x i)\n  have hBt : ∀ j, Differentiable ℝ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) :=\n    fun j => Space.space_deriv_differentiable_time (i := j)\n      (magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) (j, i)) x\n  have hJt : Differentiable ℝ (fun s => J.currentDensity 𝓕.c s x i) :=\n    LorentzCurrentDensity.currentDensity_apply_differentiable_time\n      (hJ.differentiable (by decide)) x i\n  have hEs : ∀ j, ContDiff ℝ 2 (fun y => A.electricField 𝓕.c t y j) :=\n    fun j => electricField_apply_contDiff_space (i := j) (hA.of_le (right_eq_inf.mp rfl)) t\n  have hEd : ∀ j k, Differentiable ℝ (∂[k] (fun y => A.electricField 𝓕.c t y j)) :=\n    fun j k => Space.deriv_differentiable (hEs j) k\n  have hg : ∇ ⬝ A.electricField 𝓕.c t = 𝓕.ε₀⁻¹ • J.chargeDensity 𝓕.c t :=\n    funext fun y => ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).1 h t y).1.trans\n      (div_eq_inv_mul _ _)\n  have lin {F G : Time → ℝ} (a b : ℝ) (hF : DifferentiableAt ℝ F t) (hG : DifferentiableAt ℝ G t) :\n      Time.deriv (fun s => a * F s - b * G s) t = a * Time.deriv F t - b * Time.deriv G t :=\n    congrArg (fun L : Time →L[ℝ] ℝ => L 1)\n      ((hF.hasFDerivAt.const_mul a).sub (hG.hasFDerivAt.const_mul b)).fderiv\n  have hsumB : (∑ j, ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t)\n      = ∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i) - ∂[i] (A.electricField 𝓕.c t · j)) x :=\n    (Finset.sum_congr rfl fun j _ => Space.time_deriv_comm_space_deriv\n        (magneticFieldMatrix_contDiff _ (hA.of_le (right_eq_inf.mp rfl)) (j, i)) t x).trans\n      (Finset.sum_congr rfl fun j _ => congrFun (congrArg (∂[j]) (funext fun y =>\n          time_deriv_magneticFieldMatrix A (hA.of_le ENat.LEInfty.out) t y j i)) x)\n  have hdiv : (∑ j, ∂[j] (∂[i] (A.electricField 𝓕.c t · j)) x)\n      = ∂[i] (∇ ⬝ A.electricField 𝓕.c t) x := by\n    show (∑ j, ∂[j] (∂[i] (A.electricField 𝓕.c t · j)) x)\n        = ∂[i] (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) x\n    rw [Finset.sum_congr rfl fun j _ =>\n        congrFun (Space.deriv_commute (u := j) (v := i) _ (hEs j)) x]\n    conv_rhs => rw [Space.deriv_eq_fderiv_basis,\n        fderiv_fun_sum (x := x) fun j _ => (hEd j j).differentiableAt]\n    simp only [Space.deriv_eq_fderiv_basis, FunLike.coe_sum, Finset.sum_apply]\n  have hg2 : ∂[i] (∇ ⬝ A.electricField 𝓕.c t) x = 𝓕.ε₀⁻¹ * ∂[i] (J.chargeDensity 𝓕.c t ·) x :=\n    congrFun ((congrArg (∂[i]) hg).trans\n      (Space.deriv_const_smul 𝓕.ε₀⁻¹ (LorentzCurrentDensity.chargeDensity_differentiable_space\n        (hJ.differentiable (by decide)) t))) x\n  have hs : (∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i) - ∂[i] (A.electricField 𝓕.c t · j)) x)\n      = ∑ j, ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x - 𝓕.ε₀⁻¹ * ∂[i] (J.chargeDensity 𝓕.c t ·) x := by\n    rw [Finset.sum_congr rfl fun j _ =>\n        congrFun (Space.deriv_sub (u := j) _ _ (hEd i j) (hEd j i)) x]\n    simp only [Pi.sub_apply, Finset.sum_sub_distrib]\n    rw [hdiv, hg2]\n  rw [hA1, lin _ _ ((Differentiable.fun_sum fun j _ => hBt j).differentiableAt)\n    hJt.differentiableAt, Time.deriv_fun_sum _ _ fun j _ => (hBt j).differentiableAt]\n  rw [hsumB, hs, hc, hc2, mul_sub, div_eq_mul_inv]\n  ring",
+  "rounds": 1,
+  "attempts": 1,
+  "accepted_edits": 0,
+  "accepted_transitions": 0,
+  "analysis_requests": 2,
+  "lean_candidate_checks": 1,
+  "cache_hits": 0,
+  "elapsed_seconds": 10.886,
+  "stop_reason": "no_improving_proposal",
+  "site_offset": 0,
+  "final": {
+    "status": "passed",
+    "scores": {
+      "length_reduction_pct": 32.434402332361515,
+      "heartbeat_reduction_pct": 73.73679872179157,
+      "compatibility_pct": 100.0,
+      "combined_pct": 68.72373368471769
+    },
+    "candidate": {
+      "length": 927,
+      "code_sha256": "2186c668b5a55fd8908e54b10df5fb3485ffbce127638a70ca82e026a5224fd8"
+    },
+    "primary_version": "v4.32.0",
+    "per_version": {
+      "v4.32.0": {
+        "status": "passed",
+        "passed": true,
+        "heartbeats": 7086.374,
+        "heartbeat_reduction_pct": 73.73679872179157,
+        "cached": true,
+        "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+        "elapsed_seconds": 5.265271568670869,
+        "diagnostics": []
+      }
+    }
+  },
+  "changed": false
+}

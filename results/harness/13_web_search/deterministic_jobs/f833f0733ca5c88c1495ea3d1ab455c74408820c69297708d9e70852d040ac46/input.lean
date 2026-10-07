@@ -1,0 +1,20 @@
+lemma fundamental_theorem_of_variational_calculus' {f : Y → V}
+    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]
+    [OpensMeasurableSpace Y]
+    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :
+    f = 0 := by
+  funext x₀
+  by_contra hx₀
+  let w := fun x => ⟪f x, f x₀⟫_ℝ
+  have h0 : 0 < w x₀ :=
+    lt_of_le_of_ne' real_inner_self_nonneg' (inner_self_eq_zero'.not.mpr hx₀)
+  have hc : Continuous w := by fun_prop
+  obtain ⟨δ, hδ0, hδ⟩ :=
+    Metric.eventually_nhds_iff_ball.mp (hc.continuousAt.eventually (isOpen_Ioi.mem_nhds h0))
+  let φ : ContDiffBump x₀ := ⟨_, _, half_pos hδ0, half_lt_self hδ0⟩
+  have key := hg _ (IsTestFunction.smul_right ⟨φ.contDiff, φ.hasCompactSupport⟩ (contDiff_const (c := f x₀)))
+  simp only [inner_smul_right'] at key
+  exact ne_of_gt ((φ.continuous.mul hc).integral_pos_of_hasCompactSupport_nonneg_nonzero
+      φ.hasCompactSupport.mul_right (fun x => if h : φ x = 0 then (mul_eq_zero_of_left h _).symm.le
+        else mul_nonneg φ.nonneg (hδ x (φ.support_eq ▸ h)).le)
+      (mul_pos (φ.pos_of_mem_ball (Metric.mem_ball_self hδ0)) h0).ne') key

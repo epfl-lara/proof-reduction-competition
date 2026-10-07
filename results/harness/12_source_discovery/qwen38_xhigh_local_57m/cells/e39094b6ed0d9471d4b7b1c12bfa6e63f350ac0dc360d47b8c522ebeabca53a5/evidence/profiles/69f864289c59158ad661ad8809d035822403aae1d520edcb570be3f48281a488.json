@@ -1,0 +1,1504 @@
+{
+  "at": "2026-10-07T06:46:29.550539+00:00",
+  "code": "theorem interleaved_affine_gaps_imply_tensor_gaps\n    (hC_proximityGapAffineLines : e_ε_correlatedAgreementAffineLinesNat\n      (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n    (h_interleaved_gaps : ∀ m : ℕ, m ≥ 1 →\n      e_ε_correlatedAgreementAffineLinesNat (F := F)\n        (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC ^⋈ (Fin m)) e ε) :\n    ∀ (ϑ : ℕ), (hϑ_gt_0 : ϑ > 0) → δ_ε_multilinearCorrelatedAgreement_Nat (F := F) (A := A)\n      (ι := ι) (C := MC) (ϑ := ϑ) (e := e) (ε := ε) := by\n  classical\n  intro ϑ\n  induction ϑ with\n  | zero => exact fun h => absurd h (Nat.lt_irrefl 0)\n  | succ ϑ_sub_1 ih =>\n    cases ϑ_sub_1 with\n    | zero =>\n      -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n      simp only [zero_add, zero_lt_one, forall_const]\n      intro u hP\n      simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n        prob_uniform_singleton_finFun_eq (F := F)\n          (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n        Nat.cast_one, ENNReal.coe_one, one_mul] at hP\n      rw [show u = finMapTwoWords (u 0) (u 1) from by\n        funext i\n        match i with\n        | 0 => rfl\n        | 1 => rfl]\n      exact hC_proximityGapAffineLines (u 0) (u 1) hP\n    | succ ϑ_sub_2 =>\n      -- `ϑ >= 2`: fold the last coin into an affine line between the two half word stacks\n      intro _ u hP\n      let ϑ' : ℕ := ϑ_sub_2 + 1\n      let U₀ : WordStack A (Fin (2 ^ ϑ')) ι := (splitHalfRowWiseInterleavedWords (ϑ := ϑ') u).1\n      let U₁ : WordStack A (Fin (2 ^ ϑ')) ι := (splitHalfRowWiseInterleavedWords (ϑ := ϑ') u).2\n      have hsnoc (r : Fin (ϑ' + 1) → F) :\n          Fin.snoc (fun i => r i.castSucc) (r (Fin.last ϑ')) = r :=\n        @Fin.snoc_init_self ϑ' (fun _ => F) r\n      have hrec (r_init : Fin ϑ' → F) (r_last : F) :\n          multilinearCombine u (Fin.snoc r_init r_last) =\n            multilinearCombine (affineLineEvaluation U₀ U₁ r_last) r_init := by\n        rw [multilinearCombine_recursive_form]\n        simp only [Fin.snoc_last, Fin.init_snoc]\n        rfl\n      have hsplit := prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ')\n        (P := fun r_last r_init => Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e)\n      simp only [hsnoc] at hsplit\n      rw [hsplit] at hP\n      simp_rw [hrec] at hP\n      -- `R*`: the coins whose affine line fulfills the inductive hypothesis\n      let R_star_set := R_star_tensor MC (m := ϑ') (e := e) (ε := ε) U₀ U₁\n      have hRstar : Pr_{ let r ← $ᵖ F }[r ∈ R_star_set]\n          > (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n        prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP\n      have hline : ∀ (r : R_star_set),\n          jointProximityNat (u := affineLineEvaluation U₀ U₁ r.val) (e := e) (C := MC) := by\n        intro r\n        apply correlatedAgreement_of_mem_R_star_tensor (ih := fun w => ih (Nat.succ_pos _) w) (u := u)\n      apply CA_split_rowwise_implies_CA (u := u) (e := e)\n      refine h_interleaved_gaps (2 ^ ϑ') Nat.one_le_two_pow (⋈|U₀) (⋈|U₁)\n        (lt_of_lt_of_le hRstar (Pr_le_Pr_of_implies ($ᵖ F) _ _ fun r hr => hline ⟨r, hr⟩))\n",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "interleaved_affine_gaps_imply_tensor_gaps",
+    "version": "v4.31.0",
+    "proof_sha256": "b50162248c86739b42990684872e8a1701bcd3608ff8cd18c111b86b9ca3399f",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": "v4.31.0",
+      "threshold_raw": 300000,
+      "limit": 60
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end_local_scope 1",
+        "header_truncated": false,
+        "raw": 1134,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ section",
+        "header_truncated": false,
+        "raw": 1137,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 300000",
+        "header_truncated": false,
+        "raw": 62,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "class": "Elab.definition.header",
+            "header": "✅️ interleaved_affine_gaps_imply_tensor_gaps",
+            "header_truncated": false,
+            "raw": 444932,
+            "tag": ""
+          },
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [],
+                                                                                                    "class": "Elab.app.args",
+                                                                                                    "header": "💥️ elabAppArgs (2 args) `@hammingDist`",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 306547,
+                                                                                                    "tag": ""
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "💥️ expected type: <not-available>, term\nhammingDist✝ (affineLineEvaluation (u 0) (u 1) r) MC",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 307929,
+                                                                                                "tag": "Lean.Parser.Term.app"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "💥️ expected type: <not-available>, term\nΔ₀(affineLineEvaluation (u 0) (u 1) r, MC)",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 308213,
+                                                                                            "tag": "Code.«termΔ₀(_,_)»"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "✅️ expected type: <not-available>, term\nΔ₀(affineLineEvaluation (u 0) (u 1) r, MC)",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 529948,
+                                                                                        "tag": "choice"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "✅️ expected type: Prop, term\nbinrel% LE.le✝ Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) e",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 552110,
+                                                                                    "tag": "Lean.Parser.Term.binrel"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "✅️ expected type: Prop, term\nΔ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e",
+                                                                                "header_truncated": false,
+                                                                                "raw": 552231,
+                                                                                "tag": "«term_≤_»"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "✅️ expected type: F → Prop, term\nfun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e",
+                                                                            "header_truncated": false,
+                                                                            "raw": 552943,
+                                                                            "tag": "Lean.Parser.Term.fun"
+                                                                          },
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [],
+                                                                                "class": "Meta.synthInstance",
+                                                                                "header": "✅️ Nonempty F",
+                                                                                "header_truncated": false,
+                                                                                "raw": 469697,
+                                                                                "tag": ""
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.app.finalize",
+                                                                            "header": "✅️ prob_uniform_singleton_finFun_eq fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, ↑MC) ≤ ↑e : (do\n      let r ← $ᵖ (Fin 1 → F)\n      pure (Δ₀(affineLineEvaluation (u 0) (u 1) (r 0), ↑MC) ≤ ↑e))\n    True =\n  (do\n      let r ← $ᵖ F\n      pure (Δ₀(affineLineEvaluation (u 0) (u 1) r, ↑MC) ≤ ↑e))\n    True",
+                                                                            "header_truncated": false,
+                                                                            "raw": 471114,
+                                                                            "tag": ""
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.app.args",
+                                                                        "header": "✅️ elabAppArgs (2 namedArgs)\n  @prob_uniform_singleton_finFun_eq",
+                                                                        "header_truncated": false,
+                                                                        "raw": 1025154,
+                                                                        "tag": ""
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ expected type: <not-available>, term\nprob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e)",
+                                                                    "header_truncated": false,
+                                                                    "raw": 1026176,
+                                                                    "tag": "Lean.Parser.Term.app"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ simp only [prob_uniform_singleton_finFun_eq (F := F) (P := fun r =>\n      Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e)] at hP",
+                                                                "header_truncated": false,
+                                                                "raw": 1069929,
+                                                                "tag": "Lean.Parser.Tactic.simp"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n  prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n  Nat.cast_one, ENNReal.coe_one, one_mul] at hP",
+                                                            "header_truncated": false,
+                                                            "raw": 1400717,
+                                                            "tag": "Mathlib.Tactic.tacticSimp_rw___"
+                                                          },
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ rewrite [show u = finMapTwoWords (u 0) (u 1) from by\n      funext i\n      match i with\n      | 0 => rfl\n      | 1 => rfl];\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                        "header_truncated": false,
+                                                                        "raw": 305615,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ rewrite [show u = finMapTwoWords (u 0) (u 1) from by\n      funext i\n      match i with\n      | 0 => rfl\n      | 1 => rfl];\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                    "header_truncated": false,
+                                                                    "raw": 305702,
+                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ (rewrite [show u = finMapTwoWords (u 0) (u 1) from by\n      funext i\n      match i with\n      | 0 => rfl\n      | 1 => rfl];\n  with_annotate_state\"]\" (try (with_reducible rfl)))",
+                                                                "header_truncated": false,
+                                                                "raw": 305791,
+                                                                "tag": "Lean.Parser.Tactic.paren"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ rw [show u = finMapTwoWords (u 0) (u 1) from by\n    funext i\n    match i with\n    | 0 => rfl\n    | 1 => rfl]",
+                                                            "header_truncated": false,
+                                                            "raw": 305922,
+                                                            "tag": "Lean.Parser.Tactic.rwSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ \n  simp only [zero_add, zero_lt_one, forall_const]\n  intro u hP\n  simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n    prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n    Nat.cast_one, ENNReal.coe_one, one_mul] at hP\n  rw [show u = finMapTwoWords (u 0) (u 1) from by\n      funext i\n      match i with\n      | 0 => rfl\n      | 1 => rfl]\n  exact hC_proximityGapAffineLines (u 0) (u 1) hP",
+                                                        "header_truncated": false,
+                                                        "raw": 1879650,
+                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ \n  simp only [zero_add, zero_lt_one, forall_const]\n  intro u hP\n  simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n    prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n    Nat.cast_one, ENNReal.coe_one, one_mul] at hP\n  rw [show u = finMapTwoWords (u 0) (u 1) from by\n      funext i\n      match i with\n      | 0 => rfl\n      | 1 => rfl]\n  exact hC_proximityGapAffineLines (u 0) (u 1) hP",
+                                                    "header_truncated": false,
+                                                    "raw": 1879736,
+                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                  },
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have hrec (r_init : Fin ϑ' → F) (r_last : F) :\n        multilinearCombine u (Fin.snoc r_init r_last) = multilinearCombine (affineLineEvaluation U₀ U₁ r_last) r_init :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [multilinearCombine_recursive_form]\n        simp only [Fin.snoc_last, Fin.init_snoc]\n        rfl)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 390856,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have hrec (r_init : Fin ϑ' → F) (r_last : F) :\n        multilinearCombine u (Fin.snoc r_init r_last) = multilinearCombine (affineLineEvaluation U₀ U₁ r_last) r_init :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [multilinearCombine_recursive_form]\n        simp only [Fin.snoc_last, Fin.init_snoc]\n        rfl)",
+                                                                    "header_truncated": false,
+                                                                    "raw": 390947,
+                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have hrec (r_init : Fin ϑ' → F) (r_last : F) :\n        multilinearCombine u (Fin.snoc r_init r_last) = multilinearCombine (affineLineEvaluation U₀ U₁ r_last) r_init :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [multilinearCombine_recursive_form]\n        simp only [Fin.snoc_last, Fin.init_snoc]\n        rfl)",
+                                                                "header_truncated": false,
+                                                                "raw": 391075,
+                                                                "tag": "Lean.Parser.Tactic.focus"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ have hrec (r_init : Fin ϑ' → F) (r_last : F) :\n  multilinearCombine u (Fin.snoc r_init r_last) = multilinearCombine (affineLineEvaluation U₀ U₁ r_last) r_init :=\n  by\n  rw [multilinearCombine_recursive_form]\n  simp only [Fin.snoc_last, Fin.init_snoc]\n  rfl",
+                                                            "header_truncated": false,
+                                                            "raw": 391260,
+                                                            "tag": "Lean.Parser.Tactic.tacticHave__"
+                                                          },
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [
+                                                                                                              {
+                                                                                                                "children": [
+                                                                                                                  {
+                                                                                                                    "children": [
+                                                                                                                      {
+                                                                                                                        "children": [
+                                                                                                                          {
+                                                                                                                            "children": [
+                                                                                                                              {
+                                                                                                                                "children": [
+                                                                                                                                  {
+                                                                                                                                    "children": [
+                                                                                                                                      {
+                                                                                                                                        "children": [],
+                                                                                                                                        "class": "Elab.app.args",
+                                                                                                                                        "header": "💥️ elabAppArgs (2 args) `@hammingDist`",
+                                                                                                                                        "header_truncated": false,
+                                                                                                                                        "raw": 307002,
+                                                                                                                                        "tag": ""
+                                                                                                                                      }
+                                                                                                                                    ],
+                                                                                                                                    "class": "Elab.step",
+                                                                                                                                    "header": "💥️ expected type: <not-available>, term\nhammingDist✝ (multilinearCombine u (Fin.snoc r_init r_last)) MC",
+                                                                                                                                    "header_truncated": false,
+                                                                                                                                    "raw": 308383,
+                                                                                                                                    "tag": "Lean.Parser.Term.app"
+                                                                                                                                  }
+                                                                                                                                ],
+                                                                                                                                "class": "Elab.step",
+                                                                                                                                "header": "💥️ expected type: <not-available>, term\nΔ₀(multilinearCombine u (Fin.snoc r_init r_last), MC)",
+                                                                                                                                "header_truncated": false,
+                                                                                                                                "raw": 308641,
+                                                                                                                                "tag": "Code.«termΔ₀(_,_)»"
+                                                                                                                              }
+                                                                                                                            ],
+                                                                                                                            "class": "Elab.step",
+                                                                                                                            "header": "✅️ expected type: <not-available>, term\nΔ₀(multilinearCombine u (Fin.snoc r_init r_last), MC)",
+                                                                                                                            "header_truncated": false,
+                                                                                                                            "raw": 477156,
+                                                                                                                            "tag": "choice"
+                                                                                                                          }
+                                                                                                                        ],
+                                                                                                                        "class": "Elab.step",
+                                                                                                                        "header": "✅️ expected type: Prop, term\nbinrel% LE.le✝ Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) e",
+                                                                                                                        "header_truncated": false,
+                                                                                                                        "raw": 499313,
+                                                                                                                        "tag": "Lean.Parser.Term.binrel"
+                                                                                                                      }
+                                                                                                                    ],
+                                                                                                                    "class": "Elab.step",
+                                                                                                                    "header": "✅️ expected type: Prop, term\nΔ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e",
+                                                                                                                    "header_truncated": false,
+                                                                                                                    "raw": 499434,
+                                                                                                                    "tag": "«term_≤_»"
+                                                                                                                  }
+                                                                                                                ],
+                                                                                                                "class": "Elab.step",
+                                                                                                                "header": "✅️ expected type: F → (Fin ϑ' → F) → Prop, term\nfun r_last r_init => Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e",
+                                                                                                                "header_truncated": false,
+                                                                                                                "raw": 500556,
+                                                                                                                "tag": "Lean.Parser.Term.fun"
+                                                                                                              },
+                                                                                                              {
+                                                                                                                "children": [
+                                                                                                                  {
+                                                                                                                    "children": [],
+                                                                                                                    "class": "Meta.synthInstance",
+                                                                                                                    "header": "✅️ Nonempty F",
+                                                                                                                    "header_truncated": false,
+                                                                                                                    "raw": 469357,
+                                                                                                                    "tag": ""
+                                                                                                                  }
+                                                                                                                ],
+                                                                                                                "class": "Elab.app.finalize",
+                                                                                                                "header": "✅️ prob_split_last_uniform_sampling_of_finFun fun r_last r_init =>\n  Δ₀(multilinearCombine u (Fin.snoc r_init r_last), ↑MC) ≤ ↑e : (do\n      let r ← $ᵖ (Fin (ϑ' + 1) → F)\n      pure (Δ₀(multilinearCombine u (Fin.snoc (fun i => r i.castSucc) (r (Fin.last ϑ'))), ↑MC) ≤ ↑e))\n    True =\n  (do\n      let r_last ← $ᵖ F\n      let r_init ← $ᵖ (Fin ϑ' → F)\n      pure (Δ₀(multilinearCombine u (Fin.snoc r_init r_last), ↑MC) ≤ ↑e))\n    True",
+                                                                                                                "header_truncated": false,
+                                                                                                                "raw": 471729,
+                                                                                                                "tag": ""
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "class": "Elab.app.args",
+                                                                                                            "header": "✅️ elabAppArgs (3 namedArgs)\n  @prob_split_last_uniform_sampling_of_finFun",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 974065,
+                                                                                                            "tag": ""
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Elab.step",
+                                                                                                        "header": "✅️ expected type: (do\n      let r ← $ᵖ (Fin (ϑ' + 1) → F)\n      pure (Δ₀(multilinearCombine u (Fin.snoc (fun i => r i.castSucc) (r (Fin.last ϑ'))), ↑MC) ≤ ↑e))\n    True =\n  (do\n      let r_last ← $ᵖ F\n      let r_init ← $ᵖ (Fin ϑ' → F)\n      pure (Δ₀(multilinearCombine u (Fin.snoc r_init r_last), ↑MC) ≤ ↑e))\n    True, term\nprob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n  Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e)",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 975093,
+                                                                                                        "tag": "Lean.Parser.Term.app"
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Elab.step",
+                                                                                                    "header": "✅️ expected type: jointProximityNat (↑MC) u e, term\nhave hsplit :=\n  prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n    Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n?_",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 976560,
+                                                                                                    "tag": "Lean.Parser.Term.have"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "✅️ expected type: jointProximityNat (↑MC) u e, term\nno_implicit_lambda%\n  (have hsplit :=\n    prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n      Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n  ?_)",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 976648,
+                                                                                                "tag": "Lean.Parser.Term.noImplicitLambda"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "✅️ refine\n  no_implicit_lambda%\n    (have hsplit :=\n      prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n        Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n    ?_)",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 976967,
+                                                                                            "tag": "Lean.Parser.Tactic.refine"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "✅️ refine\n    no_implicit_lambda%\n      (have hsplit :=\n        prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n          Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n      ?_);\n  rotate_right",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 977142,
+                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "✅️ refine\n    no_implicit_lambda%\n      (have hsplit :=\n        prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n          Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n      ?_);\n  rotate_right",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 977228,
+                                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "✅️ (refine\n    no_implicit_lambda%\n      (have hsplit :=\n        prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n          Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n      ?_);\n  rotate_right)",
+                                                                                "header_truncated": false,
+                                                                                "raw": 977316,
+                                                                                "tag": "Lean.Parser.Tactic.paren"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "✅️ (refine\n      no_implicit_lambda%\n        (have hsplit :=\n          prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n            Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n        ?_);\n    rotate_right)",
+                                                                            "header_truncated": false,
+                                                                            "raw": 977404,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ (refine\n      no_implicit_lambda%\n        (have hsplit :=\n          prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n            Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n        ?_);\n    rotate_right)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 977490,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ focus\n  (refine\n      no_implicit_lambda%\n        (have hsplit :=\n          prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n            Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n        ?_);\n    rotate_right)",
+                                                                    "header_truncated": false,
+                                                                    "raw": 977613,
+                                                                    "tag": "Lean.Parser.Tactic.focus"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ refine_lift\n  have hsplit :=\n    prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n      Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n  ?_",
+                                                                "header_truncated": false,
+                                                                "raw": 977731,
+                                                                "tag": "Lean.Parser.Tactic.tacticRefine_lift_"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ have hsplit :=\n  prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n    Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e)",
+                                                            "header_truncated": false,
+                                                            "raw": 977836,
+                                                            "tag": "Lean.Parser.Tactic.tacticHave__"
+                                                          },
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [
+                                                                                                              {
+                                                                                                                "children": [
+                                                                                                                  {
+                                                                                                                    "children": [
+                                                                                                                      {
+                                                                                                                        "children": [
+                                                                                                                          {
+                                                                                                                            "children": [
+                                                                                                                              {
+                                                                                                                                "children": [
+                                                                                                                                  {
+                                                                                                                                    "children": [
+                                                                                                                                      {
+                                                                                                                                        "children": [
+                                                                                                                                          {
+                                                                                                                                            "children": [
+                                                                                                                                              {
+                                                                                                                                                "children": [],
+                                                                                                                                                "class": "Meta.synthInstance",
+                                                                                                                                                "header": "✅️ Nonempty F",
+                                                                                                                                                "header_truncated": false,
+                                                                                                                                                "raw": 470215,
+                                                                                                                                                "tag": ""
+                                                                                                                                              }
+                                                                                                                                            ],
+                                                                                                                                            "class": "Elab.app.finalize",
+                                                                                                                                            "header": "✅️ $ᵖ F : PMF F",
+                                                                                                                                            "header_truncated": false,
+                                                                                                                                            "raw": 471816,
+                                                                                                                                            "tag": ""
+                                                                                                                                          }
+                                                                                                                                        ],
+                                                                                                                                        "class": "Elab.app.args",
+                                                                                                                                        "header": "✅️ elabAppArgs (1 args) `$ᵖ`",
+                                                                                                                                        "header_truncated": false,
+                                                                                                                                        "raw": 472489,
+                                                                                                                                        "tag": ""
+                                                                                                                                      }
+                                                                                                                                    ],
+                                                                                                                                    "class": "Elab.step",
+                                                                                                                                    "header": "✅️ expected type: PMF F, term\n$ᵖ F",
+                                                                                                                                    "header_truncated": false,
+                                                                                                                                    "raw": 476611,
+                                                                                                                                    "tag": "Lean.Parser.Term.app"
+                                                                                                                                  }
+                                                                                                                                ],
+                                                                                                                                "class": "Elab.step",
+                                                                                                                                "header": "✅️ expected type: PMF ?m.482, term\n($ᵖ F : ?m✝ _)",
+                                                                                                                                "header_truncated": false,
+                                                                                                                                "raw": 477721,
+                                                                                                                                "tag": "Lean.Parser.Term.typeAscription"
+                                                                                                                              }
+                                                                                                                            ],
+                                                                                                                            "class": "Elab.app.args",
+                                                                                                                            "header": "✅️ elabAppArgs (2 args) `@Bind.bind`",
+                                                                                                                            "header_truncated": false,
+                                                                                                                            "raw": 512225,
+                                                                                                                            "tag": ""
+                                                                                                                          }
+                                                                                                                        ],
+                                                                                                                        "class": "Elab.step",
+                                                                                                                        "header": "✅️ expected type: PMF Prop, term\nBind.bind✝ ($ᵖ F : ?m✝ _)\n  (fun (r : _) =>\n    with_annotate_term(Term.doReturn \"return\" [(«term_∈_» `r \"∈\" `R_star_set)]) Pure.pure✝ (r ∈ R_star_set))",
+                                                                                                                        "header_truncated": false,
+                                                                                                                        "raw": 515814,
+                                                                                                                        "tag": "Lean.Parser.Term.app"
+                                                                                                                      }
+                                                                                                                    ],
+                                                                                                                    "class": "Elab.step",
+                                                                                                                    "header": "✅️ expected type: PMF Prop, term\nwith_annotate_term(Term.doLetArrow\n     \"let\"\n     []\n     (Term.letConfig [])\n     (Term.doIdDecl `r [] \"←\" (Term.doExpr (Term.app (ProbabilityTheory.«term$ᵖ» \"$ᵖ\") [`F]))))\n  Bind.bind✝ ($ᵖ F : ?m✝ _)\n    (fun (r : _) =>\n      with_annotate_term(Term.doReturn \"return\" [(«term_∈_» `r \"∈\" `R_star_set)]) Pure.pure✝ (r ∈ R_star_set))",
+                                                                                                                    "header_truncated": false,
+                                                                                                                    "raw": 515928,
+                                                                                                                    "tag": "Lean.withAnnotateTerm"
+                                                                                                                  }
+                                                                                                                ],
+                                                                                                                "class": "Elab.step",
+                                                                                                                "header": "✅️ expected type: <not-available>, term\ndo\n  let r ← $ᵖ F\n  return r ∈ R_star_set",
+                                                                                                                "header_truncated": false,
+                                                                                                                "raw": 516602,
+                                                                                                                "tag": "Lean.Parser.Term.do"
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "class": "Elab.step",
+                                                                                                            "header": "✅️ expected type: <not-available>, term\n(do\n  let r ← $ᵖ F\n  return r ∈ R_star_set)",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 516708,
+                                                                                                            "tag": "Lean.Parser.Term.paren"
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Elab.step",
+                                                                                                        "header": "✅️ expected type: ENNReal, term\n(do\n    let r ← $ᵖ F\n    return r ∈ R_star_set)\n  True✝",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 529191,
+                                                                                                        "tag": "Lean.Parser.Term.app"
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Elab.step",
+                                                                                                    "header": "✅️ expected type: jointProximityNat (↑MC) u e, term\nhave hRstar :\n  Pr_{\n      let r ← $ᵖ F}[r ∈ R_star_set] >\n    (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n  prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n?_",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 748165,
+                                                                                                    "tag": "Lean.Parser.Term.have"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "✅️ expected type: jointProximityNat (↑MC) u e, term\nno_implicit_lambda%\n  (have hRstar :\n    Pr_{\n        let r ← $ᵖ F}[r ∈ R_star_set] >\n      (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n    prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n  ?_)",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 748253,
+                                                                                                "tag": "Lean.Parser.Term.noImplicitLambda"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "✅️ refine\n  no_implicit_lambda%\n    (have hRstar :\n      Pr_{\n          let r ← $ᵖ F}[r ∈ R_star_set] >\n        (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n      prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n    ?_)",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 748685,
+                                                                                            "tag": "Lean.Parser.Tactic.refine"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "✅️ refine\n    no_implicit_lambda%\n      (have hRstar :\n        Pr_{\n            let r ← $ᵖ F}[r ∈ R_star_set] >\n          (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n        prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n      ?_);\n  rotate_right",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 748860,
+                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "✅️ refine\n    no_implicit_lambda%\n      (have hRstar :\n        Pr_{\n            let r ← $ᵖ F}[r ∈ R_star_set] >\n          (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n        prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n      ?_);\n  rotate_right",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 748946,
+                                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "✅️ (refine\n    no_implicit_lambda%\n      (have hRstar :\n        Pr_{\n            let r ← $ᵖ F}[r ∈ R_star_set] >\n          (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n        prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n      ?_);\n  rotate_right)",
+                                                                                "header_truncated": false,
+                                                                                "raw": 749034,
+                                                                                "tag": "Lean.Parser.Tactic.paren"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "✅️ (refine\n      no_implicit_lambda%\n        (have hRstar :\n          Pr_{\n              let r ← $ᵖ F}[r ∈ R_star_set] >\n            (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n          prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n        ?_);\n    rotate_right)",
+                                                                            "header_truncated": false,
+                                                                            "raw": 749122,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ (refine\n      no_implicit_lambda%\n        (have hRstar :\n          Pr_{\n              let r ← $ᵖ F}[r ∈ R_star_set] >\n            (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n          prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n        ?_);\n    rotate_right)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 749208,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ focus\n  (refine\n      no_implicit_lambda%\n        (have hRstar :\n          Pr_{\n              let r ← $ᵖ F}[r ∈ R_star_set] >\n            (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n          prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n        ?_);\n    rotate_right)",
+                                                                    "header_truncated": false,
+                                                                    "raw": 749331,
+                                                                    "tag": "Lean.Parser.Tactic.focus"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ refine_lift\n  have hRstar :\n    Pr_{\n        let r ← $ᵖ F}[r ∈ R_star_set] >\n      (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n    prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n  ?_",
+                                                                "header_truncated": false,
+                                                                "raw": 749449,
+                                                                "tag": "Lean.Parser.Tactic.tacticRefine_lift_"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ have hRstar :\n  Pr_{\n      let r ← $ᵖ F}[r ∈ R_star_set] >\n    (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n  prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP",
+                                                            "header_truncated": false,
+                                                            "raw": 749554,
+                                                            "tag": "Lean.Parser.Tactic.tacticHave__"
+                                                          },
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have hline : ∀ (r : R_star_set), jointProximityNat (u := affineLineEvaluation U₀ U₁ r.val) (e := e) (C := MC) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( intro r\n        apply correlatedAgreement_of_mem_R_star_tensor (ih := fun w => ih (Nat.succ_pos _) w) (u := u))",
+                                                                        "header_truncated": false,
+                                                                        "raw": 309114,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have hline : ∀ (r : R_star_set), jointProximityNat (u := affineLineEvaluation U₀ U₁ r.val) (e := e) (C := MC) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( intro r\n        apply correlatedAgreement_of_mem_R_star_tensor (ih := fun w => ih (Nat.succ_pos _) w) (u := u))",
+                                                                    "header_truncated": false,
+                                                                    "raw": 309205,
+                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have hline : ∀ (r : R_star_set), jointProximityNat (u := affineLineEvaluation U₀ U₁ r.val) (e := e) (C := MC) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( intro r\n        apply correlatedAgreement_of_mem_R_star_tensor (ih := fun w => ih (Nat.succ_pos _) w) (u := u))",
+                                                                "header_truncated": false,
+                                                                "raw": 309333,
+                                                                "tag": "Lean.Parser.Tactic.focus"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ have hline : ∀ (r : R_star_set), jointProximityNat (u := affineLineEvaluation U₀ U₁ r.val) (e := e) (C := MC) :=\n  by\n  intro r\n  apply correlatedAgreement_of_mem_R_star_tensor (ih := fun w => ih (Nat.succ_pos _) w) (u := u)",
+                                                            "header_truncated": false,
+                                                            "raw": 309518,
+                                                            "tag": "Lean.Parser.Tactic.tacticHave__"
+                                                          },
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [],
+                                                                    "class": "Elab.app.args",
+                                                                    "header": "✅️ elabAppArgs (5 args) `h_interleaved_gaps`",
+                                                                    "header_truncated": false,
+                                                                    "raw": 342015,
+                                                                    "tag": ""
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ expected type: jointProximityNat₂ (CodeInterleavable.interleaveCode (↑MC) (Fin (2 ^ (ϑ_sub_2 + 1))))\n  (⋈|(splitHalfRowWiseInterleavedWords u).1) (⋈|(splitHalfRowWiseInterleavedWords u).2) e, term\nh_interleaved_gaps (2 ^ ϑ') Nat.one_le_two_pow (⋈|U₀) (⋈|U₁)\n  (lt_of_lt_of_le hRstar (Pr_le_Pr_of_implies ($ᵖ F) _ _ fun r hr => hline ⟨r, hr⟩))",
+                                                                "header_truncated": false,
+                                                                "raw": 342615,
+                                                                "tag": "Lean.Parser.Term.app"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ refine\n  h_interleaved_gaps (2 ^ ϑ') Nat.one_le_two_pow (⋈|U₀) (⋈|U₁)\n    (lt_of_lt_of_le hRstar (Pr_le_Pr_of_implies ($ᵖ F) _ _ fun r hr => hline ⟨r, hr⟩))",
+                                                            "header_truncated": false,
+                                                            "raw": 359135,
+                                                            "tag": "Lean.Parser.Tactic.refine"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ \n  intro _ u hP\n  let ϑ' : ℕ := ϑ_sub_2 + 1\n  let U₀ : WordStack A (Fin (2 ^ ϑ')) ι := (splitHalfRowWiseInterleavedWords (ϑ := ϑ') u).1\n  let U₁ : WordStack A (Fin (2 ^ ϑ')) ι := (splitHalfRowWiseInterleavedWords (ϑ := ϑ') u).2\n  have hsnoc (r : Fin (ϑ' + 1) → F) : Fin.snoc (fun i => r i.castSucc) (r (Fin.last ϑ')) = r :=\n    @Fin.snoc_init_self ϑ' (fun _ => F) r\n  have hrec (r_init : Fin ϑ' → F) (r_last : F) :\n    multilinearCombine u (Fin.snoc r_init r_last) = multilinearCombine (affineLine",
+                                                        "header_truncated": true,
+                                                        "raw": 3166429,
+                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ \n  intro _ u hP\n  let ϑ' : ℕ := ϑ_sub_2 + 1\n  let U₀ : WordStack A (Fin (2 ^ ϑ')) ι := (splitHalfRowWiseInterleavedWords (ϑ := ϑ') u).1\n  let U₁ : WordStack A (Fin (2 ^ ϑ')) ι := (splitHalfRowWiseInterleavedWords (ϑ := ϑ') u).2\n  have hsnoc (r : Fin (ϑ' + 1) → F) : Fin.snoc (fun i => r i.castSucc) (r (Fin.last ϑ')) = r :=\n    @Fin.snoc_init_self ϑ' (fun _ => F) r\n  have hrec (r_init : Fin ϑ' → F) (r_last : F) :\n    multilinearCombine u (Fin.snoc r_init r_last) = multilinearCombine (affineLine",
+                                                    "header_truncated": true,
+                                                    "raw": 3166516,
+                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "✅️ cases ϑ_sub_1 with\n| zero =>\n  -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n  \n  simp only [zero_add, zero_lt_one, forall_const]\n  intro u hP\n  simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n    prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n    Nat.cast_one, ENNReal.coe_one, one_mul] at hP\n  rw [show u = finMapTwoWords (u 0) (u 1) from by\n      funext i\n      match i with\n      | ",
+                                                "header_truncated": true,
+                                                "raw": 5055863,
+                                                "tag": "Lean.Parser.Tactic.cases"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ cases ϑ_sub_1 with\n  | zero =>\n    -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n    \n    simp only [zero_add, zero_lt_one, forall_const]\n    intro u hP\n    simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n      prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n      Nat.cast_one, ENNReal.coe_one, one_mul] at hP\n    rw [show u = finMapTwoWords (u 0) (u 1) from by\n        funext i\n       ",
+                                            "header_truncated": true,
+                                            "raw": 5055961,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ cases ϑ_sub_1 with\n  | zero =>\n    -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n    \n    simp only [zero_add, zero_lt_one, forall_const]\n    intro u hP\n    simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n      prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n      Nat.cast_one, ENNReal.coe_one, one_mul] at hP\n    rw [show u = finMapTwoWords (u 0) (u 1) from by\n        funext i\n       ",
+                                        "header_truncated": true,
+                                        "raw": 5056057,
+                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "✅️ induction ϑ with\n| zero => exact fun h => absurd h (Nat.lt_irrefl 0)\n| succ ϑ_sub_1 ih =>\n  cases ϑ_sub_1 with\n  | zero =>\n    -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n    \n    simp only [zero_add, zero_lt_one, forall_const]\n    intro u hP\n    simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n      prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n      Nat.cast_one, ENNReal.coe_one,",
+                                    "header_truncated": true,
+                                    "raw": 5068747,
+                                    "tag": "Lean.Parser.Tactic.induction"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  intro ϑ\n  induction ϑ with\n  | zero => exact fun h => absurd h (Nat.lt_irrefl 0)\n  | succ ϑ_sub_1 ih =>\n    cases ϑ_sub_1 with\n    | zero =>\n      -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n      \n      simp only [zero_add, zero_lt_one, forall_const]\n      intro u hP\n      simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n        prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n   ",
+                                "header_truncated": true,
+                                "raw": 5069076,
+                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ \n  intro ϑ\n  induction ϑ with\n  | zero => exact fun h => absurd h (Nat.lt_irrefl 0)\n  | succ ϑ_sub_1 ih =>\n    cases ϑ_sub_1 with\n    | zero =>\n      -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n      \n      simp only [zero_add, zero_lt_one, forall_const]\n      intro u hP\n      simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n        prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n   ",
+                            "header_truncated": true,
+                            "raw": 5069181,
+                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ classical\nintro ϑ\ninduction ϑ with\n| zero => exact fun h => absurd h (Nat.lt_irrefl 0)\n| succ ϑ_sub_1 ih =>\n  cases ϑ_sub_1 with\n  | zero =>\n    -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n    \n    simp only [zero_add, zero_lt_one, forall_const]\n    intro u hP\n    simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n      prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n      Nat.cast_one",
+                        "header_truncated": true,
+                        "raw": 5073030,
+                        "tag": "Lean.Parser.Tactic.classical"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "✅️ classical\n  intro ϑ\n  induction ϑ with\n  | zero => exact fun h => absurd h (Nat.lt_irrefl 0)\n  | succ ϑ_sub_1 ih =>\n    cases ϑ_sub_1 with\n    | zero =>\n      -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n      \n      simp only [zero_add, zero_lt_one, forall_const]\n      intro u hP\n      simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n        prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ",
+                    "header_truncated": true,
+                    "raw": 5073141,
+                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "✅️ classical\n  intro ϑ\n  induction ϑ with\n  | zero => exact fun h => absurd h (Nat.lt_irrefl 0)\n  | succ ϑ_sub_1 ih =>\n    cases ϑ_sub_1 with\n    | zero =>\n      -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n      \n      simp only [zero_add, zero_lt_one, forall_const]\n      intro u hP\n      simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n        prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ",
+                "header_truncated": true,
+                "raw": 5073250,
+                "tag": "Lean.Parser.Tactic.tacticSeq"
+              }
+            ],
+            "class": "Elab.definition.value",
+            "header": "✅️ interleaved_affine_gaps_imply_tensor_gaps",
+            "header_truncated": false,
+            "raw": 5088501,
+            "tag": ""
+          }
+        ],
+        "class": "Elab.command",
+        "header": "✅️ theorem interleaved_affine_gaps_imply_tensor_gaps\n    (hC_proximityGapAffineLines :\n      e_ε_correlatedAgreementAffineLinesNat (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n    (h_interleaved_gaps :\n      ∀ m : ℕ,\n        m ≥ 1 →\n          e_ε_correlatedAgreementAffineLinesNat (F := F) (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC^⋈(Fin m))\n            e ε) :\n    ∀ (ϑ : ℕ),\n      (hϑ_gt_0 : ϑ > 0) →\n        δ_ε_multilinearCorrelatedAgreement_Nat (F := F) (A := A) (ι := ι) (C",
+        "header_truncated": true,
+        "raw": 6264027,
+        "tag": "Lean.Parser.Command.theorem"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option maxHeartbeats✝ 0 in\ntheorem interleaved_affine_gaps_imply_tensor_gaps\n    (hC_proximityGapAffineLines :\n      e_ε_correlatedAgreementAffineLinesNat (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n    (h_interleaved_gaps :\n      ∀ m : ℕ,\n        m ≥ 1 →\n          e_ε_correlatedAgreementAffineLinesNat (F := F) (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC^⋈(Fin m))\n            e ε) :\n    ∀ (ϑ : ℕ),\n      (hϑ_gt_0 : ϑ > 0) →\n        δ_ε_multilinearCorrelatedAgreement_Na",
+        "header_truncated": true,
+        "raw": 6267437,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option Elab.async✝ false in\nset_option maxHeartbeats✝ 0 in\ntheorem interleaved_affine_gaps_imply_tensor_gaps\n    (hC_proximityGapAffineLines :\n      e_ε_correlatedAgreementAffineLinesNat (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n    (h_interleaved_gaps :\n      ∀ m : ℕ,\n        m ≥ 1 →\n          e_ε_correlatedAgreementAffineLinesNat (F := F) (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC^⋈(Fin m))\n            e ε) :\n    ∀ (ϑ : ℕ),\n      (hϑ_gt_0 : ϑ > 0) →\n        δ_ε_m",
+        "header_truncated": true,
+        "raw": 6270846,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ #proof_eval_measure \"PROOF_EVAL_187cbca84724434090ebc057823ce866\" target\n  \"interleaved_affine_gaps_imply_tensor_gaps\" end 73874 in\n  theorem interleaved_affine_gaps_imply_tensor_gaps\n      (hC_proximityGapAffineLines :\n        e_ε_correlatedAgreementAffineLinesNat (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n      (h_interleaved_gaps :\n        ∀ m : ℕ,\n          m ≥ 1 →\n            e_ε_correlatedAgreementAffineLinesNat (F := F) (A := InterleavedSymbol A (Fin m)) (ι := ι) (C :=\n   ",
+        "header_truncated": true,
+        "raw": 6304271,
+        "tag": "«command#proof_eval_measure_Target_End_In_»"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 300000 in\n#proof_eval_measure \"PROOF_EVAL_187cbca84724434090ebc057823ce866\" target \"interleaved_affine_gaps_imply_tensor_gaps\" end\n  73874 in\n  theorem interleaved_affine_gaps_imply_tensor_gaps\n      (hC_proximityGapAffineLines :\n        e_ε_correlatedAgreementAffineLinesNat (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n      (h_interleaved_gaps :\n        ∀ m : ℕ,\n          m ≥ 1 →\n            e_ε_correlatedAgreementAffineLinesNat (F := F) (A := ",
+        "header_truncated": true,
+        "raw": 6307787,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end",
+        "header_truncated": false,
+        "raw": 831,
+        "tag": "Lean.Parser.Command.end"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.useHeartbeats✝ true in\nset_option trace.profiler.threshold✝ 300000 in\n#proof_eval_measure \"PROOF_EVAL_187cbca84724434090ebc057823ce866\" target \"interleaved_affine_gaps_imply_tensor_gaps\" end\n  73874 in\n  theorem interleaved_affine_gaps_imply_tensor_gaps\n      (hC_proximityGapAffineLines :\n        e_ε_correlatedAgreementAffineLinesNat (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n      (h_interleaved_gaps :\n        ∀ m : ℕ,\n          m ≥ 1 →\n            e_ε_",
+        "header_truncated": true,
+        "raw": 0,
+        "tag": "Lean.Parser.Command.in"
+      }
+    ],
+    "hotspots": [
+      {
+        "node_id": 5,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.value",
+        "syntax_kind": "",
+        "snippet": "✅️ interleaved_affine_gaps_imply_tensor_gaps",
+        "snippet_truncated": false,
+        "heartbeats_raw": 5088501,
+        "heartbeats": 5088.501,
+        "inclusive": true
+      },
+      {
+        "node_id": 8,
+        "parent_id": 5,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.classical",
+        "snippet": "✅️ classical\nintro ϑ\ninduction ϑ with\n| zero => exact fun h => absurd h (Nat.lt_irrefl 0)\n| succ ϑ_sub_1 ih =>\n  cases ϑ_sub_1 with\n  | zero =>\n    -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n    \n    simp only [zero_add, zero_lt_one, forall_const]\n    intro u hP\n    simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n      prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n      Nat.cast_one",
+        "snippet_truncated": true,
+        "heartbeats_raw": 5073030,
+        "heartbeats": 5073.03,
+        "inclusive": true
+      },
+      {
+        "node_id": 11,
+        "parent_id": 8,
+        "depth": 7,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.induction",
+        "snippet": "✅️ induction ϑ with\n| zero => exact fun h => absurd h (Nat.lt_irrefl 0)\n| succ ϑ_sub_1 ih =>\n  cases ϑ_sub_1 with\n  | zero =>\n    -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n    \n    simp only [zero_add, zero_lt_one, forall_const]\n    intro u hP\n    simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n      prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n      Nat.cast_one, ENNReal.coe_one,",
+        "snippet_truncated": true,
+        "heartbeats_raw": 5068747,
+        "heartbeats": 5068.747,
+        "inclusive": true
+      },
+      {
+        "node_id": 14,
+        "parent_id": 11,
+        "depth": 10,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.cases",
+        "snippet": "✅️ cases ϑ_sub_1 with\n| zero =>\n  -- `ϑ = 1`: the multilinear combination of the two rows is an affine line\n  \n  simp only [zero_add, zero_lt_one, forall_const]\n  intro u hP\n  simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n    prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n    Nat.cast_one, ENNReal.coe_one, one_mul] at hP\n  rw [show u = finMapTwoWords (u 0) (u 1) from by\n      funext i\n      match i with\n      | ",
+        "snippet_truncated": true,
+        "heartbeats_raw": 5055863,
+        "heartbeats": 5055.863,
+        "inclusive": true
+      },
+      {
+        "node_id": 17,
+        "parent_id": 14,
+        "depth": 13,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Mathlib.Tactic.tacticSimp_rw___",
+        "snippet": "✅️ simp_rw [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u),\n  prob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e),\n  Nat.cast_one, ENNReal.coe_one, one_mul] at hP",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1400717,
+        "heartbeats": 1400.717,
+        "inclusive": true
+      },
+      {
+        "node_id": 18,
+        "parent_id": 17,
+        "depth": 14,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simp",
+        "snippet": "✅️ simp only [prob_uniform_singleton_finFun_eq (F := F) (P := fun r =>\n      Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e)] at hP",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1069929,
+        "heartbeats": 1069.929,
+        "inclusive": true
+      },
+      {
+        "node_id": 19,
+        "parent_id": 18,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.app",
+        "snippet": "✅️ expected type: <not-available>, term\nprob_uniform_singleton_finFun_eq (F := F) (P := fun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1026176,
+        "heartbeats": 1026.176,
+        "inclusive": true
+      },
+      {
+        "node_id": 40,
+        "parent_id": 14,
+        "depth": 13,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have hsplit :=\n  prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n    Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 977836,
+        "heartbeats": 977.836,
+        "inclusive": true
+      },
+      {
+        "node_id": 41,
+        "parent_id": 40,
+        "depth": 14,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticRefine_lift_",
+        "snippet": "✅️ refine_lift\n  have hsplit :=\n    prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n      Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n  ?_",
+        "snippet_truncated": false,
+        "heartbeats_raw": 977731,
+        "heartbeats": 977.731,
+        "inclusive": true
+      },
+      {
+        "node_id": 42,
+        "parent_id": 41,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  (refine\n      no_implicit_lambda%\n        (have hsplit :=\n          prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n            Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n        ?_);\n    rotate_right)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 977613,
+        "heartbeats": 977.613,
+        "inclusive": true
+      },
+      {
+        "node_id": 48,
+        "parent_id": 42,
+        "depth": 21,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.refine",
+        "snippet": "✅️ refine\n  no_implicit_lambda%\n    (have hsplit :=\n      prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n        Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n    ?_)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 976967,
+        "heartbeats": 976.967,
+        "inclusive": true
+      },
+      {
+        "node_id": 49,
+        "parent_id": 48,
+        "depth": 22,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.noImplicitLambda",
+        "snippet": "✅️ expected type: jointProximityNat (↑MC) u e, term\nno_implicit_lambda%\n  (have hsplit :=\n    prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n      Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n  ?_)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 976648,
+        "heartbeats": 976.648,
+        "inclusive": true
+      },
+      {
+        "node_id": 50,
+        "parent_id": 49,
+        "depth": 23,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.have",
+        "snippet": "✅️ expected type: jointProximityNat (↑MC) u e, term\nhave hsplit :=\n  prob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n    Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e);\n?_",
+        "snippet_truncated": false,
+        "heartbeats_raw": 976560,
+        "heartbeats": 976.56,
+        "inclusive": true
+      },
+      {
+        "node_id": 51,
+        "parent_id": 50,
+        "depth": 24,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.app",
+        "snippet": "✅️ expected type: (do\n      let r ← $ᵖ (Fin (ϑ' + 1) → F)\n      pure (Δ₀(multilinearCombine u (Fin.snoc (fun i => r i.castSucc) (r (Fin.last ϑ'))), ↑MC) ≤ ↑e))\n    True =\n  (do\n      let r_last ← $ᵖ F\n      let r_init ← $ᵖ (Fin ϑ' → F)\n      pure (Δ₀(multilinearCombine u (Fin.snoc r_init r_last), ↑MC) ≤ ↑e))\n    True, term\nprob_split_last_uniform_sampling_of_finFun (F := F) (ϑ := ϑ') (P := fun r_last r_init =>\n  Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 975093,
+        "heartbeats": 975.093,
+        "inclusive": true
+      },
+      {
+        "node_id": 62,
+        "parent_id": 14,
+        "depth": 13,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have hRstar :\n  Pr_{\n      let r ← $ᵖ F}[r ∈ R_star_set] >\n    (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n  prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP",
+        "snippet_truncated": false,
+        "heartbeats_raw": 749554,
+        "heartbeats": 749.554,
+        "inclusive": true
+      },
+      {
+        "node_id": 63,
+        "parent_id": 62,
+        "depth": 14,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticRefine_lift_",
+        "snippet": "✅️ refine_lift\n  have hRstar :\n    Pr_{\n        let r ← $ᵖ F}[r ∈ R_star_set] >\n      (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n    prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n  ?_",
+        "snippet_truncated": false,
+        "heartbeats_raw": 749449,
+        "heartbeats": 749.449,
+        "inclusive": true
+      },
+      {
+        "node_id": 64,
+        "parent_id": 63,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  (refine\n      no_implicit_lambda%\n        (have hRstar :\n          Pr_{\n              let r ← $ᵖ F}[r ∈ R_star_set] >\n            (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n          prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n        ?_);\n    rotate_right)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 749331,
+        "heartbeats": 749.331,
+        "inclusive": true
+      },
+      {
+        "node_id": 70,
+        "parent_id": 64,
+        "depth": 21,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.refine",
+        "snippet": "✅️ refine\n  no_implicit_lambda%\n    (have hRstar :\n      Pr_{\n          let r ← $ᵖ F}[r ∈ R_star_set] >\n        (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n      prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n    ?_)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 748685,
+        "heartbeats": 748.685,
+        "inclusive": true
+      },
+      {
+        "node_id": 71,
+        "parent_id": 70,
+        "depth": 22,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.noImplicitLambda",
+        "snippet": "✅️ expected type: jointProximityNat (↑MC) u e, term\nno_implicit_lambda%\n  (have hRstar :\n    Pr_{\n        let r ← $ᵖ F}[r ∈ R_star_set] >\n      (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n    prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n  ?_)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 748253,
+        "heartbeats": 748.253,
+        "inclusive": true
+      },
+      {
+        "node_id": 72,
+        "parent_id": 71,
+        "depth": 23,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.have",
+        "snippet": "✅️ expected type: jointProximityNat (↑MC) u e, term\nhave hRstar :\n  Pr_{\n      let r ← $ᵖ F}[r ∈ R_star_set] >\n    (ε : ENNReal) / (Fintype.card F : ENNReal) :=\n  prob_R_star_gt_threshold (MC := MC) (ϑ := ϑ') (u := u) (e := e) hP;\n?_",
+        "snippet_truncated": false,
+        "heartbeats_raw": 748165,
+        "heartbeats": 748.165,
+        "inclusive": true
+      },
+      {
+        "node_id": 21,
+        "parent_id": 19,
+        "depth": 17,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.fun",
+        "snippet": "✅️ expected type: F → Prop, term\nfun r => Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e",
+        "snippet_truncated": false,
+        "heartbeats_raw": 552943,
+        "heartbeats": 552.943,
+        "inclusive": true
+      },
+      {
+        "node_id": 22,
+        "parent_id": 21,
+        "depth": 18,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "«term_≤_»",
+        "snippet": "✅️ expected type: Prop, term\nΔ₀(affineLineEvaluation (u 0) (u 1) r, MC) ≤ e",
+        "snippet_truncated": false,
+        "heartbeats_raw": 552231,
+        "heartbeats": 552.231,
+        "inclusive": true
+      },
+      {
+        "node_id": 23,
+        "parent_id": 22,
+        "depth": 19,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.binrel",
+        "snippet": "✅️ expected type: Prop, term\nbinrel% LE.le✝ Δ₀(affineLineEvaluation (u 0) (u 1) r, MC) e",
+        "snippet_truncated": false,
+        "heartbeats_raw": 552110,
+        "heartbeats": 552.11,
+        "inclusive": true
+      },
+      {
+        "node_id": 24,
+        "parent_id": 23,
+        "depth": 20,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "choice",
+        "snippet": "✅️ expected type: <not-available>, term\nΔ₀(affineLineEvaluation (u 0) (u 1) r, MC)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 529948,
+        "heartbeats": 529.948,
+        "inclusive": true
+      },
+      {
+        "node_id": 73,
+        "parent_id": 72,
+        "depth": 24,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.app",
+        "snippet": "✅️ expected type: ENNReal, term\n(do\n    let r ← $ᵖ F\n    return r ∈ R_star_set)\n  True✝",
+        "snippet_truncated": false,
+        "heartbeats_raw": 529191,
+        "heartbeats": 529.191,
+        "inclusive": true
+      },
+      {
+        "node_id": 74,
+        "parent_id": 73,
+        "depth": 25,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.paren",
+        "snippet": "✅️ expected type: <not-available>, term\n(do\n  let r ← $ᵖ F\n  return r ∈ R_star_set)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 516708,
+        "heartbeats": 516.708,
+        "inclusive": true
+      },
+      {
+        "node_id": 75,
+        "parent_id": 74,
+        "depth": 26,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.do",
+        "snippet": "✅️ expected type: <not-available>, term\ndo\n  let r ← $ᵖ F\n  return r ∈ R_star_set",
+        "snippet_truncated": false,
+        "heartbeats_raw": 516602,
+        "heartbeats": 516.602,
+        "inclusive": true
+      },
+      {
+        "node_id": 76,
+        "parent_id": 75,
+        "depth": 27,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.withAnnotateTerm",
+        "snippet": "✅️ expected type: PMF Prop, term\nwith_annotate_term(Term.doLetArrow\n     \"let\"\n     []\n     (Term.letConfig [])\n     (Term.doIdDecl `r [] \"←\" (Term.doExpr (Term.app (ProbabilityTheory.«term$ᵖ» \"$ᵖ\") [`F]))))\n  Bind.bind✝ ($ᵖ F : ?m✝ _)\n    (fun (r : _) =>\n      with_annotate_term(Term.doReturn \"return\" [(«term_∈_» `r \"∈\" `R_star_set)]) Pure.pure✝ (r ∈ R_star_set))",
+        "snippet_truncated": false,
+        "heartbeats_raw": 515928,
+        "heartbeats": 515.928,
+        "inclusive": true
+      },
+      {
+        "node_id": 77,
+        "parent_id": 76,
+        "depth": 28,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.app",
+        "snippet": "✅️ expected type: PMF Prop, term\nBind.bind✝ ($ᵖ F : ?m✝ _)\n  (fun (r : _) =>\n    with_annotate_term(Term.doReturn \"return\" [(«term_∈_» `r \"∈\" `R_star_set)]) Pure.pure✝ (r ∈ R_star_set))",
+        "snippet_truncated": false,
+        "heartbeats_raw": 515814,
+        "heartbeats": 515.814,
+        "inclusive": true
+      },
+      {
+        "node_id": 53,
+        "parent_id": 51,
+        "depth": 26,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.fun",
+        "snippet": "✅️ expected type: F → (Fin ϑ' → F) → Prop, term\nfun r_last r_init => Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e",
+        "snippet_truncated": false,
+        "heartbeats_raw": 500556,
+        "heartbeats": 500.556,
+        "inclusive": true
+      },
+      {
+        "node_id": 54,
+        "parent_id": 53,
+        "depth": 27,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "«term_≤_»",
+        "snippet": "✅️ expected type: Prop, term\nΔ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) ≤ e",
+        "snippet_truncated": false,
+        "heartbeats_raw": 499434,
+        "heartbeats": 499.434,
+        "inclusive": true
+      },
+      {
+        "node_id": 55,
+        "parent_id": 54,
+        "depth": 28,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.binrel",
+        "snippet": "✅️ expected type: Prop, term\nbinrel% LE.le✝ Δ₀(multilinearCombine u (Fin.snoc r_init r_last), MC) e",
+        "snippet_truncated": false,
+        "heartbeats_raw": 499313,
+        "heartbeats": 499.313,
+        "inclusive": true
+      },
+      {
+        "node_id": 79,
+        "parent_id": 77,
+        "depth": 30,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.typeAscription",
+        "snippet": "✅️ expected type: PMF ?m.482, term\n($ᵖ F : ?m✝ _)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 477721,
+        "heartbeats": 477.721,
+        "inclusive": true
+      },
+      {
+        "node_id": 56,
+        "parent_id": 55,
+        "depth": 29,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "choice",
+        "snippet": "✅️ expected type: <not-available>, term\nΔ₀(multilinearCombine u (Fin.snoc r_init r_last), MC)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 477156,
+        "heartbeats": 477.156,
+        "inclusive": true
+      },
+      {
+        "node_id": 80,
+        "parent_id": 79,
+        "depth": 31,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.app",
+        "snippet": "✅️ expected type: PMF F, term\n$ᵖ F",
+        "snippet_truncated": false,
+        "heartbeats_raw": 476611,
+        "heartbeats": 476.611,
+        "inclusive": true
+      },
+      {
+        "node_id": 4,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.header",
+        "syntax_kind": "",
+        "snippet": "✅️ interleaved_affine_gaps_imply_tensor_gaps",
+        "snippet_truncated": false,
+        "heartbeats_raw": 444932,
+        "heartbeats": 444.932,
+        "inclusive": true
+      },
+      {
+        "node_id": 36,
+        "parent_id": 14,
+        "depth": 13,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have hrec (r_init : Fin ϑ' → F) (r_last : F) :\n  multilinearCombine u (Fin.snoc r_init r_last) = multilinearCombine (affineLineEvaluation U₀ U₁ r_last) r_init :=\n  by\n  rw [multilinearCombine_recursive_form]\n  simp only [Fin.snoc_last, Fin.init_snoc]\n  rfl",
+        "snippet_truncated": false,
+        "heartbeats_raw": 391260,
+        "heartbeats": 391.26,
+        "inclusive": true
+      },
+      {
+        "node_id": 37,
+        "parent_id": 36,
+        "depth": 14,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have hrec (r_init : Fin ϑ' → F) (r_last : F) :\n        multilinearCombine u (Fin.snoc r_init r_last) = multilinearCombine (affineLineEvaluation U₀ U₁ r_last) r_init :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [multilinearCombine_recursive_form]\n        simp only [Fin.snoc_last, Fin.init_snoc]\n        rfl)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 391075,
+        "heartbeats": 391.075,
+        "inclusive": true
+      },
+      {
+        "node_id": 88,
+        "parent_id": 14,
+        "depth": 13,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.refine",
+        "snippet": "✅️ refine\n  h_interleaved_gaps (2 ^ ϑ') Nat.one_le_two_pow (⋈|U₀) (⋈|U₁)\n    (lt_of_lt_of_le hRstar (Pr_le_Pr_of_implies ($ᵖ F) _ _ fun r hr => hline ⟨r, hr⟩))",
+        "snippet_truncated": false,
+        "heartbeats_raw": 359135,
+        "heartbeats": 359.135,
+        "inclusive": true
+      },
+      {
+        "node_id": 89,
+        "parent_id": 88,
+        "depth": 14,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.app",
+        "snippet": "✅️ expected type: jointProximityNat₂ (CodeInterleavable.interleaveCode (↑MC) (Fin (2 ^ (ϑ_sub_2 + 1))))\n  (⋈|(splitHalfRowWiseInterleavedWords u).1) (⋈|(splitHalfRowWiseInterleavedWords u).2) e, term\nh_interleaved_gaps (2 ^ ϑ') Nat.one_le_two_pow (⋈|U₀) (⋈|U₁)\n  (lt_of_lt_of_le hRstar (Pr_le_Pr_of_implies ($ᵖ F) _ _ fun r hr => hline ⟨r, hr⟩))",
+        "snippet_truncated": false,
+        "heartbeats_raw": 342615,
+        "heartbeats": 342.615,
+        "inclusive": true
+      },
+      {
+        "node_id": 84,
+        "parent_id": 14,
+        "depth": 13,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have hline : ∀ (r : R_star_set), jointProximityNat (u := affineLineEvaluation U₀ U₁ r.val) (e := e) (C := MC) :=\n  by\n  intro r\n  apply correlatedAgreement_of_mem_R_star_tensor (ih := fun w => ih (Nat.succ_pos _) w) (u := u)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 309518,
+        "heartbeats": 309.518,
+        "inclusive": true
+      },
+      {
+        "node_id": 85,
+        "parent_id": 84,
+        "depth": 14,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have hline : ∀ (r : R_star_set), jointProximityNat (u := affineLineEvaluation U₀ U₁ r.val) (e := e) (C := MC) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( intro r\n        apply correlatedAgreement_of_mem_R_star_tensor (ih := fun w => ih (Nat.succ_pos _) w) (u := u))",
+        "snippet_truncated": false,
+        "heartbeats_raw": 309333,
+        "heartbeats": 309.333,
+        "inclusive": true
+      },
+      {
+        "node_id": 57,
+        "parent_id": 56,
+        "depth": 30,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Code.«termΔ₀(_,_)»",
+        "snippet": "💥️ expected type: <not-available>, term\nΔ₀(multilinearCombine u (Fin.snoc r_init r_last), MC)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 308641,
+        "heartbeats": 308.641,
+        "inclusive": true
+      },
+      {
+        "node_id": 58,
+        "parent_id": 57,
+        "depth": 31,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.app",
+        "snippet": "💥️ expected type: <not-available>, term\nhammingDist✝ (multilinearCombine u (Fin.snoc r_init r_last)) MC",
+        "snippet_truncated": false,
+        "heartbeats_raw": 308383,
+        "heartbeats": 308.383,
+        "inclusive": true
+      },
+      {
+        "node_id": 25,
+        "parent_id": 24,
+        "depth": 21,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Code.«termΔ₀(_,_)»",
+        "snippet": "💥️ expected type: <not-available>, term\nΔ₀(affineLineEvaluation (u 0) (u 1) r, MC)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 308213,
+        "heartbeats": 308.213,
+        "inclusive": true
+      },
+      {
+        "node_id": 26,
+        "parent_id": 25,
+        "depth": 22,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.app",
+        "snippet": "💥️ expected type: <not-available>, term\nhammingDist✝ (affineLineEvaluation (u 0) (u 1) r) MC",
+        "snippet_truncated": false,
+        "heartbeats_raw": 307929,
+        "heartbeats": 307.929,
+        "inclusive": true
+      },
+      {
+        "node_id": 30,
+        "parent_id": 14,
+        "depth": 13,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.rwSeq",
+        "snippet": "✅️ rw [show u = finMapTwoWords (u 0) (u 1) from by\n    funext i\n    match i with\n    | 0 => rfl\n    | 1 => rfl]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 305922,
+        "heartbeats": 305.922,
+        "inclusive": true
+      }
+    ],
+    "marks": [],
+    "profile_heartbeats_raw": 6271208,
+    "profile_heartbeats": 6271.208,
+    "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+    "cache_key": "ad11deece827757b0e534a00c38bce5a786cb1cd0feeaf12cc46290cd33b5a32",
+    "status": "ok",
+    "available_hotspots": 47,
+    "hotspots_truncated": false,
+    "mark_count": 0,
+    "marks_truncated": false,
+    "partial": false,
+    "diagnostics": [],
+    "context_mode": "full_file_replacement",
+    "returncode": 0,
+    "elapsed_seconds": 9.99574614688754
+  }
+}

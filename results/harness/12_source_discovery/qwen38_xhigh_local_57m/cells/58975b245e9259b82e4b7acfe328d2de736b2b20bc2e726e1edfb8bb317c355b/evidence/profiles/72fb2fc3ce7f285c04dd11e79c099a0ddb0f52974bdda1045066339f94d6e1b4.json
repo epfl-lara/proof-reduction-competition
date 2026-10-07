@@ -1,0 +1,81 @@
+{
+  "at": "2026-10-07T05:49:28.130356+00:00",
+  "code": "theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by\n  unfold fiberwiseClose at h_fw_dist_lt\n  unfold hammingClose\n  let C_i := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩\n  let d_fw := fiberwiseDistance 𝔽q β (i := i) steps h_i_add_steps f\n  let d_is := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩\n  let d_i := BBF_CodeDistance ℓ 𝓡 ⟨i, by omega⟩\n  profile_tactic \"obtain\" in obtain ⟨g', hg', hgd⟩ : ∃ g' ∈ C_i,\n      d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard := by\n    let S := (fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) ''\n      Set.univ\n    obtain ⟨g, _, hg⟩ := Nat.sInf_mem (Set.image_nonempty.mpr ⟨(0 : C_i), Set.mem_univ _⟩)\n    exact ⟨g, g.property, hg.symm⟩\n  -- each bad fiber holds at most `2 ^ steps` bad points\n  have h_count : hammingDist f g' ≤ d_fw * 2 ^ steps := by\n    profile_tactic \"Ydef\" in let Y : Set _ := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g'\n    let Δ : Finset _ := Finset.univ.filter (fun x => f x ≠ g' x)\n    have hΔ : hammingDist f g' = Δ.card := rfl\n    profile_tactic \"fintypeY\" in haveI : Fintype Y := Fintype.ofFinite Y\n    let iq (x : ↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩))\n        : ↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨i.val + steps, by omega⟩) :=\n      iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x\n    let kOf (x : ↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩)) : Fin (2 ^ steps) :=\n      pointToIterateQuotientIndex 𝔽q β (i := ⟨i, by omega⟩) (steps := steps)\n        (h_i_add_steps := h_i_add_steps) (x := x)\n    let fib (y : ↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨i.val + steps, by omega⟩))\n        : Fin (2 ^ steps) → ↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩) :=\n      qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps)\n        (h_i_add_steps := fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := y)\n    profile_tactic \"hrec\" in have hrec : ∀ x, fib (iq x) (kOf x) = x := by\n      intro x\n      exact (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps\n        (x := x) (y := iq x)).mp rfl\n    rw [hΔ, hgd]\n    profile_tactic \"hsub\" in have hsub : Δ ⊆ (Y.toFinset ×ˢ Finset.univ).image (fun p => fib p.1 p.2) := by\n      intro x hx\n      have hne : f x ≠ g' x := (Finset.mem_filter.1 hx).2\n      refine Finset.mem_image.mpr ⟨(iq x, kOf x), ?_, hrec x⟩\n      exact Finset.mem_product.mpr ⟨Set.mem_toFinset.mpr ⟨x, rfl, hne⟩, Finset.mem_univ _⟩\n    profile_tactic \"calc1\" in calc Δ.card ≤ ((Y.toFinset ×ˢ Finset.univ).image (fun p => fib p.1 p.2)).card :=\n        Finset.card_le_card hsub\n      _ ≤ (Y.toFinset ×ˢ Finset.univ).card := Finset.card_image_le\n      _ = Y.toFinset.card * 2 ^ steps := by\n        rw [Finset.card_product, Finset.card_univ, Fintype.card_fin]\n      _ = Y.ncard * 2 ^ steps := by rw [← Set.ncard_eq_toFinset_card']\n  have h_bridge : Code.distFromCode f C_i ≤ (d_fw * 2 ^ steps : ℕ) :=\n    (distFromCode_le_dist_to_mem f g' hg').trans (ENat.coe_le_coe.mpr h_count)\n  profile_tactic \"hfin\" in have h_fin : 2 * (d_fw * 2 ^ steps) ≤ d_i - 1 := by\n    have h1 : 2 * d_fw ≤ d_is - 1 := Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt)\n    have h2 : (d_is - 1) * 2 ^ steps = d_i - 1 := by\n      dsimp only [d_is, d_i, BBF_CodeDistance]\n      have hA : 2 ^ (ℓ + 𝓡 - (↑i + steps)) * 2 ^ steps = 2 ^ (ℓ + 𝓡 - ↑i) := by\n        rw [← Nat.pow_add]; congr 1; omega\n      have hB : 2 ^ (ℓ - (↑i + steps)) * 2 ^ steps = 2 ^ (ℓ - ↑i) := by\n        rw [← Nat.pow_add]; congr 1; omega\n      rw [Nat.add_sub_cancel, Nat.add_sub_cancel, Nat.sub_mul, hA, hB]\n    rw [← Nat.mul_assoc, ← h2]\n    exact mul_le_mul_of_nonneg_right h1 (Nat.zero_le _)\n  have h_ne_top : Code.distFromCode f C_i ≠ ⊤ := by\n    intro h\n    rw [h] at h_bridge\n    exact absurd h_bridge (not_le_of_gt (WithTop.coe_lt_top _))\n  obtain ⟨n, hn⟩ : ∃ n : ℕ, Code.distFromCode f C_i = (n : ℕ∞) :=\n    ⟨_, (ENat.coe_toNat h_ne_top).symm⟩\n  rw [hn]\n  have hn' : n ≤ d_fw * 2 ^ steps :=\n    ENat.coe_le_coe.1 (le_of_eq_of_le hn.symm h_bridge)\n  have h_pos : 0 < d_i := by dsimp only [d_i, BBF_CodeDistance]; omega\n  show ((2 * n : ℕ) : ℕ∞) < (d_i : ℕ∞)\n  exact ENat.coe_lt_coe.mpr\n    (Nat.lt_of_le_of_lt\n      (Nat.le_trans (mul_le_mul_of_nonneg_left hn' (Nat.zero_le 2)) h_fin)\n      (Nat.sub_lt_self Nat.one_pos h_pos))\n",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+    "version": "v4.31.0",
+    "proof_sha256": "39a046c120ffc2509082908cafbb3b5ed3b05715f5b8004f5c704a28990be0dc",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": null,
+      "threshold_raw": 150000,
+      "limit": 30
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end_local_scope 1",
+        "header_truncated": false,
+        "raw": 1225,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ section",
+        "header_truncated": false,
+        "raw": 1228,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 150000",
+        "header_truncated": false,
+        "raw": 62,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 150000 in\n#proof_eval_measure \"PROOF_EVAL_f991162ad03243f2909eea8536a7f882\" target\n  \"Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius\" end 78000 in\n  /-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\n  then `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\n  theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n      (h_i_add_steps : i.val + steps ≤ ℓ) (f : OracleFunct",
+        "header_truncated": true,
+        "raw": 3844,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end",
+        "header_truncated": false,
+        "raw": 898,
+        "tag": "Lean.Parser.Command.end"
+      }
+    ],
+    "hotspots": [],
+    "marks": [],
+    "profile_heartbeats_raw": null,
+    "profile_heartbeats": null,
+    "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+    "cache_key": "6334f363d8fe17bd9c8002030a031b2d0cb9eaa96984a32ba1d3da37e30ef636",
+    "status": "failed",
+    "available_hotspots": 0,
+    "hotspots_truncated": false,
+    "mark_count": 0,
+    "marks_truncated": false,
+    "partial": true,
+    "diagnostics": [
+      "Candidate must contain exactly one complete declaration",
+      "unexpected identifier; expected command"
+    ],
+    "context_mode": "full_file_replacement",
+    "returncode": 1,
+    "elapsed_seconds": 6.408649096265435
+  }
+}
