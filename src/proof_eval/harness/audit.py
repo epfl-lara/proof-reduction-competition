@@ -23,6 +23,7 @@ from .carryover import audit_deadline
 from .incumbents import select_seed
 from .tracking import attempt_cost
 from .tracking_audit import audit_attempts
+from .web_audit import audit_web
 
 
 def _compatible_rate_card(saved: dict, current: dict) -> bool:
@@ -215,6 +216,7 @@ def audit(output: Path) -> dict:
     }
     outcomes, trials, requests, cells, seen = 0, 0, 0, 0, set()
     cleanup_jobs = set()
+    web_counts = {"requests": 0, "retrieved": 0, "errors": 0, "interrupted": 0}
     for path in sorted((output / "cells").glob("*/result.json")):
         result = read(path)
         name = result["name"]
@@ -237,6 +239,13 @@ def audit(output: Path) -> dict:
         )
         inp = read(path.parent / "input.json")
         audit_deadline(config, result, path.parent)
+        counts = audit_web(
+            path.parent / "evidence",
+            config.get("web_search"),
+            deadline_expired=result.get("time_budget", {}).get("exhausted", False),
+        )
+        for field, count in counts.items():
+            web_counts[field] += count
         if "problem_timeout_seconds" in config:
             budget = result["time_budget"]
             started = read(path.parent / "budget_started.json")
@@ -699,6 +708,11 @@ def audit(output: Path) -> dict:
                 "Request provider differs from its frozen configuration",
             )
             _require(req["cli"] == config["cli"], "Request CLI identity changed")
+            _require(
+                req.get("tool_context", {}).get("web_search")
+                == config.get("web_search"),
+                "Request web tools differ from the frozen condition",
+            )
             if config.get("transport_recovery_version") and config.get(
                 "provider", "codex"
             ) in ("codex", "lemex"):
@@ -849,6 +863,7 @@ def audit(output: Path) -> dict:
         "checked_version_outcomes": outcomes,
         "requests": requests,
         "unique_cleanup_jobs": len(cleanup_jobs),
+        **({"web_tools": web_counts} if config.get("web_search") is not None else {}),
         "scope": "Saved evidence and arithmetic; no new Lean or model calls.",
     }
 

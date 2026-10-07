@@ -19,7 +19,11 @@ def read(path: str | Path):
 
 
 def digest(path: str | Path) -> str:
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    hashed = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            hashed.update(chunk)
+    return hashed.hexdigest()
 
 
 def sha(value: str) -> str:

@@ -420,6 +420,93 @@ def test_source_tools_search_read_outline_and_reject_scope_escape(
         session.dispatch({"op": "check", "code": GOOD, "name": "another theorem"})
 
 
+def test_source_tools_searches_lake_packages_and_prioritizes_local(make_session):
+    session = make_session()
+    (make_session.project / ".gitignore").write_text("/.lake\n")
+    (make_session.project / "Local.lean").write_text(
+        "theorem target : True := by trivial\n"
+    )
+    pkg = make_session.project / ".lake/packages/mathlib/Mathlib"
+    pkg.mkdir(parents=True)
+    (pkg / "Dep.lean").write_text("theorem target : True := by trivial\n")
+    for root in (make_session.project, pkg.parent):
+        build = root / ".lake/build"
+        build.mkdir(parents=True)
+        (build / "Generated.lean").write_text("theorem target : True := by trivial\n")
+    (make_session.project / "_ProofEval_hidden.lean").write_text(
+        "theorem target : True := by trivial\n"
+    )
+    found = session.dispatch({"op": "search", "query": "target", "limit": 10})
+    assert len(found["matches"]) == 2
+    assert "Local.lean" in found["matches"][0]
+    assert "Dep.lean" in found["matches"][1]
+    bounded = session.dispatch({"op": "search", "query": "target", "limit": 1})
+    assert "Local.lean" in bounded["matches"][0] and bounded["truncated"]
+
+
+def test_semantic_search_dispatches_and_formats_results(make_session, monkeypatch):
+    from types import SimpleNamespace
+
+    session = make_session(
+        semantic_config={"index_version": "test_index", "version_scope": "advisory"}
+    )
+    (make_session.project / "Mathlib").mkdir()
+    fake_res = SimpleNamespace(
+        results=[
+            SimpleNamespace(
+                name="Continuous.integrable",
+                module="Mathlib.MeasureTheory",
+                source_text="theorem Continuous.integrable : True := by exact optimized_proof_from_another_version",
+                docstring="Docstring for integrable",
+            )
+        ]
+    )
+
+    class FakeService:
+        async def search(self, query, limit=10, rerank_top=None, packages=None):
+            assert query == "integrable continuous"
+            assert limit == 5 and rerank_top is None
+            assert "Mathlib" in packages and "Physlib" not in packages
+            return fake_res
+
+    import proof_eval.harness.semantic as src_mod
+
+    monkeypatch.setattr(src_mod, "_get_service", lambda _: FakeService())
+    monkeypatch.setattr(src_mod, "guard", lambda _: None)
+    result = session.dispatch(
+        {"op": "semantic_search", "query": "integrable continuous", "limit": 5}
+    )
+    assert result["kind"] == "semantic_search"
+    assert result["count"] == 1
+    assert result["matches"][0]["name"] == "Continuous.integrable"
+    assert result["matches"][0]["module"] == "Mathlib.MeasureTheory"
+    assert result["matches"][0]["signature"] == "theorem Continuous.integrable : True"
+    saved = json.loads((session.folder / "semantic_searches.jsonl").read_text())
+    assert saved["response"] == result
+    with ProofToolService(session, make_session.project):
+        shutil.copyfile(
+            Path(toolmod.__file__).with_name("client.py"),
+            make_session.project / "tools.py",
+        )
+        client = subprocess.run(
+            [
+                sys.executable,
+                "tools.py",
+                "semantic_search",
+                "integrable continuous",
+                "--limit",
+                "5",
+                "--package",
+                "Mathlib",
+            ],
+            cwd=make_session.project,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert json.loads(client.stdout)["matches"] == result["matches"]
+
+
 @pytest.mark.parametrize("operation", ["check"])
 def test_actual_workspace_client_and_host_ledger(make_session, tmp_path, operation):
     session = make_session(
@@ -465,6 +552,40 @@ def test_prompts_have_tools_and_no_target_answer_examples():
     assert "no fixed total attempt, token or wall-time budget" in tool_instructions(
         "score"
     )
+
+
+def test_host_web_tool_records_errors_without_changing_proof(make_session, monkeypatch):
+    from proof_eval.evidence.io import fingerprint
+    from proof_eval.harness import web
+    from proof_eval.harness.web_audit import audit_web
+
+    session = make_session(web_config=web.freeze())
+    before = session.status()
+    observed = []
+
+    def retrieve(config, request, folder, number, **kwargs):
+        started = [
+            json.loads(line)
+            for line in (folder / "web_requests.jsonl").read_text().splitlines()
+        ]
+        assert started[-1]["status"] == "started"
+        assert started[-1]["config_sha256"] == fingerprint(config)
+        observed.append(request)
+        raise ValueError("retrieval unavailable")
+
+    monkeypatch.setattr(web, "retrieve", retrieve)
+    response = session.dispatch({"op": "web_search", "query": "Lean"})
+    assert response["kind"] == "tool_error"
+    assert "retrieval unavailable" in response["error"]
+    assert session.status()["best_proof"] == before["best_proof"]
+    assert not session.checks and not make_session.evaluator.calls
+    assert (
+        audit_web(session.folder, web.freeze(), deadline_expired=False)["errors"] == 1
+    )
+    session.web_config = None
+    with pytest.raises(ValueError, match="not enabled"):
+        session.dispatch({"op": "web_search", "query": "Lean"})
+    assert len(observed) == 1
 
 
 def test_profile_tool_is_host_owned_and_cannot_replace_best(

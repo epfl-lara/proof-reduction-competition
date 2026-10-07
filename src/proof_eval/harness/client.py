@@ -24,6 +24,21 @@ def main():
     search.add_argument("query")
     search.add_argument("--version")
     search.add_argument("--limit", type=int, default=30)
+    sem = commands.add_parser(
+        "semantic_search", help="Semantic concept search in Mathlib and dependencies"
+    )
+    sem.add_argument("query")
+    sem.add_argument("--limit", type=int, default=10)
+    sem.add_argument("--package", action="append", dest="packages")
+    sem.add_argument("--version")
+    web_search = commands.add_parser("web_search", help="Public web discovery")
+    web_search.add_argument("query")
+    web_search.add_argument("--limit", type=int, default=5)
+    web_search.add_argument("--domain", action="append", dest="domains")
+    web_open = commands.add_parser("web_open", help="Read a public HTTPS source")
+    web_open.add_argument("url")
+    web_open.add_argument("--start", type=int, default=1)
+    web_open.add_argument("--end", type=int, default=180)
     for op in ("read", "outline"):
         sub = commands.add_parser(op)
         sub.add_argument(
@@ -33,7 +48,7 @@ def main():
         if op == "read":
             sub.add_argument("--start", type=int, default=1)
             sub.add_argument("--end", type=int, default=180)
-    args = vars(parser.parse_args())
+    args = {k: v for k, v in vars(parser.parse_args()).items() if v is not None}
     workspace = Path(__file__).resolve().parent
     if args["op"] in ("check", "goals", "profile"):
         path = Path(args.pop("file"))

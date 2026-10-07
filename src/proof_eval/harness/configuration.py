@@ -20,6 +20,7 @@ from proof_eval.verification.references import (
     required_versions,
 )
 
+from . import semantic, web
 from .carryover import freeze_carryover, restore_deadlines
 from .incumbents import freeze_incumbents, saved_incumbent
 from .prompts import tool_instructions
@@ -193,7 +194,11 @@ def prepare(
     max_transport_restarts: int = 2,
     incumbents_from: Path | None = None,
     carry_budgets_from: Path | None = None,
+    semantic_search: semantic.SemanticSearchConfig | None = None,
+    web_search: bool = False,
 ) -> dict:
+    if type(web_search) is not bool:
+        raise ValueError("web_search must be a boolean")
     if mode not in RUN_MODES:
         raise ValueError("Unsupported or retired search mode: " + mode)
     conditions = conditions or DEFAULT_CONDITIONS[provider]
@@ -259,7 +264,12 @@ def prepare(
         ),
         "historical_control_sha256": {},
         "structural_control_sha256": {},
-        "tool_instructions": tool_instructions(mode, budget_tracking=budget_tracking),
+        "tool_instructions": tool_instructions(
+            mode,
+            budget_tracking=budget_tracking,
+            semantic_search=semantic_search is not None,
+            web_search=web_search,
+        ),
         "cost_estimate_sha256": fingerprint(costs),
         "cost_assumptions": {
             "service_tier": "standard",
@@ -290,6 +300,10 @@ def prepare(
         "rate_card": rate_card(provider),
     }
     config.update(paths or {})
+    if semantic_search is not None:
+        config["semantic_search"] = semantic.freeze(semantic_search)
+    if web_search:
+        config["web_search"] = web.freeze()
     if type(max_transport_restarts) is not int or not 0 <= max_transport_restarts <= 20:
         raise ValueError("max_transport_restarts must be an integer between 0 and 20")
     config["incumbent_sources"] = freeze_incumbents(incumbents_from, config, packs)
@@ -340,6 +354,10 @@ def prepare(
 
 
 def guard(config, pack, evaluator):
+    if config.get("web_search") is not None:
+        web.guard(config["web_search"])
+    if config.get("semantic_search") is not None:
+        semantic.guard(config["semantic_search"])
     for relative, expected in config["code_sha256"].items():
         if digest(ROOT / relative) != expected:
             raise ValueError("Frozen code changed: " + relative)

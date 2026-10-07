@@ -15,6 +15,26 @@ make test
 
 The package has no third-party runtime dependencies. Lean evaluation needs the pinned, prebuilt projects listed in the local environment map. The existing warm-up references are already prepared; search never remeasures them.
 
+Literal source search includes the project's installed Lake dependencies, with
+project-local matches first. Optional semantic discovery uses LeanExplore's
+cached index and CPU embeddings:
+
+```bash
+python -m pip install -e '.[dev,semantic]'
+# Prepare the index and Qwen/Qwen3-Embedding-0.6B cache before running.
+lean-explore data fetch
+proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
+  --semantic-search --pilot --workers 3 --output results/harness/my_qwen_tools_run
+```
+
+`--semantic-search` only reads already cached assets and freezes their hashes
+and dependency versions. It does not enable web search. The separate index may
+use different source versions, so its declaration headers and docstrings are
+discovery hints; use pinned source lookup and all-version checks to validate
+them. Indexed proof bodies are omitted. Strata and Arklib currently have no
+project-specific index coverage; their pinned source and dependency searches
+remain available.
+
 ```bash
 # Price scenarios from saved traces; no model or Lean calls.
 proof-harness estimate --condition gpt-6.1-sol:max \
@@ -96,6 +116,11 @@ proof-harness run --provider lemex --pilot --workers 5 \
 proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
   --pilot --workers 5 --output results/harness/my_qwen_run
 
+# A separate web-enabled condition, retaining the local semantic tools.
+proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
+  --semantic-search --web-search --pilot --workers 3 \
+  --output results/harness/my_qwen_web_run
+
 # Sign in with `claude auth login` first. Exact Opus 5.5/max, no fallback.
 proof-harness run --provider claude --pilot --workers 5 \
   --output results/harness/my_opus_run
@@ -104,6 +129,14 @@ proof-harness run --provider claude --pilot --workers 5 \
 proof-harness run --provider agy --pilot --workers 2 --track-cost --budget-usd 3 \
   --output results/harness/my_antigravity_run
 ```
+
+`--web-search` enables `python tools.py web_search` and `web_open` for public
+HTTPS sources. The host uses DuckDuckGo Lite for discovery and saves each
+request, response and fetched source body. This works independently of native
+hosted search, which the RCP probe did not expose. External information is a
+discovery hint; the pinned Lean checks and scoring rules remain authoritative.
+Use a new output directory when changing tool availability. Web search defaults
+to disabled and requires no additional API key.
 
 Lemex defaults to `deepseek-ai/DeepSeek-V4.1-Flash/high`. The direct RCP chat
 client and its temperature/output-cap settings are retired. Native Lemex sends

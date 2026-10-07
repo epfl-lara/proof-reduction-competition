@@ -3,18 +3,25 @@
 import re
 import subprocess
 
+from . import semantic
+
 
 class SourceTools:
-    def __init__(self, evaluator, row, versions):
+    def __init__(self, evaluator, row, versions, *, semantic_config=None):
         self.evaluator, self.row, self.versions = evaluator, row, list(versions)
+        self.semantic_config = semantic_config
 
     def source(self, request):
         op = request["op"]
         allowed = (
             {"op", "version", "query", "limit"}
             if op == "search"
-            else {"op", "version", "path"}
-            | ({"start", "end"} if op == "read" else set())
+            else (
+                {"op", "version", "query", "limit", "packages"}
+                if op == "semantic_search"
+                else {"op", "version", "path"}
+                | ({"start", "end"} if op == "read" else set())
+            )
         )
         if not set(request) <= allowed:
             raise ValueError("Unsupported source fields")
@@ -22,6 +29,8 @@ class SourceTools:
         if version not in self.versions:
             raise ValueError("Version outside this theorem")
         project = self.evaluator.projects[(self.row["source"], version)].resolve()
+        if op == "semantic_search":
+            return semantic.search(self.semantic_config, project, request, version)
         if op == "search":
             query = request.get("query")
             if (
@@ -38,6 +47,7 @@ class SourceTools:
                 [
                     "rg",
                     "--hidden",
+                    "--no-ignore",
                     "--follow",
                     "-n",
                     "-F",
@@ -49,6 +59,12 @@ class SourceTools:
                     "!_ProofEval_*",
                     "-g",
                     "!_ProofOptimize_*",
+                    "-g",
+                    "!.lake/build/**",
+                    "-g",
+                    "!**/.lake/build/**",
+                    "-g",
+                    "!**/.git/**",
                     "--",
                     query,
                     ".",
@@ -61,12 +77,21 @@ class SourceTools:
             if result.returncode not in (0, 1):
                 raise ValueError("Source search failed: " + result.stderr[:500])
             matches = result.stdout.splitlines()
+            local_matches = [
+                s
+                for s in matches
+                if not s.startswith("./.lake/") and not s.startswith(".lake/")
+            ]
+            dep_matches = [
+                s for s in matches if s.startswith("./.lake/") or s.startswith(".lake/")
+            ]
+            ordered = local_matches + dep_matches
             return {
                 "kind": "source_search",
                 "version": version,
                 "query": query,
-                "matches": [s[:1500] for s in matches[:limit]],
-                "truncated": len(matches) > limit,
+                "matches": [s[:1500] for s in ordered[:limit]],
+                "truncated": len(ordered) > limit,
             }
         path = (project / request["path"]).resolve()
         packages = project / ".lake/packages"

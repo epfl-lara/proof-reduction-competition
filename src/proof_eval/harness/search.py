@@ -122,6 +122,8 @@ def _run_cell(
             cleanup=cleanup,
             deadline_at=budget["deadline_epoch"] if budget else None,
             problem_timeout_seconds=budget["timeout_seconds"] if budget else None,
+            semantic_config=config.get("semantic_search"),
+            web_config=config.get("web_search"),
         )
         context = {
             "name": pack["name"],
@@ -132,7 +134,11 @@ def _run_cell(
                 for v in required_versions(pack)
             },
         }
-        initial = messages(pack, seed=seed) if seed else messages(pack)
+        if config.get("web_search") is not None:
+            context["web_search"] = config["web_search"]
+        initial = messages(
+            pack, seed=seed, web_search=config.get("web_search") is not None
+        )
         budget_tracking = config.get("budget_tracking")
         budget_usd = config.get("budget_usd_per_problem", 3.0)
         max_restarts = config.get("max_budget_restarts", 20)
@@ -207,7 +213,9 @@ def _run_cell(
                 session.reset_for_attempt()
             else:
                 request = messages(
-                    pack, seed=(session.best_code, session.best_evaluation)
+                    pack,
+                    seed=(session.best_code, session.best_evaluation),
+                    web_search=config.get("web_search") is not None,
                 )
                 session.reset_for_attempt()
             cost_guard = None

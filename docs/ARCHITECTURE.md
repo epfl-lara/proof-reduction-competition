@@ -102,6 +102,9 @@ the tool API used by the host. `dispatch()` accepts these exact JSON operations:
 | `goals` | `code` | Lean goal observations without performance measurements |
 | `profile` | `code`, optional `version`, `threshold_raw`, `limit` | Bounded inclusive tactic/phase heartbeat diagnostics; no score or selection changes |
 | `search` | `query`, optional `version`, `limit` | Literal search in pinned Lean sources |
+| `semantic_search` | `query`, optional `version`, `limit`, `packages` | Optional local declaration discovery; index headers and docstrings with snapshot provenance |
+| `web_search` | `query`, optional `limit`, `domains` | Optional public web discovery with URLs, snippets and saved retrieval provenance |
+| `web_open` | `url`, optional `start`, `end` | Optional bounded public HTTPS page excerpt with saved source bytes |
 | `read` | `path`, optional `version`, `start`, `end` | Bounded source excerpt |
 | `outline` | `path`, optional `version` | Declaration locations |
 | `finish` | `reason` | Durable stopping decision and current best proof |
@@ -113,6 +116,30 @@ Only a proof passing every version and improving the combined score by more than
 0.05 percentage points replaces the best proof. Invalid, regressive and duplicate
 attempts preserve the ledger. The original seed is reconstructed from cached
 reference evidence, without compiling it again.
+
+`harness/semantic.py` owns optional LeanExplore discovery. Set
+`RunConfig.semantic_search=SemanticSearchConfig(index_directory, embedding_directory)`
+or pass `--semantic-search` to discover already cached assets. Preparation freezes
+the corpus, BM25/FAISS files, embedding snapshot and dependency versions; runtime
+guards reject changes. Initialization uses CPU and local model files only, and
+queries skip reranking. No ML package is imported by a normal library import.
+Package scope follows module roots in the selected pinned project and its actual
+Lake dependencies. Invalid package restrictions are rejected. Results identify
+their separate index snapshot and omit indexed proof bodies; final verification
+continues to use the unchanged pinned Lean evaluator. Host-owned
+`evidence/semantic_searches.jsonl` retains requests and returned discovery hints.
+
+`RunConfig.web_search=True` or `--web-search` enables the host tools in
+`harness/web.py`. Preparation freezes the DuckDuckGo Lite endpoint, time/size
+bounds and public HTTPS scope. The canonical task prompt is unchanged; the
+web condition appends an explicit read-scope permission and tool instructions.
+Native Responses hosted search stays disabled because the gateway probe exposed
+no working native search tool. All providers can use the same host socket tools.
+The host saves start/completion records in `evidence/web_requests.jsonl` and
+exact retrieved bytes in `evidence/web_responses/`. Errors remain recorded;
+deadline interruptions retain started records. `harness/web_audit.py` checks
+settings, body hashes and response bounds offline. Web lookups share the same
+whole-problem deadline and cannot replace the selected proof or measurements.
 
 `RunConfig.problem_timeout_seconds` defaults to 3420 (57 minutes) for every
 provider. The budget starts when a worker receives a problem; batch queue time

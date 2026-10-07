@@ -8,7 +8,14 @@ import time
 from copy import deepcopy
 from pathlib import Path
 
-from proof_eval.evidence.io import fingerprint, now, read, write_json, write_jsonl
+from proof_eval.evidence.io import (
+    digest,
+    fingerprint,
+    now,
+    read,
+    write_json,
+    write_jsonl,
+)
 from proof_eval.protocol import FIELDS, code_identity, context_for_prompt
 from proof_eval.verification.context import build_context
 from proof_eval.verification.feedback import (
@@ -23,6 +30,7 @@ from proof_eval.verification.references import (
     required_versions,
 )
 
+from . import web
 from .source import SourceTools
 
 
@@ -39,6 +47,8 @@ class ProofSession:
         cleanup=None,
         deadline_at=None,
         problem_timeout_seconds=None,
+        semantic_config=None,
+        web_config=None,
     ):
         if mode not in ("correctness", "score", "score_edges"):
             raise ValueError("Unknown feedback mode")
@@ -47,9 +57,12 @@ class ProofSession:
         self.pack, self.evaluator, self.mode, self.guard = pack, evaluator, mode, guard
         self.deadline_at = deadline_at
         self.problem_timeout_seconds = problem_timeout_seconds
+        self.web_config = web_config
         self.row = pack["row"]
         self.versions = required_versions(pack)
-        self.source_tools = SourceTools(evaluator, self.row, self.versions)
+        self.source_tools = SourceTools(
+            evaluator, self.row, self.versions, semantic_config=semantic_config
+        )
         self.original = original_evaluation(pack)
         self.seed_code, self.seed_evaluation = seed or (self.row["src"], self.original)
         if seed is not None:
@@ -358,8 +371,66 @@ class ProofSession:
                 "kind": "lean_goal_observations",
                 **context_for_prompt(observed, costs=False),
             }
-        if op in ("search", "read", "outline"):
-            return self.source(request)
+        if op in ("web_search", "web_open"):
+            with self.lock:
+                self.guard()
+                web.guard(self.web_config)
+                path = self.folder / "web_requests.jsonl"
+                records = (
+                    [json.loads(line) for line in path.read_text().splitlines()]
+                    if path.exists()
+                    else []
+                )
+                record = {
+                    "number": len(records) + 1,
+                    "at": now(),
+                    "request": request,
+                    "status": "started",
+                    "config_sha256": fingerprint(self.web_config),
+                }
+                records.append(record)
+                write_jsonl(path, records)
+                try:
+                    response = web.retrieve(
+                        self.web_config,
+                        request,
+                        self.folder,
+                        record["number"],
+                        remaining_seconds=(
+                            (self.deadline_at - time.time())
+                            if self.deadline_at is not None
+                            else None
+                        ),
+                    )
+                except Exception as error:
+                    response = {
+                        "kind": "tool_error",
+                        "error": f"{type(error).__name__}: {error}",
+                    }
+                record.update(status="completed", finished_at=now(), response=response)
+                body = self.folder / "web_responses" / f"{record['number']:04d}.body"
+                if body.exists():
+                    record["body_path"] = str(body.relative_to(self.folder))
+                    record["body_sha256"] = digest(body)
+                write_jsonl(path, records)
+                self.guard()
+                return response
+        if op in ("search", "read", "outline", "semantic_search"):
+            with self.lock:
+                self.guard()
+                response = self.source(request)
+                if op == "semantic_search":
+                    path = self.folder / "semantic_searches.jsonl"
+                    records = (
+                        [json.loads(line) for line in path.read_text().splitlines()]
+                        if path.exists()
+                        else []
+                    )
+                    records.append(
+                        {"at": now(), "request": request, "response": response}
+                    )
+                    write_jsonl(path, records)
+                return response
         raise ValueError("Unknown operation or invalid fields")
 
     def source(self, request):

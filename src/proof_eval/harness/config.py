@@ -15,6 +15,7 @@ from .configuration import (
     DEFAULT_OUTPUT,
     RUN_MODES,
 )
+from .semantic import SemanticSearchConfig
 from .tracking import validate_budgets
 
 
@@ -42,8 +43,12 @@ class RunConfig:
     )
     action: Literal["run", "estimate", "prepare", "report"] = "run"
     pilot: bool = False
+    semantic_search: SemanticSearchConfig | None = None
+    web_search: bool = False
 
     def __post_init__(self) -> None:
+        if type(self.web_search) is not bool:
+            raise ValueError("web_search must be a boolean")
         if self.conditions is None:
             try:
                 object.__setattr__(

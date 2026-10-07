@@ -48,6 +48,8 @@ def run(args: RunConfig) -> dict:
             max_transport_restarts=args.max_transport_restarts,
             incumbents_from=args.incumbents_from,
             carry_budgets_from=args.carry_budgets_from,
+            semantic_search=args.semantic_search,
+            web_search=args.web_search,
             base_directory=Path(args.base).resolve(),
             paths={
                 "dataset_path": str(Path(args.dataset).resolve()),
