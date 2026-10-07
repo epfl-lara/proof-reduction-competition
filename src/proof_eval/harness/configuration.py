@@ -194,8 +194,8 @@ def prepare(
     max_transport_restarts: int = 2,
     incumbents_from: Path | None = None,
     carry_budgets_from: Path | None = None,
-    semantic_search: semantic.SemanticSearchConfig | None = None,
-    web_search: bool = False,
+    semantic_search: semantic.SemanticSearchConfig | bool | None = True,
+    web_search: bool = True,
 ) -> dict:
     if type(web_search) is not bool:
         raise ValueError("web_search must be a boolean")
@@ -217,6 +217,7 @@ def prepare(
     base = read(base_directory / "config.json")
     if len(packs) != len(base["names"]) or set(packs) != set(base["names"]):
         raise ValueError("Prepared inputs must match the complete declared cohort")
+    semantic_search = semantic.resolve(semantic_search)
     pins = {str(p.relative_to(ROOT)): digest(p) for p in sorted(PACKAGE.rglob("*.py"))}
     pins.update({p: digest(ROOT / p) for p in PROMPT_FILES})
     for relative, expected in base["code_sha256"].items():

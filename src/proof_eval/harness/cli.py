@@ -17,7 +17,6 @@ from .configuration import (
 )
 from .reporting import report
 from .runner import run
-from .semantic import discover
 
 
 def main(argv=None) -> int:
@@ -49,13 +48,15 @@ def main(argv=None) -> int:
         sub.add_argument("--workers", type=int, default=5)
         sub.add_argument(
             "--semantic-search",
-            action="store_true",
-            help="Enable offline LeanExplore using already cached, frozen data and CPU embeddings",
+            action=argparse.BooleanOptionalAction,
+            default=RunConfig.semantic_search,
+            help="Offline LeanExplore with cached, frozen CPU embeddings (default: enabled; --no-semantic-search disables it)",
         )
         sub.add_argument(
             "--web-search",
-            action="store_true",
-            help="Enable host-owned public web search and documentation retrieval with saved evidence",
+            action=argparse.BooleanOptionalAction,
+            default=RunConfig.web_search,
+            help="Host-owned public web discovery with saved evidence (default: enabled; --no-web-search disables it)",
         )
         sub.add_argument(
             "--problem-timeout-seconds",
@@ -196,10 +197,10 @@ def main(argv=None) -> int:
                     conditions=conditions,
                     names=tuple(getattr(args, "name", None) or ()),
                     action=args.command,
-                    semantic_search=(
-                        discover() if getattr(args, "semantic_search", False) else None
+                    semantic_search=getattr(
+                        args, "semantic_search", RunConfig.semantic_search
                     ),
-                    web_search=getattr(args, "web_search", False),
+                    web_search=getattr(args, "web_search", RunConfig.web_search),
                     **fields,
                 )
             )

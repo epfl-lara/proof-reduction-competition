@@ -8,16 +8,19 @@ The warm-up benchmark contains 15 declarations and 36 required version checks. W
 
 ```bash
 conda activate af
-python -m pip install -e '.[dev]'
+python -m pip install -e '.[dev,semantic]'
 make check
 make test
 ```
 
-The package has no third-party runtime dependencies. Lean evaluation needs the pinned, prebuilt projects listed in the local environment map. The existing warm-up references are already prepared; search never remeasures them.
+Core verification has no third-party runtime dependencies. Default semantic
+discovery requires the semantic extra and prepared local assets. Lean evaluation
+needs the pinned, prebuilt projects listed in the local environment map. The
+existing warm-up references are already prepared; search never remeasures them.
 
 Literal source search includes the project's installed Lake dependencies, with
-project-local matches first. Optional semantic discovery uses LeanExplore's
-cached index and CPU embeddings:
+project-local matches first. Semantic discovery is enabled by default and uses
+LeanExplore's cached index and CPU embeddings:
 
 ```bash
 python -m pip install -e '.[dev,semantic]'
@@ -27,13 +30,21 @@ proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
   --semantic-search --pilot --workers 3 --output results/harness/my_qwen_tools_run
 ```
 
-`--semantic-search` only reads already cached assets and freezes their hashes
-and dependency versions. It does not enable web search. The separate index may
-use different source versions, so its declaration headers and docstrings are
+Semantic discovery only reads already cached assets and freezes their hashes
+and dependency versions. Web search is also enabled by default, through separate
+host tools. The index may use different source versions, so its declaration headers and docstrings are
 discovery hints; use pinned source lookup and all-version checks to validate
 them. Indexed proof bodies are omitted. Strata and Arklib currently have no
 project-specific index coverage; their pinned source and dependency searches
 remain available.
+
+All proof, source, profiling, semantic and web tools are available by default
+for new runs. Disable discovery features explicitly with `--no-semantic-search`
+or `--no-web-search`. Python callers can use `semantic_search=False` and
+`web_search=False`; `semantic_search=None` also disables semantic discovery.
+Default semantic assets are located only during explicit preparation, not when
+importing the package or constructing `RunConfig`. Missing assets fail preflight
+with setup guidance rather than silently reducing the tool set.
 
 ```bash
 # Price scenarios from saved traces; no model or Lean calls.
@@ -136,7 +147,7 @@ request, response and fetched source body. This works independently of native
 hosted search, which the RCP probe did not expose. External information is a
 discovery hint; the pinned Lean checks and scoring rules remain authoritative.
 Use a new output directory when changing tool availability. Web search defaults
-to disabled and requires no additional API key.
+to enabled and requires no additional API key; `--no-web-search` disables it.
 
 Lemex defaults to `deepseek-ai/DeepSeek-V4.1-Flash/high`. The direct RCP chat
 client and its temperature/output-cap settings are retired. Native Lemex sends

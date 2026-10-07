@@ -129,9 +129,11 @@ Only a proof passing every version and improving the combined score by more than
 attempts preserve the ledger. The original seed is reconstructed from cached
 reference evidence, without compiling it again.
 
-`harness/semantic.py` owns optional LeanExplore discovery. Set
+`harness/semantic.py` owns LeanExplore discovery, enabled by default. Set
 `RunConfig.semantic_search=SemanticSearchConfig(index_directory, embedding_directory)`
-or pass `--semantic-search` to discover already cached assets. Preparation freezes
+or use the default `semantic_search=True` to discover already cached assets during
+explicit preparation. `False` or `None`, and CLI `--no-semantic-search`, disable it.
+Constructing a configuration does not read assets. Preparation freezes
 the corpus, BM25/FAISS files, embedding snapshot and dependency versions; runtime
 guards reject changes. Initialization uses CPU and local model files only, and
 queries skip reranking. No ML package is imported by a normal library import.
@@ -141,7 +143,7 @@ their separate index snapshot and omit indexed proof bodies; final verification
 continues to use the unchanged pinned Lean evaluator. Host-owned
 `evidence/semantic_searches.jsonl` retains requests and returned discovery hints.
 
-`RunConfig.web_search=True` or `--web-search` enables the host tools in
+`RunConfig.web_search=True` is the default and enables the host tools in
 `harness/web.py`. Preparation freezes the DuckDuckGo Lite endpoint, time/size
 bounds and public HTTPS scope. The canonical task prompt is unchanged; the
 web condition appends an explicit read-scope permission and tool instructions.
@@ -152,6 +154,9 @@ exact retrieved bytes in `evidence/web_responses/`. Errors remain recorded;
 deadline interruptions retain started records. `harness/web_audit.py` checks
 settings, body hashes and response bounds offline. Web lookups share the same
 whole-problem deadline and cannot replace the selected proof or measurements.
+Use `web_search=False` or `--no-web-search` to disable them. Both positive CLI
+flags remain accepted. Saved configurations and historical tool availability
+stay unchanged; changed settings require a new output directory.
 
 `RunConfig.problem_timeout_seconds` defaults to 3420 (57 minutes) for every
 provider. The budget starts when a worker receives a problem; batch queue time

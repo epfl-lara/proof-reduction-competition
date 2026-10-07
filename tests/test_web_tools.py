@@ -182,7 +182,7 @@ def test_web_policy_only_changes_enabled_condition(monkeypatch, tmp_path):
         == 0
     )
     assert configs[0].web_search is True
-    assert RunConfig().web_search is False
+    assert RunConfig().web_search is True
     with pytest.raises(ValueError, match="boolean"):
         RunConfig(web_search="yes")
 

@@ -10,6 +10,64 @@ from proof_eval.harness import semantic
 from proof_eval.harness.prompts import SEMANTIC_TOOLS, tool_instructions
 
 
+def test_full_discovery_defaults_are_lazy_and_cli_can_disable_each(
+    monkeypatch, tmp_path
+):
+    from proof_eval.harness import cli
+    from proof_eval.harness.config import RunConfig
+
+    def forbidden():
+        raise AssertionError("Constructing or estimating a config must not read assets")
+
+    monkeypatch.setattr(semantic, "discover", forbidden)
+    config = RunConfig()
+    assert config.semantic_search is True and config.web_search is True
+    captured = []
+    monkeypatch.setattr(
+        cli, "run", lambda cfg: captured.append(cfg) or {"status": "partial"}
+    )
+    for flags, expected in (
+        ([], (True, True)),
+        (["--no-semantic-search"], (False, True)),
+        (["--no-web-search"], (True, False)),
+        (["--no-semantic-search", "--no-web-search"], (False, False)),
+        (["--semantic-search", "--web-search"], (True, True)),
+    ):
+        assert cli.main(["prepare", "--output", str(tmp_path), *flags]) == 0
+        assert (captured[-1].semantic_search, captured[-1].web_search) == expected
+    assert semantic.resolve(False) is None
+    assert semantic.resolve(None) is None
+    explicit = semantic.SemanticSearchConfig(tmp_path / "index", tmp_path / "model")
+    assert semantic.resolve(explicit) is explicit
+    with pytest.raises(ValueError, match="semantic_search"):
+        RunConfig(semantic_search="enabled")
+
+
+def test_preparation_enables_and_freezes_default_discovery_tools(monkeypatch, tmp_path):
+    from proof_eval.harness.configuration import load_inputs, prepare
+    from proof_eval.harness.prompts import WEB_TOOLS
+    from proof_eval.providers.registry import adapter
+
+    assets = semantic.SemanticSearchConfig(tmp_path / "index", tmp_path / "model")
+    discovered = []
+    monkeypatch.setattr(semantic, "discover", lambda: discovered.append(True) or assets)
+    monkeypatch.setattr(
+        semantic, "freeze", lambda config: {"test_assets": str(config.index_directory)}
+    )
+    monkeypatch.setattr(adapter("codex"), "cli_identity", lambda: {"test": "offline"})
+    config = prepare(
+        tmp_path / "run",
+        "score_edges",
+        load_inputs(),
+        conditions=[("gpt-6.1-sol", "max")],
+    )
+    assert discovered == [True]
+    assert config["semantic_search"] == {"test_assets": str(assets.index_directory)}
+    assert config["web_search"]["provider"] == "duckduckgo_lite"
+    assert SEMANTIC_TOOLS in config["tool_instructions"]
+    assert WEB_TOOLS in config["tool_instructions"]
+
+
 def test_optional_prompt_only_advertises_enabled_semantic_search():
     assert SEMANTIC_TOOLS not in tool_instructions("score_edges")
     assert SEMANTIC_TOOLS in tool_instructions("score_edges", semantic_search=True)

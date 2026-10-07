@@ -42,6 +42,19 @@ def discover() -> SemanticSearchConfig:
         ) from exc
 
 
+def resolve(config: SemanticSearchConfig | bool | None) -> SemanticSearchConfig | None:
+    """Resolve default assets only during explicit preparation, never on import."""
+    if config is True:
+        return discover()
+    if config is False or config is None:
+        return None
+    if not isinstance(config, SemanticSearchConfig):
+        raise ValueError(
+            "semantic_search must be a boolean, asset configuration or None"
+        )
+    return config
+
+
 @lru_cache(maxsize=128)
 def _asset_digest(path: str, size: int, mtime: int, ctime: int) -> str:
     return digest(path)

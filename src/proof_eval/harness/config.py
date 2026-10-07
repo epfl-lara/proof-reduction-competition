@@ -43,12 +43,20 @@ class RunConfig:
     )
     action: Literal["run", "estimate", "prepare", "report"] = "run"
     pilot: bool = False
-    semantic_search: SemanticSearchConfig | None = None
-    web_search: bool = False
+    semantic_search: SemanticSearchConfig | bool | None = True
+    web_search: bool = True
 
     def __post_init__(self) -> None:
         if type(self.web_search) is not bool:
             raise ValueError("web_search must be a boolean")
+        if (
+            self.semantic_search is not None
+            and type(self.semantic_search) is not bool
+            and not isinstance(self.semantic_search, SemanticSearchConfig)
+        ):
+            raise ValueError(
+                "semantic_search must be a boolean, asset configuration or None"
+            )
         if self.conditions is None:
             try:
                 object.__setattr__(
