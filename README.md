@@ -216,6 +216,7 @@ The generic deterministic API accepts a new competition batch with explicit path
 - [RULES.md](RULES.md): saved competition rules and pinned upstream links.
 - [data/benchmark_data_warmup.jsonl](data/benchmark_data_warmup.jsonl): unmodified warm-up data; SHA-256 `6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804`.
 - [data/benchmark_heartbeats.jsonl](data/benchmark_heartbeats.jsonl): organizer heartbeat references, preserved separately from local ratios.
+- [RSI/RL task corpus](data/training/arena_rsi/README.md): 2,057 training and 50 diverse validation tasks from a corpus covering all six sources, curated against Arena's proof-length distribution. Arena is the test set. Source fidelity and native parsing are audited; bulk compilation and heartbeat preparation remain pending.
 - [problems](problems/README.md): all 15 initial, deterministic and best proof examples with provenance.
 - [results](results/README.md): experiment index, including [deterministic](results/deterministic/README.md) and [model harness studies](results/harness/README.md).
 - [Sol configuration results and submission](results/harness/05_model_config/README.md): the pre-refactor Sol/max result was 87.342215% combined with 100% compatibility.

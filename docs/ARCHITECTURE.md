@@ -22,7 +22,7 @@ APIs; no library imports an experiment driver. Historical studies stay in
 | `optimization` | Parsed proof edits, tactic discovery, minimization, bounded cleanup, generic deterministic batches | `Budget`, `optimize`, `cleanup_proof`, `BatchConfig`, `run_batch` |
 | `providers` | Native agent CLIs, durable execution/isolation, terminal usage, price estimates | `codex.generate`, `lemex.generate`, `claude.generate`, `agy.generate`, `CostConfig` |
 | `harness` | Prompt/context policy, tool sessions, one-theorem search, batch coordination and reports | `ProofSession`, `ProofToolService`, `RunConfig`, `run` |
-| `benchmark` | Explicit project setup and one-time reference processing | `process_benchmark` |
+| `benchmark` | Explicit project setup, source task harvesting, and one-time reference processing | `process_benchmark`, `CorpusConfig`, `build_corpus` |
 | `evidence` | Atomic artifacts, stable hashes and saved-evidence audits | `write_json`, `fingerprint`, `audit` |
 | `interfaces` | Thin CLI and localhost HTTP evaluation interfaces | `proof-eval` |
 
@@ -69,6 +69,23 @@ It must not be called from the search/reward path. The measurement backend moved
 byte-for-byte to `verification/backend.py`, retaining the source hash used by all
 36 warm-up reference fingerprints. Black excludes only this frozen source;
 Ruff correctness checks and backend integration tests still cover it.
+
+`proof-corpus` extracts Arena-style RSI/RL tasks from explicitly pinned source
+snapshots. `benchmark/harvest_commands.lean` supplies Lean parser byte ranges;
+`benchmark/harvest.py` preserves source text, counts proof tokens, assigns grouped
+splits, and selects diverse tasks. `benchmark/corpus.py` owns bounded extraction
+and its durable inventory. Standalone proof exports retain the complete preceding
+source context and record the publisher pin separately from the Mathlib compiler
+pin; related Putnam proofs and supporting lemmas share a problem split group.
+`benchmark/quality.py` checks original proof denominators and obvious tautologies,
+and matches broad proof-length bands to the benchmark with file/project diversity
+caps. A scarce long-proof band fails explicitly. This measures proof size rather
+than establishing equal mathematical difficulty. Extraction makes no model calls and prepares no
+reference measurements. Compiler validation and one-time reference preparation
+remain separate steps. The single [training corpus](../data/training/arena_rsi/README.md)
+contains train and validation splits; Arena is the test set. Local source audits,
+checked pilots, and preparation instructions are retained separately under
+`.proof-eval/training/arena_rsi/artifacts/`.
 
 ## Harness API and tools
 
