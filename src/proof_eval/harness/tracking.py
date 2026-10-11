@@ -6,7 +6,7 @@ from math import isfinite
 from typing import Literal, Sequence
 
 from proof_eval.providers.costs import UNPRICED_MODELS, CostConfig, generations_cost
-from proof_eval.providers.registry import OPEN_MODELS
+from proof_eval.providers.registry import MODEL_TRACKS
 from proof_eval.providers.retries import retryable_transport_failure
 from proof_eval.providers.spending import native_cost_guard
 
@@ -24,7 +24,10 @@ def resolve_budgets(
 ) -> tuple[BudgetTracking, float | None]:
     """Choose the track budget; an explicit timeout remains an opt-in watchdog."""
     if tracking == "auto":
-        open_models = [model in OPEN_MODELS for model, _ in conditions]
+        try:
+            open_models = [MODEL_TRACKS[model] == "open" for model, _ in conditions]
+        except KeyError as error:
+            raise ValueError("Unclassified model track: " + error.args[0]) from None
         if any(open_models) and not all(open_models):
             raise ValueError("Automatic budgets require conditions from one track")
         tracking = "time" if all(open_models) else "cost"

@@ -67,6 +67,14 @@ Omit `--condition` to run both active models, or specify `gpt-6-astra:max` for t
 
 The host retains the best proof verified across every required version. Resuming never replenishes the selected budget. Successful voluntary completion starts a fresh attempt from that proof while budget remains. Costs are reported from recorded usage and explicit pricing assumptions.
 
+Model-to-track classification is declared separately from provider routing in
+`MODEL_TRACKS` in `providers/registry.py` and pinned with each run's source.
+Adding provider support alone does not classify a model for automatic budgets.
+Default to an isolated current runtime copy for closed-track runs: without a
+wall deadline, the entire cohort can hold its pinned files for hours or days.
+RCP's shared five-request cap remains its throughput limiter across batches and
+clients.
+
 `--budget-tracking auto` is the default. Choose `--track-cost` or `--track-time` explicitly to override the track policy, and use a new output directory when changing settings:
 
 ```bash
@@ -79,12 +87,15 @@ proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
 
 `--budget-tracking cost` and `--budget-tracking time` are the long forms. Each
 successful voluntary completion starts another conversation and workspace from
-the best verified proof while budget remains. The default safety limit is 20
-restarts (21 total attempts), adjustable with `--max-budget-restarts`. Time-limited
-restarts stop when at most 30 seconds remain for final cleanup. Indeterminate
-requests,
-permanent failures and unavailable verification never trigger a retry. Cost
-tracking also stops when cumulative spending is unknown.
+the best verified proof while budget remains. The default safety limits are 20
+optimization restarts (`--max-budget-restarts`) and two transport recoveries
+(`--max-transport-restarts`): at most 23 admitted attempts per problem, including
+the initial attempt. Native HTTP/stream retries stay inside their session.
+Time-limited restarts stop when at most 30 seconds remain for final cleanup;
+this reserve is inert in cost-only runs. Final cleanup uses deterministic
+transformations and Lean, makes no model requests and spends no model dollars.
+Indeterminate requests, permanent failures and unavailable verification never
+trigger a retry. Cost tracking also stops when cumulative spending is unknown.
 Cost tracking requires a priced model; use time tracking for Lemex models.
 
 Transient gateway failures have separate recovery limits. Lemex allows four

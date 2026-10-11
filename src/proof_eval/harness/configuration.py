@@ -266,7 +266,7 @@ def prepare(
             "first valid proposal"
             if mode == "correctness"
             else (
-                "tracked budget, cleanup reserve or restart safety limit; provider failures remain distinct"
+                "tracked budget, applicable wall-time cleanup reserve or restart safety limit; provider failures remain distinct"
                 if budget_tracking is not None
                 else "agent completion, explicit finish or problem deadline; provider failures remain distinct"
             )
@@ -305,7 +305,7 @@ def prepare(
             if provider == "lemex"
             else None
         ),
-        "transport_recovery_policy": "Bounded backoff after observed terminal transient errors; reuse the best verified proof and the same deadline; never resample indeterminate requests",
+        "transport_recovery_policy": "Bounded backoff after observed terminal transient errors; reuse the best verified proof and the same selected problem budget; never resample indeterminate requests",
         "rate_card": rate_card(provider),
     }
     config.update(paths or {})

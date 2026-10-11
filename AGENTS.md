@@ -41,9 +41,12 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
 - Keep the best proof passing **every required version**, with the configured
   0.05 percentage-point improvement margin. Preserve a better raw proof if final
   deterministic cleanup regresses. In-loop deterministic cleanup is retired.
-- Keep prompts, model settings, source projects, denominators, and cohort size
-  fixed for matched experiments. Do not feed another condition's solutions to a
-  model. Report full-cohort means only when the full declared cohort is complete.
+- Keep prompts, model settings, model-to-track classification in
+  `providers/registry.py`, source projects, denominators, and cohort size fixed
+  for matched experiments. Routing additions must declare their track separately
+  in `MODEL_TRACKS`; classification changes require a new output directory.
+  Do not feed another condition's solutions to a model. Report full-cohort means
+  only when the full declared cohort is complete.
 - Model requests need durable started markers, host-owned evidence, output locks,
   and no automatic resampling of an indeterminate request. Preserve partial work.
   Observed terminal transient transport failures may use bounded, recorded
@@ -52,13 +55,25 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
   becomes unknown.
   Codex may use tools; the host checks proofs and owns the ledger. Do not let model
   processes write the pinned source projects or host evidence.
+  Default host bounds are 20 optimization restarts and two terminal transport
+  recoveries: at most 23 admitted attempts per problem, including the initial
+  attempt. Configure them separately with `max_budget_restarts` and
+  `max_transport_restarts`; native HTTP/stream retries stay inside their session.
 - New runs automatically select one track budget: open models use a 3420-second
   (57-minute) whole-problem deadline including host tools and final cleanup;
   closed models use a $3 per-problem API-equivalent cost budget with no implicit
   wall-time limit. A numeric timeout explicitly adds a watchdog to cost tracking.
-  Preserve the best fully checked proof when it expires; distinguish a controlled
-  deadline from a missing native final or transport error. Resuming never replenishes a budget.
-  Run from an isolated current runtime copy when other development must continue.
+  Preserve the best fully checked proof when the selected budget is exhausted;
+  distinguish a controlled budget stop (deadline or cost limit) from a missing
+  native final or transport error. Resuming never replenishes a budget.
+  Default to an isolated current runtime copy for closed-track runs. Their pinned
+  files remain frozen until every cell is terminal, which can take hours or days
+  without a wall-time limit. Use an isolated copy for other runs whenever
+  development must continue.
+  The 30-second cleanup reserve applies only when a wall deadline is configured,
+  including an explicit cost-track watchdog. It is inert for cost-only runs.
+  Final cleanup uses deterministic transformations and Lean, makes no model
+  requests and spends no model dollars; it starts after model search stops.
 - Do not edit pinned runtime or prompt files while an experiment is running.
   Use a new output directory when code, inputs, settings, or budgets change.
 - Keep historical result/config/request bytes unchanged. Auditors may verify
@@ -71,7 +86,9 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
 - Report local and organizer scores separately. API-equivalent prices are
   estimates, not Codex invoices. The closed-track cap applies to **each problem**;
   missing usage stays unknown. RCP permits at most five simultaneous requests
-  across the key; do not put credentials in results, logs, or Git.
+  across the key; this shared admission cap is the RCP throughput limiter when
+  wall time no longer bounds runs. Respect it across batches and clients.
+  Do not put credentials in results, logs, or Git.
 - Use the native provider adapters and shared durable executor. The direct RCP
   chat client is retired. Leave native sampling defaults alone; do not invent a
   CLI temperature flag or claim that an unobserved gateway default equals 1.

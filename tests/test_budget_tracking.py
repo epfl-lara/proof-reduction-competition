@@ -1078,6 +1078,25 @@ def test_default_track_selects_one_limit_in_python_and_cli(provider, monkeypatch
             assert cfg.problem_timeout_seconds is None
 
 
+def test_provider_routing_addition_requires_explicit_track_classification(monkeypatch):
+    from proof_eval.harness.config import RunConfig
+    from proof_eval.providers import lemex, registry
+
+    model = "local-test/new-open-model"
+    monkeypatch.setitem(lemex.MODELS, model, {"high"})
+    monkeypatch.setitem(
+        registry.ALLOWED_CONDITIONS,
+        "lemex",
+        registry.ALLOWED_CONDITIONS["lemex"] | {(model, "high")},
+    )
+    with pytest.raises(ValueError, match="Unclassified model track"):
+        RunConfig(provider="lemex", conditions=((model, "high"),))
+    monkeypatch.setitem(registry.MODEL_TRACKS, model, "open")
+    config = RunConfig(provider="lemex", conditions=((model, "high"),))
+    assert config.budget_tracking == "time"
+    assert config.problem_timeout_seconds == 3420
+
+
 def test_cost_only_public_search_continues_after_57_minutes(tracking_run, monkeypatch):
     run = tracking_run(timeout=None)
     native = fake_native(run)

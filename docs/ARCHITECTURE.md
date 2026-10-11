@@ -183,6 +183,17 @@ open models (Qwen and DeepSeek) and `"cost"` for closed models. Resolved
 tracking; there is no implicit provider or whole-problem timeout in cost-only
 search. Open-model runs receive no spending guard. New configurations use schema 6;
 historical configuration and result bytes retain their original budgets.
+
+The declarative `MODEL_TRACKS` table in `providers/registry.py` is independent
+of provider routing and pinned with the runtime source. Automatic budgets reject
+unclassified models rather than inferring a track from routing or pricing.
+Matched experiments freeze this classification along with their other settings.
+
+Closed-track runs should default to an isolated current runtime copy: without
+a wall deadline, the cohort's pinned files can remain frozen for hours or days.
+RCP's shared limit of five concurrent requests constrains its throughput across
+batches and clients even when wall time does not bound a run.
+
 The time budget starts when a worker receives a problem; batch queue time
 and batch reference preflight are separate. Admission, model reasoning, all
 host tools and final cleanup share that one deadline. Status feedback includes
@@ -254,10 +265,15 @@ the unchanged deadline.
 Time tracking uses the single persisted whole-problem deadline. If none exists,
 the supervisor creates it before dispatch; resume always reuses it.
 Time-limited runs decline another attempt once at most 30 seconds remain for
-final cleanup.
-Both modes stop after at most
-`max_budget_restarts + 1` attempts (default 21). Exhausted cumulative cost,
-insufficient money for one conservatively priced output token, cleanup reserve,
+final cleanup. `cleanup_reserve_seconds=30` remains recorded in every config,
+but is inert when `problem_timeout_seconds=None`; it applies to time tracking
+and explicit cost-track watchdogs. Final cleanup uses deterministic
+transformations and Lean, makes no model requests and spends no model dollars.
+Both modes allow at most `max_budget_restarts + max_transport_restarts + 1`
+admitted attempts (default 23: 20 optimization restarts, two terminal transport
+recoveries and one initial attempt). Native retries remain within their session.
+Exhausted cumulative cost, insufficient money for one conservatively priced
+output token, cleanup reserve,
 unknown usage and the restart safety limit have separate host stopping reasons.
 Final deterministic cleanup receives the best proof found across all attempts.
 
