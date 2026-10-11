@@ -12,6 +12,7 @@ DEFAULT_CONDITIONS = {
     "claude": ((claude.MODEL, "max"),),
     "agy": ((agy.MODEL, "high"),),
 }
+OPEN_MODELS = frozenset(lemex.MODELS)
 # Explicit per-provider allow-list; Codex stays limited to its active conditions.
 ALLOWED_CONDITIONS = {
     "codex": set(DEFAULT_CONDITIONS["codex"]),

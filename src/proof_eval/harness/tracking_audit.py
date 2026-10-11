@@ -143,7 +143,11 @@ def audit_attempts(
                     for check in checks[:start]
                 ),
                 round_number=number - 1,
-                time_remaining=record["deadline_epoch"] - record["admitted_epoch"],
+                time_remaining=(
+                    record["deadline_epoch"] - record["admitted_epoch"]
+                    if record["deadline_epoch"] is not None
+                    else None
+                ),
                 transport_restarts_used=recovery_count(result["generations"][:number]),
             )
             _require(
@@ -157,11 +161,12 @@ def audit_attempts(
                 ),
                 "A request restarted after unavailable host verification",
             )
-            _require(
-                record["admitted_epoch"]
-                < record["deadline_epoch"] - CLEANUP_RESERVE_SECONDS,
-                "A request restarted inside the cleanup reserve",
-            )
+            if record["deadline_epoch"] is not None:
+                _require(
+                    record["admitted_epoch"]
+                    < record["deadline_epoch"] - CLEANUP_RESERVE_SECONDS,
+                    "A request restarted inside the cleanup reserve",
+                )
         before = attempt_cost(
             config,
             result["model"],
@@ -180,7 +185,7 @@ def audit_attempts(
             messages[1]["content"][len(prefix) + end_of_payload :]
             == budget_suffix(
                 config,
-                result["time_budget"],
+                result.get("time_budget"),
                 before,
                 record["time_remaining_seconds"],
                 number,
@@ -201,28 +206,20 @@ def audit_attempts(
             "Attempt time moved backwards",
         )
         timeout = record["generation_timeout_seconds"]
-        _require(
-            request["timeout"] == timeout
-            and 0 < timeout <= config["generation_timeout"]
-            and timeout <= record["deadline_epoch"] - record["started_epoch"] + 1,
-            "Attempt timeout replenished the problem deadline",
-        )
-        _require(
-            record["deadline_epoch"] == result["time_budget"]["deadline_epoch"],
-            "Attempt has a different problem deadline",
-        )
-        _require(
-            0
-            < record["time_remaining_seconds"]
-            <= record["deadline_epoch"] - record["started_epoch"] + 1,
-            "Attempt advertised replenished time",
-        )
-        _require(
-            record["admitted_epoch"]
-            == record["deadline_epoch"] - record["time_remaining_seconds"]
-            and record["admitted_epoch"] <= record["started_epoch"],
-            "Attempt admission time changed",
-        )
+        if config.get("problem_timeout_seconds") is None:
+            _require(
+                tracking == "cost"
+                and timeout is None
+                and request["timeout"] is None
+                and config["generation_timeout"] is None
+                and record["deadline_epoch"] is None
+                and record["time_remaining_seconds"] is None
+                and result.get("time_budget") is None
+                and record["admitted_epoch"] <= record["started_epoch"],
+                "Cost-only attempt acquired a time limit or invalid admission time",
+            )
+        else:
+            _audit_attempt_time(config, result, record, request)
         guard = None
         if tracking == "cost":
             total = before["total_usd"]
@@ -252,7 +249,7 @@ def audit_attempts(
                 ),
                 "Controlled cost stop has no budget evidence",
             )
-    if records and not result["time_budget"]["exhausted"]:
+    if records and not result.get("time_budget", {}).get("exhausted", False):
         stop = read(folder / "search_stop.json")
         _require(
             result["stop"] == stop
@@ -269,7 +266,11 @@ def audit_attempts(
                 for check in checks[: records[-1]["check_end"]]
             ),
             round_number=len(records) - 1,
-            time_remaining=records[-1]["deadline_epoch"] - stop["at_epoch"],
+            time_remaining=(
+                records[-1]["deadline_epoch"] - stop["at_epoch"]
+                if records[-1]["deadline_epoch"] is not None
+                else None
+            ),
             transport_restarts_used=recovery_count(result["generations"]),
         )
         _require(
@@ -283,7 +284,7 @@ def audit_attempts(
             ),
             "Host stop does not follow the recorded budget policy",
         )
-    elif not records and not result["time_budget"]["exhausted"]:
+    elif not records and not result.get("time_budget", {}).get("exhausted", False):
         _require(
             tracking == "cost"
             and result["stop"]["kind"] == "cost_reserve"
@@ -311,3 +312,31 @@ def audit_attempts(
             and result["budget_outcome"]["hard_cost_cap"] is False,
             "Budget outcome metadata changed",
         )
+
+
+def _audit_attempt_time(
+    config: dict, result: dict, record: dict, request: dict
+) -> None:
+    timeout = record["generation_timeout_seconds"]
+    _require(
+        request["timeout"] == timeout
+        and 0 < timeout <= config["generation_timeout"]
+        and timeout <= record["deadline_epoch"] - record["started_epoch"] + 1,
+        "Attempt timeout replenished the problem deadline",
+    )
+    _require(
+        record["deadline_epoch"] == result["time_budget"]["deadline_epoch"],
+        "Attempt has a different problem deadline",
+    )
+    _require(
+        0
+        < record["time_remaining_seconds"]
+        <= record["deadline_epoch"] - record["started_epoch"] + 1,
+        "Attempt advertised replenished time",
+    )
+    _require(
+        record["admitted_epoch"]
+        == record["deadline_epoch"] - record["time_remaining_seconds"]
+        and record["admitted_epoch"] <= record["started_epoch"],
+        "Attempt admission time changed",
+    )

@@ -26,8 +26,9 @@ APIs; no library imports an experiment driver. Historical studies stay in
 | `evidence` | Atomic artifacts, stable hashes and saved-evidence audits | `write_json`, `fingerprint`, `audit` |
 | `interfaces` | Thin CLI and localhost HTTP evaluation interfaces | `proof-eval` |
 
-`harness/budget.py` supervises one isolated theorem worker under a durable wall
-deadline. `harness/search.py` owns its model request and final cleanup;
+`harness/budget.py` supervises one isolated theorem worker with a durable wall
+deadline when time is limited, or no timeout for cost-only search.
+`harness/search.py` owns its model request and final cleanup;
 `harness/outcomes.py` selects the result from verified evidence.
 `harness/runner.py` owns concurrency and the complete declared cohort.
 `harness/agent.py` supplies prompt policy and the tool service to the general
@@ -175,8 +176,14 @@ Use `web_search=False` or `--no-web-search` to disable them. Both positive CLI
 flags remain accepted. Saved configurations and historical tool availability
 stay unchanged; changed settings require a new output directory.
 
-`RunConfig.problem_timeout_seconds` defaults to 3420 (57 minutes) for every
-provider. The budget starts when a worker receives a problem; batch queue time
+`RunConfig.budget_tracking="auto"` selects `"time"` for the explicitly listed
+open models (Qwen and DeepSeek) and `"cost"` for closed models. Resolved
+`RunConfig.problem_timeout_seconds` is 3420 (57 minutes) for time tracking and
+`None` for cost tracking. A numeric timeout explicitly adds a watchdog to cost
+tracking; there is no implicit provider or whole-problem timeout in cost-only
+search. Open-model runs receive no spending guard. New configurations use schema 6;
+historical configuration and result bytes retain their original budgets.
+The time budget starts when a worker receives a problem; batch queue time
 and batch reference preflight are separate. Admission, model reasoning, all
 host tools and final cleanup share that one deadline. Status feedback includes
 the remaining seconds. At expiry the supervisor stops only that worker and its
@@ -191,10 +198,10 @@ unknown. A pilot with no host checks cannot unlock the full cohort.
 The 57-minute allocation is our chosen conservative budget derived from the
 saved open-track 48-hour/50-problem total, not an organizer per-problem rule.
 
-`RunConfig.budget_tracking` defaults to `None`: voluntary agent completion ends
-the single native session. Select `"cost"` or `"time"` with `--budget-tracking`,
-`--track-cost` or `--track-time` to admit fresh attempts after successful native
-completion. Indeterminate requests, permanent failures and unavailable host
+Automatic tracking admits fresh attempts after successful native completion.
+Select `"cost"` or `"time"` with `--budget-tracking`, `--track-cost` or
+`--track-time` to override the track. Python callers can explicitly select `None`
+to end at voluntary completion under a time limit. Indeterminate requests, permanent failures and unavailable host
 checks stop admission. Terminal transient transport failures have the separate
 bounded recovery policy below. Cost tracking also stops on missing cost counters. The fresh prompt has exactly one
 system message and one user message; its incumbent declaration/scores and
@@ -220,7 +227,7 @@ uses four HTTP retries and five stream retries. A successful final following a
 native reconnect remains successful, with the reconnect events preserved and
 `usage_complete=false` because interrupted upstream usage may be unreported.
 Host recovery after native exhaustion starts a fresh session from the shared
-best-proof ledger with bounded backoff, never a replenished deadline. The attempt
+best-proof ledger with bounded backoff, never a replenished track budget. The attempt
 auditor checks each admission, predecessor failure, incumbent and time budget.
 Cost tracking admits no recovery when cumulative spending is unknown.
 
@@ -236,15 +243,19 @@ budgets remain unchanged. A better original/deterministic seed is still retained
 stopped cost-tracked run under a new runtime and output without resetting its
 allocation. `harness/carryover.py` audits the source run and pins its result,
 configuration and deadline bytes. Cumulative pricing includes all prior
-generations, including failed calls; the original problem deadline is restored.
+generations, including failed calls; any explicitly configured original problem
+deadline is restored. Cost-only carryover pins the prior spending and creates
+no deadline marker.
 The same-condition best verified proof supplies the incumbent. Changed fixed
 inputs, unknown cumulative usage, active batches and started cells without a
 terminal result block continuation. Audit checks both the carried spending and
 the unchanged deadline.
 
 Time tracking uses the single persisted whole-problem deadline. If none exists,
-the supervisor creates it before dispatch; resume always reuses it. Both modes
-decline another attempt once at most 30 seconds remain for final cleanup and stop after at most
+the supervisor creates it before dispatch; resume always reuses it.
+Time-limited runs decline another attempt once at most 30 seconds remain for
+final cleanup.
+Both modes stop after at most
 `max_budget_restarts + 1` attempts (default 21). Exhausted cumulative cost,
 insufficient money for one conservatively priced output token, cleanup reserve,
 unknown usage and the restart safety limit have separate host stopping reasons.
@@ -295,9 +306,9 @@ Claude terminal records preserve `modelUsage` and `total_cost_usd`; the reported
 all-model CLI estimate is used for observed totals, with independent aggregate
 repricing shown separately. This is not a subscription invoice. The exact
 DeepSeek and Qwen gateway prices are unverified and remain unknown rather than
-borrowing another model's rate. The $3 limit applies to each problem. Default
-comparison runs report estimated cost; only opt-in cost tracking admits new
-attempts according to the remaining dollars and enables native spending guards.
+borrowing another model's rate. The $3 limit applies to each problem. Closed-model runs
+default to cost tracking, admitting new attempts according to
+the remaining dollars and enabling native spending guards without a time limit.
 
 Claude usage schema 2 preserves reported one-hour cache writes and the
 `modelUsage` thinking-token subset when it covers all output. One-hour writes
@@ -325,7 +336,7 @@ using the exact `claude-opus-5-5` model and `max` effort. It receives an isolate
 writable workspace and explicit tool-client paths. Built-in file tools and
 approved proof-client/read-only shell commands are available. `dontAsk` plus
 `--permission-prompts none` prevents unattended permission waits. There is no
-permission bypass, bare mode, fallback model, turn limit or dollar stopping limit.
+permission bypass, bare mode, fallback model, turn limit. Cost tracking passes the remaining dollar allowance explicitly.
 Unrelated MCP servers are excluded for this matched benchmark. Linux Landlock
 protects source projects and the host evidence regardless of CLI permissions.
 Terminal `is_error`, subtype, actual model, permission denials, session ID, usage

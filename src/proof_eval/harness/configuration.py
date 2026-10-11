@@ -28,6 +28,7 @@ from .tracking import (
     ATTEMPT_EVIDENCE_VERSION,
     CLEANUP_RESERVE_SECONDS,
     BudgetTracking,
+    resolve_budgets,
     validate_budgets,
 )
 
@@ -187,8 +188,8 @@ def prepare(
     base_directory=BASE,
     paths=None,
     provider="codex",
-    problem_timeout_seconds: float = 57 * 60,
-    budget_tracking: BudgetTracking = None,
+    problem_timeout_seconds: float | None = None,
+    budget_tracking: BudgetTracking = "auto",
     budget_usd_per_problem: float = 3.0,
     max_budget_restarts: int = 20,
     max_transport_restarts: int = 2,
@@ -202,6 +203,9 @@ def prepare(
     if mode not in RUN_MODES:
         raise ValueError("Unsupported or retired search mode: " + mode)
     conditions = conditions or DEFAULT_CONDITIONS[provider]
+    budget_tracking, problem_timeout_seconds = resolve_budgets(
+        budget_tracking, problem_timeout_seconds, conditions
+    )
     validate_budgets(
         budget_tracking,
         budget_usd_per_problem,
@@ -223,7 +227,7 @@ def prepare(
     for relative, expected in base["code_sha256"].items():
         _implementation(relative, expected, ROOT, SNAPSHOTS, "frozen input preparation")
     config = {
-        "schema_version": 5,
+        "schema_version": 6,
         "attempt_evidence_version": ATTEMPT_EVIDENCE_VERSION,
         "provider": provider,
         "mode": mode,
@@ -252,7 +256,11 @@ def prepare(
         "max_total_tokens": None,
         "generation_timeout": problem_timeout_seconds,
         "problem_timeout_seconds": problem_timeout_seconds,
-        "time_budget_policy": "one wall deadline per problem, including host tools and final cleanup; retain the best fully verified proof",
+        "time_budget_policy": (
+            "one wall deadline per problem, including host tools and final cleanup; retain the best fully verified proof"
+            if problem_timeout_seconds is not None
+            else "no wall-time limit; cumulative cost budget only"
+        ),
         "max_outer_correctness_repairs": 3 if mode == "correctness" else 0,
         "stop": (
             "first valid proposal"

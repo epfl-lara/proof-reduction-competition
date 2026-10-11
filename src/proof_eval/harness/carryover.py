@@ -12,13 +12,16 @@ def _key(config: dict, name: str, model: str, effort: str) -> str:
     return fingerprint((name, model, effort, config["mode"]))
 
 
-def source_records(pin: dict) -> tuple[dict, dict, dict]:
+def source_records(pin: dict) -> tuple[dict, dict, dict | None]:
     """Read only pinned host evidence; a changed prior attempt blocks recovery."""
     for stem in ("result", "source_config", "budget"):
+        if stem == "budget" and pin.get("budget_path") is None:
+            continue
         if digest(pin[stem + "_path"]) != pin[stem + "_sha256"]:
             raise ValueError("Carried budget evidence changed: " + stem)
     return tuple(
-        read(pin[stem + "_path"]) for stem in ("source_config", "result", "budget")
+        read(pin[stem + "_path"]) if pin.get(stem + "_path") is not None else None
+        for stem in ("source_config", "result", "budget")
     )
 
 
@@ -106,8 +109,8 @@ def freeze_carryover(source: Path | None, config: dict, packs: dict) -> dict:
                 "result_sha256": digest(result_path),
                 "source_config_path": str(previous_path),
                 "source_config_sha256": digest(previous_path),
-                "budget_path": str(budget_path),
-                "budget_sha256": digest(budget_path),
+                "budget_path": str(budget_path) if budget_path.exists() else None,
+                "budget_sha256": digest(budget_path) if budget_path.exists() else None,
             }
     return pins
 
@@ -117,6 +120,10 @@ def restore_deadlines(output: Path, config: dict) -> None:
     for key, pin in config.get("budget_carryover", {}).items():
         _, _, budget = source_records(pin)
         path = output / "cells" / key / "budget_started.json"
+        if budget is None:
+            if path.exists():
+                raise ValueError("Carried cost-only budget acquired a deadline")
+            continue
         if path.exists():
             if read(path) != budget:
                 raise ValueError("Carried problem deadline was replenished")
@@ -129,5 +136,9 @@ def audit_deadline(config: dict, result: dict, folder: Path) -> None:
     pin = config.get("budget_carryover", {}).get(key)
     if pin is not None:
         _, _, previous_budget = source_records(pin)
+        if previous_budget is None:
+            if (folder / "budget_started.json").exists():
+                raise ValueError("Carried cost-only budget acquired a deadline")
+            return
         if read(folder / "budget_started.json") != previous_budget:
             raise ValueError("Carried problem deadline was replenished")

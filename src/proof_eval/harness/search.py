@@ -44,11 +44,16 @@ def run_cell(
     evaluator: Evaluator,
     generator: AgentGenerator = generate,
 ) -> dict:
-    """Run a theorem under one durable deadline, including custom generators."""
+    """Run a theorem under its track budget, including custom generators."""
     if "problem_timeout_seconds" in config or config.get("budget_tracking") is not None:
         from .budget import run_cell as supervised_cell
 
-        supervised_config = {"problem_timeout_seconds": 57 * 60, **config}
+        supervised_config = {
+            "problem_timeout_seconds": (
+                None if config.get("budget_tracking") == "cost" else 57 * 60
+            ),
+            **config,
+        }
         return supervised_cell(
             output,
             supervised_config,
@@ -108,7 +113,7 @@ def _run_cell(
             if (folder / "budget_started.json").exists()
             else None
         )
-        if "problem_timeout_seconds" in config and budget is None:
+        if config.get("problem_timeout_seconds") is not None and budget is None:
             raise ValueError(
                 "A prepared theorem must run under the durable deadline supervisor"
             )

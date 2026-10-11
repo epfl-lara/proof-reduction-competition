@@ -246,7 +246,7 @@ def audit(output: Path) -> dict:
         )
         for field, count in counts.items():
             web_counts[field] += count
-        if "problem_timeout_seconds" in config:
+        if config.get("problem_timeout_seconds") is not None:
             budget = result["time_budget"]
             started = read(path.parent / "budget_started.json")
             _require(
@@ -276,6 +276,15 @@ def audit(output: Path) -> dict:
                     and result["generations"][-1].get("termination") == "cost_limit"
                 ),
                 "A native interruption was mislabeled as a controlled problem deadline",
+            )
+        elif "problem_timeout_seconds" in config:
+            _require(
+                config.get("budget_tracking") == "cost"
+                and config["generation_timeout"] is None
+                and result.get("time_budget") is None
+                and not (path.parent / "budget_started.json").exists()
+                and not (path.parent / "budget_end.json").exists(),
+                "Cost-only run contains a wall-time budget",
             )
         best_code, best_evaluation = (
             inp.get("seed_proof", rows[name]["src"]),
@@ -685,7 +694,7 @@ def audit(output: Path) -> dict:
             if not (folder / "request.json").exists():
                 _require(
                     config.get("attempt_evidence_version")
-                    and result["time_budget"]["exhausted"]
+                    and result.get("time_budget", {}).get("exhausted", False)
                     and gen.get("dispatch_status") == "not_dispatched"
                     and gen["status"] == "budget_exhausted"
                     and gen.get("termination") == "problem_deadline"
@@ -721,7 +730,7 @@ def audit(output: Path) -> dict:
                 _require(
                     event_path.exists()
                     or (
-                        result["time_budget"]["exhausted"]
+                        result.get("time_budget", {}).get("exhausted", False)
                         and not (folder / "request_started.json").exists()
                     ),
                     "Native event evidence is missing after dispatch",
@@ -733,7 +742,7 @@ def audit(output: Path) -> dict:
                         events.append(json.loads(line))
                     except json.JSONDecodeError:
                         _require(
-                            result["time_budget"]["exhausted"],
+                            result.get("time_budget", {}).get("exhausted", False),
                             "Native event stream was truncated without a deadline stop",
                         )
                         break

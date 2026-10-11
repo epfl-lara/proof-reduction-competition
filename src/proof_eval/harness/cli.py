@@ -62,14 +62,14 @@ def main(argv=None) -> int:
             "--problem-timeout-seconds",
             type=float,
             default=RunConfig.problem_timeout_seconds,
-            help="Whole-problem wall time, including Lean tools and cleanup (default: 3420 seconds)",
+            help="Explicit whole-problem wall time; default: 3420 seconds for time tracking, no deadline for cost tracking",
         )
         tracking = sub.add_mutually_exclusive_group()
         tracking.add_argument(
             "--budget-tracking",
-            choices=("cost", "time"),
-            default=None,
-            help="Force-stop tracking mode: 'cost' or 'time'",
+            choices=("auto", "cost", "time"),
+            default="auto",
+            help="Budget policy (default: auto; open models use time, closed models use cost)",
         )
         tracking.add_argument(
             "--track-cost",

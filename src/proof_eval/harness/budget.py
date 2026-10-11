@@ -35,7 +35,7 @@ class _CustomWorker:
     def returncode(self) -> int | None:
         return self.process.exitcode
 
-    def wait(self, timeout: float) -> None:
+    def wait(self, timeout: float | None) -> None:
         self.process.join(timeout)
         if self.process.is_alive():
             raise subprocess.TimeoutExpired("custom theorem worker", timeout)
@@ -65,7 +65,7 @@ def run_cell(
     *,
     generator: AgentGenerator | None = None,
 ) -> dict:
-    """A fixed deadline includes provider admission, Lean calls and final cleanup."""
+    """Isolate the worker; enforce a whole-problem deadline only when configured."""
     folder = (
         output / "cells" / fingerprint((pack["name"], model, effort, config["mode"]))
     )
@@ -80,6 +80,11 @@ def run_cell(
             raise RuntimeError(
                 "Started theorem worker has no terminal result; not restarted or resampled"
             )
+        if config["problem_timeout_seconds"] is None and (
+            config.get("budget_tracking") != "cost"
+            or (folder / "budget_started.json").exists()
+        ):
+            raise ValueError("Cost-only search requires no saved wall-time deadline")
         request = {
             "output": str(output),
             "config": config,
@@ -97,7 +102,8 @@ def run_cell(
         }
         manifest = folder / "cell_request.json"
         write_json(manifest, request)
-        budget = start_budget(folder, config["problem_timeout_seconds"])
+        seconds = config["problem_timeout_seconds"]
+        budget = start_budget(folder, seconds) if seconds is not None else None
         with (
             (folder / "worker.stdout.log").open("w") as out,
             (folder / "worker.stderr.log").open("w") as err,
@@ -126,7 +132,13 @@ def run_cell(
                 folder / "cell_process.json", {"pid": child.pid, "started_at": now()}
             )
             try:
-                child.wait(timeout=max(0.0, budget["deadline_epoch"] - time.time()))
+                child.wait(
+                    timeout=(
+                        max(0.0, budget["deadline_epoch"] - time.time())
+                        if budget is not None
+                        else None
+                    )
+                )
             except subprocess.TimeoutExpired:
                 stopped = time.time()
                 owned = stop_tree(child.pid)

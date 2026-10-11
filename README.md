@@ -60,9 +60,14 @@ proof-harness report --output results/harness/my_sol_run
 proof-harness audit --output results/harness/my_sol_run
 ```
 
-Omit `--condition` to run both active models, or specify `gpt-6-astra:max` for the SOTA condition. Every new problem has a **57-minute wall-time limit**, including provider admission, Lean tools and final cleanup. The host retains the best proof already verified across all versions when time expires. Override this with `--problem-timeout-seconds` or `RunConfig.problem_timeout_seconds`; resuming never replenishes a started budget. By default, an agent's voluntary completion ends its single attempt. Costs are reported per problem using recorded usage and explicit API-equivalent assumptions.
+Omit `--condition` to run both active models, or specify `gpt-6-astra:max` for the SOTA condition. New runs automatically use one track budget per problem:
 
-Enable repeated fresh attempts with an explicit tracking flag and a new output directory:
+- **Open models (Qwen and DeepSeek): 57 minutes**, including provider admission, Lean tools and final cleanup; no dollar guard.
+- **Closed models (Sol, Astra, Claude and Gemini): $3 API-equivalent estimated cost**, across all attempts; no wall-time limit by default.
+
+The host retains the best proof verified across every required version. Resuming never replenishes the selected budget. Successful voluntary completion starts a fresh attempt from that proof while budget remains. Costs are reported from recorded usage and explicit pricing assumptions.
+
+`--budget-tracking auto` is the default. Choose `--track-cost` or `--track-time` explicitly to override the track policy, and use a new output directory when changing settings:
 
 ```bash
 proof-harness run --condition gpt-6.1-sol:max --track-cost --budget-usd 3 \
@@ -75,8 +80,9 @@ proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
 `--budget-tracking cost` and `--budget-tracking time` are the long forms. Each
 successful voluntary completion starts another conversation and workspace from
 the best verified proof while budget remains. The default safety limit is 20
-restarts (21 total attempts), adjustable with `--max-budget-restarts`. Restarts
-stop when at most 30 seconds remain for final cleanup. Indeterminate requests,
+restarts (21 total attempts), adjustable with `--max-budget-restarts`. Time-limited
+restarts stop when at most 30 seconds remain for final cleanup. Indeterminate
+requests,
 permanent failures and unavailable verification never trigger a retry. Cost
 tracking also stops when cumulative spending is unknown.
 Cost tracking requires a priced model; use time tracking for Lemex models.
@@ -84,32 +90,37 @@ Cost tracking requires a priced model; use time tracking for Lemex models.
 Transient gateway failures have separate recovery limits. Lemex allows four
 HTTP retries and five stream retries within its native conversation. After an
 observed terminal transient failure, the host permits up to two new sessions
-from the best verified proof, with bounded backoff and the same problem deadline.
-Use `--max-transport-restarts 0` to disable host recovery. Successful native
-completion still ends a default run; transport recovery does not enable repeated
-optimization attempts. Reconnect notifications remain in the evidence, and
+from the best verified proof, with bounded backoff and the same problem budget.
+Use `--max-transport-restarts 0` to disable host recovery. Transport recovery has
+its own restart count, separate from successful optimization attempts. Reconnect
+notifications remain in the evidence, and
 unreported usage from interrupted responses stays unknown.
 
 For an explicitly authorized new run after an old interruption, pass
 `--incumbents-from results/harness/prior_run` and a new `--output`. The harness
 pins and validates that condition's saved proofs, reference identities and
-theorem context without remeasurement. The new run receives a fresh time budget;
+theorem context without remeasurement. The new run receives a fresh track budget;
 all automatic recoveries inside it share that one budget. Other model conditions
 cannot supply its proofs.
 
 To continue a stopped cost-tracked run after a runtime fix without replenishing
 its budget, use `--carry-budgets-from results/harness/prior_run` with a new output.
-The harness audits and pins prior evidence, counts every prior attempt, restores
-the original deadline, and reuses that condition's best verified proof. Unknown
-cumulative spending or an unfinished prior request blocks continuation.
+The harness audits and pins prior evidence, counts every prior attempt, preserves
+any explicitly configured original deadline, and reuses that condition's best
+verified proof. Unknown cumulative spending or an unfinished prior request
+blocks continuation.
 
 Cost tracking passes the remaining budget to the native CLI and sums observed
 costs across attempts. Codex uses a conservative weighted token allowance;
 Claude uses its dollar allowance. Both check between upstream responses, so a
 response already in flight may exceed the target. This is an API-equivalent
 estimate with explicit stop evidence, not a certified hard invoice cap. Native
-limit stops may omit usage; such totals remain unknown. The fixed deadline is
-enforced for all runs, including calls through the Python search API.
+limit stops may omit usage; such totals remain unknown. Cost-only calls through
+the Python search API also have no implicit deadline.
+An explicit `--problem-timeout-seconds` / `RunConfig.problem_timeout_seconds`
+adds a wall-time watchdog when requested; it overrides the 3420-second allocation
+for time tracking. Python callers can set `budget_tracking=None` for a single
+voluntary attempt under the time limit.
 
 There is one active task policy: [refactor_system.md](prompts/refactor_system.md)
 and its five-card [strategy bank](prompts/strategy_bank.json), preserving the

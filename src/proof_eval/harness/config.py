@@ -16,7 +16,7 @@ from .configuration import (
     RUN_MODES,
 )
 from .semantic import SemanticSearchConfig
-from .tracking import validate_budgets
+from .tracking import BudgetTracking, resolve_budgets, validate_budgets
 
 
 @dataclass(frozen=True)
@@ -27,8 +27,8 @@ class RunConfig:
     names: tuple[str, ...] = ()
     mode: str = DEFAULT_MODE
     workers: int = 5
-    problem_timeout_seconds: float = 57 * 60
-    budget_tracking: Literal["cost", "time"] | None = None
+    problem_timeout_seconds: float | None = None
+    budget_tracking: BudgetTracking = "auto"
     budget_usd_per_problem: float = 3.0
     max_budget_restarts: int = 20
     max_transport_restarts: int = 2
@@ -73,6 +73,11 @@ class RunConfig:
         if not self.conditions or len(set(self.conditions)) != len(self.conditions):
             raise ValueError("Specify nonempty, unique model conditions")
         validate(self.provider, self.conditions)
+        tracking, timeout = resolve_budgets(
+            self.budget_tracking, self.problem_timeout_seconds, self.conditions
+        )
+        object.__setattr__(self, "budget_tracking", tracking)
+        object.__setattr__(self, "problem_timeout_seconds", timeout)
         validate_budgets(
             self.budget_tracking,
             self.budget_usd_per_problem,

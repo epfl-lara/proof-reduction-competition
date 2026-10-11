@@ -34,11 +34,12 @@ def start_attempt(
         raise RuntimeError(
             "Started attempt evidence exists; not restarted or resampled"
         )
+    epoch = time.time()
     record = {
         "number": number,
         "status": "started",
         "started_at": now(),
-        "started_epoch": time.time(),
+        "started_epoch": epoch,
         "check_start": len(session.checks),
         "incumbent_proof": session.best_code,
         "incumbent_evaluation": deepcopy(session.best_evaluation),
@@ -52,7 +53,7 @@ def start_attempt(
         "deadline_epoch": session.deadline_at,
         "time_remaining_seconds": remaining,
         "admitted_epoch": (
-            session.deadline_at - remaining if remaining is not None else None
+            session.deadline_at - remaining if remaining is not None else epoch
         ),
     }
     write_json(path, record)

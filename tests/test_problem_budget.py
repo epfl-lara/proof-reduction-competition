@@ -112,6 +112,7 @@ def test_hard_deadline_retains_best_and_kills_detached_tools(
         semantic_search=False,
         web_search=False,
         provider=provider,
+        budget_tracking="time",
         problem_timeout_seconds=1.0,
         paths={
             "dataset_path": str(ROOT / "data/benchmark_data_warmup.jsonl"),
@@ -226,7 +227,8 @@ def test_qwen_native_configuration_and_unknown_price():
 def test_agy_native_configuration_and_api_equivalent_cost_budget():
     config = RunConfig(provider="agy")
     assert config.conditions == (("gemini-3.8-flash", "high"),)
-    assert config.problem_timeout_seconds == 3420
+    assert config.problem_timeout_seconds is None
+    assert config.budget_tracking == "cost"
     cost = estimate_token_cost(
         CostConfig(*config.conditions[0]),
         {
@@ -343,7 +345,7 @@ def test_budget_tracking_cost_restarts_from_best_declaration(tmp_path, monkeypat
     assert result["selected_proof"] == saved["selected_proof"]
 
 
-def test_budget_tracking_disabled_by_default(tmp_path, monkeypatch):
+def test_budget_tracking_can_be_explicitly_disabled(tmp_path, monkeypatch):
     from proof_eval.harness import search
 
     name = "CallElimCorrect.substOldPostSubset"

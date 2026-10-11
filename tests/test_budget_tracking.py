@@ -228,7 +228,8 @@ def fake_native(run, *, usage=USAGE, events=None):
 def run_worker(run, generator):
     """Policy unit tests run inside an explicit supervisor-owned deadline."""
     run.folder.mkdir(parents=True, exist_ok=True)
-    limits.start_budget(run.folder, run.config["problem_timeout_seconds"])
+    if run.config["problem_timeout_seconds"] is not None:
+        limits.start_budget(run.folder, run.config["problem_timeout_seconds"])
     return search._run_cell(
         run.output,
         run.config,
@@ -240,10 +241,13 @@ def run_worker(run, generator):
     )
 
 
-def test_agy_host_cost_stop_keeps_verified_proof_and_audits_partial_usage(tracking_run):
+@pytest.mark.parametrize("timeout", [3600.0, None])
+def test_agy_host_cost_stop_keeps_verified_proof_and_audits_partial_usage(
+    tracking_run, timeout
+):
     from functools import partial
 
-    run = tracking_run(provider="agy", usd=1.0)
+    run = tracking_run(provider="agy", usd=1.0, timeout=timeout)
     initial = {
         "event": "init",
         "conversation_id": "conv",
@@ -749,10 +753,11 @@ def test_exact_cost_cap_stops_without_marking_an_overspend(tracking_run):
 
 
 @pytest.mark.parametrize("budget_failure", [True, False])
+@pytest.mark.parametrize("timeout", [3600.0, None])
 def test_only_explicit_native_budget_events_are_controlled(
-    tracking_run, budget_failure
+    tracking_run, budget_failure, timeout
 ):
-    run = tracking_run()
+    run = tracking_run(timeout=timeout)
     message = (
         "shared rollout token budget exhausted" if budget_failure else "connection lost"
     )
@@ -1053,3 +1058,89 @@ def test_installed_codex_weighted_guard_stops_multiple_local_responses(
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+@pytest.mark.parametrize("provider", ["codex", "claude", "agy", "lemex"])
+def test_default_track_selects_one_limit_in_python_and_cli(provider, monkeypatch):
+    from proof_eval.harness.config import RunConfig
+
+    config = RunConfig(provider=provider)
+    captured = []
+    monkeypatch.setattr(cli, "run", lambda cfg: captured.append(cfg) or {})
+    assert cli.main(["run", "--provider", provider]) == 0
+    for cfg in (config, captured[0]):
+        if provider == "lemex":
+            assert cfg.budget_tracking == "time"
+            assert cfg.problem_timeout_seconds == 3420
+        else:
+            assert cfg.budget_tracking == "cost"
+            assert cfg.budget_usd_per_problem == 3
+            assert cfg.problem_timeout_seconds is None
+
+
+def test_cost_only_public_search_continues_after_57_minutes(tracking_run, monkeypatch):
+    run = tracking_run(timeout=None)
+    native = fake_native(run)
+    epoch = time.time()
+    monkeypatch.setattr(search.time, "time", lambda: epoch)
+
+    def generator(**kwargs):
+        nonlocal epoch
+        assert kwargs["timeout"] is None
+        assert kwargs["session"].deadline_at is None
+        assert "Whole-problem time limit" not in kwargs["messages"][1]["content"]
+        generation = native(**kwargs)
+        epoch += 3600
+        return generation
+
+    result = search.run_cell(
+        run.output,
+        run.config,
+        run.pack,
+        run.model,
+        run.effort,
+        run.evaluator,
+        generator=generator,
+    )
+    assert len(result["attempts"]) == 2
+    assert result["stop"]["kind"] == "cost_limit"
+    assert result["selected_proof"] == run.saved["selected_proof"]
+    assert (
+        result["attempts"][1]["admitted_epoch"]
+        >= result["attempts"][0]["admitted_epoch"] + 3600
+    )
+    assert "time_budget" not in result
+    assert not (run.folder / "budget_started.json").exists()
+    assert audit(run.output)["status"] == "passed"
+    assert (
+        search.run_cell(
+            run.output,
+            run.config,
+            run.pack,
+            run.model,
+            run.effort,
+            run.evaluator,
+            generator=generator,
+        )
+        == result
+    )
+
+
+def test_cost_only_carryover_keeps_spending_without_adding_a_deadline(tracking_run):
+    run = tracking_run(provider="agy", usd=3, restarts=0, timeout=None)
+    first = run_worker(run, fake_native(run, events=_agy_carry_events(run)))
+    continued = _continue_with_carried_budget(run)
+    second = run_worker(
+        continued,
+        fake_native(continued, events=_agy_carry_events(continued, success=True)),
+    )
+    assert second["cost"]["total_usd"] == pytest.approx(0.915)
+    assert second["seed_proof"] == first["selected_proof"]
+    assert second["attempts"][0]["cost_budget"]["remaining_usd"] == pytest.approx(
+        2.5425
+    )
+    assert not (continued.folder / "budget_started.json").exists()
+    assert audit(continued.output)["status"] == "passed"
+    write_json(continued.folder / "budget_started.json", {"deadline_epoch": 1})
+    with pytest.raises(ValueError, match="acquired a deadline"):
+        audit(continued.output)

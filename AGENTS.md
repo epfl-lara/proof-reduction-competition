@@ -47,14 +47,17 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
 - Model requests need durable started markers, host-owned evidence, output locks,
   and no automatic resampling of an indeterminate request. Preserve partial work.
   Observed terminal transient transport failures may use bounded, recorded
-  recovery from the best verified proof under the same deadline. Preserve every
-  failed attempt; cost tracking stops when cumulative usage becomes unknown.
+  recovery from the best verified proof under the same selected problem budget.
+  Preserve every failed attempt; cost tracking stops when cumulative usage
+  becomes unknown.
   Codex may use tools; the host checks proofs and owns the ledger. Do not let model
   processes write the pinned source projects or host evidence.
-- New runs default to a 3420-second (57-minute) whole-problem deadline for all
-  providers, including host tools and final cleanup. Preserve the best fully
-  checked proof when it expires; distinguish a controlled deadline from a
-  missing native final or transport error. Resuming never replenishes a budget.
+- New runs automatically select one track budget: open models use a 3420-second
+  (57-minute) whole-problem deadline including host tools and final cleanup;
+  closed models use a $3 per-problem API-equivalent cost budget with no implicit
+  wall-time limit. A numeric timeout explicitly adds a watchdog to cost tracking.
+  Preserve the best fully checked proof when it expires; distinguish a controlled
+  deadline from a missing native final or transport error. Resuming never replenishes a budget.
   Run from an isolated current runtime copy when other development must continue.
 - Do not edit pinned runtime or prompt files while an experiment is running.
   Use a new output directory when code, inputs, settings, or budgets change.
