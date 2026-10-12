@@ -13,6 +13,10 @@ _REPORT_LOCK = threading.Lock()
 
 
 def report(output, config):
+    if config.get("first_attempt_condition") is not None:
+        # Retired mixed-model reports are archived evidence, never regenerated
+        # as a single-model result or an incorrectly labelled submission.
+        return read(output / "report.json")
     with _REPORT_LOCK:
         return _report(output, config)
 
@@ -46,6 +50,8 @@ def _report(output, config):
         "conditions": [],
         "active": [],
     }
+    if config.get("usage_policy") == "best_effort":
+        result["usage_policy"] = "best_effort"
     for model, effort in config["conditions"]:
         group = [r for r in records if (r["model"], r["effort"]) == (model, effort)]
         complete = len(group) == n and all(r["status"] == "complete" for r in group)
@@ -129,11 +135,31 @@ def _report(output, config):
                 for r in group
             ]
         )
+        if config.get("usage_policy") == "best_effort":
+            summary["cost"]["incomplete_usage_problems"] = [
+                r["name"]
+                for r in group
+                if r.get("cost", {}).get("complete_usage") is False
+            ]
+            summary["cost"]["reported_cost_subtotal_usd"] = sum(
+                r.get("cost", {}).get(
+                    "reported_total_usd", r.get("cost", {}).get("total_usd")
+                )
+                or 0.0
+                for r in group
+            )
+            summary["cost"]["estimated_unreported_usd"] = sum(
+                r.get("cost", {}).get("estimated_unreported_usd", 0.0) for r in group
+            )
+            summary["unknown_usage_calls"] = sum(
+                g.get("usage_complete") is False or g.get("token_usage") is None
+                for r in group
+                for g in r["generations"]
+            )
         result["conditions"].append(summary)
         if complete:
-            destination = (
-                output / "conditions" / (model.replace("/", "__") + "__" + effort)
-            )
+            label = model.replace("/", "__") + "__" + effort
+            destination = output / "conditions" / label
             destination.mkdir(parents=True, exist_ok=True)
             ordered = sorted(group, key=lambda r: config["names"].index(r["name"]))
             (destination / "selected_candidates.jsonl").write_text(
@@ -150,6 +176,7 @@ def _report(output, config):
         if not (path.parent.parent / "result.json").exists():
             state = read(path)
             inp = path.parent.parent / "input.json"
+            current = read(inp) if inp.exists() else {}
             result["active"].append(
                 {
                     **{
@@ -162,8 +189,8 @@ def _report(output, config):
                             "updated_at",
                         )
                     },
-                    "model": read(inp)["model"] if inp.exists() else None,
-                    "effort": read(inp)["effort"] if inp.exists() else None,
+                    "model": current.get("model"),
+                    "effort": current.get("effort"),
                     "best_score": state["best_evaluation"]["scores"]["combined_pct"],
                 }
             )
@@ -210,9 +237,13 @@ def _report(output, config):
         "",
         "## Estimated API-equivalent cost",
         "",
-        "Standard rates, short context per underlying request, no regional premium. Reasoning is included in output. These are estimates from reported usage, not Codex invoices or certified competition accounting. Every problem must fit $3; an affordable average is insufficient. Running cells are excluded until terminal usage is available. Unknown usage stays unknown.",
+        (
+            "Standard rates, short context per underlying request, no regional premium. Reasoning is included in output. Best-effort estimates combine reported usage with explicitly recorded estimates for missing counters. The budget is an approximate per-problem target; unreported spending remains flagged. Running cells are excluded."
+            if config.get("usage_policy") == "best_effort"
+            else "Standard rates, short context per underlying request, no regional premium. Reasoning is included in output. These are estimates from reported usage, not Codex invoices or certified competition accounting. Every problem must fit $3; an affordable average is insufficient. Running cells are excluded until terminal usage is available. Unknown usage stays unknown."
+        ),
         "",
-        "| Model / effort | Priced terminal problems | Mean / problem | Maximum / problem | Problems over $3 |",
+        "| Model / effort | Estimated terminal problems | Mean / problem | Maximum / problem | Problems over $3 |",
         "| --- | ---: | ---: | ---: | ---: |",
     ]
     for c in result["conditions"]:
@@ -220,19 +251,27 @@ def _report(output, config):
         lines.append(
             f"| {c['model']} / {c['effort']} | {cost['known_cost_problems']}/{c['terminal']} | {display(cost['mean_observed_usd'], ' USD')} | {display(cost['max_observed_usd'], ' USD')} | {len(cost['over_budget_problems'])} |"
         )
+    if config.get("usage_policy") == "best_effort":
+        uncertain = sum(
+            len(c["cost"]["incomplete_usage_problems"]) for c in result["conditions"]
+        )
+        lines += [
+            "",
+            f"Best-effort usage policy: {uncertain} terminal problems include estimated missing usage. Failed requests without partial output are estimated at zero; partial responses and compaction use recorded payload estimates. Reported counters and missing-usage flags are retained. The per-problem budget is an approximate cost target.",
+        ]
     lines += [
         "",
-        "## Completed cells",
+        "## Terminal cells",
         "",
-        "| Theorem | Model / effort | Score | Change from historical | Tool checks |",
-        "| --- | --- | ---: | ---: | ---: |",
+        "| Theorem | Model / effort | Status | Score | Change from historical | Tool checks |",
+        "| --- | --- | --- | ---: | ---: | ---: |",
     ]
     for r in sorted(
         records,
         key=lambda r: (config["names"].index(r["name"]), r["model"], r["effort"]),
     ):
         lines.append(
-            f"| {r['name']} | {r['model']} / {r['effort']} | {r['selected_evaluation']['scores']['combined_pct']:.6f}% | {display(r['gain_over_historical_pp'], ' pp', signed=True)} | {r['agent_tool_checks']} |"
+            f"| {r['name']} | {r['model']} / {r['effort']} | {r['status']} | {r['selected_evaluation']['scores']['combined_pct']:.6f}% | {display(r['gain_over_historical_pp'], ' pp', signed=True)} | {r['agent_tool_checks']} |"
         )
     lines += [
         "",

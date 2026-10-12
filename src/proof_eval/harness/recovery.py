@@ -9,6 +9,7 @@ from pathlib import Path
 from proof_eval.evidence.io import fingerprint, now, read, write_json, write_jsonl
 from proof_eval.providers.monitoring import verified_stream_stop
 from proof_eval.providers.registry import adapter
+from proof_eval.providers.response_usage import reconcile_usage
 from proof_eval.providers.retries import reconnect_notice
 from proof_eval.verification.api import Evaluator
 
@@ -71,6 +72,16 @@ def _generation(folder: Path, provider: str) -> dict:
             request["model"], request["reasoning_effort"]
         )
     parsed = module.parse_events(events, final, 0, **kwargs)
+    if provider == "codex":
+        request = read(folder / "request.json")
+        if request["cli"].get("response_usage_schema_version") in (1, 2):
+            parsed = reconcile_usage(
+                folder,
+                events,
+                request["model"],
+                parsed,
+                schema_version=request["cli"]["response_usage_schema_version"],
+            )
     if parsed["status"] == "received":
         final_path.write_text(parsed["content"])
     elif (

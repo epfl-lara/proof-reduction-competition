@@ -45,6 +45,8 @@ def run_cell(
     generator: AgentGenerator = generate,
 ) -> dict:
     """Run a theorem under its track budget, including custom generators."""
+    if config.get("first_attempt_condition") is not None:
+        raise ValueError("Mixed-model search is retired; saved runs are read-only")
     if "problem_timeout_seconds" in config or config.get("budget_tracking") is not None:
         from .budget import run_cell as supervised_cell
 
@@ -76,6 +78,8 @@ def _run_cell(
     generator: AgentGenerator = generate,
 ) -> dict:
     """Internal worker; new configurations require the supervisor's budget marker."""
+    if config.get("first_attempt_condition") is not None:
+        raise ValueError("Mixed-model search is retired; saved runs are read-only")
     mode = config["mode"]
     folder = output / "cells" / fingerprint((pack["name"], model, effort, mode))
     folder.mkdir(parents=True, exist_ok=True)
@@ -324,12 +328,13 @@ def _run_cell(
                     transport_restarts_used=transport_restarts_used,
                 )
                 if stop is None:
-                    delay = RECOVERY_BACKOFF_SECONDS * 2 ** min(
-                        transport_restarts_used, 5
-                    )
-                    transport_restarts_used += 1
-                    # The supervisor owns this wait and retains the same deadline.
-                    time.sleep(delay)
+                    if generation.get("termination") != "cost_limit":
+                        delay = RECOVERY_BACKOFF_SECONDS * 2 ** min(
+                            transport_restarts_used, 5
+                        )
+                        transport_restarts_used += 1
+                        # The supervisor owns this wait and retains the same deadline.
+                        time.sleep(delay)
                     continue
                 record_stop(folder, stop, round_number, at_epoch=decision_epoch)
                 break

@@ -39,6 +39,19 @@ def retryable_transport_failure(generation: dict) -> bool:
                     "websocket closed by server before response.completed",
                 )
             )
+            or (
+                generation.get("response_usage_schema_version") in (1, 2)
+                and (
+                    message.startswith(
+                        "stream disconnected before completion: An error occurred while processing your request."
+                    )
+                    or message
+                    in (
+                        "Selected model is at capacity. Please try a different model.",
+                        "We’re currently experiencing high demand, which may cause temporary errors.",
+                    )
+                )
+            )
         )
         for message in messages
     )

@@ -98,13 +98,11 @@ from proof_eval.harness.runner import run
 report = run(RunConfig(
     output=Path("results/harness/my_sol_run"),
     conditions=(("gpt-6.1-sol", "max"),),
-    workers=10,
-    pilot=True,
 ))
 ```
 
 `RunConfig` also accepts explicit dataset, environment, cache, reference-export
-and prepared-input paths, plus `names` for a pilot/subset. A subset retains the
+and prepared-input paths, plus `names` for an explicit subset. A subset retains the
 full declared denominator and has no full-cohort mean. A prepared-input directory
 contains `config.json` with the complete `names`, dataset/environment hashes,
 per-name context identities and source pins, plus `inputs/*.json`. Each input pack
@@ -112,6 +110,14 @@ contains `name`, its unchanged dataset `row`, the validated deterministic `proof
 and `incumbent` evaluation including references, and `source_context`. The default
 uses the already frozen warm-up packs. Pass another directory with `base=...` or
 `--base` for another prepared batch; references are still required in the cache.
+
+Model batches have no pilot option or gate. After cached-reference and runtime
+preflight, the runner queues every selected theorem with exactly five parallel
+workers for Codex and the other closed providers, or three for Lemex. The
+Python configuration resolves this fixed provider policy; an explicit workers
+value is accepted only when it matches. An incomplete theorem or worker
+exception records a cell failure without cancelling other queued theorems.
+The batch reports every outcome and remains incomplete if any cell is incomplete.
 
 Set `provider="lemex"`, `provider="claude"` or `provider="agy"` to select a
 native CLI. Omitted conditions default to DeepSeek V4.1 Flash/high, Opus
@@ -181,7 +187,7 @@ open models (Qwen and DeepSeek) and `"cost"` for closed models. Resolved
 `RunConfig.problem_timeout_seconds` is 3420 (57 minutes) for time tracking and
 `None` for cost tracking. A numeric timeout explicitly adds a watchdog to cost
 tracking; there is no implicit provider or whole-problem timeout in cost-only
-search. Open-model runs receive no spending guard. New configurations use schema 6;
+search. Open-model runs receive no spending guard. New configurations use schema 8;
 historical configuration and result bytes retain their original budgets.
 
 The declarative `MODEL_TRACKS` table in `providers/registry.py` is independent
@@ -204,17 +210,25 @@ or Lean calls. Final cleanup may be skipped or interrupted; this is explicit in
 the result and audited. Deadline stops are complete bounded search outcomes,
 with `generation_status="budget_exhausted"` if no native final arrived; transport
 failures and unknown interruptions remain incomplete. Missing usage stays
-unknown. A pilot with no host checks cannot unlock the full cohort.
+unknown. Those stopping conditions apply to the affected theorem; other queued
+theorems continue independently.
 
 The 57-minute allocation is our chosen conservative budget derived from the
 saved open-track 48-hour/50-problem total, not an organizer per-problem rule.
+
+Each condition keeps one model and effort throughout its search. There is no
+first-attempt model override. Retired mixed-model runs remain read-only:
+`harness/archived_schedules.py` preserves their model identities and cost schemas
+for saved-evidence audits, and reporting returns their existing archived report.
+New search, resume and incumbent/budget imports cannot activate that schedule.
 
 Automatic tracking admits fresh attempts after successful native completion.
 Select `"cost"` or `"time"` with `--budget-tracking`, `--track-cost` or
 `--track-time` to override the track. Python callers can explicitly select `None`
 to end at voluntary completion under a time limit. Indeterminate requests, permanent failures and unavailable host
 checks stop admission. Terminal transient transport failures have the separate
-bounded recovery policy below. Cost tracking also stops on missing cost counters. The fresh prompt has exactly one
+bounded recovery policy below. Strict cost tracking also stops on missing cost
+counters. The fresh prompt has exactly one
 system message and one user message; its incumbent declaration/scores and
 `candidate.lean` come from the best proof in the shared verified ledger.
 `reset_for_attempt()` clears both the finish marker and saved session state.
@@ -225,9 +239,13 @@ include every attempt. Each native Codex session receives the remaining dollars
 converted to weighted input/output tokens, conservatively using cache-write and
 long-context rates. Claude receives `--max-budget-usd` for the remaining dollars.
 These native guards check between upstream responses; an in-flight response can
-overshoot. Native guard exhaustion is a controlled `cost_limit` outcome and is
-never resampled. Missing native terminal usage remains unknown, including on
-controlled stops. `budget_enforced` is true only for time tracking; cost results
+overshoot. Native guard exhaustion is a controlled `cost_limit` boundary. Strict
+tracking stops there; best-effort Codex tracking can admit a fresh session from
+the verified incumbent while its cumulative estimate remains below the dollar
+target, using the existing optimization restart limit and remaining dollars.
+Missing native terminal usage remains explicitly unreported,
+including on controlled stops; best-effort accounting may retain a numeric
+estimate. `budget_enforced` is true only for time tracking; cost results
 record `hard_cost_cap=false` and `cost_enforcement="native_response_boundaries"`.
 The policy does not claim a strict invoice cap or override sampling defaults.
 
@@ -235,12 +253,45 @@ The policy does not claim a strict invoice cap or override sampling defaults.
 classifies observed terminal transient failures; incomplete request markers,
 authentication/model failures and malformed finals are excluded. Native Lemex
 uses four HTTP retries and five stream retries. A successful final following a
-native reconnect remains successful, with the reconnect events preserved and
-`usage_complete=false` because interrupted upstream usage may be unreported.
+native reconnect remains successful, with the reconnect events preserved.
+Historical exec-only accounting marks any reconnect's usage incomplete. New
+Codex 0.162+ identities pin response-usage schema 2 and enable native local
+request tracing in the isolated workspace. `providers/response_usage.py`
+reconciles completed-response counters, explicit capacity/rate-limit refusals
+without partial output, and the native final; it writes the host-owned
+`response_usage.json`. Hidden first retries are included in this trace. Every
+complete inference counter is retained across compaction, failed turns and
+native budget stops. Compaction and failed requests without counters remain
+explicitly unknown rather than erasing the known subtotal. The saved-evidence
+auditor rebuilds accounting and verifies trace/payload hashes according to each
+record's schema; schema-1 evidence and historical bytes remain unchanged.
+
+Schema-8 configurations pin `RunConfig.usage_policy` / `--usage-policy`.
+New Codex cost runs default to `"best_effort"`; `"strict"` preserves the policy
+of stopping admission when cumulative reported usage is incomplete. Configurations
+without this field retain strict behavior. Best-effort accounting keeps reported
+`token_usage` separate from per-request heuristics in `usage_estimates` and the
+combined `estimated_token_usage` used for budget pricing. For compaction, estimated
+input uses the nearest preceding complete inference input plus output, and
+estimated output uses the nearest following complete inference input, a
+conservative proxy that includes retained context. The estimation record pins
+the source call IDs and counter fields. If a neighbor is absent, that side uses
+canonical UTF-8 JSON bytes divided by four, rounded up; partial responses without
+counters use the same byte heuristic. Unreported input is assumed uncached.
+Failed requests without partial output receive an explicit zero-cost estimate;
+explicit capacity/rate-limit refusals remain classified as rejected requests
+under the existing refusal policy. These are reproducible
+assumptions, not reported counters or guaranteed bounds; encrypted payloads can
+distort the byte heuristic. Numeric incomplete costs retain unknown-request
+flags and their estimation basis. Missing or inconsistent evidence without a
+usable estimate still blocks admission.
 Host recovery after native exhaustion starts a fresh session from the shared
 best-proof ledger with bounded backoff, never a replenished track budget. The attempt
 auditor checks each admission, predecessor failure, incumbent and time budget.
-Cost tracking admits no recovery when cumulative spending is unknown.
+Strict cost tracking admits no recovery when cumulative spending is unknown.
+Best-effort tracking may recover an observed terminal transient failure while
+its numeric cumulative estimate remains below the original problem budget.
+Neither policy permits recovery of an indeterminate or active request.
 
 `RunConfig.incumbents_from` / `--incumbents-from` supports an explicitly launched
 new output using a previous run's best proofs. `harness/incumbents.py` pins the
@@ -257,10 +308,12 @@ configuration and deadline bytes. Cumulative pricing includes all prior
 generations, including failed calls; any explicitly configured original problem
 deadline is restored. Cost-only carryover pins the prior spending and creates
 no deadline marker.
-The same-condition best verified proof supplies the incumbent. Changed fixed
-inputs, unknown cumulative usage, active batches and started cells without a
-terminal result block continuation. Audit checks both the carried spending and
-the unchanged deadline.
+The same-condition best verified proof supplies the incumbent. The source and
+destination must use the same usage policy; a historical configuration without
+the field requires `--usage-policy strict`. Changed fixed inputs, cumulative
+usage that the selected policy cannot price, active batches and started cells
+without a terminal result block continuation. Audit checks both the carried
+spending and the unchanged deadline.
 
 Time tracking uses the single persisted whole-problem deadline. If none exists,
 the supervisor creates it before dispatch; resume always reuses it.
@@ -274,13 +327,18 @@ admitted attempts (default 23: 20 optimization restarts, two terminal transport
 recoveries and one initial attempt). Native retries remain within their session.
 Exhausted cumulative cost, insufficient money for one conservatively priced
 output token, cleanup reserve,
-unknown usage and the restart safety limit have separate host stopping reasons.
+usage that the selected policy cannot price, and the restart safety limit have
+separate host stopping reasons.
 Final deterministic cleanup receives the best proof found across all attempts.
 
 `ProofToolService` exposes the session over a Unix socket. A standalone
 `harness/client.py` is copied to the model workspace as `tools.py`. Landlock limits
 model-process writes to its workspace/runtime; the host writes measurement
-evidence and temporarily compiles inside the pinned projects. The model gets
+evidence and temporarily compiles inside the pinned projects. The tool service
+waits for accepted requests to finish before closing an attempt, including when
+a native cost stop disconnects the model during a Lean check. This keeps the
+attempt's check boundary and the next incumbent consistent with the host ledger.
+The process supervisor still enforces any configured whole-problem deadline. The model gets
 source and goal tools and ordinary shell tools. Deterministic cleanup is a host
 operation at the end, not an agent tool. The initial seed is the better validated
 original or saved deterministic proof.
@@ -303,6 +361,9 @@ markers, CLI events and terminal responses are durable. An interrupted started
 request is recorded as indeterminate and is never silently sampled again.
 Codex's CLI does not provide this experiment with a hard output-token cap or
 temperature control. The active configurations are Sol 6.1/max and Astra/max.
+For CLI 0.162 and later, Codex preparation also checks and fingerprints the
+executable `codex-code-mode-host` companion. An incomplete copied CLI bundle
+fails before a model request can start.
 
 ```python
 from proof_eval.providers.costs import CostConfig, estimate_token_cost
@@ -313,7 +374,10 @@ cost = estimate_token_cost(CostConfig("gpt-6.1-sol", "max"), saved_token_usage)
 
 `estimate_configuration()` reprices complete saved traces as a scenario;
 `proof-harness estimate --provider claude` works before model or Lean calls.
-`generations_cost()` includes every attempt. Missing usage remains unknown.
+`generations_cost()` includes every attempt. Missing reported usage remains
+unknown. The pinned best-effort Codex policy can price separately recorded
+estimates and return an explicitly incomplete numeric total for budget decisions;
+strict policy keeps that total unknown. Neither policy certifies an invoice cap.
 Codex prices remain the pinned 2026-10-04 list-price assumptions. Opus 5.5 rates
 verified on 2026-10-05 are $4 input / $20 output per million, $0.20 cache reads,
 $5 five-minute writes and $8 one-hour writes, from
@@ -426,7 +490,7 @@ one `{"name": ..., "proof": "complete declaration"}` object per line.
 | `src/report_experiments.py` | `proof-report` |
 | `src/run_agent_harness.py` | `proof-harness run/prepare/estimate/report` |
 | `src/audit_agent_harness.py` | `proof-harness audit` |
-| `src/continue_agent_harness.py` | `proof-harness run --pilot` |
+| `src/continue_agent_harness.py` | `proof-harness run` |
 | `src/rcp.py` | retired; native Lemex via `proof-harness --provider lemex` |
 
 Other one-shot, repair, per-model and analysis drivers are retired. Their saved

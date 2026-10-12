@@ -39,7 +39,12 @@ class ProofToolService:
                     pass
 
         self.server = socketserver.ThreadingUnixStreamServer(self.socket_path, Handler)
-        self.server.daemon_threads = True
+        # A native cost stop can exit while a host Lean check is still running.
+        # Drain accepted handlers before the attempt records its final ledger
+        # boundary or starts a new session. Wall deadlines remain supervised
+        # by the worker's process-level deadline, including these host checks.
+        self.server.daemon_threads = False
+        self.server.block_on_close = True
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
 
     def __enter__(self):

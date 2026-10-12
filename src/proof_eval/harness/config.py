@@ -7,7 +7,11 @@ from pathlib import Path
 from typing import Literal
 
 from proof_eval.paths import ROOT
-from proof_eval.providers.registry import DEFAULT_CONDITIONS, validate
+from proof_eval.providers.registry import (
+    DEFAULT_CONDITIONS,
+    PROVIDER_WORKERS,
+    validate,
+)
 
 from .configuration import (
     BASE,
@@ -17,6 +21,7 @@ from .configuration import (
 )
 from .semantic import SemanticSearchConfig
 from .tracking import BudgetTracking, resolve_budgets, validate_budgets
+from .usage_policy import UsagePolicy, resolve_usage_policy
 
 
 @dataclass(frozen=True)
@@ -26,7 +31,7 @@ class RunConfig:
     provider: Literal["codex", "lemex", "claude", "agy"] = "codex"
     names: tuple[str, ...] = ()
     mode: str = DEFAULT_MODE
-    workers: int = 5
+    workers: int | None = None
     problem_timeout_seconds: float | None = None
     budget_tracking: BudgetTracking = "auto"
     budget_usd_per_problem: float = 3.0
@@ -42,9 +47,9 @@ class RunConfig:
         ROOT / "results/deterministic/00_reference_baseline/reference_values.jsonl"
     )
     action: Literal["run", "estimate", "prepare", "report"] = "run"
-    pilot: bool = False
     semantic_search: SemanticSearchConfig | bool | None = True
     web_search: bool = True
+    usage_policy: UsagePolicy | None = None
 
     def __post_init__(self) -> None:
         if type(self.web_search) is not bool:
@@ -66,8 +71,15 @@ class RunConfig:
                 raise ValueError("Unknown agent provider: " + self.provider) from None
         if self.mode not in RUN_MODES:
             raise ValueError("Unsupported or retired search mode: " + self.mode)
-        if type(self.workers) is not int or self.workers < 1:
-            raise ValueError("workers must be a positive integer")
+        try:
+            workers = PROVIDER_WORKERS[self.provider]
+        except KeyError:
+            raise ValueError("Unknown agent provider: " + self.provider) from None
+        if self.workers is not None and (
+            type(self.workers) is not int or self.workers != workers
+        ):
+            raise ValueError(f"{self.provider} batches use exactly {workers} workers")
+        object.__setattr__(self, "workers", workers)
         if self.action not in ("run", "estimate", "prepare", "report"):
             raise ValueError("Unknown harness action")
         if not self.conditions or len(set(self.conditions)) != len(self.conditions):
@@ -78,6 +90,11 @@ class RunConfig:
         )
         object.__setattr__(self, "budget_tracking", tracking)
         object.__setattr__(self, "problem_timeout_seconds", timeout)
+        object.__setattr__(
+            self,
+            "usage_policy",
+            resolve_usage_policy(self.usage_policy, self.provider, tracking),
+        )
         validate_budgets(
             self.budget_tracking,
             self.budget_usd_per_problem,
@@ -85,8 +102,6 @@ class RunConfig:
             self.problem_timeout_seconds,
             self.conditions,
         )
-        if self.provider == "lemex" and self.workers > 5:
-            raise ValueError("Lemex permits at most five simultaneous gateway sessions")
         if (
             type(self.max_transport_restarts) is not int
             or not 0 <= self.max_transport_restarts <= 20

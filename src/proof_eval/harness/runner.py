@@ -44,6 +44,7 @@ def run(args: RunConfig) -> dict:
             problem_timeout_seconds=args.problem_timeout_seconds,
             budget_tracking=args.budget_tracking,
             budget_usd_per_problem=args.budget_usd_per_problem,
+            usage_policy=args.usage_policy,
             max_budget_restarts=args.max_budget_restarts,
             max_transport_restarts=args.max_transport_restarts,
             incumbents_from=args.incumbents_from,
@@ -97,22 +98,6 @@ def run(args: RunConfig) -> dict:
             },
         )
         try:
-            if args.pilot:
-                from .audit import audit
-
-                for model, effort in config["conditions"]:
-                    pilot = run_cell(
-                        output, config, packs[selected[0]], model, effort, evaluator
-                    )
-                    if pilot["status"] != "complete" or (
-                        pilot.get("generation_status") == "budget_exhausted"
-                        and not pilot.get("agent_tool_checks")
-                    ):
-                        raise RuntimeError(
-                            "Pilot incomplete; full cohort was not launched"
-                        )
-                write_json(output / "pilot_audit.json", audit(output))
-                report(output, config)
             with ThreadPoolExecutor(max_workers=args.workers) as pool:
                 futures = {
                     pool.submit(
@@ -140,10 +125,14 @@ def run(args: RunConfig) -> dict:
                             flush=True,
                         )
                         if result["status"] != "complete":
+                            stop = result.get("stop") or {}
                             failures.append(
                                 {
                                     "cell": futures[future],
-                                    "error": result["generation_status"],
+                                    "error": stop.get("reason")
+                                    or result["generation_status"],
+                                    "generation_status": result["generation_status"],
+                                    "stop_kind": stop.get("kind"),
                                 }
                             )
                     except Exception as error:
@@ -153,8 +142,6 @@ def run(args: RunConfig) -> dict:
                                 "error": f"{type(error).__name__}: {error}",
                             }
                         )
-                        for pending in futures:
-                            pending.cancel()
                     report(output, config)
         except Exception as error:
             failures.append({"error": f"{type(error).__name__}: {error}"})

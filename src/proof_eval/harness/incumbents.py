@@ -20,6 +20,8 @@ def freeze_incumbents(source: Path | None, config: dict, packs: dict) -> dict:
     source = source.resolve()
     path = source / "config.json"
     previous = read(path)
+    if previous.get("first_attempt_condition") != config.get("first_attempt_condition"):
+        raise ValueError("Incumbent source has another attempt schedule")
     for field in (
         "provider",
         "mode",

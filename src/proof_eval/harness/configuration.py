@@ -31,6 +31,7 @@ from .tracking import (
     resolve_budgets,
     validate_budgets,
 )
+from .usage_policy import UsagePolicy, resolve_usage_policy
 
 BASE = ROOT / "results/one_shot/01_context_ablation"
 OUTPUTS = {
@@ -191,6 +192,7 @@ def prepare(
     problem_timeout_seconds: float | None = None,
     budget_tracking: BudgetTracking = "auto",
     budget_usd_per_problem: float = 3.0,
+    usage_policy: UsagePolicy | None = None,
     max_budget_restarts: int = 20,
     max_transport_restarts: int = 2,
     incumbents_from: Path | None = None,
@@ -206,6 +208,7 @@ def prepare(
     budget_tracking, problem_timeout_seconds = resolve_budgets(
         budget_tracking, problem_timeout_seconds, conditions
     )
+    usage_policy = resolve_usage_policy(usage_policy, provider, budget_tracking)
     validate_budgets(
         budget_tracking,
         budget_usd_per_problem,
@@ -227,7 +230,7 @@ def prepare(
     for relative, expected in base["code_sha256"].items():
         _implementation(relative, expected, ROOT, SNAPSHOTS, "frozen input preparation")
     config = {
-        "schema_version": 6,
+        "schema_version": 8,
         "attempt_evidence_version": ATTEMPT_EVIDENCE_VERSION,
         "provider": provider,
         "mode": mode,
@@ -287,11 +290,16 @@ def prepare(
         },
         "budget_usd_per_problem": float(budget_usd_per_problem),
         "budget_tracking": budget_tracking,
+        "usage_policy": usage_policy,
         "budget_enforced": budget_tracking == "time",
         "cost_budget_policy": (
-            "Host watches streamed usage at Gemini API-equivalent rates and stops the child at the remaining per-problem cap; cumulative attempt admission shares the same budget; an in-flight response may overshoot; unknown usage is never zero"
-            if provider == "agy" and budget_tracking == "cost"
-            else "native guard between upstream responses plus cumulative attempt admission; an in-flight response may overshoot; unknown usage is never zero"
+            "native guard between upstream responses plus cumulative best-effort API-equivalent estimates; failed requests without partial output are estimated at zero, missing compaction/partial usage is estimated from saved payloads; unreported cost remains flagged and the target is approximate"
+            if usage_policy == "best_effort"
+            else (
+                "Host watches streamed usage at Gemini API-equivalent rates and stops the child at the remaining per-problem cap; cumulative attempt admission shares the same budget; an in-flight response may overshoot; unknown usage is never zero"
+                if provider == "agy" and budget_tracking == "cost"
+                else "native guard between upstream responses plus cumulative attempt admission; an in-flight response may overshoot; unknown usage is never zero"
+            )
         ),
         "cleanup_reserve_seconds": CLEANUP_RESERVE_SECONDS,
         "max_budget_restarts": int(max_budget_restarts),

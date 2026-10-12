@@ -15,14 +15,17 @@ from proof_eval.providers import agy, claude
 from proof_eval.providers.costs import rate_card
 from proof_eval.providers.events import parse_events
 from proof_eval.providers.monitoring import read_events, verified_stream_stop
+from proof_eval.providers.response_usage import audit_usage
 from proof_eval.providers.spending import native_cost_stop
 from proof_eval.verification.feedback import all_versions_passed
 
+from .archived_schedules import attempt_condition, validate_archive
 from .attempts import attempt_folders
 from .carryover import audit_deadline
 from .incumbents import select_seed
 from .tracking import attempt_cost
 from .tracking_audit import audit_attempts
+from .usage_policy import resolve_usage_policy
 from .web_audit import audit_web
 
 
@@ -145,6 +148,18 @@ def _audit_agy_terminal(folder: Path, generation: dict, request: dict) -> None:
 
 def audit(output: Path) -> dict:
     config = read(output / "config.json")
+    if "usage_policy" in config:
+        _require(
+            config.get("schema_version") == 8
+            and config["usage_policy"]
+            == resolve_usage_policy(
+                config["usage_policy"],
+                config.get("provider", "codex"),
+                config.get("budget_tracking"),
+            ),
+            "Unpinned or invalid usage accounting policy",
+        )
+    validate_archive(config)
     dataset_path = Path(
         config.get("dataset_path", ROOT / "data/benchmark_data_warmup.jsonl")
     )
@@ -219,6 +234,11 @@ def audit(output: Path) -> dict:
     web_counts = {"requests": 0, "retrieved": 0, "errors": 0, "interrupted": 0}
     for path in sorted((output / "cells").glob("*/result.json")):
         result = read(path)
+        _require(
+            result.get("first_attempt_condition")
+            == config.get("first_attempt_condition"),
+            "Result attempt schedule differs from its frozen configuration",
+        )
         name = result["name"]
         key = (name, result["model"], result["effort"], result["mode"])
         _require(
@@ -704,9 +724,14 @@ def audit(output: Path) -> dict:
                 )
                 continue
             req = read(folder / "request.json")
+            number = int(folder.name.removeprefix("attempt_"))
+            expected_model, expected_effort = attempt_condition(
+                config, result["model"], result["effort"], number
+            )
             _require(
-                ((req["model"], req["reasoning_effort"], req["mode"]) == key[1:]),
-                str("Saved harness evidence is inconsistent at audit line 303"),
+                (req["model"], req["reasoning_effort"], req["mode"])
+                == (expected_model, expected_effort, result["mode"]),
+                "Request model/effort differs from the frozen attempt schedule",
             )
             _require(
                 (req["tool_instructions"] == config["tool_instructions"]),
@@ -749,6 +774,36 @@ def audit(output: Path) -> dict:
                 parsed = parse_events(
                     events, gen.get("content", ""), gen.get("returncode", 0)
                 )
+                if (
+                    req["cli"].get("response_usage_schema_version") in (1, 2)
+                    and gen.get("status") == "received"
+                ):
+                    _require(
+                        gen.get("response_usage_schema_version")
+                        == req["cli"]["response_usage_schema_version"],
+                        "Successful native response is missing request usage evidence",
+                    )
+                if gen.get("response_usage_schema_version") is not None:
+                    _require(
+                        gen["response_usage_schema_version"] in (1, 2)
+                        and gen["response_usage_schema_version"]
+                        == req["cli"].get("response_usage_schema_version"),
+                        "Unpinned native response usage version",
+                    )
+                    parsed = audit_usage(folder, events, req["model"], parsed)
+                    for field in (
+                        "response_usage_schema_version",
+                        "response_usage_sha256",
+                        "token_usage",
+                        "structurally_valid",
+                        "estimated_usage_complete",
+                        "estimated_token_usage",
+                        "usage_estimates",
+                    ):
+                        _require(
+                            parsed.get(field) == gen.get(field),
+                            "Native response usage changed: " + field,
+                        )
                 for field in (
                     "events_errors",
                     "recovered_transport_errors",
@@ -812,6 +867,8 @@ def audit(output: Path) -> dict:
                             .splitlines()
                         ]
                         parsed = parse_events(events, gen["content"], 0)
+                        if gen.get("response_usage_schema_version") is not None:
+                            parsed = audit_usage(folder, events, req["model"], parsed)
                         _require(
                             parsed["status"] == "received"
                             and parsed["codex_usage"] == gen["codex_usage"],

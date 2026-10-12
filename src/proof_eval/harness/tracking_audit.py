@@ -14,6 +14,7 @@ from proof_eval.providers.monitoring import read_events, verified_stream_stop
 from proof_eval.providers.retries import recovery_count
 from proof_eval.providers.spending import native_cost_guard, native_cost_stop
 
+from .archived_schedules import attempt_condition
 from .attempts import attempt_folders
 from .prompts import budget_suffix
 from .tracking import (
@@ -87,6 +88,15 @@ def audit_attempts(
             }
         )
         messages = request["messages"]
+        scheduled_model, scheduled_effort = attempt_condition(
+            config, result["model"], result["effort"], number
+        )
+        if config.get("first_attempt_condition") is not None:
+            _require(
+                (record.get("model"), record.get("effort"))
+                == (scheduled_model, scheduled_effort),
+                "Attempt boundary model/effort differs from the frozen schedule",
+            )
         _require(
             [message["role"] for message in messages] == ["system", "user"],
             "Restart leaked conversation history",
@@ -230,7 +240,7 @@ def audit_attempts(
             guard = native_cost_guard(
                 config["provider"],
                 CostConfig(
-                    result["model"], result["effort"], **config["cost_assumptions"]
+                    scheduled_model, scheduled_effort, **config["cost_assumptions"]
                 ),
                 config["budget_usd_per_problem"] - total,
             )
@@ -297,7 +307,10 @@ def audit_attempts(
                 or native_cost_guard(
                     config["provider"],
                     CostConfig(
-                        result["model"], result["effort"], **config["cost_assumptions"]
+                        *attempt_condition(
+                            config, result["model"], result["effort"], 0
+                        ),
+                        **config["cost_assumptions"],
                     ),
                     config["budget_usd_per_problem"],
                 ).get("limit_tokens")

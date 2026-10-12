@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from proof_eval.evidence.io import digest, fingerprint, read, write_json
-from proof_eval.providers.costs import CostConfig, generations_cost
 
 
 def _key(config: dict, name: str, model: str, effort: str) -> str:
@@ -46,10 +45,15 @@ def freeze_carryover(source: Path | None, config: dict, packs: dict) -> dict:
     if source is None:
         return {}
     from .audit import audit
+    from .tracking import attempt_cost
 
     source = source.resolve()
     previous_path = source / "config.json"
     previous = read(previous_path)
+    if previous.get("usage_policy", "strict") != config.get("usage_policy", "strict"):
+        raise ValueError("Carried budget changed the usage accounting policy")
+    if previous.get("first_attempt_condition") != config.get("first_attempt_condition"):
+        raise ValueError("Carried budget belongs to another attempt schedule")
     run = read(source / "run.json")
     if run["status"] == "running":
         raise ValueError("Cannot carry budgets from a running batch")
@@ -90,14 +94,13 @@ def freeze_carryover(source: Path | None, config: dict, packs: dict) -> dict:
                     )
                 continue
             result = read(result_path)
-            generations = (
-                carried_generations(previous, name, model, effort)
-                + result["generations"]
-            )
-            cost = generations_cost(
-                CostConfig(model, effort, **config["cost_assumptions"]),
-                generations,
-                budget_usd=config["budget_usd_per_problem"],
+            cost = attempt_cost(
+                previous,
+                model,
+                effort,
+                result["generations"],
+                name=name,
+                final=True,
             )
             if cost["total_usd"] is None:
                 raise ValueError(

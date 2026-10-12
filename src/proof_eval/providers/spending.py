@@ -12,6 +12,7 @@ from decimal import ROUND_FLOOR, Decimal
 from math import isfinite
 
 from .costs import GEMINI_MODEL, RATES, TIERS, CostConfig, rate_card
+from .retries import reconnect_notice
 
 
 def native_cost_guard(provider: str, config: CostConfig, remaining_usd: float) -> dict:
@@ -83,7 +84,11 @@ def native_cost_stop(provider: str, events: list[dict], guard: dict | None) -> b
     if guard is None:
         return False
     if provider == "codex":
-        failures = [e for e in events if e.get("type") in ("error", "turn.failed")]
+        failures = [
+            e
+            for e in events
+            if e.get("type") in ("error", "turn.failed") and not reconnect_notice(e)
+        ]
         return bool(failures) and all(
             (e.get("message") or e.get("error", {}).get("message"))
             == "shared rollout token budget exhausted"

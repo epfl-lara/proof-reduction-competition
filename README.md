@@ -27,7 +27,7 @@ python -m pip install -e '.[dev,semantic]'
 # Prepare the index and Qwen/Qwen3-Embedding-0.6B cache before running.
 lean-explore data fetch
 proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
-  --semantic-search --pilot --workers 3 --output results/harness/my_qwen_tools_run
+  --semantic-search --output results/harness/my_qwen_tools_run
 ```
 
 Semantic discovery only reads already cached assets and freezes their hashes
@@ -51,8 +51,8 @@ with setup guidance rather than silently reducing the tool set.
 proof-harness estimate --condition gpt-6.1-sol:max \
   --output results/harness/my_sol_run
 
-# Audit one theorem first, then run all 15. Repeating reuses completed cells.
-proof-harness run --condition gpt-6.1-sol:max --pilot --workers 10 \
+# Run all 15 with five parallel workers. Repeating reuses completed cells.
+proof-harness run --condition gpt-6.1-sol:max \
   --output results/harness/my_sol_run
 
 # Saved evidence only.
@@ -75,14 +75,21 @@ wall deadline, the entire cohort can hold its pinned files for hours or days.
 RCP's shared five-request cap remains its throughput limiter across batches and
 clients.
 
+Batches queue the full selected cohort directly. Codex and the other closed
+providers use exactly five parallel workers; Lemex uses exactly three. For 15
+theorems, these are five slots across three groups or three slots across five
+groups. There is no model-run pilot option or gate. An incomplete theorem or
+worker failure is recorded while the remaining queued theorems continue.
+The selected usage policy controls admission when usage counters are missing.
+
 `--budget-tracking auto` is the default. Choose `--track-cost` or `--track-time` explicitly to override the track policy, and use a new output directory when changing settings:
 
 ```bash
 proof-harness run --condition gpt-6.1-sol:max --track-cost --budget-usd 3 \
-  --pilot --output results/harness/my_sol_cost_run
+  --output results/harness/my_sol_cost_run
 
 proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
-  --track-time --pilot --workers 5 --output results/harness/my_qwen_time_run
+  --track-time --output results/harness/my_qwen_time_run
 ```
 
 `--budget-tracking cost` and `--budget-tracking time` are the long forms. Each
@@ -95,7 +102,7 @@ Time-limited restarts stop when at most 30 seconds remain for final cleanup;
 this reserve is inert in cost-only runs. Final cleanup uses deterministic
 transformations and Lean, makes no model requests and spends no model dollars.
 Indeterminate requests, permanent failures and unavailable verification never
-trigger a retry. Cost tracking also stops when cumulative spending is unknown.
+trigger a retry. Strict cost tracking stops when cumulative spending is unknown.
 Cost tracking requires a priced model; use time tracking for Lemex models.
 
 Transient gateway failures have separate recovery limits. Lemex allows four
@@ -106,6 +113,33 @@ Use `--max-transport-restarts 0` to disable host recovery. Transport recovery ha
 its own restart count, separate from successful optimization attempts. Reconnect
 notifications remain in the evidence, and
 unreported usage from interrupted responses stays unknown.
+
+New Codex cost runs default to `--usage-policy best_effort`. They retain native
+request traces and a host-owned `response_usage.json` for each attempt, including
+every reported response counter before and after context compaction. Missing
+counters remain explicitly unreported. For budget admission, the host adds
+separately recorded heuristics: compaction input uses the nearest preceding
+reported inference input plus output, and compaction output uses the nearest
+following reported inference input as a conservative proxy. Each estimate saves
+its source counters. Missing neighbors and partial responses without counters
+use canonical UTF-8 JSON bytes divided by four, rounded up. Unreported input is
+priced as uncached. A failed request with no partial output is estimated at zero, an
+assumption rather than evidence of zero charge. These estimates can overstate
+or understate actual usage, especially for encrypted compaction payloads.
+
+Best-effort accounting permits bounded recovery from an observed terminal
+transient failure, including missing usage, while deducting all reported and
+estimated spending from the same problem budget. Successful native retries keep
+their successful outcome. Explicit capacity/rate-limit refusals without partial
+output remain recorded as rejected requests under the existing refusal policy.
+When a conservative native token allowance stops a session before the cumulative
+estimate reaches the dollar target, best-effort tracking can start a fresh
+session from the verified incumbent using the remaining dollars.
+Estimates never replace reported counters or claim
+complete usage. Missing or inconsistent trace evidence that cannot support an
+estimate still stops cost tracking. Use `--usage-policy strict` to stop whenever
+cumulative usage is unknown. The policy is pinned with new configurations;
+historical configurations without it retain strict behavior and unchanged bytes.
 
 For an explicitly authorized new run after an old interruption, pass
 `--incumbents-from results/harness/prior_run` and a new `--output`. The harness
@@ -119,19 +153,25 @@ its budget, use `--carry-budgets-from results/harness/prior_run` with a new outp
 The harness audits and pins prior evidence, counts every prior attempt, preserves
 any explicitly configured original deadline, and reuses that condition's best
 verified proof. Unknown cumulative spending or an unfinished prior request
-blocks continuation.
+blocks continuation. The source and destination must use the same usage policy;
+carrying a historical budget without that field requires `--usage-policy strict`.
 
 Cost tracking passes the remaining budget to the native CLI and sums observed
 costs across attempts. Codex uses a conservative weighted token allowance;
 Claude uses its dollar allowance. Both check between upstream responses, so a
 response already in flight may exceed the target. This is an API-equivalent
 estimate with explicit stop evidence, not a certified hard invoice cap. Native
-limit stops may omit usage; such totals remain unknown. Cost-only calls through
+limit stops may omit usage; such counters remain unknown, with best-effort
+estimates separately identified where available. Cost-only calls through
 the Python search API also have no implicit deadline.
 An explicit `--problem-timeout-seconds` / `RunConfig.problem_timeout_seconds`
 adds a wall-time watchdog when requested; it overrides the 3420-second allocation
 for time tracking. Python callers can set `budget_tracking=None` for a single
 voluntary attempt under the time limit.
+
+Each condition keeps the same model and effort for every attempt. Mixed-model
+handoffs are retired. Their saved reports and evidence remain available for
+read-only inspection and audit; they cannot seed or resume a new search.
 
 There is one active task policy: [refactor_system.md](prompts/refactor_system.md)
 and its five-card [strategy bank](prompts/strategy_bank.json), preserving the
@@ -142,24 +182,24 @@ Native Lemex, Claude Code and Google Antigravity run the same task with their ow
 
 ```bash
 # DeepSeek: existing .env gateway key is passed only to the Lemex child.
-proof-harness run --provider lemex --pilot --workers 5 \
+proof-harness run --provider lemex \
   --output results/harness/my_deepseek_run
 
 # Qwen with the same score, source, goal and tactic-profiling tools.
 proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
-  --pilot --workers 5 --output results/harness/my_qwen_run
+  --output results/harness/my_qwen_run
 
 # A separate web-enabled condition, retaining the local semantic tools.
 proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
-  --semantic-search --web-search --pilot --workers 3 \
+  --semantic-search --web-search \
   --output results/harness/my_qwen_web_run
 
 # Sign in with `claude auth login` first. Exact Opus 5.5/max, no fallback.
-proof-harness run --provider claude --pilot --workers 5 \
+proof-harness run --provider claude \
   --output results/harness/my_opus_run
 
 # Antigravity `agy` with an existing Google login. Exact Gemini 3.8 Flash/high.
-proof-harness run --provider agy --pilot --workers 2 --track-cost --budget-usd 3 \
+proof-harness run --provider agy --track-cost --budget-usd 3 \
   --output results/harness/my_antigravity_run
 ```
 
@@ -213,8 +253,6 @@ reward = evaluator.reward("putnam_1964_a4", candidate_code)
 report = run(RunConfig(
     output=Path("results/harness/my_sol_run"),
     conditions=(("gpt-6.1-sol", "max"),),
-    workers=10,
-    pilot=True,
 ))
 ```
 
@@ -243,7 +281,7 @@ The generic deterministic API accepts a new competition batch with explicit path
 - [results](results/README.md): experiment index, including [deterministic](results/deterministic/README.md) and [model harness studies](results/harness/README.md).
 - [Sol configuration results and submission](results/harness/05_model_config/README.md): the pre-refactor Sol/max result was 87.342215% combined with 100% compatibility.
 - [Refactor validation and fresh Sol replicate](results/harness/06_refactor_regression/COMPARISON.md): 86.575834% combined, 100% compatibility, 36/36 passing versions; the earlier stronger submission is preserved.
-- [Native provider pilots](results/harness/07_native_agents/README.md): Opus completed one problem; DeepSeek retained an improved proof after a transport failure. Both cohorts are incomplete.
+- [Native provider studies](results/harness/07_native_agents/README.md): Opus completed one problem; DeepSeek retained an improved proof after a transport failure. Both cohorts are incomplete.
 - [Sol tactic-profiling trial](results/harness/08_tactic_profiles/sol61_max/PROTOCOL.md): 15/15 complete and audited; 86.951351% combined, 100% compatibility. Profiling was used on every problem; one repeat does not establish a causal score gain.
 - [Qwen Flash Next results and submission](results/harness/09_qwen_flash_next/README.md): the combined original/recovery selection reaches 78.219958% locally over all 15 problems, with 100% compatibility and 36/36 passing version checks. The saved-evidence audits and submission provenance are included.
 - [related_work](related_work/README.md): literature, papers and research proposals.

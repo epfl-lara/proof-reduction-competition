@@ -47,12 +47,18 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
   in `MODEL_TRACKS`; classification changes require a new output directory.
   Do not feed another condition's solutions to a model. Report full-cohort means
   only when the full declared cohort is complete.
+  Each condition keeps one model and effort for all attempts. Mixed-model
+  handoffs are retired; preserve their saved evidence for read-only audit.
 - Model requests need durable started markers, host-owned evidence, output locks,
   and no automatic resampling of an indeterminate request. Preserve partial work.
   Observed terminal transient transport failures may use bounded, recorded
   recovery from the best verified proof under the same selected problem budget.
-  Preserve every failed attempt; cost tracking stops when cumulative usage
-  becomes unknown.
+  Preserve every failed attempt. Strict cost tracking stops when cumulative usage
+  becomes unknown. New Codex cost runs default to pinned `usage_policy="best_effort"`:
+  retain reported counters, explicit unknowns and separate heuristic estimates;
+  use their estimated total for admission and bounded terminal transport recovery.
+  Never retry an indeterminate or still-active request. Historical configurations
+  without a usage policy retain strict behavior; changing policy needs a new output.
   Codex may use tools; the host checks proofs and owns the ledger. Do not let model
   processes write the pinned source projects or host evidence.
   Default host bounds are 20 optimization restarts and two terminal transport
@@ -85,7 +91,11 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
   Black and Ruff also exclude result archives. Never format saved evidence.
 - Report local and organizer scores separately. API-equivalent prices are
   estimates, not Codex invoices. The closed-track cap applies to **each problem**;
-  missing usage stays unknown. RCP permits at most five simultaneous requests
+  missing usage stays unknown even when best-effort estimates permit continuation.
+  Label incomplete estimated costs and their assumptions; never present payload
+  heuristics or a zero estimate for failed requests as reported usage or an invoice
+  cap. Preserve every terminal inference counter across compaction. RCP permits
+  at most five simultaneous requests
   across the key; this shared admission cap is the RCP throughput limiter when
   wall time no longer bounds runs. Respect it across batches and clients.
   Do not put credentials in results, logs, or Git.
@@ -117,7 +127,11 @@ reference reuse, score arithmetic, all-version gating, resume, provider routing,
 tool boundaries, and a small end-to-end batch. Do not add tests that merely repeat
 the implementation or use a paid model call as a default unit test.
 
-Before scaling a model experiment, run `proof-harness run --pilot ...`; it audits
-one theorem per selected condition before continuing. Run `proof-harness audit`
-on completed evidence. State what actually completed, the validation performed,
+Model batches start the full selected cohort directly, with no pilot gate.
+Use exactly five parallel workers for Codex and the other closed providers,
+and exactly three for Lemex. A 15-theorem condition uses five slots across
+three groups for Codex, or three slots across five groups for Lemex. Individual
+incomplete outcomes or worker failures must not cancel other queued theorems.
+Keep cached-reference and runtime preflight checks, and run `proof-harness audit`
+on saved evidence. State what actually completed, the validation performed,
 and any incomplete outcomes. Keep user-owned untracked files untouched.

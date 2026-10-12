@@ -162,6 +162,11 @@ def _usage(raw):
     return values
 
 
+def normalize_token_usage(raw: dict) -> dict:
+    """Validate complete native token counters for accounting and reconciliation."""
+    return _usage(raw)
+
+
 def _parts(config, usage, *, all_uncached_are_writes=False, long_context=False):
     multiplier = Decimal(str(TIERS[config.service_tier])) * (
         Decimal("1.1") if config.regional_processing else 1

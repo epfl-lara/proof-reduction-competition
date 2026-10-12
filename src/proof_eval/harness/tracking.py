@@ -2,14 +2,23 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from math import isfinite
 from typing import Literal, Sequence
 
-from proof_eval.providers.costs import UNPRICED_MODELS, CostConfig, generations_cost
+from proof_eval.providers.costs import (
+    UNPRICED_MODELS,
+    USAGE_FIELDS,
+    CostConfig,
+    estimate_token_cost,
+    generations_cost,
+    normalize_token_usage,
+)
 from proof_eval.providers.registry import MODEL_TRACKS
 from proof_eval.providers.retries import retryable_transport_failure
 from proof_eval.providers.spending import native_cost_guard
 
+from .archived_schedules import archived_generations_cost, attempt_condition
 from .carryover import carried_generations
 
 BudgetTracking = Literal["auto", "cost", "time"] | None
@@ -77,12 +86,160 @@ def attempt_cost(
         raise ValueError("A theorem name is required for carried budget accounting")
     if not generations and not prior and not final:
         return {"status": "not_started", "total_usd": 0.0, "attempts": 0}
-    cost = generations_cost(
-        CostConfig(model, effort, **config.get("cost_assumptions", {})),
-        prior + generations,
-        budget_usd=config.get("budget_usd_per_problem", 3.0),
-    )
+    primary = CostConfig(model, effort, **config.get("cost_assumptions", {}))
+    if config.get("first_attempt_condition") is not None:
+        if prior:
+            raise ValueError("Scheduled attempts cannot reuse another run's budget")
+        configurations = [
+            CostConfig(
+                *attempt_condition(config, model, effort, number),
+                **config.get("cost_assumptions", {}),
+            )
+            for number in range(len(generations))
+        ]
+        cost = {
+            # The primary configuration prices the next (continuation) guard.
+            "configuration": asdict(primary),
+            **archived_generations_cost(
+                configurations,
+                generations,
+                budget_usd=config.get("budget_usd_per_problem", 3.0),
+            ),
+        }
+    else:
+        cost = generations_cost(
+            primary,
+            prior + generations,
+            budget_usd=config.get("budget_usd_per_problem", 3.0),
+        )
+    if (
+        cost["status"] == "unknown_usage"
+        and config.get("provider", "codex") == "codex"
+        and config.get("usage_policy") == "best_effort"
+    ):
+        configurations = [
+            CostConfig(
+                *attempt_condition(config, model, effort, number),
+                **config.get("cost_assumptions", {}),
+            )
+            for number in range(len(prior + generations))
+        ]
+        cost = _best_effort_cost(
+            primary,
+            configurations,
+            prior + generations,
+            cost,
+            budget_usd=config.get("budget_usd_per_problem", 3.0),
+        )
     return {**cost, "carried_attempts": len(prior)} if prior else cost
+
+
+def _best_effort_cost(
+    primary: CostConfig,
+    configurations: Sequence[CostConfig],
+    generations: Sequence[dict],
+    strict_cost: dict,
+    *,
+    budget_usd: float,
+) -> dict:
+    """Price validated terminal trace estimates while preserving reported usage."""
+    if not generations:
+        return strict_cost
+    costs = []
+    reported_costs = []
+    estimates = []
+    unknown = []
+    totals = dict.fromkeys(USAGE_FIELDS, 0)
+    reported_totals = dict.fromkeys(USAGE_FIELDS, 0)
+    for index, (configuration, generation) in enumerate(
+        zip(configurations, generations)
+    ):
+        try:
+            reported = normalize_token_usage(
+                generation.get("token_usage", generation.get("codex_usage"))
+            )
+        except ValueError:
+            return strict_cost
+        reported_cost = estimate_token_cost(
+            configuration, reported, budget_usd=budget_usd
+        )
+        usage = reported
+        if generation.get("usage_complete") is False:
+            unknown.append(index)
+            trace_hash = generation.get("response_usage_sha256")
+            if not (
+                generation.get("response_usage_schema_version") == 2
+                and generation.get("structurally_valid") is True
+                and generation.get("estimated_usage_complete") is True
+                and generation.get("status")
+                in ("received", "transport_error", "budget_exhausted")
+                and isinstance(trace_hash, str)
+                and len(trace_hash) == 64
+                and all(character in "0123456789abcdef" for character in trace_hash)
+                and isinstance(generation.get("usage_estimates"), list)
+                and generation["usage_estimates"]
+            ):
+                return strict_cost
+            try:
+                usage = normalize_token_usage(generation.get("estimated_token_usage"))
+                normalize_token_usage(
+                    {field: usage[field] - reported[field] for field in USAGE_FIELDS}
+                )
+            except ValueError:
+                return strict_cost
+            estimates.append(
+                {
+                    "attempt": index,
+                    "response_usage_sha256": trace_hash,
+                    "usage_estimates": generation["usage_estimates"],
+                }
+            )
+        cost = estimate_token_cost(configuration, usage, budget_usd=budget_usd)
+        if cost["total_usd"] is None or reported_cost["total_usd"] is None:
+            return strict_cost
+        costs.append(cost)
+        reported_costs.append(reported_cost)
+        for field in USAGE_FIELDS:
+            totals[field] += usage[field]
+            reported_totals[field] += reported[field]
+    if not unknown:
+        return strict_cost
+    total = sum(cost["total_usd"] for cost in costs)
+    reported_total = sum(cost["total_usd"] for cost in reported_costs)
+    return {
+        **strict_cost,
+        "status": "estimated_incomplete_usage",
+        "basis": "public_api_equivalent_best_effort",
+        "configuration": asdict(primary),
+        "configurations": [asdict(configuration) for configuration in configurations],
+        "attempt_costs": costs,
+        "reported_attempt_costs": reported_costs,
+        "attempts": len(generations),
+        "usage": totals,
+        "reported_usage": reported_totals,
+        "complete_usage": False,
+        "total_usd": total,
+        "reported_total_usd": reported_total,
+        "estimated_unreported_usd": total - reported_total,
+        "budget_usd": budget_usd,
+        "remaining_usd_at_assumed_rates": budget_usd - total,
+        "over_budget_at_assumed_rates": total > budget_usd + 1e-12,
+        "unknown_attempt_indices": unknown,
+        "estimated_attempt_indices": unknown,
+        "usage_estimates": estimates,
+        "all_uncached_as_cache_writes_usd": sum(
+            cost["all_uncached_as_cache_writes_usd"] for cost in costs
+        ),
+        "all_requests_long_context_usd": sum(
+            cost["all_requests_long_context_usd"] for cost in costs
+        ),
+        "assumptions": [
+            "Each attempt uses the frozen rates for its scheduled model and effort.",
+            "Missing native counters use the recorded per-request estimates, including explicit zero-cost assumptions for failures without partial output.",
+            "Reported usage remains a lower bound; estimated spending shares the original problem budget.",
+            "API-equivalent estimates are not invoices or hard cost ceilings.",
+        ],
+    }
 
 
 def stop_decision(
@@ -97,7 +254,21 @@ def stop_decision(
 ) -> dict | None:
     """Admit successful optimization restarts or bounded terminal-error recovery."""
     termination = generation.get("termination")
-    if termination == "cost_limit":
+    estimated_guard_stop = (
+        termination == "cost_limit"
+        and generation.get("status") == "budget_exhausted"
+        and generation.get("response_usage_schema_version") == 2
+        and generation.get("structurally_valid") is True
+        and (
+            generation.get("estimated_usage_complete") is True
+            or generation.get("usage_complete") is True
+        )
+        and config.get("usage_policy") == "best_effort"
+        and config.get("provider", "codex") == "codex"
+        and config.get("budget_tracking") == "cost"
+        and cost.get("total_usd") is not None
+    )
+    if termination == "cost_limit" and not estimated_guard_stop:
         return {
             "kind": "cost_limit",
             "reason": (
@@ -113,10 +284,14 @@ def stop_decision(
         }
     tracking = config.get("budget_tracking")
     recoverable = retryable_transport_failure(generation)
-    if generation["status"] != "received" and (
-        not recoverable
-        or not config.get("max_transport_restarts", 0)
-        or (time_remaining is None and tracking != "cost")
+    if (
+        generation["status"] != "received"
+        and not estimated_guard_stop
+        and (
+            not recoverable
+            or not config.get("max_transport_restarts", 0)
+            or (time_remaining is None and tracking != "cost")
+        )
     ):
         return {"kind": "infrastructure", "reason": generation.get("error")}
     if generation["status"] == "received" and tracking is None:

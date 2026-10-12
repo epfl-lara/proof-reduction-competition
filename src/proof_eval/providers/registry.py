@@ -13,6 +13,7 @@ DEFAULT_CONDITIONS = {
     "claude": ((claude.MODEL, "max"),),
     "agy": ((agy.MODEL, "high"),),
 }
+PROVIDER_WORKERS = {"codex": 5, "lemex": 3, "claude": 5, "agy": 5}
 # Experiment contract: routing additions must declare their track separately.
 # Preparation pins this source along with the runtime; changes require a new run.
 MODEL_TRACKS: dict[str, Literal["open", "closed"]] = {

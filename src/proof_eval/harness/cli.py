@@ -45,7 +45,12 @@ def main(argv=None) -> int:
         if action == "estimate":
             continue
         sub.add_argument("--name", action="append")
-        sub.add_argument("--workers", type=int, default=5)
+        sub.add_argument(
+            "--workers",
+            type=int,
+            default=None,
+            help="Fixed concurrency: 5 for closed providers, 3 for Lemex; only the matching value is accepted",
+        )
         sub.add_argument(
             "--semantic-search",
             action=argparse.BooleanOptionalAction,
@@ -86,6 +91,12 @@ def main(argv=None) -> int:
             help="Alias for --budget-tracking time",
         )
         sub.add_argument(
+            "--usage-policy",
+            choices=("strict", "best_effort"),
+            default=None,
+            help="Incomplete usage: best_effort estimates and retries for new Codex cost runs; strict stops on missing counters",
+        )
+        sub.add_argument(
             "--budget-usd",
             dest="budget_usd_per_problem",
             type=float,
@@ -124,12 +135,6 @@ def main(argv=None) -> int:
         sub.add_argument("--environments", type=Path, default=RunConfig.environments)
         sub.add_argument("--cache", type=Path, default=RunConfig.cache)
         sub.add_argument("--references", type=Path, default=RunConfig.references)
-        if action == "run":
-            sub.add_argument(
-                "--pilot",
-                action="store_true",
-                help="Audit one theorem per condition before the remaining batch",
-            )
     args = parser.parse_args(argv)
     try:
         if args.command == "replay":
@@ -178,6 +183,7 @@ def main(argv=None) -> int:
                     "problem_timeout_seconds",
                     "budget_tracking",
                     "budget_usd_per_problem",
+                    "usage_policy",
                     "max_budget_restarts",
                     "max_transport_restarts",
                     "incumbents_from",
@@ -187,7 +193,6 @@ def main(argv=None) -> int:
                     "environments",
                     "cache",
                     "references",
-                    "pilot",
                 )
                 if hasattr(args, key)
             }

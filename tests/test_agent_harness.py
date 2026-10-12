@@ -1,5 +1,6 @@
 import json
 import shutil
+import socket
 import subprocess
 import sys
 import threading
@@ -535,6 +536,59 @@ def test_actual_workspace_client_and_host_ledger(make_session, tmp_path, operati
         assert session.best_code == CLEANED
     assert (session.folder / "checks.jsonl").exists()
     assert not (work / "checks.jsonl").exists()
+
+
+def test_service_drains_disconnected_check_before_attempt_ends(
+    make_session, tmp_path, monkeypatch
+):
+    session = make_session("score_edges")
+    entered, release, closing, exited = (threading.Event() for _ in range(4))
+    evaluate = session.evaluator.evaluate
+
+    def blocked_evaluation(*args, **kwargs):
+        entered.set()
+        assert release.wait(5), "Test did not release its pending Lean check"
+        return evaluate(*args, **kwargs)
+
+    monkeypatch.setattr(session.evaluator, "evaluate", blocked_evaluation)
+    service = ProofToolService(session, tmp_path)
+    close_server = service.server.server_close
+
+    def closing_server():
+        closing.set()
+        close_server()
+
+    monkeypatch.setattr(service.server, "server_close", closing_server)
+    service.__enter__()
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    closer = None
+    try:
+        client.connect(service.socket_path)
+        client.sendall(json.dumps({"op": "check", "code": GOOD}).encode() + b"\n")
+        assert entered.wait(3)
+        # A native budget stop disconnects while the host is still compiling.
+        client.close()
+
+        def exit_service():
+            service.__exit__()
+            exited.set()
+
+        closer = threading.Thread(target=exit_service)
+        closer.start()
+        assert closing.wait(3)
+        assert not exited.wait(0.1), "Attempt ended before its accepted check"
+    finally:
+        release.set()
+        client.close()
+        if closer is None:
+            service.__exit__()
+        else:
+            closer.join(timeout=5)
+    assert exited.is_set()
+    assert len(session.checks) == 1
+    assert session.best_code == GOOD
+    saved = json.loads((session.folder / "checks.jsonl").read_text())
+    assert saved["number"] == 1 and saved["accepted"]
 
 
 def test_prompts_have_tools_and_no_target_answer_examples():

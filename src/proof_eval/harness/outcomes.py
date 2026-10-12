@@ -152,7 +152,10 @@ def finalize_cell(
         result["budget_tracking"] = config["budget_tracking"]
         result["budget_outcome"] = {
             "stop_kind": result["stop"]["kind"],
-            "cost_known": result.get("cost", {}).get("total_usd") is not None,
+            "cost_known": (
+                result.get("cost", {}).get("total_usd") is not None
+                and result.get("cost", {}).get("complete_usage") is not False
+            ),
             "cost_enforcement": (
                 (
                     "host_stream_usage"
@@ -164,6 +167,15 @@ def finalize_cell(
             ),
             "hard_cost_cap": False,
         }
+        if config.get("usage_policy") == "best_effort":
+            result["usage_policy"] = "best_effort"
+            result["budget_outcome"]["cost_estimated"] = (
+                result.get("cost", {}).get("total_usd") is not None
+            )
+            result["budget_outcome"]["usage_complete"] = (
+                result.get("cost", {}).get("complete_usage") is not False
+                and result.get("cost", {}).get("total_usd") is not None
+            )
     if config.get("attempt_evidence_version"):
         result["attempts"] = [
             read(path / "attempt.json") for path in attempt_folders(folder)
