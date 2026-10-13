@@ -19,6 +19,7 @@ from .incumbents import select_seed
 from .limits import time_budget_summary
 from .outcomes import finalize_cell
 from .prompts import messages
+from .restart_history import scope_for
 from .session import ProofSession
 from .tracking import attempt_cost
 
@@ -126,7 +127,16 @@ def recover_cell(
     seed = starting_point(pack, config["mode"])
     seed = select_seed(config, pack, model, effort, seed)
     session = ProofSession(
-        folder / "evidence", pack, evaluator, config["mode"], seed=seed
+        folder / "evidence",
+        pack,
+        evaluator,
+        config["mode"],
+        seed=seed,
+        restart_scope=(
+            scope_for(config, pack["name"], model, effort)
+            if config.get("restart_history_version")
+            else None
+        ),
     )
     if not (folder / "input.json").exists():
         write_json(

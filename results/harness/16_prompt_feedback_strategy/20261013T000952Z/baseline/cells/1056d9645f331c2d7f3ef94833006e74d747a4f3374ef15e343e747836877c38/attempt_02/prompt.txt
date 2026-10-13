@@ -1,0 +1,66 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "Cslib.SKI.parallelReduction_diamond",
+  "source": "cslib",
+  "required_versions": [
+    {
+      "v4.33.0-rc2": "3aa9d4416c185e0b9faeb72bbd65abe85b95dbcc"
+    },
+    {
+      "v4.32.0": "197a7be621263b84c67ca4f803f69205b36d06df"
+    },
+    {
+      "v4.31.0": "8ea71c8df91acd63285515a04da952b23b78d266"
+    },
+    {
+      "v4.30.0": "c7944a9fb44c3298f1a960a5e574ab23a6ab8ed5"
+    }
+  ],
+  "exact_statement": "theorem parallelReduction_diamond : Diamond ParallelReduction",
+  "incumbent_declaration": "theorem parallelReduction_diamond : Diamond ParallelReduction := by\n  intro a a₁ a₂ h₁ h₂\n  induction h₁ generalizing a₂\n  case refl => exact ⟨a₂, h₂, .refl _⟩\n  all_goals cases h₂\n  case red_I.refl | red_K.refl | red_S.refl | par.refl | red_I.red_I | red_K.red_K | red_S.red_S =>\n    refine ⟨_, .refl _, ?_⟩\n    constructor <;> assumption\n  case' par.red_I | par.red_K | par.red_S =>\n    apply symm (r := Join ParallelReduction)\n  case red_I.par | par.red_I =>\n    cases I_irreducible _ (by assumption)\n    exact ⟨_, by assumption, .red_I _⟩\n  case red_K.par | par.red_K =>\n    rcases Ka_irreducible _ _ (by assumption) with ⟨x, hx, rfl⟩\n    exact ⟨x, hx, .red_K ..⟩\n  case red_S.par | par.red_S =>\n    rcases Sab_irreducible _ _ _ (by assumption) with ⟨x, y, hx, hy, rfl⟩\n    refine ⟨_, .par (.par hx ?_) (.par hy ?_), .red_S ..⟩ <;> assumption\n  case par.par =>\n    rename_i iha ihb _ _ ha hb\n    rcases iha ha with ⟨a₃, ha₁, ha₂⟩\n    rcases ihb hb with ⟨b₃, hb₁, hb₂⟩\n    exact ⟨_, .par ha₁ hb₁, .par ha₂ hb₂⟩\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 48.157248157248155,
+    "heartbeat_reduction_pct": 69.96975538420634,
+    "compatibility_pct": 100.0,
+    "combined_pct": 72.70900118048483
+  },
+  "reference_denominators": {
+    "tokens": 407,
+    "primary_heartbeats": 1384.048
+  },
+  "preceding_source_excerpt": "/-\nCopyright (c) 2025 Thomas Waring. All rights reserved.\nReleased under Apache 2.0 license as described in the file LICENSE.\nAuthors: Thomas Waring\n-/\n\nmodule\n\npublic import Cslib.Languages.CombinatoryLogic.Defs\npublic import Cslib.Foundations.Relation.Confluence\n\nimport Lean\n\n\n/-!\n# SKI reduction is confluent\n\nThis file proves the **Church-Rosser** theorem for the SKI calculus, that is, if `a ↠ b` and\n`a ↠ c`, `b ↠ d` and `c ↠ d` for some term `d`. More strongly (though equivalently), we show\nthat the relation of having a common reduct is transitive — in the above situation, `a` and `b`,\nand `a` and `c` have common reducts, so the result implies the same of `b` and `c`. Note that\n`MJoin Red` is symmetric (trivially) and reflexive (since `↠` is), so we in fact show that\n`MJoin Red` is an equivalence.\n\nOur proof\nfollows the method of Tait and Martin-Löf for the lambda calculus, as presented for instance in\nChapter 4 of Peter Selinger's notes:\n<https://www.mscs.dal.ca/~selinger/papers/papers/lambdanotes.pdf>.\n\n## Main definitions\n\n- `ParallelReduction` : a relation `⭢ₚ` on terms such that `⭢ ⊆ ⭢ₚ ⊆ ↠`, allowing simultaneous\nreduction on the head and tail of a term.\n\n## Main results\n\n- `parallelReduction_diamond` : parallel reduction satisfies the diamond property, that is, it is\nconfluent in a single step.\n- `mJoin_red_equivalence` : by a general result, the diamond property for `⭢ₚ` implies the same\nfor its reflexive-transitive closure. This closure is exactly `↠`, which implies the\n**Church-Rosser** theorem as sketched above.\n-/\n\n@[expose] public section\n\nnamespace Cslib\n\nnamespace SKI\n\nopen Red MRed Relation\n\n/-- A reduction step allowing simultaneous reduction of disjoint redexes -/\n@[reduction_sys \"ₚ\"]\ninductive ParallelReduction : SKI → SKI → Prop\n  /-- Parallel reduction is reflexive, -/\n  | refl (a : SKI) : ParallelReduction a a\n  /-- Contains `Red`, -/\n  | red_I (a : SKI) : ParallelReduction (I ⬝ a) a\n  | red_K (a b : SKI) : ParallelReduction (K ⬝ a ⬝ b) a\n  | red_S (a b c : SKI) : ParallelReduction (S ⬝ a ⬝ b ⬝ c) (a ⬝ c ⬝ (b ⬝ c))\n  /-- and allows simultaneous reduction of disjoint redexes. -/\n  | par ⦃a a' b b' : SKI⦄ :\n      ParallelReduction a a' → ParallelReduction b b' → ParallelReduction (a ⬝ b) (a' ⬝ b')\n\n/-- The inclusion `(· ⭢ₚ ·) ≤ (· ↠ ·)`. -/\ntheorem ParallelReduction.le_reflTransGen_red :\n    (· ⭢ₚ ·) ≤ (· ↠ ·) := by\n  intro a a' h\n  cases h\n  case refl => exact Relation.ReflTransGen.refl\n  case par a a' b b' ha hb =>\n    apply parallel_mRed\n    · exact ha.le_reflTransGen_red\n    · exact hb.le_reflTransGen_red\n  case red_I => exact Relation.ReflTransGen.single (Red.red_I a')\n  case red_K b => exact Relation.ReflTransGen.single (Red.red_K a' b)\n  case red_S a b c => exact Relation.ReflTransGen.single (Red.red_S a b c)\n\n/-- The inclusion `(· ⭢ ·) ≤ (· ⭢ₚ ·)`. -/\ntheorem Red.le_parallelReduction :\n    (· ⭢ ·) ≤ (· ⭢ₚ ·) := by\n  intro a a' h\n  cases h\n  case red_S => apply ParallelReduction.red_S\n  case red_K => apply ParallelReduction.red_K\n  case red_I => apply ParallelReduction.red_I\n  case red_head a a' b h =>\n    apply ParallelReduction.par\n    · exact h.le_parallelReduction\n    · exact ParallelReduction.refl b\n  case red_tail a b b' h =>\n    apply ParallelReduction.par\n    · exact ParallelReduction.refl a\n    · exact h.le_parallelReduction\n\n/-- The relations `⭢` and `⭢ₚ` have the same reflexive-transitive closure. -/\ntheorem reflTransGen_parallelReduction_mRed :\n    ReflTransGen ParallelReduction = ReflTransGen Red := by\n  apply le_antisymm\n  · exact reflTransGen_le_of_le ParallelReduction.le_reflTransGen_red\n  · exact ReflTransGen.mono Red.le_parallelReduction\n\n/-!\nIrreducibility for the (partially applied) primitive combinators.\n\nTODO: possibly these should be proven more generally (in another file) for `↠`.\n-/\n\nlemma I_irreducible (a : SKI) (h : I ⭢ₚ a) : a = I := by\n  cases h\n  rfl\n\nlemma K_irreducible (a : SKI) (h : K ⭢ₚ a) : a = K := by\n  cases h\n  rfl\n\nlemma Ka_irreducible (a c : SKI) (h : (K ⬝ a) ⭢ₚ c) : ∃ a', a ⭢ₚ a' ∧ c = K ⬝ a' := by\n  cases h\n  case refl => use a, .refl a\n  case par b a' h h' => rw [K_irreducible b h]; use a'\n\nlemma S_irreducible (a : SKI) (h : S ⭢ₚ a) : a = S := by\n  cases h\n  rfl\n\nlemma Sa_irreducible (a c : SKI) (h : (S ⬝ a) ⭢ₚ c) : ∃ a', a ⭢ₚ a' ∧ c = S ⬝ a' := by\n  cases h\n  case refl =>\n    exact ⟨a, ParallelReduction.refl a, rfl⟩\n  case par b a' h h' => rw [S_irreducible b h]; use a'\n\nlemma Sab_irreducible (a b c : SKI) (h : (S ⬝ a ⬝ b) ⭢ₚ c) :\n    ∃ a' b', a ⭢ₚ a' ∧ b ⭢ₚ b' ∧ c = S ⬝ a' ⬝ b' := by\n  cases h\n  case refl => use a, b, .refl a, .refl b\n  case par c b' hc hb =>\n    let ⟨d, hd⟩ := Sa_irreducible a c hc\n    rw [hd.2]\n    use d, b', hd.1",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly extracts an invariant, typing rule, normalization fact, or relation from a separate hypothesis.",
+      "action": "Inspect the inductive evidence and consider induction on that evidence so its constructors provide the invariant and recursive hypotheses together.",
+      "check": "Verify dependent indices, generalized variables and induction hypotheses. A different induction is useful only if it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "explicit_witnesses",
+      "trigger": "Broad automation discovers constructors, witnesses, case facts or canonical forms that are already apparent from the argument.",
+      "action": "Read the constructors and supporting lemmas; supply explicit witnesses, projections and theorem applications. Leave focused arithmetic and simplification to automation.",
+      "check": "A slightly longer source can win on heartbeats. Do not replace every tactic blindly; check the whole declaration and version compatibility."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a finite counting, continuity, support, span, recurrence or quotient argument.",
+      "action": "Choose a representation that lets an existing library theorem do the central work. Search by the mathematical property and the types of the objects, not only the target theorem name.",
+      "check": "Prove the connection to the new representation locally, account for conversion overhead, and verify the exact assumptions."
+    }
+  ]
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $1.49946; $1.50054 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

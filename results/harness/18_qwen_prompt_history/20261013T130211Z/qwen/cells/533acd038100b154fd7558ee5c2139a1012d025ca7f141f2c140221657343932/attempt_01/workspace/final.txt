@@ -1,0 +1,24 @@
+
+
+```lean
+open OldExpressions in
+theorem substOldPostSubset:
+  (Imperative.HasVarsPure.getVars (P:=Expression)
+    (substOld h2 (Lambda.LExpr.fvar m h1 ty) post)).Subset
+    (Imperative.HasVarsPure.getVars (P:=Expression) post ++ [h1]) := by
+  have H : ∀ {a b c d},
+      a ⊆ c ++ [h1] → b ⊆ d ++ [h1] → a ++ b ⊆ c ++ d ++ [h1] := by grind
+  induction post
+  case abs ih => exact ih
+  case quant ti ei => exact H ti ei
+  case ite ci ti ei => exact H (H ci ti) ei
+  case eq i1 i2 => exact H i1 i2
+  case app fi ei =>
+    unfold substOld
+    split
+    · split
+      · exact List.subset_append_right _ _
+      · exact List.subset_append_left _ _
+    · exact H fi ei
+  any_goals exact List.subset_append_left _ _
+```

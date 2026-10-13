@@ -1,0 +1,174 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "putnam_1995_a3",
+  "source": "putnambench",
+  "required_versions": [
+    {
+      "v4.25.0": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33"
+    },
+    {
+      "v4.26.0": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67"
+    },
+    {
+      "v4.27.0": "a3a10db0e9d66acbebf76c5e6a135066525ac900"
+    }
+  ],
+  "exact_statement": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i)",
+  "incumbent_declaration": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i)  := by\n  intro d e f h\n  have change_digit (a b : Fin 9 → ℤ) (i : Fin 9) :\n      digits_to_num (fun j => if j = i then b j else a j) =\n        digits_to_num a + (b i - a i) * 10 ^ i.val := by\n    rw [hdigits_to_num, ← sub_eq_iff_eq_add', ← Finset.sum_sub_distrib]\n    simp only [← sub_mul, ite_sub, sub_self, ite_mul, zero_mul,\n      Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]\n  have hde := ((hrelation d e).mp h.1).2\n  have hef := ((hrelation e f).mp h.2).2\n  simp_rw [change_digit] at hde hef\n  have hs : 7 ∣ digits_to_num d + digits_to_num e := by\n    have hh := Finset.dvd_sum (s := Finset.univ) (fun i _ => hde i)\n    simp only [Finset.sum_add_distrib, Finset.sum_const, Finset.card_univ,\n      Fintype.card_fin, Int.nsmul_eq_mul, Nat.cast_ofNat, sub_mul,\n      Finset.sum_sub_distrib, ← congrFun hdigits_to_num d,\n      ← congrFun hdigits_to_num e] at hh\n    convert dvd_sub hh (dvd_mul_right (7 : ℤ) (digits_to_num d)) using 1 <;> ring\n  have hc : IsCoprime (7 : ℤ) 10 := ⟨3, -2, by norm_num⟩\n  intro i\n  apply hc.pow_right.dvd_of_dvd_mul_right\n  convert dvd_sub hs (dvd_add (hde i) (hef i)) using 1 <;> ring\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 94.07588739290085,
+    "heartbeat_reduction_pct": 88.78201895904716,
+    "compatibility_pct": 100.0,
+    "combined_pct": 94.28596878398268
+  },
+  "reference_denominators": {
+    "tokens": 4085,
+    "primary_heartbeats": 17957.759
+  },
+  "preceding_source_excerpt": "import Mathlib\nimport Aesop\n\nimport Lean\n\n\nset_option maxHeartbeats 0\n\nopen Filter Topology Real\n\n\n",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "putnam_1995_a3",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "c6cb615c08833fcf04362b5ca3ab8e5dc6f1b8cbb637364b80505d6fd961fbc9"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 6,
+        "evidence_sha256": "d15b6ba86ac566fb970633aa0cd95d86c099ce11501f7a472aa1b6115d629937",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 92.77845777233782,
+          "heartbeat_reduction_pct": 88.45334765880308,
+          "compatibility_pct": 100.0,
+          "combined_pct": 93.74393514371364
+        },
+        "previous_best_combined_pct": 94.09211038465007,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -26,3 +26,5 @@\n   intro i\n-  apply hc.pow_right.dvd_of_dvd_mul_right\n-  convert dvd_sub hs (dvd_add (step d e h.1 i) (step e f h.2 i)) using 1 <;> ring\n+  have hh := dvd_sub hs (dvd_add (step d e h.1 i) (step e f h.2 i))\n+  rw [add_add_add_comm, ← add_mul, sub_add_sub_cancel', sub_add_cancel_left,\n+    ← neg_mul, neg_sub] at hh\n+  exact hc.pow_right.dvd_of_dvd_mul_right hh",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 7,
+        "evidence_sha256": "73e00aca3d9e47eec3918a298fd148c7a6d3858919fdbf63e8a99ac51d572f07",
+        "accepted": true,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 94.07588739290085,
+          "heartbeat_reduction_pct": 88.78201895904716,
+          "compatibility_pct": 100.0,
+          "combined_pct": 94.28596878398268
+        },
+        "previous_best_combined_pct": 94.09211038465007,
+        "reason": "accepted",
+        "change_excerpt": "--- \n+++ \n@@ -13,8 +13,7 @@\n       Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]\n-  have step (a b : Fin 9 → ℤ) (hr : relation a b) (i : Fin 9) :\n-      7 ∣ digits_to_num a + (b i - a i) * 10 ^ i.val := by\n-    rw [← change_digit]\n-    exact ((hrelation a b).mp hr).2 i\n+  have hde := ((hrelation d e).mp h.1).2\n+  have hef := ((hrelation e f).mp h.2).2\n+  simp_rw [change_digit] at hde hef\n   have hs : 7 ∣ digits_to_num d + digits_to_num e := by\n-    have hh := Finset.dvd_sum (s := Finset.univ) (fun i _ => step d e h.1 i)\n+    have hh := Finset.dvd_sum (s := Finset.univ) (fun i _ => hde i)\n  ",
+        "change_excerpt_truncated": true,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 8,
+        "evidence_sha256": "57c7ff6f9812a674ceaba36a4195077834fe3fb2ece43600505b99dafc22c852",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 93.88004895960832,
+          "heartbeat_reduction_pct": 88.83266559040023,
+          "compatibility_pct": 100.0,
+          "combined_pct": 94.2375715166695
+        },
+        "previous_best_combined_pct": 94.28596878398268,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -25,3 +25,3 @@\n   intro i\n-  apply hc.pow_right.dvd_of_dvd_mul_right\n+  apply (hc.pow_right (n := i.val)).dvd_of_dvd_mul_right\n   convert dvd_sub hs (dvd_add (hde i) (hef i)) using 1 <;> ring",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 9,
+        "evidence_sha256": "3c64ad39648c3d6ca3e0e4f29209c8e7f6282281f21bb334554f058c4ca4f60b",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 94.00244798041616,
+          "heartbeat_reduction_pct": 86.20218703235743,
+          "compatibility_pct": 100.0,
+          "combined_pct": 93.40154500425785
+        },
+        "previous_best_combined_pct": 94.28596878398268,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -22,3 +22,5 @@\n       ← congrFun hdigits_to_num e] at hh\n-    convert dvd_sub hh (dvd_mul_right (7 : ℤ) (digits_to_num d)) using 1 <;> ring\n+    have ht := dvd_sub hh (dvd_mul_right (7 : ℤ) (digits_to_num d))\n+    ring_nf at ht\n+    exact ht\n   have hc : IsCoprime (7 : ℤ) 10 := ⟨3, -2, by norm_num⟩",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 0,
+        "evidence_sha256": "51d5b0efb088bf3a9c4bca7b7816f7d941b2e8db7fcbd9f79d0db1c55487c956",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \".lake/packages/mathlib/Mathlib/Algebra/Group/Basic.lean\", \"start\": 445, \"end\": 525}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \".lake/packages/mathlib/Mathlib/Algebra/Group/Basic.lean\", \"version\": \"v4.25.0\", \"text\": \"445: \\n446: @[to_additive (attr := simp)]\\n447: theorem inv_eq_one : a⁻¹ = 1 ↔ a = 1 :=\\n448:   inv_injective.eq_iff' inv_one\\n449: \\n450: @[to_additive (attr := simp)]\\n451: theorem one_eq_inv : 1 = a⁻¹ ↔ a = 1 :=\\n452:   eq_comm.trans inv_eq_one\\n453: \\n454: @[to_additive]\\n455: theorem inv_ne_one : a⁻¹ ≠ 1 ↔ a ≠ 1 :=\\n456:   inv_eq_one.not\\n457: \\n458: @[to_additive]\\n459: theorem eq_of_one_div_eq_one_div (h : 1 / a = 1 / b) : a = b := by\\n460:   rw [← one_div_one_div",
+        "request_sha256": "ce9f1e295e0853b15a96efdd93b531cfa25b7ea8af3d826f391c5e7bd53e89f1",
+        "response_sha256": "c3b1fe80096a46e4aaed76f8ca2578bc15c7d76b6deb3b5f9f0c8935fd50fd03"
+      },
+      {
+        "attempt": 0,
+        "evidence_sha256": "4e1ca819c8e508d7c33bc138467297f3f6c20e34f213f97f8d7399d0d8fe250e",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \".lake/packages/mathlib/Mathlib/Algebra/Group/Basic.lean\", \"start\": 922, \"end\": 963}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \".lake/packages/mathlib/Mathlib/Algebra/Group/Basic.lean\", \"version\": \"v4.25.0\", \"text\": \"922: \\n923: @[to_additive (attr := simp)]\\n924: theorem div_div_cancel_left (a b : G) : a / b / a = b⁻¹ := by simp\\n925: \\n926: @[to_additive eq_sub_iff_add_eq']\\n927: theorem eq_div_iff_mul_eq'' : a = b / c ↔ c * a = b := by rw [eq_div_iff_mul_eq', mul_comm]\\n928: \\n929: @[to_additive]\\n930: theorem div_eq_iff_eq_mul' : a / b = c ↔ a = b * c := by rw [div_eq_iff_eq_mul, mul_comm]\\n931: \\n932: @[to_additive (attr := simp)]\\n933: theorem mul_div_cancel_left (a b : G) : a ",
+        "request_sha256": "b26b56a71151977aa79a97417ff1e42e4ab9738ed6fa9706eb3bc8ab4cced068",
+        "response_sha256": "f6adda085fd26f18cae935beaa435b7ddb9aef2676baaf7d54c449de9d40662a"
+      },
+      {
+        "attempt": 0,
+        "evidence_sha256": "044f809b9b43e434e6a8119ac1caa2148b5c2e83bb1248ca8e8e962ab361afc1",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"theorem mul_mul_mul_comm\", \"limit\": 6}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.25.0\", \"query\": \"theorem mul_mul_mul_comm\", \"matches\": [\"./.lake/packages/mathlib/Mathlib/Algebra/Group/Commute/Defs.lean:107:protected theorem mul_mul_mul_comm (hbc : Commute b c) (a d : S) :\", \"./.lake/packages/mathlib/Mathlib/Algebra/Group/Basic.lean:125:theorem mul_mul_mul_comm (a b c d : G) : a * b * (c * d) = a * c * (b * d) := by\", \"./.lake/packages/mathlib/Mathlib/Algebra/Group/Basic.lean:129:theorem mul_mul_mul_comm' (a b c d : G) : a * b * c * d = a * c * b * d := by\"], \"truncated\": false}",
+        "request_sha256": "9bab4d368d5d9d40ab69ec731af496f154a4b6e817501475a6bb91eb85a93af7",
+        "response_sha256": "087f1ad93b909f9d2c44b1a29bc6dbf0bd7a2bd29684b0140fc73dfbdd52ac9f"
+      }
+    ],
+    "unverified_model_notes": [],
+    "prior_check_count": 10,
+    "prior_event_count": 34,
+    "prior_events_sha256": "6f1007ba0f0e1490da90645bb116a1ec42781c2977847ae7bc605d9f197d601d"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $0.555161; $2.44484 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

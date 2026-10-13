@@ -56,6 +56,11 @@ def start_attempt(
             session.deadline_at - remaining if remaining is not None else epoch
         ),
     }
+    if session.restart_history is not None:
+        record["history_event_start"] = len(session.restart_history.events)
+        record["history_events_before_sha256"] = fingerprint(
+            session.restart_history.events
+        )
     write_json(path, record)
     return record
 
@@ -74,6 +79,11 @@ def finish_attempt(
         "agent_stop": deepcopy(session.finished),
         "cost_after": cost,
     }
+    if session.restart_history is not None:
+        record["history_event_end"] = len(session.restart_history.events)
+        record["history_events_after_sha256"] = fingerprint(
+            session.restart_history.events
+        )
     write_json(folder / "attempt.json", record)
     return record
 

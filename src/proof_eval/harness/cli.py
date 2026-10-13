@@ -46,6 +46,11 @@ def main(argv=None) -> int:
             continue
         sub.add_argument("--name", action="append")
         sub.add_argument(
+            "--restart-history",
+            action="store_true",
+            help="Experimental bounded same-theorem restart history",
+        )
+        sub.add_argument(
             "--workers",
             type=int,
             default=None,
@@ -184,6 +189,7 @@ def main(argv=None) -> int:
                     "budget_tracking",
                     "budget_usd_per_problem",
                     "usage_policy",
+                    "restart_history",
                     "max_budget_restarts",
                     "max_transport_restarts",
                     "incumbents_from",

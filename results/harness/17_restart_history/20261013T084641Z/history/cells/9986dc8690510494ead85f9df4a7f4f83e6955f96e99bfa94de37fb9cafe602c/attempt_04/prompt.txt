@@ -1,0 +1,187 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+  "source": "cslib",
+  "required_versions": [
+    {
+      "v4.33.0-rc2": "3aa9d4416c185e0b9faeb72bbd65abe85b95dbcc"
+    },
+    {
+      "v4.32.0": "197a7be621263b84c67ca4f803f69205b36d06df"
+    },
+    {
+      "v4.31.0": "8ea71c8df91acd63285515a04da952b23b78d266"
+    }
+  ],
+  "exact_statement": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t'",
+  "incumbent_declaration": "lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by\n  generalize eq : [] = Γ at der\n  have lc := der.wf.2.1\n  induction der <;> subst eq\n  case var | sub => grind\n  case app | tapp =>\n    cases lc <;>\n      grind (gen := 2) only [→ canonical_form_abs, → canonical_form_tabs,\n        → Red.abs, → Red.tabs, → Red.appₗ, → Red.appᵣ, → Red.tapp]\n  case let' | case =>\n    grind (gen := 2) only [body_let, body_case, → canonical_form_sum,\n      → Red.let_body, → Red.let_bind, → Red.case_inl, → Red.case_inr, → Red.case]\n  all_goals grind only [Value, → wf, → Red.inl, → Red.inr]\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 72.54901960784314,
+    "heartbeat_reduction_pct": 94.40997179175974,
+    "compatibility_pct": 100.0,
+    "combined_pct": 88.9863304665343
+  },
+  "reference_denominators": {
+    "tokens": 408,
+    "primary_heartbeats": 59833.58
+  },
+  "preceding_source_excerpt": "/-\nCopyright (c) 2025 Chris Henson. All rights reserved.\nReleased under Apache 2.0 license as described in the file LICENSE.\nAuthors: Chris Henson\n-/\n\nmodule\n\npublic import Cslib.Languages.LambdaCalculus.LocallyNameless.Fsub.Typing\n\nimport Lean\n\n\n/-! # λ-calculus\n\nThe λ-calculus with polymorphism and subtyping, with a locally nameless representation of syntax.\nThis file proves type safety.\n\n## References\n\n* [A. Chargueraud, *The Locally Nameless Representation*][Chargueraud2012]\n* See also <https://www.cis.upenn.edu/~plclub/popl08-tutorial/code/>, from which\n  this is adapted\n\n-/\n\npublic section\n\nnamespace Cslib\n\nvariable {Var : Type*} [HasFresh Var] [DecidableEq Var]\n\nnamespace LambdaCalculus.LocallyNameless.Fsub\n\nopen Context List Env.Wf Term Ty\n\nvariable {t : Term Var}\n\n/-- Any reduction step preserves typing. -/\nlemma Typing.preservation (der : Typing Γ t τ) (step : t ⭢βᵛ t') : Typing Γ t' τ := by\n  induction der generalizing t'\n  case app Γ _ σ τ _ _ _ _ _ =>\n    cases step\n    case appₗ | appᵣ => grind\n    case abs der _ _ =>\n      have sub : Sub Γ (σ.arrow τ) (σ.arrow τ) := by grind [Sub.refl]\n      have ⟨_, _, ⟨_, _⟩⟩ := der.abs_inv sub\n      grind [fresh_exists <| free_union [fvTm] Var, openTm_substTm_intro, subst_tm, Sub.weaken]\n  case tapp Γ _ σ τ σ' _ _ _ =>\n    cases step\n    case tabs der _ _ =>\n      have sub : Sub Γ (σ.all τ) (σ.all τ) := by grind [Sub.refl]\n      have ⟨_, _, ⟨_, _⟩⟩ := der.tabs_inv sub\n      have ⟨X, mem⟩ := fresh_exists <| free_union [Ty.fv, fvTy] Var\n      simp at mem\n      have : Γ = (Context.mapVal (·[X := σ']) []) ++ Γ := by grind\n      rw [openTy_substTy_intro (X := X), open_subst_intro (X := X)] <;> grind [subst_ty]\n    case tapp => grind\n  case let' Γ _ _ _ _ L der _ ih₁ _ =>\n    cases step\n    case let_bind red₁ _ => apply Typing.let' L (ih₁ red₁); grind\n    case let_body =>\n      grind [fresh_exists <| free_union [fvTm] Var, openTm_substTm_intro, subst_tm]\n  case case Γ _ σ τ _ _ _ L _ _ _ ih₁ _ _ =>\n    have sub : Sub Γ (σ.sum τ) (σ.sum τ) := by grind [Sub.refl]\n    have : Γ = [] ++ Γ := by rfl\n    cases step\n    case «case» red₁ _ _ => apply Typing.case L (ih₁ red₁) <;> grind\n    case case_inl der _ _ =>\n      have ⟨_, ⟨_, _⟩⟩ := der.inl_inv sub\n      grind [fresh_exists <| free_union [fvTm] Var, openTm_substTm_intro, subst_tm]\n    case case_inr der _ _ =>\n      have ⟨_, ⟨_, _⟩⟩ := der.inr_inv sub\n      grind [fresh_exists <| free_union [fvTm] Var, openTm_substTm_intro, subst_tm]\n  all_goals grind [cases Red]\n\nset_option linter.tacticAnalysis.verifyGrindOnly false in",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "Cslib.LambdaCalculus.LocallyNameless.Fsub.Typing.progress",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "ea9d3dadb1c821b31225bfd784936a64099f9a40cde239fbb35868e552c271c8"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 69,
+        "evidence_sha256": "1bed88222a7545952e10d386c839b9cbee369f1d5530dfc5bd99fe2c0f836daa",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 88.9863304665343,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -12,2 +12,2 @@\n       → Red.let_body, → Red.let_bind, → Red.case_inl, → Red.case_inr, → Red.case]\n-  all_goals grind only [Value, → wf, → Red.inl, → Red.inr]\n+  all_goals grind only [Value, → Red.inl, → Red.inr]",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"`grind` failed\\ncase grind\\nVar : Type u_1\\ninst : HasFresh Var\\ninst_1 : DecidableEq Var\\nt : Term Var\\nτ : Ty Var\\nΓ : List ((_ : Var) × Binding Var)\\nt₁ : Term Var\\nσ τ_1 : Ty Var\\nlc : t"
+      },
+      {
+        "check": 70,
+        "evidence_sha256": "53e4a1bee1031c5476c0b25840f158b7c13ce4add110ae897e76f5dfbe82ac82",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 88.9863304665343,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -12,2 +12,2 @@\n       → Red.let_body, → Red.let_bind, → Red.case_inl, → Red.case_inr, → Red.case]\n-  all_goals grind only [Value, → wf, → Red.inl, → Red.inr]\n+  all_goals grind only [Value, cases LC, → Red.inl, → Red.inr]",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"ambiguous identifier ``LC`, possible interpretations: [Cslib.LambdaCalculus.LocallyNameless.Fsub.Term.LC, Cslib.LambdaCalculus.LocallyNameless.Fsub.Ty.LC]\"]}, {\"version\": \"v4.32.0\", \"status\""
+      },
+      {
+        "check": 71,
+        "evidence_sha256": "a588dd52311af0d24a48eeec172d9f94ee41f482134f6f2fc501f3b612081a41",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 72.54901960784314,
+          "heartbeat_reduction_pct": 93.93344172285863,
+          "compatibility_pct": 100.0,
+          "combined_pct": 88.82748711023392
+        },
+        "previous_best_combined_pct": 88.9863304665343,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -12,2 +12,2 @@\n       → Red.let_body, → Red.let_bind, → Red.case_inl, → Red.case_inr, → Red.case]\n-  all_goals grind only [Value, → wf, → Red.inl, → Red.inr]\n+  all_goals grind only [Value, cases Term.LC, → Red.inl, → Red.inr]",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.32.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.31.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 72,
+        "evidence_sha256": "aa9c687404aaecd2f0fb53ac2763503ac4768b11a8b5e311327560d2a2604227",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 88.9863304665343,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -12,2 +12,2 @@\n       → Red.let_body, → Red.let_bind, → Red.case_inl, → Red.case_inr, → Red.case]\n-  all_goals grind only [Value, → wf, → Red.inl, → Red.inr]\n+  all_goals grind only [Value, wf, → Red.inl, → Red.inr]",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"`grind` failed\\ncase grind\\nVar : Type u_1\\ninst : HasFresh Var\\ninst_1 : DecidableEq Var\\nt : Term Var\\nτ : Ty Var\\nΓ : List ((_ : Var) × Binding Var)\\nt₁ : Term Var\\nσ τ_1 : Ty Var\\nlc : t"
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 3,
+        "evidence_sha256": "b4be0ae56c76564c7b228b5903c629281fa7da51ff9246ee05b58bc1cbb8f456",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"body_let\", \"limit\": 10}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.33.0-rc2\", \"query\": \"body_let\", \"matches\": [\"./CslibTests/GrindLint.lean:57:#grind_lint skip Cslib.LambdaCalculus.LocallyNameless.Fsub.Term.body_let\", \"./Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Reduction.lean:49:lemma body_let : (let' t₁ t₂).LC ↔ t₁.LC ∧ t₂.body := by\"], \"truncated\": false}",
+        "request_sha256": "46e490e011a46edafa94fb4aeb8667d995def48d98af68a9a999c5e1d7d7494d",
+        "response_sha256": "a811293ab58308d9d1407895fbdaa1d709ecd99f729b071003ce67920f1aa3e7"
+      },
+      {
+        "attempt": 3,
+        "evidence_sha256": "ef5ede0172a91518f00854fddd05ca33bc80f3f918d6c065baa1d9c5e28b853a",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \"Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Reduction.lean\", \"start\": 25, \"end\": 135}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \"Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Reduction.lean\", \"version\": \"v4.33.0-rc2\", \"text\": \"25: @[expose] public section\\n26: \\n27: set_option linter.unusedDecidableInType false\\n28: \\n29: namespace Cslib\\n30: \\n31: variable {Var : Type*}\\n32: \\n33: namespace LambdaCalculus.LocallyNameless.Fsub\\n34: \\n35: namespace Term\\n36: \\n37: /-- Existential predicate for being a locally closed body of an abstraction. -/\\n38: @[scoped grind =]\\n39: def body (t : Term Var) := ∃ L : Finset Var, ∀ x ∉ L, LC (t ^ᵗᵗ fvar x)\\n40: \\n41: section\\n42: \\n43: variable ",
+        "request_sha256": "6952f6dcade3c5b46d44c4237519f894ec6f19e73083f84437959c3f141984ff",
+        "response_sha256": "19824dd649d53ecc9ec42660df0dfe1bb76299eae68d5e15e144574648336c7e"
+      },
+      {
+        "attempt": 3,
+        "evidence_sha256": "a0d062ced596a31685c3283984df4d6e449277508e24bc1ef80e2322cca86197",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \"Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Typing.lean\", \"start\": 222, \"end\": 265}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \"Cslib/Languages/LambdaCalculus/LocallyNameless/Fsub/Typing.lean\", \"version\": \"v4.33.0-rc2\", \"text\": \"222: /-- Invert the typing of a right case. -/\\n223: lemma inr_inv (der : Typing Γ (.inr t) T) (sub : Sub Γ T (sum γ δ)) :\\n224:     ∃ δ', Typing Γ t δ' ∧ Sub Γ δ' δ := by\\n225:   generalize eq : t.inr = t at der\\n226:   induction der generalizing γ δ with\\n227:   | inr => grind only [cases Sub]\\n228:   | _ => grind\\n229: \\n230: set_option linter.tacticAnalysis.verifyGrindOnly false in\\n231: /-- A value that types as a function is an abstraction. -/\\n232: lem",
+        "request_sha256": "1efde10218b0719ab79f058bbf39a5f1a4d8aa1fb0c248484e33553a5a5eeb27",
+        "response_sha256": "626e7fd8ef6110fdf28a3ec8ea3bbf536db78bb656b47f2a25352b3a038e759a"
+      }
+    ],
+    "unverified_model_notes": [
+      {
+        "attempt": 2,
+        "evidence_sha256": "abbdb7f66b55283f62c5c7bf8c503a5b59ac04830106455778883cb4f9c04b4d",
+        "kind": "discovery",
+        "text": "Restart 2: removing Value from let/case grind list is valid (global cases remain under grind only), improves to 112 tokens/3344.714 hb/S88.9863. Disabling app/tapp Value cases with -Value saves431hb but adds3tokens, just regressive versus seed; combining app/tapp with simple final group was regressive even with -Value. Default canonical_form_sum saves1token but adds308hb."
+      },
+      {
+        "attempt": 3,
+        "evidence_sha256": "b5cddd342a2c555eb97c3c46a57d9619055378233bddf99f3c56d9d484eed154",
+        "kind": "rejected",
+        "text": "Restart3: final grind omitting → wf fails inl/inr IH requires child LC; unmarked wf also fails (backward patterns). cases Term.LC instead →wf is all-version valid but 112tokens/3629.839hb/S88.82749 versus seed3344.714hb; unqualified LC ambiguous."
+      }
+    ],
+    "prior_check_count": 73,
+    "prior_event_count": 39,
+    "prior_events_sha256": "1de3604eabc3b59de5ac0e6fd35ff22d44b1dcd4a2d81677665eaa25560e294a"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $2.81483; $0.185172 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

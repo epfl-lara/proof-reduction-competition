@@ -1,0 +1,17 @@
+theorem putnam_1964_a4
+(u : ℕ → ℤ)
+(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)
+(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)
+: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by
+  obtain ⟨B, T, hB⟩ := boundedu
+  obtain ⟨i, j, hij, he⟩ :=
+    (Set.Finite.pi' fun _ : Fin 4 => Set.finite_Icc B T).exists_lt_map_eq_of_forall_mem
+      (by exact fun n k => hB (n + k))
+  refine ⟨i, _, Nat.sub_pos_of_lt hij, ?_⟩
+  intro n hn
+  rw [← Nat.add_sub_of_le hn, Nat.add_right_comm, Nat.add_sub_of_le hij.le]
+  exact Nat.strong_induction_on (n - i) fun m ih => by
+    rcases lt_or_ge m 4 with hm | hm
+    · exact congrFun he.symm ⟨m, hm⟩
+    · rify
+      simp (disch := omega) only [(hu _ (Nat.le_add_left_of_le hm)).1, Nat.add_sub_assoc, ih]

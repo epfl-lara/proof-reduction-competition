@@ -1,0 +1,43 @@
+```lean
+theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)
+    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)
+    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)
+  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)
+    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :
+  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by
+  let j : Fin (ℓ + 1) := ⟨i, fin_ℓ_lt_ℓ_add_one i⟩
+  let C := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) j
+  let S := (fun (g : C) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ
+  obtain ⟨⟨g, hg_mem⟩, _, hg⟩ := Nat.sInf_mem (s := S)
+    (Set.image_nonempty.mpr Set.univ_nonempty)
+  let Y := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g
+  let Q := qMap_total_fiber 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, fin_ℓ_lt_r (h_ℓ_add_R_rate := h_ℓ_add_R_rate) i⟩
+    steps (fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps)
+  have hcard : hammingDist f g ≤ Y.ncard * 2 ^ steps := by
+    refine (Finset.card_le_card_of_surjOn (s := Y.toFinite.toFinset ×ˢ Finset.univ)
+      (Function.uncurry Q) ?_).trans_eq ?_
+    · intro x hx
+      let y := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x
+      refine ⟨(y, pointToIterateQuotientIndex 𝔽q β j steps h_i_add_steps x),
+        Finset.mk_mem_product (Y.toFinite.mem_toFinset.mpr ⟨x, rfl, (Finset.mem_filter.mp hx).2⟩)
+          (Finset.mem_univ _), ?_⟩
+      dsimp only [Function.uncurry]
+      exact (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps x y).mp rfl
+    · simp only [Finset.card_product, Finset.card_univ, Fintype.card_fin,
+        ←Set.ncard_eq_toFinset_card]
+  have hb : 2 * Y.ncard ≤ BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, Nat.lt_succ_of_le h_i_add_steps⟩ - 1 := by
+    change 2 * (↑(sInf S) : ℕ∞) < _ at h_fw_dist_lt
+    rw [←hg] at h_fw_dist_lt
+    exact Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt)
+  have hnat : 2 * hammingDist f g < BBF_CodeDistance ℓ 𝓡 j := by
+    have h := Nat.mul_le_mul_right (2 ^ steps) hb
+    dsimp only [BBF_CodeDistance, Nat.add_one_sub_one] at h
+    rw [Nat.sub_mul, Nat.sub_add_eq,
+      pow_sub_mul_pow 2 (Nat.le_sub_of_add_le' (h_i_add_steps.trans (Nat.le_add_right _ _))),
+      Nat.sub_add_eq, pow_sub_mul_pow 2 (Nat.le_sub_of_add_le' h_i_add_steps), mul_assoc] at h
+    exact Nat.lt_succ_of_le ((Nat.mul_le_mul_left 2 hcard).trans h)
+  unfold hammingClose
+  exact ((ENat.mul_le_mul_left_iff (a := 2) (by decide) (by decide)).2
+    (Code.distFromCode_le_dist_to_mem f (C := C) g hg_mem)).trans_lt
+    (WithTop.coe_lt_coe.2 hnat)
+```

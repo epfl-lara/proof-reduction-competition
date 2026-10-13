@@ -1,0 +1,947 @@
+{
+  "at": "2026-10-13T16:10:30.476076+00:00",
+  "code": "theorem fold_advances_evaluation_poly\n  (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡)\n  (coeffs : Fin (2 ^ (ℓ - ↑i)) → L) (r_chal : L) :\n  let P_i : L[X] := intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i, by\n    exact Nat.lt_trans (n := i) (k := ℓ+1) (m := ℓ) (h₁ := i.isLt) (by exact Nat.lt_add_one ℓ)\n  ⟩) coeffs\n  let f_i := fun (x : (sDomain 𝔽q β h_ℓ_add_R_rate)\n      ⟨i, by exact Nat.lt_trans (n := i) (k := r) (m := ℓ) (h₁ := by omega) (by omega)⟩) =>\n    P_i.eval (x.val : L)\n  let f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)\n  let new_coeffs := fun j : Fin (2^(ℓ - (i + 1))) =>\n    (1 - r_chal) * (coeffs ⟨j.val * 2, by\n      rw [←Nat.add_zero (j.val * 2)]\n      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))\n        (i := 0) (by omega) (by omega)\n    ⟩) +\n    r_chal * (coeffs ⟨j.val * 2 + 1, by\n      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))\n        (i := 1) (by omega) (by omega)\n    ⟩)\n  let P_i_plus_1 :=\n    intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i+1, by omega⟩) new_coeffs\n  ∀ (y : (sDomain 𝔽q β h_ℓ_add_R_rate)\n    ⟨i+1, by omega⟩), f_i_plus_1 y = P_i_plus_1.eval y.val := by\n  intro P_i f_i f_i_plus_1 new_coeffs P_i_plus_1 y\n  set fiberMap := qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := 1)\n    (h_i_add_steps := by simp only; omega) (y := y)\n  set x₀ := fiberMap 0\n  set x₁ := fiberMap 1\n  let P₀ := evenRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  let P₁ := oddRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  have hq (k : Fin 2) : (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval (fiberMap k).val = y := by\n    rw [generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega)\n      (x := fiberMap k) (y := y) ⟨k, rfl⟩,\n      iteratedQuotientMap_k_eq_1_is_qMap 𝔽q β h_ℓ_add_R_rate i (by omega) (fiberMap k)]\n  have h_diff : x₁.val - x₀.val = 1 := by\n    have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n    have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n    have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n    have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n    have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n    have hb : ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR)\n        ⟨0, Nat.sub_pos_of_lt h_iR⟩ : L) = 1 :=\n      get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate _ h_iR\n    simp only [fz0, fz1, zero_smul, one_smul, x₀, x₁, fiberMap, Submodule.coe_add, e₀, e₁,\n      zero_add, hb]\n    ring\n  have h_eval (x : (sDomain 𝔽q β h_ℓ_add_R_rate) ⟨i, by omega⟩) (k : Fin 2) (hx : x = fiberMap k) :\n      P_i.eval x.val = P₀.eval y.val + x.val * P₁.eval y.val := by\n    subst hx\n    simp only [evaluation_poly_split_identity 𝔽q β h_ℓ_add_R_rate i coeffs, P_i, P₀, P₁,\n      Polynomial.eval_add, eval_comp, Polynomial.eval_mul, Polynomial.eval_X, hq k]\n  have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := by\n    simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement,\n      oddRefinement]\n    rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n    refine Finset.sum_congr rfl (fun j _ => ?_)\n    simp only [Polynomial.C_add, Polynomial.C_mul]\n    ring\n  calc f_i_plus_1 y\n    = f_i x₀ * ((1 - r_chal) * x₁.val - r_chal) +\n        f_i x₁ * (r_chal - (1 - r_chal) * x₀.val) := rfl\n    _ = (P₀.eval y.val + x₀.val * P₁.eval y.val) * ((1 - r_chal) * x₁.val - r_chal) +\n        (P₀.eval y.val + x₁.val * P₁.eval y.val) * (r_chal - (1 - r_chal) * x₀.val) := by\n      simp only [f_i, h_eval x₀ 0 rfl, h_eval x₁ 1 rfl]\n    _ = (1 - r_chal) * P₀.eval y.val + r_chal * P₁.eval y.val := by\n      rw [show x₁.val = x₀.val + 1 from by rw [← h_diff, add_comm, sub_add_cancel]]\n      ring\n    _ = P_i_plus_1.eval y.val := by\n      rw [← h_poly]\n      simp only [Polynomial.eval_add, Polynomial.eval_mul, Polynomial.eval_C]\n",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "Binius.BinaryBasefold.fold_advances_evaluation_poly",
+    "version": "v4.31.0",
+    "proof_sha256": "49401cc77dea278f34a6b681f1c64869ac937a1075a5317cced47bbf5fb94c77",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": null,
+      "threshold_raw": 500000,
+      "limit": 20
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end_local_scope 1",
+        "header_truncated": false,
+        "raw": 1225,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ section",
+        "header_truncated": false,
+        "raw": 1228,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 500000",
+        "header_truncated": false,
+        "raw": 62,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [],
+                            "class": "Elab.step",
+                            "header": "✅️ expected type: Prop, term\nlet new_coeffs := fun j : Fin (2 ^ (ℓ - (i + 1))) =>\n  (1 - r_chal) *\n      (coeffs\n        ⟨j.val * 2, by\n          rw [← Nat.add_zero (j.val * 2)]\n          apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1)) (i := 0) (by omega) (by omega)⟩) +\n    r_chal *\n      (coeffs\n        ⟨j.val * 2 + 1, by\n          apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1)) (i := 1) (by omega) (by omega)⟩)\nlet P_i_plus_1 := intermediate",
+                            "header_truncated": true,
+                            "raw": 571450,
+                            "tag": "Lean.Parser.Term.let"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ expected type: Prop, term\nlet f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)\nlet new_coeffs := fun j : Fin (2 ^ (ℓ - (i + 1))) =>\n  (1 - r_chal) *\n      (coeffs\n        ⟨j.val * 2, by\n          rw [← Nat.add_zero (j.val * 2)]\n          apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1)) (i := 0) (by omega) (by omega)⟩) +\n    r_chal *\n      (coeffs\n        ⟨j.val * 2 + 1, by\n          apply mul_two_add_bit_lt_two_pow (c := ℓ - i) ",
+                        "header_truncated": true,
+                        "raw": 630589,
+                        "tag": "Lean.Parser.Term.let"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "✅️ expected type: Prop, term\nlet f_i :=\n  fun\n    (x :\n      (sDomain 𝔽q β h_ℓ_add_R_rate)\n        ⟨i, by exact Nat.lt_trans (n := i) (k := r) (m := ℓ) (h₁ := by omega) (by omega)⟩) =>\n  P_i.eval (x.val : L)\nlet f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)\nlet new_coeffs := fun j : Fin (2 ^ (ℓ - (i + 1))) =>\n  (1 - r_chal) *\n      (coeffs\n        ⟨j.val * 2, by\n          rw [← Nat.add_zero (j.val * 2)]\n          apply mul_two_add_bit_lt_two_pow (c := ℓ ",
+                    "header_truncated": true,
+                    "raw": 729232,
+                    "tag": "Lean.Parser.Term.let"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "✅️ expected type: Prop, term\nlet P_i : L[X] :=\n  intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n    ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1) (m := ℓ) (h₁ := i.isLt) (by exact Nat.lt_add_one ℓ)⟩) coeffs\nlet f_i :=\n  fun\n    (x :\n      (sDomain 𝔽q β h_ℓ_add_R_rate)\n        ⟨i, by exact Nat.lt_trans (n := i) (k := r) (m := ℓ) (h₁ := by omega) (by omega)⟩) =>\n  P_i.eval (x.val : L)\nlet f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)\nlet new_coeffs",
+                "header_truncated": true,
+                "raw": 841386,
+                "tag": "Lean.Parser.Term.let"
+              },
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [],
+                        "class": "Elab.step",
+                        "header": "✅️ apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1)) (i := 0) (by omega) (by omega)",
+                        "header_truncated": false,
+                        "raw": 521137,
+                        "tag": "Lean.Parser.Tactic.apply"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "✅️ \n  rw [← Nat.add_zero (j.val * 2)]\n  apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1)) (i := 0) (by omega) (by omega)",
+                    "header_truncated": false,
+                    "raw": 565918,
+                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "✅️ \n  rw [← Nat.add_zero (j.val * 2)]\n  apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1)) (i := 0) (by omega) (by omega)",
+                "header_truncated": false,
+                "raw": 566005,
+                "tag": "Lean.Parser.Tactic.tacticSeq"
+              }
+            ],
+            "class": "Elab.definition.header",
+            "header": "✅️ Binius.BinaryBasefold.fold_advances_evaluation_poly",
+            "header_truncated": false,
+            "raw": 2786394,
+            "tag": ""
+          },
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [],
+                                    "class": "Elab.step",
+                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have hq (k : Fin 2) : (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval (fiberMap k).val = y := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      (rw [generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega) (x := fiberMap k) (y := y) ⟨k, rfl⟩,\n          iteratedQuotientMap_k_eq_1_is_qMap 𝔽q β h_ℓ_add_R_rate i (by omega) (fiberMap k)])",
+                                    "header_truncated": false,
+                                    "raw": 665294,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have hq (k : Fin 2) : (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval (fiberMap k).val = y := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      (rw [generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega) (x := fiberMap k) (y := y) ⟨k, rfl⟩,\n          iteratedQuotientMap_k_eq_1_is_qMap 𝔽q β h_ℓ_add_R_rate i (by omega) (fiberMap k)])",
+                                "header_truncated": false,
+                                "raw": 665385,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have hq (k : Fin 2) : (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval (fiberMap k).val = y := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      (rw [generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega) (x := fiberMap k) (y := y) ⟨k, rfl⟩,\n          iteratedQuotientMap_k_eq_1_is_qMap 𝔽q β h_ℓ_add_R_rate i (by omega) (fiberMap k)])",
+                            "header_truncated": false,
+                            "raw": 665513,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ have hq (k : Fin 2) : (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval (fiberMap k).val = y := by\n  rw [generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega) (x := fiberMap k) (y := y) ⟨k, rfl⟩,\n    iteratedQuotientMap_k_eq_1_is_qMap 𝔽q β h_ℓ_add_R_rate i (by omega) (fiberMap k)]",
+                        "header_truncated": false,
+                        "raw": 665698,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [],
+                                                                                        "class": "Meta.synthInstance",
+                                                                                        "header": "✅️ AddZeroClass ↥(sDomain 𝔽q β h_ℓ_add_R_rate ⟨↑i, ⋯⟩)",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 520675,
+                                                                                        "tag": ""
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Meta.isDefEq.delta",
+                                                                                    "header": "✅️ Zero.toOfNat0 =?= Zero.toOfNat0",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 533037,
+                                                                                    "tag": ""
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Meta.isDefEq",
+                                                                                "header": "✅️ Zero.toOfNat0 =?= Zero.toOfNat0",
+                                                                                "header_truncated": false,
+                                                                                "raw": 533179,
+                                                                                "tag": ""
+                                                                              }
+                                                                            ],
+                                                                            "class": "Meta.isDefEq",
+                                                                            "header": "✅️ 0 =?= 0",
+                                                                            "header_truncated": false,
+                                                                            "raw": 533543,
+                                                                            "tag": ""
+                                                                          }
+                                                                        ],
+                                                                        "class": "Meta.isDefEq",
+                                                                        "header": "✅️ 0 + ?a =?= 0 + sDomain.lift 𝔽q β h_ℓ_add_R_rate ⟨↑i, ⋯⟩ ⟨↑i + 1, ⋯⟩ ⋯ ⋯ y",
+                                                                        "header_truncated": false,
+                                                                        "raw": 557126,
+                                                                        "tag": ""
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ simp only [fz0, fz1, zero_smul, one_smul, x₀, x₁, fiberMap, Submodule.coe_add, e₀, e₁, zero_add, hb]",
+                                                                    "header_truncated": false,
+                                                                    "raw": 1128858,
+                                                                    "tag": "Lean.Parser.Tactic.simp"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ \n  have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n  have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n  have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n  have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n  have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n  have hb :\n    ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR) ⟨0, Nat.sub_pos_of_lt h_iR⟩ : L) =\n      1 :=\n    get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate _ h_",
+                                                                "header_truncated": true,
+                                                                "raw": 2488876,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ \n  have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n  have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n  have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n  have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n  have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n  have hb :\n    ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR) ⟨0, Nat.sub_pos_of_lt h_iR⟩ : L) =\n      1 :=\n    get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate _ h_",
+                                                            "header_truncated": true,
+                                                            "raw": 2488960,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ (\n  have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n  have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n  have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n  have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n  have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n  have hb :\n    ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR) ⟨0, Nat.sub_pos_of_lt h_iR⟩ : L) =\n      1 :=\n    get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate _ h",
+                                                        "header_truncated": true,
+                                                        "raw": 2489046,
+                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ with_annotate_state\"by\"\n  ( have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n    have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n    have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n    have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n    have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n    have hb :\n      ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR) ⟨0, Nat.sub_pos_of_lt h_iR⟩ : L) =\n        1 :=\n      get_sDomain_",
+                                                    "header_truncated": true,
+                                                    "raw": 2489142,
+                                                    "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "✅️ with_annotate_state\"by\"\n    ( have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n      have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n      have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n      have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n      have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n      have hb :\n        ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR) ⟨0, Nat.sub_pos_of_lt h_iR⟩ :\n            L) =\n     ",
+                                                "header_truncated": true,
+                                                "raw": 2489229,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ with_annotate_state\"by\"\n    ( have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n      have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n      have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n      have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n      have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n      have hb :\n        ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR) ⟨0, Nat.sub_pos_of_lt h_iR⟩ :\n            L) =\n     ",
+                                            "header_truncated": true,
+                                            "raw": 2489314,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n      have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n      have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n      have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n      have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n      have hb :\n        ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR) ⟨0, Nat.sub_pos_of_lt h_iR⟩ :\n      ",
+                                        "header_truncated": true,
+                                        "raw": 2489485,
+                                        "tag": "Lean.Parser.Tactic.case"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_diff : x₁.val - x₀.val = 1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n        have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n        have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n        have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n        have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n        have hb :\n          ((",
+                                    "header_truncated": true,
+                                    "raw": 2610588,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_diff : x₁.val - x₀.val = 1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n        have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n        have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n        have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n        have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n        have hb :\n          ((",
+                                "header_truncated": true,
+                                "raw": 2610679,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_diff : x₁.val - x₀.val = 1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n        have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n        have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n        have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n        have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n        have hb :\n       ",
+                            "header_truncated": true,
+                            "raw": 2610807,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ have h_diff : x₁.val - x₀.val = 1 :=\n  by\n  have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n  have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n  have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n  have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n  have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n  have hb :\n    ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR) ⟨0, Nat.sub_pos_of_lt h_iR⟩ : L) =\n      1 :=\n    get_sDomain_",
+                        "header_truncated": true,
+                        "raw": 2610992,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [],
+                                    "class": "Elab.step",
+                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_eval (x : (sDomain 𝔽q β h_ℓ_add_R_rate) ⟨i, by omega⟩) (k : Fin 2) (hx : x = fiberMap k) :\n        P_i.eval x.val = P₀.eval y.val + x.val * P₁.eval y.val := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( subst hx\n        simp only [evaluation_poly_split_identity 𝔽q β h_ℓ_add_R_rate i coeffs, P_i, P₀, P₁, Polynomial.eval_add,\n          eval_comp, Polynomial.eval_mul, Polynomial.eval_X, hq k])",
+                                    "header_truncated": false,
+                                    "raw": 504300,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_eval (x : (sDomain 𝔽q β h_ℓ_add_R_rate) ⟨i, by omega⟩) (k : Fin 2) (hx : x = fiberMap k) :\n        P_i.eval x.val = P₀.eval y.val + x.val * P₁.eval y.val := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( subst hx\n        simp only [evaluation_poly_split_identity 𝔽q β h_ℓ_add_R_rate i coeffs, P_i, P₀, P₁, Polynomial.eval_add,\n          eval_comp, Polynomial.eval_mul, Polynomial.eval_X, hq k])",
+                                "header_truncated": false,
+                                "raw": 504391,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_eval (x : (sDomain 𝔽q β h_ℓ_add_R_rate) ⟨i, by omega⟩) (k : Fin 2) (hx : x = fiberMap k) :\n        P_i.eval x.val = P₀.eval y.val + x.val * P₁.eval y.val := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( subst hx\n        simp only [evaluation_poly_split_identity 𝔽q β h_ℓ_add_R_rate i coeffs, P_i, P₀, P₁, Polynomial.eval_add,\n          eval_comp, Polynomial.eval_mul, Polynomial.eval_X, hq k])",
+                            "header_truncated": false,
+                            "raw": 504519,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ have h_eval (x : (sDomain 𝔽q β h_ℓ_add_R_rate) ⟨i, by omega⟩) (k : Fin 2) (hx : x = fiberMap k) :\n  P_i.eval x.val = P₀.eval y.val + x.val * P₁.eval y.val :=\n  by\n  subst hx\n  simp only [evaluation_poly_split_identity 𝔽q β h_ℓ_add_R_rate i coeffs, P_i, P₀, P₁, Polynomial.eval_add, eval_comp,\n    Polynomial.eval_mul, Polynomial.eval_X, hq k]",
+                        "header_truncated": false,
+                        "raw": 504704,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "✅️ rewrite [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 969661,
+                                                                                    "tag": "Lean.Parser.Tactic.rewriteSeq"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "✅️ rewrite [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]; with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                                "header_truncated": false,
+                                                                                "raw": 1013040,
+                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "✅️ rewrite [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]; with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                            "header_truncated": false,
+                                                                            "raw": 1013127,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ (rewrite [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib];\n  with_annotate_state\"]\" (try (with_reducible rfl)))",
+                                                                        "header_truncated": false,
+                                                                        "raw": 1013216,
+                                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]",
+                                                                    "header_truncated": false,
+                                                                    "raw": 1013347,
+                                                                    "tag": "Lean.Parser.Tactic.rwSeq"
+                                                                  },
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [],
+                                                                                        "class": "Meta.synthInstance",
+                                                                                        "header": "❌️ CharZero L[X]",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 500468,
+                                                                                        "tag": ""
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "✅️ ring1",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 601019,
+                                                                                    "tag": "Mathlib.Tactic.Ring.ring1"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "✅️ ring1",
+                                                                                "header_truncated": false,
+                                                                                "raw": 601105,
+                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "✅️ ring1",
+                                                                            "header_truncated": false,
+                                                                            "raw": 601189,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ first\n| ring1\n|\n  try_this ring_nf\"\\n\\nThe `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.\n      \\nNote that `ring` works primarily in *commutative* rings. \\\n      If you have a noncommutative ring, abelian group or module, consider using \\\n      `noncomm_ring`, `abel` or `module` instead.\"",
+                                                                        "header_truncated": false,
+                                                                        "raw": 601279,
+                                                                        "tag": "Lean.Parser.Tactic.first"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ ring",
+                                                                    "header_truncated": false,
+                                                                    "raw": 601778,
+                                                                    "tag": "Mathlib.Tactic.RingNF.ring"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ \n  simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n  rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n  refine Finset.sum_congr rfl (fun j _ => ?_)\n  simp only [Polynomial.C_add, Polynomial.C_mul]\n  ring",
+                                                                "header_truncated": false,
+                                                                "raw": 2226359,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ \n  simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n  rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n  refine Finset.sum_congr rfl (fun j _ => ?_)\n  simp only [Polynomial.C_add, Polynomial.C_mul]\n  ring",
+                                                            "header_truncated": false,
+                                                            "raw": 2226443,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ (\n  simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n  rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n  refine Finset.sum_congr rfl (fun j _ => ?_)\n  simp only [Polynomial.C_add, Polynomial.C_mul]\n  ring)",
+                                                        "header_truncated": false,
+                                                        "raw": 2226529,
+                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ with_annotate_state\"by\"\n  ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n    rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n    refine Finset.sum_congr rfl (fun j _ => ?_)\n    simp only [Polynomial.C_add, Polynomial.C_mul]\n    ring)",
+                                                    "header_truncated": false,
+                                                    "raw": 2226625,
+                                                    "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "✅️ with_annotate_state\"by\"\n    ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n      rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n      refine Finset.sum_congr rfl (fun j _ => ?_)\n      simp only [Polynomial.C_add, Polynomial.C_mul]\n      ring)",
+                                                "header_truncated": false,
+                                                "raw": 2226712,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ with_annotate_state\"by\"\n    ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n      rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n      refine Finset.sum_congr rfl (fun j _ => ?_)\n      simp only [Polynomial.C_add, Polynomial.C_mul]\n      ring)",
+                                            "header_truncated": false,
+                                            "raw": 2226797,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n      rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n      refine Finset.sum_congr rfl (fun j _ => ?_)\n      simp only [Polynomial.C_add, Polynomial.C_mul]\n      ring)",
+                                        "header_truncated": false,
+                                        "raw": 2226968,
+                                        "tag": "Lean.Parser.Tactic.case"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n        rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n        refine Finset.sum_congr rfl (fun j _ => ?_)\n        simp only [Polynomial.C_add, Polynomial.C_mul]\n        ring)",
+                                    "header_truncated": false,
+                                    "raw": 2437961,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n        rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n        refine Finset.sum_congr rfl (fun j _ => ?_)\n        simp only [Polynomial.C_add, Polynomial.C_mul]\n        ring)",
+                                "header_truncated": false,
+                                "raw": 2438052,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n        rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n        refine Finset.sum_congr rfl (fun j _ => ?_)\n        simp only [Polynomial.C_add, Polynomial.C_mul]\n        ring)",
+                            "header_truncated": false,
+                            "raw": 2438180,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 :=\n  by\n  simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n  rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n  refine Finset.sum_congr rfl (fun j _ => ?_)\n  simp only [Polynomial.C_add, Polynomial.C_mul]\n  ring",
+                        "header_truncated": false,
+                        "raw": 2438365,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  rw [show x₁.val = x₀.val + 1 from by rw [← h_diff, add_comm, sub_add_cancel]]\n  ring",
+                                "header_truncated": false,
+                                "raw": 907443,
+                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ \n  rw [show x₁.val = x₀.val + 1 from by rw [← h_diff, add_comm, sub_add_cancel]]\n  ring",
+                            "header_truncated": false,
+                            "raw": 907527,
+                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ calc\n  f_i_plus_1 y = f_i x₀ * ((1 - r_chal) * x₁.val - r_chal) + f_i x₁ * (r_chal - (1 - r_chal) * x₀.val) := rfl\n  _ =\n      (P₀.eval y.val + x₀.val * P₁.eval y.val) * ((1 - r_chal) * x₁.val - r_chal) +\n        (P₀.eval y.val + x₁.val * P₁.eval y.val) * (r_chal - (1 - r_chal) * x₀.val) :=\n    by simp only [f_i, h_eval x₀ 0 rfl, h_eval x₁ 1 rfl]\n  _ = (1 - r_chal) * P₀.eval y.val + r_chal * P₁.eval y.val :=\n    by\n    rw [show x₁.val = x₀.val + 1 from by rw [← h_diff, add_comm, sub_add_cance",
+                        "header_truncated": true,
+                        "raw": 2094258,
+                        "tag": "Lean.calcTactic"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "✅️ \n  intro P_i f_i f_i_plus_1 new_coeffs P_i_plus_1 y\n  set fiberMap :=\n    qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := 1) (h_i_add_steps := by simp only; omega) (y := y)\n  set x₀ := fiberMap 0\n  set x₁ := fiberMap 1\n  let P₀ := evenRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  let P₁ := oddRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  have hq (k : Fin 2) : (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval (fiberMap k).val = y := by\n    rw [generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega",
+                    "header_truncated": true,
+                    "raw": 9399732,
+                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "✅️ \n  intro P_i f_i f_i_plus_1 new_coeffs P_i_plus_1 y\n  set fiberMap :=\n    qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := 1) (h_i_add_steps := by simp only; omega) (y := y)\n  set x₀ := fiberMap 0\n  set x₁ := fiberMap 1\n  let P₀ := evenRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  let P₁ := oddRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  have hq (k : Fin 2) : (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval (fiberMap k).val = y := by\n    rw [generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega",
+                "header_truncated": true,
+                "raw": 9399825,
+                "tag": "Lean.Parser.Tactic.tacticSeq"
+              }
+            ],
+            "class": "Elab.definition.value",
+            "header": "✅️ Binius.BinaryBasefold.fold_advances_evaluation_poly",
+            "header_truncated": false,
+            "raw": 9432764,
+            "tag": ""
+          },
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "class": "Kernel",
+                    "header": "✅️ typechecking declarations [Binius.BinaryBasefold.fold_advances_evaluation_poly]",
+                    "header_truncated": false,
+                    "raw": 526080,
+                    "tag": ""
+                  }
+                ],
+                "class": "addDecl",
+                "header": "✅️ adding declarations [Binius.BinaryBasefold.fold_advances_evaluation_poly]",
+                "header_truncated": false,
+                "raw": 526299,
+                "tag": ""
+              }
+            ],
+            "class": "Elab.def.processPreDef",
+            "header": "✅️ process pre-definitions",
+            "header_truncated": false,
+            "raw": 644018,
+            "tag": ""
+          }
+        ],
+        "class": "Elab.command",
+        "header": "✅️ /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n  is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n-/\ntheorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n    (r_chal : L) :\n    let P_i : L[X] :=\n      intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n        ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1) (m := ℓ) (h₁ := i.isLt) (by exact Nat.lt_add_one ℓ)⟩) coeffs\n ",
+        "header_truncated": true,
+        "raw": 13300553,
+        "tag": "Lean.Parser.Command.theorem"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option maxHeartbeats✝ 0 in\n/-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n  is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n-/\ntheorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n    (r_chal : L) :\n    let P_i : L[X] :=\n      intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n        ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1) (m := ℓ) (h₁ := i.isLt) (by exa",
+        "header_truncated": true,
+        "raw": 13304197,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option Elab.async✝ false in\nset_option maxHeartbeats✝ 0 in\n/-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n  is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n-/\ntheorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n    (r_chal : L) :\n    let P_i : L[X] :=\n      intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n        ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1)",
+        "header_truncated": true,
+        "raw": 13307839,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ #proof_eval_measure \"PROOF_EVAL_4a77182b823147e09170a6d4ce00acb4\" target\n  \"Binius.BinaryBasefold.fold_advances_evaluation_poly\" end 52004 in\n  /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n    is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n  -/\n  theorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n      (r_chal : L) :\n      let P_i : L[X] :=\n        intermediateEva",
+        "header_truncated": true,
+        "raw": 13472895,
+        "tag": "«command#proof_eval_measure_Target_End_In_»"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 500000 in\n#proof_eval_measure \"PROOF_EVAL_4a77182b823147e09170a6d4ce00acb4\" target\n  \"Binius.BinaryBasefold.fold_advances_evaluation_poly\" end 52004 in\n  /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n    is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n  -/\n  theorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n      (r_chal : L) :\n",
+        "header_truncated": true,
+        "raw": 13476644,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end",
+        "header_truncated": false,
+        "raw": 898,
+        "tag": "Lean.Parser.Command.end"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.useHeartbeats✝ true in\nset_option trace.profiler.threshold✝ 500000 in\n#proof_eval_measure \"PROOF_EVAL_4a77182b823147e09170a6d4ce00acb4\" target\n  \"Binius.BinaryBasefold.fold_advances_evaluation_poly\" end 52004 in\n  /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n    is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n  -/\n  theorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeff",
+        "header_truncated": true,
+        "raw": 0,
+        "tag": "Lean.Parser.Command.in"
+      }
+    ],
+    "hotspots": [
+      {
+        "node_id": 12,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.value",
+        "syntax_kind": "",
+        "snippet": "✅️ Binius.BinaryBasefold.fold_advances_evaluation_poly",
+        "snippet_truncated": false,
+        "heartbeats_raw": 9432764,
+        "heartbeats": 9432.764,
+        "inclusive": true
+      },
+      {
+        "node_id": 4,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.header",
+        "syntax_kind": "",
+        "snippet": "✅️ Binius.BinaryBasefold.fold_advances_evaluation_poly",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2786394,
+        "heartbeats": 2786.394,
+        "inclusive": true
+      },
+      {
+        "node_id": 19,
+        "parent_id": 12,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have h_diff : x₁.val - x₀.val = 1 :=\n  by\n  have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n  have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n  have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n  have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n  have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n  have hb :\n    ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR) ⟨0, Nat.sub_pos_of_lt h_iR⟩ : L) =\n      1 :=\n    get_sDomain_",
+        "snippet_truncated": true,
+        "heartbeats_raw": 2610992,
+        "heartbeats": 2610.992,
+        "inclusive": true
+      },
+      {
+        "node_id": 20,
+        "parent_id": 19,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_diff : x₁.val - x₀.val = 1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n        have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n        have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n        have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n        have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n        have hb :\n       ",
+        "snippet_truncated": true,
+        "heartbeats_raw": 2610807,
+        "heartbeats": 2610.807,
+        "inclusive": true
+      },
+      {
+        "node_id": 23,
+        "parent_id": 20,
+        "depth": 8,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.case",
+        "snippet": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n      have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n      have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n      have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n      have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n      have hb :\n        ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR) ⟨0, Nat.sub_pos_of_lt h_iR⟩ :\n      ",
+        "snippet_truncated": true,
+        "heartbeats_raw": 2489485,
+        "heartbeats": 2489.485,
+        "inclusive": true
+      },
+      {
+        "node_id": 40,
+        "parent_id": 12,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 :=\n  by\n  simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n  rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n  refine Finset.sum_congr rfl (fun j _ => ?_)\n  simp only [Polynomial.C_add, Polynomial.C_mul]\n  ring",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2438365,
+        "heartbeats": 2438.365,
+        "inclusive": true
+      },
+      {
+        "node_id": 41,
+        "parent_id": 40,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n        rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n        refine Finset.sum_congr rfl (fun j _ => ?_)\n        simp only [Polynomial.C_add, Polynomial.C_mul]\n        ring)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2438180,
+        "heartbeats": 2438.18,
+        "inclusive": true
+      },
+      {
+        "node_id": 44,
+        "parent_id": 41,
+        "depth": 8,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.case",
+        "snippet": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement]\n      rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n      refine Finset.sum_congr rfl (fun j _ => ?_)\n      simp only [Polynomial.C_add, Polynomial.C_mul]\n      ring)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2226968,
+        "heartbeats": 2226.968,
+        "inclusive": true
+      },
+      {
+        "node_id": 62,
+        "parent_id": 12,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.calcTactic",
+        "snippet": "✅️ calc\n  f_i_plus_1 y = f_i x₀ * ((1 - r_chal) * x₁.val - r_chal) + f_i x₁ * (r_chal - (1 - r_chal) * x₀.val) := rfl\n  _ =\n      (P₀.eval y.val + x₀.val * P₁.eval y.val) * ((1 - r_chal) * x₁.val - r_chal) +\n        (P₀.eval y.val + x₁.val * P₁.eval y.val) * (r_chal - (1 - r_chal) * x₀.val) :=\n    by simp only [f_i, h_eval x₀ 0 rfl, h_eval x₁ 1 rfl]\n  _ = (1 - r_chal) * P₀.eval y.val + r_chal * P₁.eval y.val :=\n    by\n    rw [show x₁.val = x₀.val + 1 from by rw [← h_diff, add_comm, sub_add_cance",
+        "snippet_truncated": true,
+        "heartbeats_raw": 2094258,
+        "heartbeats": 2094.258,
+        "inclusive": true
+      },
+      {
+        "node_id": 30,
+        "parent_id": 23,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simp",
+        "snippet": "✅️ simp only [fz0, fz1, zero_smul, one_smul, x₀, x₁, fiberMap, Submodule.coe_add, e₀, e₁, zero_add, hb]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1128858,
+        "heartbeats": 1128.858,
+        "inclusive": true
+      },
+      {
+        "node_id": 51,
+        "parent_id": 44,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.rwSeq",
+        "snippet": "✅️ rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1013347,
+        "heartbeats": 1013.347,
+        "inclusive": true
+      },
+      {
+        "node_id": 55,
+        "parent_id": 51,
+        "depth": 19,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.rewriteSeq",
+        "snippet": "✅️ rewrite [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 969661,
+        "heartbeats": 969.661,
+        "inclusive": true
+      },
+      {
+        "node_id": 5,
+        "parent_id": 4,
+        "depth": 2,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.let",
+        "snippet": "✅️ expected type: Prop, term\nlet P_i : L[X] :=\n  intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n    ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1) (m := ℓ) (h₁ := i.isLt) (by exact Nat.lt_add_one ℓ)⟩) coeffs\nlet f_i :=\n  fun\n    (x :\n      (sDomain 𝔽q β h_ℓ_add_R_rate)\n        ⟨i, by exact Nat.lt_trans (n := i) (k := r) (m := ℓ) (h₁ := by omega) (by omega)⟩) =>\n  P_i.eval (x.val : L)\nlet f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)\nlet new_coeffs",
+        "snippet_truncated": true,
+        "heartbeats_raw": 841386,
+        "heartbeats": 841.386,
+        "inclusive": true
+      },
+      {
+        "node_id": 6,
+        "parent_id": 5,
+        "depth": 3,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.let",
+        "snippet": "✅️ expected type: Prop, term\nlet f_i :=\n  fun\n    (x :\n      (sDomain 𝔽q β h_ℓ_add_R_rate)\n        ⟨i, by exact Nat.lt_trans (n := i) (k := r) (m := ℓ) (h₁ := by omega) (by omega)⟩) =>\n  P_i.eval (x.val : L)\nlet f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)\nlet new_coeffs := fun j : Fin (2 ^ (ℓ - (i + 1))) =>\n  (1 - r_chal) *\n      (coeffs\n        ⟨j.val * 2, by\n          rw [← Nat.add_zero (j.val * 2)]\n          apply mul_two_add_bit_lt_two_pow (c := ℓ ",
+        "snippet_truncated": true,
+        "heartbeats_raw": 729232,
+        "heartbeats": 729.232,
+        "inclusive": true
+      },
+      {
+        "node_id": 15,
+        "parent_id": 12,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have hq (k : Fin 2) : (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval (fiberMap k).val = y := by\n  rw [generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega) (x := fiberMap k) (y := y) ⟨k, rfl⟩,\n    iteratedQuotientMap_k_eq_1_is_qMap 𝔽q β h_ℓ_add_R_rate i (by omega) (fiberMap k)]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 665698,
+        "heartbeats": 665.698,
+        "inclusive": true
+      },
+      {
+        "node_id": 16,
+        "parent_id": 15,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have hq (k : Fin 2) : (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval (fiberMap k).val = y := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      (rw [generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega) (x := fiberMap k) (y := y) ⟨k, rfl⟩,\n          iteratedQuotientMap_k_eq_1_is_qMap 𝔽q β h_ℓ_add_R_rate i (by omega) (fiberMap k)])",
+        "snippet_truncated": false,
+        "heartbeats_raw": 665513,
+        "heartbeats": 665.513,
+        "inclusive": true
+      },
+      {
+        "node_id": 7,
+        "parent_id": 6,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Term.let",
+        "snippet": "✅️ expected type: Prop, term\nlet f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)\nlet new_coeffs := fun j : Fin (2 ^ (ℓ - (i + 1))) =>\n  (1 - r_chal) *\n      (coeffs\n        ⟨j.val * 2, by\n          rw [← Nat.add_zero (j.val * 2)]\n          apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1)) (i := 0) (by omega) (by omega)⟩) +\n    r_chal *\n      (coeffs\n        ⟨j.val * 2 + 1, by\n          apply mul_two_add_bit_lt_two_pow (c := ℓ - i) ",
+        "snippet_truncated": true,
+        "heartbeats_raw": 630589,
+        "heartbeats": 630.589,
+        "inclusive": true
+      },
+      {
+        "node_id": 56,
+        "parent_id": 44,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Mathlib.Tactic.RingNF.ring",
+        "snippet": "✅️ ring",
+        "snippet_truncated": false,
+        "heartbeats_raw": 601778,
+        "heartbeats": 601.778,
+        "inclusive": true
+      },
+      {
+        "node_id": 57,
+        "parent_id": 56,
+        "depth": 16,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.first",
+        "snippet": "✅️ first\n| ring1\n|\n  try_this ring_nf\"\\n\\nThe `ring` tactic failed to close the goal. Use `ring_nf` to obtain a normal form.\n      \\nNote that `ring` works primarily in *commutative* rings. \\\n      If you have a noncommutative ring, abelian group or module, consider using \\\n      `noncomm_ring`, `abel` or `module` instead.\"",
+        "snippet_truncated": false,
+        "heartbeats_raw": 601279,
+        "heartbeats": 601.279,
+        "inclusive": true
+      },
+      {
+        "node_id": 60,
+        "parent_id": 57,
+        "depth": 19,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Mathlib.Tactic.Ring.ring1",
+        "snippet": "✅️ ring1",
+        "snippet_truncated": false,
+        "heartbeats_raw": 601019,
+        "heartbeats": 601.019,
+        "inclusive": true
+      }
+    ],
+    "marks": [],
+    "profile_heartbeats_raw": 13308185,
+    "profile_heartbeats": 13308.185,
+    "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+    "cache_key": "a7af439c48e89bd74387d28857454eb06b6913c29298e6e405d9121d8b99353e",
+    "status": "ok",
+    "available_hotspots": 25,
+    "hotspots_truncated": true,
+    "mark_count": 0,
+    "marks_truncated": false,
+    "partial": false,
+    "diagnostics": [],
+    "context_mode": "full_file_replacement",
+    "returncode": 0,
+    "elapsed_seconds": 4.312921952456236
+  }
+}

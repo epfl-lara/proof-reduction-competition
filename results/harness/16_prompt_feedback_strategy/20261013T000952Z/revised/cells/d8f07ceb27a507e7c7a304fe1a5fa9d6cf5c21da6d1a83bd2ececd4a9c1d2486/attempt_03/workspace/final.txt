@@ -1,0 +1,44 @@
+```lean
+lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp}
+    (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :
+    ι 𝓣ᶠ(a * [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * b) =
+    ι ([ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by
+  let c := [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF
+  refine LinearMap.congr_fun₂ (show
+    (mulLinearMap ∘ₗ mulLinearMap.flip c).compr₂ₛₗ (ι.toLinearMap ∘ₗ timeOrderF) =
+      mulLinearMap.compr₂ₛₗ (ι.toLinearMap ∘ₗ mulLinearMap c ∘ₗ timeOrderF) from
+    ofCrAnListFBasis.ext fun xs => ofCrAnListFBasis.ext fun ys => ?_) a b
+  simp only [LinearMap.compr₂ₛₗ_apply, LinearMap.comp_apply,
+    LinearMap.flip_apply, mulLinearMap_apply, AlgHom.toLinearMap_apply, ofListBasis_eq_ofList]
+  obtain ⟨l1, l2, hs⟩ : ∃ l1 l2, ∀ l,
+      (∀ c ∈ l, crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) →
+      crAnTimeOrderList (xs ++ l ++ ys) = l1 ++ l ++ l2 :=
+    ⟨_, _, fun l h =>
+      (insertionSort_of_eq_list 𝓕.crAnTimeOrderRel φ xs l ys h).trans
+        (List.append_assoc _ _ _)⟩
+  simp only [List.append_assoc] at hs
+  rw [← ofCrAnListF_append, timeOrderF_ofCrAnListF, mul_smul_comm]
+  trans ι (crAnTimeOrderSign (xs ++ φ :: ψ :: ys) •
+        (ofCrAnListF l1 * c * ofCrAnListF l2))
+  ·
+      congr 1
+      simp only [c, superCommuteF_ofCrAnOpF_ofCrAnOpF, ← ofCrAnListF_singleton,
+        mul_sub, sub_mul, mul_smul_comm, smul_mul_assoc, ← ofCrAnListF_append,
+        map_sub, map_smul, timeOrderF_ofCrAnListF, List.append_assoc,
+        List.cons_append, List.nil_append]
+      rw [← crAnTimeOrderSign_swap_eq_time hφψ hψφ]
+      erw [hs [φ, ψ] (by simp [hφψ, hψφ]), hs [ψ, φ] (by simp [hφψ, hψφ])]
+      rw [smul_sub, smul_comm]
+      rfl
+  ·
+      simp only [map_smul, map_mul]
+      rw [Subalgebra.mem_center_iff.mp
+        (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ),
+        mul_assoc, ← map_mul, ← ofCrAnListF_append]
+      erw [← hs [] (by simp)]
+      by_cases hq : (𝓕 |>ₛ φ) = (𝓕 |>ₛ ψ)
+      · rw [crAnTimeOrderSign, Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ
+          hq.symm]
+        rfl
+      · simp only [c, ι_superCommuteF_of_diff_statistic hq, zero_mul, smul_zero]
+```

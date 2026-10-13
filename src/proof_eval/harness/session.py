@@ -31,6 +31,8 @@ from proof_eval.verification.references import (
 )
 
 from . import web
+from .restart_history import RestartHistory
+from .score_feedback import component_deltas, remaining_score_loss
 from .source import SourceTools
 
 
@@ -49,6 +51,7 @@ class ProofSession:
         problem_timeout_seconds=None,
         semantic_config=None,
         web_config=None,
+        restart_scope=None,
     ):
         if mode not in ("correctness", "score", "score_edges"):
             raise ValueError("Unknown feedback mode")
@@ -58,6 +61,11 @@ class ProofSession:
         self.deadline_at = deadline_at
         self.problem_timeout_seconds = problem_timeout_seconds
         self.web_config = web_config
+        self.restart_history = (
+            RestartHistory(self.folder, restart_scope)
+            if restart_scope is not None
+            else None
+        )
         self.row = pack["row"]
         self.versions = required_versions(pack)
         self.source_tools = SourceTools(
@@ -177,6 +185,7 @@ class ProofSession:
             )
             feedback = build_validity_feedback(evaluation, self.versions)
             previous = self.best_evaluation["scores"]["combined_pct"]
+            deltas = component_deltas(evaluation, self.best_evaluation, self.versions)
             record = {
                 "number": len(self.checks) + 1,
                 "at": now(),
@@ -206,6 +215,10 @@ class ProofSession:
                 "delta_from_previous_best_pp": (
                     None if numeric is None else numeric - previous
                 ),
+                "component_delta_from_previous_best_pp": deltas,
+                "best_remaining_score_loss_pp": remaining_score_loss(
+                    self.best_evaluation, self.versions
+                ),
                 "best_scores": self.best_evaluation["scores"],
                 "best_proof": self.best_code,
             }
@@ -222,6 +235,9 @@ class ProofSession:
             "attempts": len(self.checks),
             **self._score_view(self.best_evaluation),
             "best_proof": self.best_code,
+            "best_remaining_score_loss_pp": remaining_score_loss(
+                self.best_evaluation, self.versions
+            ),
             "finished": self.finished,
         }
         if self.deadline_at is not None:
@@ -327,6 +343,11 @@ class ProofSession:
             and isinstance(request["code"], str)
         ):
             return self.check(request["code"])
+        if op == "remember" and set(request) == {"op", "kind", "text"}:
+            with self.lock:
+                if self.restart_history is None or self.finished:
+                    raise ValueError("Restart notes are unavailable in this session")
+                return self.restart_history.remember(request["kind"], request["text"])
         if op == "status" and set(request) == {"op"}:
             return self.status()
         if (
@@ -419,6 +440,14 @@ class ProofSession:
             with self.lock:
                 self.guard()
                 response = self.source(request)
+                if self.restart_history is not None:
+                    self.restart_history.record(
+                        "source_observation",
+                        {
+                            "request": request,
+                            "response": response,
+                        },
+                    )
                 if op == "semantic_search":
                     path = self.folder / "semantic_searches.jsonl"
                     records = (

@@ -4,8 +4,9 @@ This repository optimizes Lean proofs for Lean Refactor Arena. Read `README.md`
 and `docs/ARCHITECTURE.md` before changing the runtime. The active model conditions
 are **gpt-6.1-sol/max** and **gpt-6-astra/max**. The default search uses the revised
 prompt, score feedback, and deterministic cleanup at the beginning and end.
-There is one canonical prompt in `prompts/refactor_system.md`, with the revised
-V2 five-card context in `prompts/strategy_bank.json`. Provider probes use native
+There is one canonical prompt in `prompts/refactor_system.md`, with the experimental
+priority and five-card revision in `prompts/strategy_bank.json`; historical V2
+runs retain their frozen bytes. Provider probes use native
 Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
 `Qwen/Qwen3.8-Flash-Next/xhigh`) and Claude Code
 (`claude-opus-5-5/max`), keeping the same task and host proof tools.

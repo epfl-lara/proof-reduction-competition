@@ -1,0 +1,187 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "CallElimCorrect.extractedOldExprInVars",
+  "source": "strata",
+  "required_versions": [
+    {
+      "v4.26.0": "451e5f047bafa010d178856db76c00029bfa4d7f"
+    }
+  ],
+  "exact_statement": "open OldExpressions in\ntheorem extractedOldExprInVars :\n  NormalizedOldExpr post →\n  (extractOldExprVars post).Subset\n  (Imperative.HasVarsPure.getVars post)",
+  "incumbent_declaration": "open OldExpressions in\ntheorem extractedOldExprInVars :\n  NormalizedOldExpr post →\n  (extractOldExprVars post).Subset\n  (Imperative.HasVarsPure.getVars post) := by\n  rintro -\n  apply List.Sublist.subset\n  fun_induction extractOldExprVars post <;>\n    repeat' first | apply List.Sublist.append | assumption | apply List.nil_sublist | apply List.Sublist.refl\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 90.09009009009009,
+    "heartbeat_reduction_pct": 90.47597866912194,
+    "compatibility_pct": 100.0,
+    "combined_pct": 93.52202291973735
+  },
+  "reference_denominators": {
+    "tokens": 222,
+    "primary_heartbeats": 2697.873
+  },
+  "preceding_source_excerpt": "ft,\n          ExceptT.mk, StateT.bind] at Hgen\n    split at Hgen\n    split at Hgen\n    . next heq =>\n      simp [pure, StateT.pure] at Hgen\n      cases Hgen\n      simp [StateT.map, Functor.map] at heq\n      cases heq\n      rw [← List.map_map]\n      rw [List.map_fst_zip] <;> try simp_all\n      rw [List.map_fst_zip] <;> try simp_all\n      . rfl\n      . simp [genOutExprIdents]\n        rw [genOutExprIdent_len'] <;> simp_all\n      . simp [genOutExprIdents]\n        rw [genOutExprIdent_len'] <;> simp_all\n    . simp [StateT.pure, pure] at Hgen\n      cases Hgen\n  . simp [throw, throwThe, MonadExceptOf.throw,\n          ExceptT.mk, StateT.pure, pure] at Hgen\n    cases Hgen\n\ntheorem genOutExprIdentWFMono :\n  CoreGenState.WF s →\n  genOutExprIdent e s = (l, s') →\n  CoreGenState.WF s' :=\n  fun Hgen => CoreGenState.WFMono' Hgen\n\ntheorem genOutExprIdentsWFMono :\n  CoreGenState.WF s →\n  genOutExprIdents es s = (ls, s') →\n  CoreGenState.WF s' := by\n  intros Hwf Hgen\n  simp [genOutExprIdents] at Hgen\n  induction es generalizing s ls s' <;> simp at Hgen\n  case nil =>\n    simp [StateT.pure, pure] at Hgen\n    cases Hgen <;> simp_all\n  case cons h t ih =>\n    simp [bind, StateT.bind, Functor.map, StateT.map, pure] at Hgen\n    split at Hgen\n    next a s₁ heq =>\n    split at Hgen\n    next a' s₂ heq' =>\n    cases Hgen\n    have HH := genOutExprIdentWFMono Hwf heq\n    exact ih HH heq'\n\ntheorem genOutExprIdentsTripWFMono :\n  CoreGenState.WF s →\n  genOutExprIdentsTrip outs xs s = (Except.ok trips, s') →\n  CoreGenState.WF s' := by\n  intros Hwf Hgen\n  simp [genOutExprIdentsTrip] at *\n  split at Hgen\n  . simp [Functor.map, ExceptT.map, bind,\n          liftM, monadLift, MonadLift.monadLift, ExceptT.lift,\n          ExceptT.mk, StateT.bind] at Hgen\n    split at Hgen\n    split at Hgen\n    . next a heq =>\n      simp [pure, StateT.pure] at Hgen\n      cases Hgen\n      simp [StateT.map, Functor.map] at heq\n      generalize Hgen' : (genOutExprIdents xs s) = gen at heq\n      cases gen with\n      | mk fst snd =>\n      simp at heq\n      cases heq\n      apply genOutExprIdentsWFMono Hwf Hgen'\n    . simp [StateT.pure, pure] at Hgen\n      cases Hgen\n  . simp [throw, throwThe, MonadExceptOf.throw,\n          ExceptT.mk, StateT.pure, pure] at Hgen\n    cases Hgen\n\ntheorem genOldExprIdentGeneratedWF :\n  genOldExprIdent e s = (l, s') → s'.generated = l :: s.generated :=\n  fun Hgen => genCoreIdentGeneratedWF Hgen\n\ntheorem genOldExprIdentsGeneratedWF :\n  genOldExprIdents es s = (ls, s') →\n  ls.reverse ++ s.generated = s'.generated\n  := by\n  intros Hgen\n  simp [genOldExprIdents] at Hgen\n  induction es generalizing s ls s' <;> simp at Hgen\n  case nil =>\n    simp [StateT.pure, pure] at Hgen\n    cases Hgen <;> simp_all\n  case cons h t ih =>\n    simp [bind, StateT.bind, Functor.map, StateT.map, pure] at Hgen\n    split at Hgen\n    next a s₁ heq =>\n    split at Hgen\n    next a' s₂ heq' =>\n    cases Hgen\n    have HH := genOldExprIdentGeneratedWF heq\n    specialize ih heq'\n    simp [HH] at ih\n    simp_all\n\ntheorem genOldExprIdentsTripGeneratedWF { s s' : CoreGenState } :\n  genOldExprIdentsTrip p xs s = (Except.ok trips, s') →\n  trips.unzip.1.unzip.1.reverse ++ s.generated = s'.generated := by\n  intros Hgen\n  apply genOldExprIdentsGeneratedWF (es:=xs)\n  simp [genOldExprIdentsTrip, bind, liftM,] at *\n  simp [Functor.map, ExceptT.bind, ExceptT.bindCont, bind,\n        monadLift, MonadLift.monadLift, ExceptT.lift,\n        ExceptT.mk, StateT.bind] at Hgen\n  split at Hgen\n  split at Hgen\n  . next heq =>\n    simp [bind, StateT.bind] at Hgen\n    split at Hgen\n    next heq' =>\n    simp [ExceptT.bindCont] at Hgen\n    split at Hgen\n    . cases Hgen\n      simp [StateT.map, Functor.map] at heq\n      cases heq\n      rw [← List.map_map]\n      rw [List.map_fst_zip] <;> try simp_all\n      rw [List.map_fst_zip] <;> try simp_all\n      rw [← getIdentTys!_store_same heq']\n      congr\n      . simp [genOldExprIdents]\n        rw [← getIdentTys!_len heq']\n        rw [genOldExprIdent_len'] <;> simp_all\n      . simp [genOldExprIdents]\n        rw [← getIdentTys!_len heq']\n        rw [genOldExprIdent_len'] <;> simp_all\n    . cases Hgen\n  . cases Hgen\n\ntheorem genOldExprIdentWFMono :\n  CoreGenState.WF s →\n  genOldExprIdent e s = (l, s') →\n  CoreGenState.WF s' :=\n  fun Hgen => CoreGenState.WFMono' Hgen\n\ntheorem genOldExprIdentsWFMono :\n  CoreGenState.WF s →\n  genOldExprIdents es s = (ls, s') →\n  CoreGenState.WF s' := by\n  intros Hwf Hgen\n  simp [genOldExprIdents] at Hgen\n  induction es generalizing s ls s' <;> simp at Hgen\n  case nil =>\n    simp [StateT.pure, pure] at Hgen\n    cases Hgen <;> simp_all\n  case cons h t ih =>\n    simp [bind, StateT.bind, Functor.map, StateT.map, pure] at Hgen\n    split at Hgen\n    next a s₁ heq =>\n    split at Hgen\n    next a' s₂ heq' =>\n    cases Hgen\n    have HH := genOldExprIdentWFMono Hwf heq\n    exact ih HH heq'\n\ntheorem genOldExprIdentsTripWFMono :\n  CoreGenState.WF s →\n  genOldExprIdentsTrip outs xs s = (Except.ok trips, s') →\n  CoreGenState.WF s' := by\n  intros Hwf Hgen\n  simp [genOldExprIdentsTrip, bind, liftM,] at *\n  simp [Functor.map, ExceptT.bind, ExceptT.bindCont, bind,\n        monadLift, MonadLift.monadLift, ExceptT.lift,\n        ExceptT.mk, StateT.bind] at Hgen\n  split at Hgen\n  split at Hgen\n  . next heq =>\n    simp [bind, StateT.bind] at Hgen\n    split at Hgen\n    next heq' =>\n    simp [ExceptT.bindCont] at Hgen\n    split at Hgen\n    . cases Hgen\n      simp [StateT.map, Functor.map] at heq\n      cases heq\n      generalize Hgen' : (genOldExprIdents xs s) = gen at heq'\n      cases gen with\n      | mk fst snd =>\n      rw [← getIdentTys!_store_same heq']\n      exact genOldExprIdentsWFMono Hwf Hgen'\n    . cases Hgen\n  . cases Hgen\n\ntheorem List.Subset.trans :\n  List.Subset a b → b.Subset c → a.Subset c := fun H1 H2 _ Hin => H2 (H1 Hin)\n\ntheorem List.Subset.app :\n  List.Subset a c → b.Subset c → (a ++ b).Subset c := by\n  intros H1 H2\n  intros x Hin\n  simp at Hin\n  cases Hin with\n  | inl Hin =>\n    exact H1 Hin\n  | inr Hin =>\n    exact H2 Hin\n\n",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "CallElimCorrect.extractedOldExprInVars",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "3fc2b6156e5865f63f5c6c448e74fd6081be547ba7efebaee556d131ef7dfa7e"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 85,
+        "evidence_sha256": "ad1b652cc21605335fa757393816bb8387e822db5ab2b223b88540c425d1ec37",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 90.54054054054053,
+          "heartbeat_reduction_pct": 87.648491978681,
+          "compatibility_pct": 100.0,
+          "combined_pct": 92.72967750640719
+        },
+        "previous_best_combined_pct": 93.52202291973735,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -8,2 +8,3 @@\n   fun_induction extractOldExprVars post <;>\n-    repeat' first | apply List.Sublist.append | assumption | apply List.nil_sublist | apply List.Sublist.refl\n+    try apply_rules only [List.Sublist.append, List.nil_sublist, List.Sublist.refl]\n+  all_goals assumption",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.26.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.26.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 86,
+        "evidence_sha256": "3b47c3536308ea7b2fee46289385e21c7a190316e93ced1ad824bdf511c2f90b",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 88.73873873873875,
+          "heartbeat_reduction_pct": 91.84631745082145,
+          "compatibility_pct": 100.0,
+          "combined_pct": 93.52835206318673
+        },
+        "previous_best_combined_pct": 93.52202291973735,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -8,2 +8,6 @@\n   fun_induction extractOldExprVars post <;>\n-    repeat' first | apply List.Sublist.append | assumption | apply List.nil_sublist | apply List.Sublist.refl\n+    repeat' first\n+    | apply List.Sublist.append <;> try assumption\n+    | apply List.nil_sublist\n+    | assumption\n+    | apply List.Sublist.refl",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.26.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.26.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 87,
+        "evidence_sha256": "e463cbce4cbd7e8fe1a5e04cd2d9b9d270a82d8c09a5e8f0f1432a71dbdc1df8",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 88.73873873873875,
+          "heartbeat_reduction_pct": 91.71443577959377,
+          "compatibility_pct": 100.0,
+          "combined_pct": 93.48439150611084
+        },
+        "previous_best_combined_pct": 93.52202291973735,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -8,2 +8,6 @@\n   fun_induction extractOldExprVars post <;>\n-    repeat' first | apply List.Sublist.append | assumption | apply List.nil_sublist | apply List.Sublist.refl\n+    repeat' first\n+    | apply List.Sublist.append <;> try assumption\n+    | apply List.nil_sublist\n+    | apply List.Sublist.refl\n+    | assumption",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.26.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.26.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 88,
+        "evidence_sha256": "f5208ae11961313671d19a5e6ac863ab540e2a997f56b1f13103a24670d42473",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 88.73873873873875,
+          "heartbeat_reduction_pct": 91.79231194351996,
+          "compatibility_pct": 100.0,
+          "combined_pct": 93.51035022741956
+        },
+        "previous_best_combined_pct": 93.52202291973735,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -8,2 +8,6 @@\n   fun_induction extractOldExprVars post <;>\n-    repeat' first | apply List.Sublist.append | assumption | apply List.nil_sublist | apply List.Sublist.refl\n+    repeat' first\n+    | apply List.nil_sublist\n+    | apply List.Sublist.append <;> try assumption\n+    | assumption\n+    | apply List.Sublist.refl",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.26.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.26.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 5,
+        "evidence_sha256": "02c5a0e695c52f76a9028bad874a1af43cb040eb3887f32fccfb6e39d214c8bb",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"getVars\", \"limit\": 15}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.26.0\", \"query\": \"getVars\", \"matches\": [\"./Strata/DL/Lambda/LExpr.lean:305:def LExpr.getVars (e : LExpr T) : List (Identifier T.base.IDMeta) := match e with\", \"./Strata/DL/Lambda/LExpr.lean:308:  | .abs _ _ e' => LExpr.getVars e'\", \"./Strata/DL/Lambda/LExpr.lean:309:  | .quant _ _ _ tr' e' => LExpr.getVars tr' ++ LExpr.getVars e'\", \"./Strata/DL/Lambda/LExpr.lean:310:  | .app _ e1 e2 => LExpr.getVars e1 ++ LExpr.getVars e2\", \"./Strata/DL/Lambda/LExpr.lean:311:  | .ite _ c t e => LExpr.getVars c ++ LExpr.getVars t ++ LExpr.getVars e\", \"./Strata/DL/Lambda/L",
+        "request_sha256": "81329bf9a7e898065d2caf022fdd0f51ed6e52419f237bdd710e75dae555757c",
+        "response_sha256": "8b356a7a145554ad7fb2d0de5fe0456d71429eebe98c170c5b66744a017fe21b"
+      },
+      {
+        "attempt": 5,
+        "evidence_sha256": "95ddd73ce6c2b2c8bab93ffa6cac625a15d45918e810de0b6fd8ecc0690e1429",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \"Strata/Transform/CallElimCorrect.lean\", \"start\": 1, \"end\": 35}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \"Strata/Transform/CallElimCorrect.lean\", \"version\": \"v4.26.0\", \"text\": \"1: /-\\n2:   Copyright Strata Contributors\\n3: \\n4:   SPDX-License-Identifier: Apache-2.0 OR MIT\\n5: -/\\n6: \\n7: import Init.Data.List.Basic\\n8: import Init.Data.List.Lemmas\\n9: import Strata.Languages.Core.Env\\n10: import Strata.Languages.Core.Identifiers\\n11: import Strata.Languages.Core.Program\\n12: import Strata.Languages.Core.ProgramType\\n13: import Strata.Languages.Core.WF\\n14: import Strata.DL.Lambda.Lambda\\n15: import Strata.Transform.CoreTransform\\n16: import Strata.Transform.Call",
+        "request_sha256": "8bbbb0e93a78db7a348a07785e6e0da819dd49a3d2a30ff206b7f4d01ff7f79b",
+        "response_sha256": "803c464eb993b3647c47550c83456bcdb19ff544679737e4ab029e01a36a25ee"
+      },
+      {
+        "attempt": 5,
+        "evidence_sha256": "ccacfc0a22d342f31d5c8e436e39132fe33eac9ada85e28a4ebbffc72366ba05",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \"Strata/DL/Lambda/LExpr.lean\", \"start\": 300, \"end\": 314}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \"Strata/DL/Lambda/LExpr.lean\", \"version\": \"v4.26.0\", \"text\": \"300: namespace LExpr\\n301: \\n302: instance (T : LExprParamsT) [Inhabited T.base.Metadata] : Inhabited (LExpr T) where\\n303:   default := .boolConst default false\\n304: \\n305: def LExpr.getVars (e : LExpr T) : List (Identifier T.base.IDMeta) := match e with\\n306:   | .const _ _ => [] | .bvar _ _ => [] | .op _ _ _ => []\\n307:   | .fvar _ y _ => [y]\\n308:   | .abs _ _ e' => LExpr.getVars e'\\n309:   | .quant _ _ _ tr' e' => LExpr.getVars tr' ++ LExpr.getVars e'\\n310:   | .app _ e1 e2 => LExpr.getVars e",
+        "request_sha256": "f3c09f9073e7179ddf417eef89a753f06a16a138438f735605b29da436ef16bc",
+        "response_sha256": "567c54d8df61a2f6d2717e1a8f071be345fe265686476ee3a94edc47d82fc132"
+      }
+    ],
+    "unverified_model_notes": [
+      {
+        "attempt": 2,
+        "evidence_sha256": "758d2f659b265a527f17b905acca0b9df2ca62e171a25c5b0662bf0ce25f45f3",
+        "kind": "discovery",
+        "text": "Best now S93.5220,22tokens256.946HB: rintro -; apply List.Sublist.subset; fun_induction extractOldExprVars post <;> repeat' first | apply List.Sublist.append | assumption | apply List.nil_sublist | apply List.Sublist.refl. Append before hypotheses removes expensive failed search; apply rather than exact nil/refl _ saves2tokens13.7HB."
+      },
+      {
+        "attempt": 5,
+        "evidence_sha256": "13d7befe16dd5acb5d09d0c5701a92c27d2b38c3e51c03227e2e782e8bb66762",
+        "kind": "rejected",
+        "text": "Attempt5: apply_rules(symm:=false) valid22t1683.984HB; constructor leaf replacement fails old cases7/8; rfl leaf fails case7; unnamed intro retains Normalized hypothesis and fun_induction generalizes it, so fails IH use. grind[getVars] fails instance unfolding/panic. Focused apply_rules only[...] then all_goals assumption valid21t333.228HB, worse than best. Generic solve/apply_rules and exact-append alternatives duplicated earlier trials, all worse."
+      },
+      {
+        "attempt": 5,
+        "evidence_sha256": "1acfd7d6179d8a3003ad40dc0d4f9bcdecb3b89d4dad082008f97d2bcba6f1d1",
+        "kind": "next",
+        "text": "Attempt5 near-best append-then-try-assumption variant25t: append, nil, assumption, refl ordering gives219.976HB,S93.528352 (0.006329 above best but below selection margin so not saved). Refl before assumption223.534HB; nil before append221.433HB. All leave best22t256.946HB. Further gains would need remove a token or reduce HB materially; no new structural lemma found."
+      }
+    ],
+    "prior_check_count": 89,
+    "prior_event_count": 84,
+    "prior_events_sha256": "04e10ae150d0511c065a05e5a0bba06bfa9dbc76fb4038be5af239720f86f629"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $2.50516; $0.494836 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

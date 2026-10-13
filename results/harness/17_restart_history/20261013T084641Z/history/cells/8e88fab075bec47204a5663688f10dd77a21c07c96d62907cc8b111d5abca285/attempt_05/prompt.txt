@@ -1,0 +1,193 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "putnam_1995_a3",
+  "source": "putnambench",
+  "required_versions": [
+    {
+      "v4.25.0": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33"
+    },
+    {
+      "v4.26.0": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67"
+    },
+    {
+      "v4.27.0": "a3a10db0e9d66acbebf76c5e6a135066525ac900"
+    }
+  ],
+  "exact_statement": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i)",
+  "incumbent_declaration": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i)  := by\n  intro d e f h\n  have hd {a b} (hab : relation a b) (i) :\n      7 ∣ digits_to_num a + (b i - a i) * 10 ^ i.val := by\n    refine (congrArg (7 ∣ ·) ?_).mp (((hrelation a b).mp hab).2 i)\n    rw [hdigits_to_num, ← Int.sub_eq_iff_eq_add', ← Finset.sum_sub_distrib]\n    simp only [← Int.sub_mul, ite_sub, Int.sub_self, ite_mul, Int.zero_mul, Fintype.sum_ite_eq']\n  have hs := Finset.dvd_sum (s := Finset.univ) (fun i _ => hd h.1 i)\n  simp only [Finset.sum_add_distrib, Fin.sum_const, Int.sub_mul,\n    Finset.sum_sub_distrib, ← congrFun hdigits_to_num] at hs\n  have hc : IsCoprime (7 : ℤ) 10 := by decide\n  intro i\n  apply hc.pow_right.dvd_of_dvd_mul_right\n  apply Int.dvd_add_self_mul.mp\n  refine (congrArg (7 ∣ ·) ?_).mp (Int.dvd_sub hs\n      (Int.dvd_add (hd h.1 i) (hd h.2 i)))\n  ring\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 95.74051407588739,
+    "heartbeat_reduction_pct": 93.79439828767052,
+    "compatibility_pct": 100.0,
+    "combined_pct": 96.5116374545193
+  },
+  "reference_denominators": {
+    "tokens": 4085,
+    "primary_heartbeats": 17957.759
+  },
+  "preceding_source_excerpt": "import Mathlib\nimport Aesop\n\nimport Lean\n\n\nset_option maxHeartbeats 0\n\nopen Filter Topology Real\n\n\n",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "putnam_1995_a3",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "c6cb615c08833fcf04362b5ca3ab8e5dc6f1b8cbb637364b80505d6fd961fbc9"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 62,
+        "evidence_sha256": "235c73e40e999cd188dcd1a841e63390ae98d2cae52d79221fddb97969aea6c6",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 96.5116374545193,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -18,5 +18,6 @@\n   apply hc.pow_right.dvd_of_dvd_mul_right\n-  apply Int.dvd_add_self_mul.mp\n+  apply (Int.dvd_add_self_mul (c := digits_to_num d)).mp\n   refine (congrArg (7 ∣ ·) ?_).mp (Int.dvd_sub hs\n       (Int.dvd_add (hd h.1 i) (hd h.2 i)))\n-  ring\n+  simp only [Int.sub_mul, ← nsmul_eq_mul]\n+  abel",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.25.0\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"unsolved goals\\nrelation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop\\ndigits_to_num : (Fin 9 → ℤ) → ℤ\\nhdigits_to_num : digits_to_num = fun dig => ∑ i, dig i * 10 ^ ↑i\\nhrelation :\\n  ∀ (d e : Fin 9 → ℤ),\\n    r"
+      },
+      {
+        "check": 63,
+        "evidence_sha256": "339e58f51b5dcce593957b890d1337368cf0165d7450b3815bc0b345238daf8c",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 96.5116374545193,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -18,5 +18,6 @@\n   apply hc.pow_right.dvd_of_dvd_mul_right\n-  apply Int.dvd_add_self_mul.mp\n+  apply (Int.dvd_add_self_mul (c := digits_to_num d)).mp\n   refine (congrArg (7 ∣ ·) ?_).mp (Int.dvd_sub hs\n       (Int.dvd_add (hd h.1 i) (hd h.2 i)))\n-  ring\n+  simp only [Int.sub_mul, Int.nsmul_eq_mul]\n+  omega",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.25.0\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"omega could not prove the goal:\\na possible counterexample may satisfy the constraints\\n  a - b - c + g ≥ 1\\nwhere\\n a := d i * 10 ^ ?m.215\\n b := f i * 10 ^ ?m.215\\n c := d i * 10 ^ ↑i\\n g := f i * 10 "
+      },
+      {
+        "check": 64,
+        "evidence_sha256": "6019236482fa363d0d2b5000862519c3bc9df78266960fd929b063bcb7fd3cdd",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 95.1529987760098,
+          "heartbeat_reduction_pct": 90.86755201470295,
+          "compatibility_pct": 100.0,
+          "combined_pct": 95.34018359690424
+        },
+        "previous_best_combined_pct": 96.5116374545193,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -17,6 +17,7 @@\n   intro i\n-  apply hc.pow_right.dvd_of_dvd_mul_right\n-  apply Int.dvd_add_self_mul.mp\n+  apply (hc.pow_right (n := i.val)).dvd_of_dvd_mul_right\n+  apply (Int.dvd_add_self_mul (c := digits_to_num d)).mp\n   refine (congrArg (7 ∣ ·) ?_).mp (Int.dvd_sub hs\n       (Int.dvd_add (hd h.1 i) (hd h.2 i)))\n-  ring\n+  simp only [Int.sub_mul, Int.nsmul_eq_mul]\n+  omega",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 65,
+        "evidence_sha256": "a3ea29008bbcc77d6a397d500e509244a22e074c30728754becdb68ef9ed1aa7",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 95.5201958384333,
+          "heartbeat_reduction_pct": 92.98989367214473,
+          "compatibility_pct": 100.0,
+          "combined_pct": 96.17002983685934
+        },
+        "previous_best_combined_pct": 96.5116374545193,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -13,4 +13,5 @@\n   have hs := Finset.dvd_sum (s := Finset.univ) (fun i _ => hd h.1 i)\n-  simp only [Finset.sum_add_distrib, Fin.sum_const, Int.sub_mul,\n-    Finset.sum_sub_distrib, ← congrFun hdigits_to_num] at hs\n+  simp_rw [Int.sub_mul] at hs\n+  rw [Finset.sum_add_distrib, Finset.sum_sub_distrib, Fin.sum_const,\n+    ← congrFun hdigits_to_num d, ← congrFun hdigits_to_num e] at hs\n   have hc : IsCoprime (7 : ℤ) 10 := by decide",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 4,
+        "evidence_sha256": "7223b4228c58f2ba1f19dd4d9b4ab9ee6046c2fe597ce718ceb483740336867d",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \".lake/packages/mathlib/Mathlib/RingTheory/Coprime/Lemmas.lean\", \"start\": 176, \"end\": 191}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \".lake/packages/mathlib/Mathlib/RingTheory/Coprime/Lemmas.lean\", \"version\": \"v4.25.0\", \"text\": \"176:     exact (hp hj.1 hi hj.2).symm\\n177:   · rintro i hi j hj h\\n178:     apply IsCoprime.prod_right_iff.mp (hp i hi)\\n179:     exact Finset.mem_sdiff.mpr ⟨hj, fun f ↦ h (Finset.mem_singleton.mp f).symm⟩\\n180: \\n181: variable {m n : ℕ}\\n182: \\n183: theorem IsCoprime.pow_left (H : IsCoprime x y) : IsCoprime (x ^ m) y := by\\n184:   rw [← Finset.card_range m, ← Finset.prod_const]\\n185:   exact IsCoprime.prod_left fun _ _ ↦ H\\n186: \\n187: theorem IsCoprime.pow_right",
+        "request_sha256": "1a7d7ffe760bdf7573460ca94ef4cdc4f89cc030d2c2c1401e8c3e82001891cb",
+        "response_sha256": "ce28f6a2fa1fe6576329ab5373290da303b427f32ab80deb88bcb9ca57e277da"
+      },
+      {
+        "attempt": 4,
+        "evidence_sha256": "2d7e6bea03d108b17e6bc9995f52f0c33b97cc0a4000954b38c8ccb9266cba28",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"sum_update\", \"limit\": 16}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.25.0\", \"query\": \"sum_update\", \"matches\": [\"./.lake/packages/mathlib/Mathlib/LinearAlgebra/AffineSpace/Independent.lean:202:        rw [Finset.sum_update_of_mem hi0]\", \"./.lake/packages/mathlib/Mathlib/LinearAlgebra/AffineSpace/Combination.lean:744:      simp only [w1, Function.const_zero, Finset.sum_update_of_mem hi1, Pi.zero_apply,\", \"./.lake/packages/mathlib/Mathlib/LinearAlgebra/AffineSpace/Combination.lean:789:            Finset.sum_update_of_mem (Finset.mem_insert_self _ _),\", \"./.lake/packages/mathlib/Mathlib/LinearAlgebra/AffineSpace/Combination.",
+        "request_sha256": "0c3e2156968ca6e811c55d9c4105b484793a3a491837b9a951eb61d7c3bcb524",
+        "response_sha256": "50bd3523a9986ae217cbc6f71df386ba85c6079b0ab121ee912e4c3781f5f88a"
+      },
+      {
+        "attempt": 4,
+        "evidence_sha256": "6ef9b427f1ee168416bb23784ec36eb427b4c83c65d7f560c2ed5bc8819e5d9c",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \".lake/packages/mathlib/Mathlib/Algebra/BigOperators/Group/Finset/Piecewise.lean\", \"start\": 203, \"end\": 248}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \".lake/packages/mathlib/Mathlib/Algebra/BigOperators/Group/Finset/Piecewise.lean\", \"version\": \"v4.25.0\", \"text\": \"203: theorem _root_.Fintype.prod_eq_prod_compl_mul [DecidableEq ι] [Fintype ι] (a : ι) (f : ι → M) :\\n204:     ∏ i, f i = (∏ i ∈ {a}ᶜ, f i) * f a :=\\n205:   prod_eq_prod_diff_singleton_mul (mem_univ a) f\\n206: \\n207: theorem dvd_prod_of_mem (f : ι → M) {a : ι} {s : Finset ι} (ha : a ∈ s) : f a ∣ ∏ i ∈ s, f i := by\\n208:   classical\\n209:     rw [Finset.prod_eq_mul_prod_diff_singleton ha]\\n210:     exact dvd_mul_right _ _\\n211: \\n212: @[to_additive",
+        "request_sha256": "c2ea0a00549c31600b27451ac7202382eca2892f6ec73d0a02a34cbb28fbabde",
+        "response_sha256": "dcd5f6066cca981921bfa91adaffa36064efa988ed86b6b71c2ca548add30ca2"
+      }
+    ],
+    "unverified_model_notes": [
+      {
+        "attempt": 3,
+        "evidence_sha256": "cbf51fb8a4ae4177303650478cffa578a10827c460c2accf16eb93cd78f1e686",
+        "kind": "discovery",
+        "text": "Factor hd as digits_to_num a + (b i - a i)*10^i.val; after rewriting sum difference simplify using reverse Int.sub_mul, ite_sub, Int.sub_self, ite_mul, Int.zero_mul, Fintype.sum_ite_eq\\x27. hs uses forward Int.sub_mul. Best improved to 174 tokens/1114.387hb, score96.511637."
+      },
+      {
+        "attempt": 4,
+        "evidence_sha256": "c0cf24ac73bd38e6d504d3d164bb5eec7f806ed08139eaeb20550c216043f767",
+        "kind": "rejected",
+        "text": "Profile: final ring ~189hb, hs simp ~173hb, hd total307hb. Tried simp Int.sub_mul + abel: unresolved c and 7*D vs nsmul. Explicit c/exponent and simp Int.sub_mul/Int.nsmul_eq_mul + omega valid but 198tokens/1639.983hb (score95.34018). Splitting hs simp into simp_rw Int.sub_mul then rw sums + explicit congrFun d/e valid but183tokens/1258.858hb (score96.17003), worse."
+      },
+      {
+        "attempt": 2,
+        "evidence_sha256": "6b77ee3af82d1c501378200d893968d07de8d0fc4d3073e6fff095cd86ada713",
+        "kind": "next",
+        "text": "Removing Int.nsmul_eq_mul from latest best sum simp is valid, 171 tokens / 1155.154 hb, score 96.460445, below selection margin (+0.033742) not saved. Inline hc slowed, split sum_ite_eq into exact slowed. Ring generalization of 10^i before ring only saved 15hb but added 18 tokens."
+      }
+    ],
+    "prior_check_count": 66,
+    "prior_event_count": 130,
+    "prior_events_sha256": "5b0735d22dbf1683fe9b0bd206768eabeaa81a8200b22c45b60b694e0ac70f13"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $2.49858; $0.501424 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

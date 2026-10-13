@@ -31,6 +31,7 @@ from .incumbents import select_seed
 from .limits import time_budget_summary
 from .outcomes import finalize_cell
 from .prompts import budget_suffix, messages
+from .restart_history import add_history, build_history, scope_for
 from .session import ProofSession
 from .tracking import CLEANUP_RESERVE_SECONDS, attempt_cost, stop_decision
 
@@ -133,6 +134,11 @@ def _run_cell(
             problem_timeout_seconds=budget["timeout_seconds"] if budget else None,
             semantic_config=config.get("semantic_search"),
             web_config=config.get("web_search"),
+            restart_scope=(
+                scope_for(config, pack["name"], model, effort)
+                if config.get("restart_history_version")
+                else None
+            ),
         )
         context = {
             "name": pack["name"],
@@ -263,6 +269,17 @@ def _run_cell(
                         round_number - 1 if generations else None,
                     )
                     break
+            if session.restart_history is not None:
+                session.restart_history.attempt = round_number
+                add_history(
+                    request,
+                    build_history(
+                        session.restart_history.scope,
+                        session.checks,
+                        session.restart_history.events,
+                        session.seed_code,
+                    ),
+                )
             request[1]["content"] += budget_suffix(
                 config, budget, cost_before, remaining, round_number
             )

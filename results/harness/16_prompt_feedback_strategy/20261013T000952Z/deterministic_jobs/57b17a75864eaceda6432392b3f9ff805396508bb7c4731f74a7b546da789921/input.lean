@@ -1,0 +1,20 @@
+lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by
+  have := der.wf.2.1
+  generalize eq : [] = Γ at der
+  induction der <;> subst eq
+  case var => contradiction
+  case sub der _ ih => exact ih this rfl
+  case' app der r ih ir | tapp der _ ih | let' der _ ih _ | inl der _ ih |
+      inr der _ ih | case der _ _ ih _ _ =>
+    cases this
+    rcases ih ‹_› rfl with v | ⟨u, h⟩
+  case' app.app.inl =>
+    obtain ⟨σ, u, rfl⟩ := der.canonical_form_abs v
+    rcases ir ‹_› rfl with w | ⟨u, h⟩
+  case' tapp.tapp.inl => obtain ⟨σ, u, rfl⟩ := der.canonical_form_tabs v
+  case' case.case.inl => obtain ⟨u, rfl | rfl⟩ := der.canonical_form_sum v <;> cases v
+  all_goals first
+    | left; constructor; assumption
+    | right
+      solve_by_elim (maxDepth := 8) only [*, Exists.intro, Red.appᵣ, Red.abs,
+        Red.tabs, Red.let_body, Red.case_inl, Red.case_inr, Red.case]

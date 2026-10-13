@@ -124,7 +124,8 @@ native CLI. Omitted conditions default to DeepSeek V4.1 Flash/high, Opus
 5.5/max or Gemini 3.8 Flash/high respectively; Codex defaults remain Sol
 6.1/max and Astra/max. Only the active `score_edges`
 policy can be launched. Historical modes remain readable by the evidence auditor.
-The canonical prompt and bank retain the revised V2 bytes. Provider wrapper
+The canonical prompt and five-card bank contain the experimental priority and
+strategy revision; historical V2 runs retain their frozen bytes. Provider wrapper
 instructions may describe a different command working directory; they do not
 change the mathematical task, context, score or proof-selection policy.
 
@@ -144,6 +145,7 @@ the tool API used by the host. `dispatch()` accepts these exact JSON operations:
 | `read` | `path`, optional `version`, `start`, `end` | Bounded source excerpt |
 | `outline` | `path`, optional `version` | Declaration locations |
 | `finish` | `reason` | Durable stopping decision and current best proof |
+| `remember` | `kind`, `text` | Opt-in restart history only: an unverified discovery/rejection/next-step note, at most 600 characters |
 
 Every request includes `op`. Check feedback returns
 `score_tuple = [length_reduction_pct, heartbeat_reduction_pct, compatibility_pct]`
@@ -152,6 +154,17 @@ Only a proof passing every version and improving the combined score by more than
 0.05 percentage points replaces the best proof. Invalid, regressive and duplicate
 attempts preserve the ledger. The original seed is reconstructed from cached
 reference evidence, without compiling it again.
+
+`harness/score_feedback.py` explains saved measurements without changing scoring
+or selection. `component_delta_from_previous_best_pp` reports the length,
+heartbeat and compatibility contributions to a candidate's combined-score
+change, each divided by three. It is null unless both declarations pass every
+required version and have finite component scores. Check and status return
+`best_remaining_score_loss_pp`, the incumbent's length and heartbeat losses
+relative to an ideal zero-token, zero-heartbeat proof. These are upper bounds,
+not forecasts of achievable gains; negative reductions remain unclipped. The
+host computes deltas before replacing the incumbent and headroom after selection.
+This feedback adds no Lean calls and exposes no scores in correctness-only mode.
 
 `harness/semantic.py` owns LeanExplore discovery, enabled by default. Set
 `RunConfig.semantic_search=SemanticSearchConfig(index_directory, embedding_directory)`
@@ -473,6 +486,22 @@ existing measurement invariants. Deadline recovery can record a stopped
 admission with `dispatch_status="not_dispatched"` if request setup never finished;
 it does not invent a native request or resample it. Historical schemas and
 artifact bytes remain unchanged.
+
+`harness/restart_history.py` implements the opt-in version-1 restart-history
+policy. It saves source-tool observations and model notes in the host-owned
+`evidence/restart_events.jsonl`; at most 64 events are admitted per attempt.
+Checks remain in the existing validated proof ledger. Each fresh attempt gets
+up to two accepted and four rejected nonduplicate trial summaries, three source
+observations, and the latest note of each kind, bounded to 12,000 serialized
+characters. Notes and retrieved text remain explicitly separate from measured
+proof facts. Canonical system-prompt and strategy-card bytes are unchanged.
+The optional `restart_history_version` pins this behavior in the configuration;
+default and historical configurations omit it. Attempt records freeze event
+prefix counts and hashes. `restart_history_audit.py` validates scope, attempt
+boundaries, event hashes, and exact deterministic reconstruction of each prompt
+summary. Future evidence, another condition's notes and arbitrary prompt history
+are rejected. Existing isolation, no-resampling, proof selection and budget
+contracts apply unchanged; resuming a completed cell makes no new requests.
 
 When every cell in a condition completes, reporting exports
 `conditions/MODEL__EFFORT/selected_candidates.jsonl` in organizer submission format:

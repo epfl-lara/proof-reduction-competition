@@ -92,6 +92,7 @@ def tracking_run(tmp_path, monkeypatch):
         transport_restarts=2,
         provider="codex",
         incumbents_from=None,
+        restart_history=False,
     ):
         output = tmp_path / "run"
         model, effort = (agy.MODEL, "high") if provider == "agy" else (MODEL, EFFORT)
@@ -108,6 +109,7 @@ def tracking_run(tmp_path, monkeypatch):
             max_budget_restarts=restarts,
             max_transport_restarts=transport_restarts,
             incumbents_from=incumbents_from,
+            restart_history=restart_history,
             problem_timeout_seconds=timeout,
             paths={
                 "dataset_path": str(ROOT / "data/benchmark_data_warmup.jsonl"),
@@ -461,6 +463,66 @@ def test_spent_prior_budget_cannot_dispatch_another_request(tracking_run):
     assert audit(continued.output)["status"] == "passed"
 
 
+def test_restart_history_native_tools_audit_resume_and_tamper(
+    tracking_run, monkeypatch
+):
+    from proof_eval.harness.session import ProofSession
+
+    monkeypatch.setattr(
+        ProofSession, "source", lambda self, request: {"hint": "pinned source excerpt"}
+    )
+    monkeypatch.setattr(
+        sys.modules[__name__],
+        "FAKE_AGENT",
+        FAKE_AGENT.replace(
+            "status=tool('status')",
+            "tool('remember','--kind','next','--text','Try the discovered lemma')\ntool('search','lemma')\nstatus=tool('status')",
+        ),
+    )
+    run = tracking_run(restart_history=True)
+    result = search.run_cell(
+        run.output, run.config, run.pack, MODEL, EFFORT, run.evaluator, fake_native(run)
+    )
+    assert result["status"] == "complete" and len(result["attempts"]) == 2
+    attempt = run.folder / "attempt_01"
+    request = read(attempt / "request.json")
+    prefix = "Optimize this declaration using the supplied tools.\n"
+    payload, end = json.JSONDecoder().raw_decode(
+        request["messages"][1]["content"][len(prefix) :]
+    )
+    history = payload["restart_history"]
+    assert history["host_checked_trials"]
+    assert history["unverified_model_notes"][0]["text"] == "Try the discovered lemma"
+    assert history["retrieved_source_observations"][0]["attempt"] == 0
+    assert audit(run.output)["requests"] == 2
+
+    def forbidden(**kwargs):
+        raise AssertionError("Completed runs cannot resample")
+
+    assert (
+        search.run_cell(
+            run.output, run.config, run.pack, MODEL, EFFORT, run.evaluator, forbidden
+        )
+        == result
+    )
+    # Even coordinated prompt/boundary hash edits cannot invent host history.
+    suffix = request["messages"][1]["content"][len(prefix) + end :]
+    history["unverified_model_notes"][0]["text"] = "Injected foreign condition solution"
+    request["messages"][1]["content"] = (
+        prefix + json.dumps(payload, ensure_ascii=False, indent=2) + suffix
+    )
+    write_json(attempt / "request.json", request)
+    record = read(attempt / "attempt.json")
+    record.update(
+        messages=request["messages"], messages_sha256=fingerprint(request["messages"])
+    )
+    write_json(attempt / "attempt.json", record)
+    result["attempts"][1] = record
+    write_json(run.folder / "result.json", result)
+    with pytest.raises(ValueError, match="Restart history differs"):
+        audit(run.output)
+
+
 def test_native_restarts_are_audited_and_resume_without_requests(tracking_run):
     run = tracking_run()
     result = search.run_cell(
@@ -776,10 +838,19 @@ def test_only_explicit_native_budget_events_are_controlled(
     assert audit(run.output)["status"] == "passed"
 
 
-def test_public_custom_generator_is_stopped_at_the_whole_problem_deadline(tracking_run):
-    run = tracking_run(tracking="time", timeout=1.0, cleanup=False)
+@pytest.mark.parametrize("restart_history", [False, True])
+def test_public_custom_generator_is_stopped_at_the_whole_problem_deadline(
+    tracking_run, restart_history
+):
+    run = tracking_run(
+        tracking="time", timeout=1.0, cleanup=False, restart_history=restart_history
+    )
 
     def generator(**kwargs):
+        if restart_history:
+            kwargs["session"].dispatch(
+                {"op": "remember", "kind": "next", "text": "A pending hypothesis"}
+            )
         kwargs["session"].check(run.saved["selected_proof"])
         detached = subprocess.Popen(
             [sys.executable, "-c", "import time; time.sleep(1000)"],

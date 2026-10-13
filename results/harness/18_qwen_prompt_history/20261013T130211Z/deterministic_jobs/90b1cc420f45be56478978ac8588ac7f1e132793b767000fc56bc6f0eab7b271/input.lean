@@ -1,0 +1,42 @@
+theorem interleaved_affine_gaps_imply_tensor_gaps
+    (hC_proximityGapAffineLines : e_ε_correlatedAgreementAffineLinesNat
+      (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))
+    (h_interleaved_gaps : ∀ m : ℕ, m ≥ 1 →
+      e_ε_correlatedAgreementAffineLinesNat (F := F)
+        (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC ^⋈ (Fin m)) e ε) :
+    ∀ (ϑ : ℕ), (hϑ_gt_0 : ϑ > 0) → δ_ε_multilinearCorrelatedAgreement_Nat (F := F) (A := A)
+      (ι := ι) (C := MC) (ϑ := ϑ) (e := e) (ε := ε) := by
+  classical
+  intro ϑ
+  induction ϑ with
+  | zero =>
+    intro u
+    contradiction
+  | succ ϑ_sub_1 ih =>
+    cases ϑ_sub_1 with
+    | zero =>
+      simp only [zero_add, zero_lt_one, forall_const]
+      intro u hprob_gt
+      have h_u_eq : u = finMapTwoWords (u 0) (u 1) := by
+        funext i
+        fin_cases i <;> rfl
+      rw [h_u_eq]
+      refine hC_proximityGapAffineLines (u 0) (u 1) ?_
+      rw [← prob_uniform_singleton_finFun_eq (F := F)]
+      simpa only [multilinearCombine₁_eq_affineLineEvaluation (F := F) (u := u), Nat.cast_one,
+        ENNReal.coe_one, ENNReal.coe_natCast, one_mul] using hprob_gt
+    | succ ϑ_sub_2 =>
+      intro _ u hP
+      let ϑ' : ℕ := ϑ_sub_2 + 1
+      have h_fin : ∀ r : Fin (ϑ' + 1) → F,
+          Fin.snoc (fun i => r i.castSucc) (r (Fin.last ϑ')) = r := Fin.snoc_init_self
+      have h_split := prob_split_last_uniform_sampling_of_finFun (ϑ := ϑ') (F := F)
+        (P := fun r_last r_init => distFromCode (multilinearCombine u (Fin.snoc r_init r_last)) MC ≤ e)
+      simp only [h_fin] at h_split
+      rw [h_split] at hP
+      simp_rw [multilinearCombine_recursive_form (u := u), Fin.snoc_last, Fin.init_snoc] at hP
+      have h_close := correlatedAgreement_of_mem_R_star_tensor (ih := ih (by omega)) (u := u)
+      apply CA_split_rowwise_implies_CA (u := u) (e := e)
+      apply h_interleaved_gaps (2 ^ ϑ') Nat.one_le_two_pow
+      exact lt_of_lt_of_le (prob_R_star_gt_threshold (MC := MC) (ε := ε) (ϑ := ϑ') (u := u) (e := e) hP)
+        (Pr_le_Pr_of_implies _ _ _ fun r hr => h_close ⟨r, hr⟩)

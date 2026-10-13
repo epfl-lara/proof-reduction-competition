@@ -36,12 +36,9 @@ def test_measurement_source_still_matches_every_saved_reference():
     assert len(pins) == 36 and set(pins) == {expected}
 
 
-def test_sol_prompt_preserved_and_only_profile_tools_extend_the_checkpoint():
+def test_prompt_revision_preserves_frozen_task_inputs_and_safety_contract():
     old = ROOT / "results/harness/05_model_config"
-    assert (
-        tool_instructions("score_edges").removesuffix(PROFILE_TOOLS)
-        == read(old / "config.json")["tool_instructions"]
-    )
+    assert PROFILE_TOOLS in tool_instructions("score_edges")
     assert PROFILE_TOOLS not in tool_instructions("correctness")
     for name, pack in load_inputs().items():
         previous = read(
@@ -50,9 +47,16 @@ def test_sol_prompt_preserved_and_only_profile_tools_extend_the_checkpoint():
             / fingerprint((name, "gpt-6.1-sol", "max", "score_edges"))
             / "input.json"
         )
-        assert (
-            messages(pack, starting_point(pack, "score_edges")) == previous["messages"]
-        )
+        current = messages(pack, starting_point(pack, "score_edges"))
+        old_policy = previous["messages"][0]["content"].split("\n\n")
+        new_policy = current[0]["content"].split("\n\n")
+        assert new_policy[:3] == old_policy[:3]  # Task, output and scoring contract.
+        assert new_policy[-2:] == old_policy[-2:]  # Proof safety and read scope.
+        before = json.loads(previous["messages"][1]["content"].split("\n", 1)[1])
+        after = json.loads(current[1]["content"].split("\n", 1)[1])
+        before.pop("structural_strategy_cards")
+        after.pop("structural_strategy_cards")
+        assert after == before
 
 
 def test_package_imports_only_maintained_library_modules():

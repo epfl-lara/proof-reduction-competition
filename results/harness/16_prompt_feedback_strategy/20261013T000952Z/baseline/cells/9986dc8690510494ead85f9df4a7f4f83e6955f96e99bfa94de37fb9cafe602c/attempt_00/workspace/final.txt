@@ -1,0 +1,30 @@
+```lean
+lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by
+  have lc := der.wf.2.1
+  generalize eq : [] = Γ at der
+  induction der <;> subst eq
+  case var mem => cases mem
+  case abs | tabs => left; constructor; exact lc
+  case sub ih => exact ih lc rfl
+  case app l r il ir =>
+    right
+    cases lc with | app ll lr =>
+      rcases il ll rfl with v | ⟨u, h⟩
+      · grind only [l.canonical_form_abs v, ir lr rfl, → Red.abs, → Red.appᵣ v]
+      · exact ⟨_, .appₗ lr h⟩
+  case tapp d s ih =>
+    cases lc with | tapp lt ls =>
+      grind only [ih lt rfl, → canonical_form_tabs, → Red.tabs, → Red.tapp]
+  case let' d _ ih _ =>
+    have body := body_let.mp lc
+    grind only [ih body.1 rfl, → Red.let_body, → Red.let_bind]
+  case inl d _ ih | inr d _ ih =>
+    rcases ih d.wf.2.1 rfl with v | ⟨u, h⟩ <;>
+      grind [→ Red.inl, → Red.inr]
+  case case d _ _ ih _ _ =>
+    right
+    have body := (body_case.mp lc).2
+    rcases ih d.wf.2.1 rfl with v | ⟨u, h⟩
+    · grind only [d.canonical_form_sum v, cases Value, → Red.case_inl, → Red.case_inr]
+    · exact ⟨_, .case h body.1 body.2⟩
+```

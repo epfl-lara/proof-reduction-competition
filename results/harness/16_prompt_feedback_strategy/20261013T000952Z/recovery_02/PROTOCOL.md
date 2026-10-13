@@ -1,0 +1,3 @@
+# Baseline capacity recovery 02
+
+Continue the confirmed terminal capacity failure after cooldown. Use the unchanged frozen baseline, model, effort, inputs and original $3 per-theorem allocation; recursively carry all spending and verified same-condition proofs. Five workers, full 15-theorem cohort; only putnam_1964_b2 has remaining estimated budget. No immediate transport retries. Maximum 23 cumulative admissions. Report incomplete usage as unknown and estimates separately. Preserve historical outcomes; this recovery extension qualifies the comparison. Record repeated deterministic cleanup gains separately.

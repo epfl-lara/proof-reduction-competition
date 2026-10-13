@@ -1,0 +1,1183 @@
+{
+  "at": "2026-10-13T17:37:05.332192+00:00",
+  "code": "theorem putnam_1995_a3\n(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)\n(digits_to_num : (Fin 9 → ℤ) → ℤ)\n(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)\n(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))\n: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by\n  intro d e f ⟨hde, hef⟩\n  have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9,\n      7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 := by\n    intro x y h i\n    have hy := (hrelation x y).mp h |>.2 i\n    profile_tactic \"key_rw\" in rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from by\n      funext j\n      by_cases e : j = i <;> simp [e]] at hy\n    profile_tactic \"key_simpa\" in simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib,\n      Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte] using hy\n  profile_tactic \"A\" in exact True.intro\n  have A := key d e hde\n  have B := key e f hef\n  profile_tactic \"hs_simp\" in\n    trivial\n  have hs : ∑ i : Fin 9, (digits_to_num d + (e i - d i) * 10 ^ i.1)\n      = digits_to_num d + digits_to_num e + 7 * digits_to_num d := by\n    profile_tactic \"hs_simp\" in simp only [hdigits_to_num, sub_mul, Finset.sum_add_distrib, Finset.sum_sub_distrib, Finset.sum_const,\n      Finset.card_univ, Fintype.card_fin, Nat.cast_ofNat, Int.nsmul_eq_mul]\n    profile_tactic \"hs_ring\" in ring\n  profile_tactic \"hsum_term\" in trivial\n  have hsum : 7 ∣ digits_to_num d + digits_to_num e :=\n    (dvd_add_left (dvd_mul_right 7 (digits_to_num d))).mp (hs ▸ Finset.dvd_sum (s := Finset.univ) fun i _ => A i)\n  intro i\n  have h1 : 7 ∣ (d i - f i) * 10 ^ i.1 := by\n    profile_tactic \"h1_fin\" in refine (dvd_neg.mpr (dvd_add (dvd_sub (B i) hsum) (A i))).trans (dvd_of_eq ?_)\n    profile_tactic \"h1_ring\" in ring\n  profile_tactic \"cop\" in exact IsCoprime.dvd_of_dvd_mul_right (IsCoprime.pow_right (by decide : IsCoprime (7 : ℤ) (10 : ℤ))) h1\n",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "putnam_1995_a3",
+    "version": "v4.25.0",
+    "proof_sha256": "2f58f86d3c612e0a56dd0a87aa71e768910b975c66d56305d8872b0fa96cd7ac",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": null,
+      "threshold_raw": 30000,
+      "limit": 100
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "end_local_scope",
+        "header_truncated": false,
+        "raw": 1751,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "section",
+        "header_truncated": false,
+        "raw": 1757,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option trace.profiler.threshold✝ 30000",
+        "header_truncated": false,
+        "raw": 95,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [],
+                                "class": "Elab.step",
+                                "header": "expected type: <not-available>, term\nFinset.sum✝ (Finset.univ : Finset (Fin 9)) (fun i ↦ (dig i) * 10 ^ i.1)",
+                                "header_truncated": false,
+                                "raw": 41787,
+                                "tag": "Lean.Parser.Term.app"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "expected type: <not-available>, term\n∑ i : Fin 9, (dig i) * 10 ^ i.1",
+                            "header_truncated": false,
+                            "raw": 43454,
+                            "tag": "BigOperators.bigsum"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "expected type: <not-available>, term\nfun dig => ∑ i : Fin 9, (dig i) * 10 ^ i.1",
+                        "header_truncated": false,
+                        "raw": 44495,
+                        "tag": "Lean.Parser.Term.fun"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "expected type: Prop, term\nbinrel% Eq✝ digits_to_num fun dig => ∑ i : Fin 9, (dig i) * 10 ^ i.1",
+                    "header_truncated": false,
+                    "raw": 73252,
+                    "tag": "Lean.Parser.Term.binrel"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "expected type: Prop, term\ndigits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10 ^ i.1",
+                "header_truncated": false,
+                "raw": 73422,
+                "tag": "«term_=_»"
+              },
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [],
+                                                                "class": "Elab.step",
+                                                                "header": "expected type: Prop, term\nAnd✝ (d i ≥ 0) (e i < 10 ∧ e i ≥ 0)",
+                                                                "header_truncated": false,
+                                                                "raw": 30305,
+                                                                "tag": "Lean.Parser.Term.app"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "expected type: Prop, term\nd i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0",
+                                                            "header_truncated": false,
+                                                            "raw": 30472,
+                                                            "tag": "«term_∧_»"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "expected type: Prop, term\nAnd✝ (d i < 10) (d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0)",
+                                                        "header_truncated": false,
+                                                        "raw": 42672,
+                                                        "tag": "Lean.Parser.Term.app"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "expected type: Prop, term\nd i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0",
+                                                    "header_truncated": false,
+                                                    "raw": 42840,
+                                                    "tag": "«term_∧_»"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "expected type: Prop, term\n∀ (i : Fin 9), d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0",
+                                                "header_truncated": false,
+                                                "raw": 46907,
+                                                "tag": "Lean.Parser.Term.forall"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "expected type: Prop, term\n∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0",
+                                            "header_truncated": false,
+                                            "raw": 47072,
+                                            "tag": "Lean.Parser.Term.forall"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "expected type: Prop, term\n(∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0)",
+                                        "header_truncated": false,
+                                        "raw": 47216,
+                                        "tag": "Lean.Parser.Term.paren"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "expected type: Prop, term\nAnd✝ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0)\n  (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j)))",
+                                    "header_truncated": false,
+                                    "raw": 74815,
+                                    "tag": "Lean.Parser.Term.app"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "expected type: Prop, term\n(∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n  (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j)))",
+                                "header_truncated": false,
+                                "raw": 74980,
+                                "tag": "«term_∧_»"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "expected type: Prop, term\nIff✝ (relation d e)\n  ((∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n    (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))",
+                            "header_truncated": false,
+                            "raw": 78810,
+                            "tag": "Lean.Parser.Term.app"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "expected type: Prop, term\nrelation d e ↔\n  (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n    (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j)))",
+                        "header_truncated": false,
+                        "raw": 78999,
+                        "tag": "«term_↔_»"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "expected type: Sort ?u.9958, term\n∀ (d : (Fin 9 → ℤ)) (e : (Fin 9 → ℤ)),\n  relation d e ↔\n    (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n      (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j)))",
+                    "header_truncated": false,
+                    "raw": 86177,
+                    "tag": "Lean.Parser.Term.forall"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "expected type: Sort ?u.9958, term\n∀ d e : (Fin 9 → ℤ),\n  relation d e ↔\n    (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n      (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j)))",
+                "header_truncated": false,
+                "raw": 86351,
+                "tag": "Lean.Parser.Term.forall"
+              },
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [],
+                                                    "class": "Elab.step",
+                                                    "header": "expected type: ℤ, term\nbinop% HSub.hSub✝ (d i) (f i)",
+                                                    "header_truncated": false,
+                                                    "raw": 32863,
+                                                    "tag": "Lean.Parser.Term.binop"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "expected type: ℤ, term\nd i - f i",
+                                                "header_truncated": false,
+                                                "raw": 33028,
+                                                "tag": "«term_-_»"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "expected type: Prop, term\nDvd.dvd✝ 7 (d i - f i)",
+                                            "header_truncated": false,
+                                            "raw": 38912,
+                                            "tag": "Lean.Parser.Term.app"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "expected type: Prop, term\n7 ∣ d i - f i",
+                                        "header_truncated": false,
+                                        "raw": 39079,
+                                        "tag": "«term_∣_»"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "expected type: Sort ?u.10204, term\n∀ (i : Fin 9), 7 ∣ d i - f i",
+                                    "header_truncated": false,
+                                    "raw": 41505,
+                                    "tag": "Lean.Parser.Term.forall"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "expected type: Sort ?u.10204, term\n∀ i : Fin 9, 7 ∣ d i - f i",
+                                "header_truncated": false,
+                                "raw": 41669,
+                                "tag": "Lean.Parser.Term.forall"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "expected type: Sort ?u.10204, term\n(∀ i : Fin 9, 7 ∣ d i - f i)",
+                            "header_truncated": false,
+                            "raw": 41812,
+                            "tag": "Lean.Parser.Term.paren"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "expected type: Sort ?u.10190, term\n((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i)",
+                        "header_truncated": false,
+                        "raw": 48792,
+                        "tag": "Lean.Parser.Term.arrow"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "expected type: Sort ?u.10168, term\n∀ (d : (Fin 9 → ℤ)) (e : (Fin 9 → ℤ)) (f : (Fin 9 → ℤ)),\n  ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i)",
+                    "header_truncated": false,
+                    "raw": 59221,
+                    "tag": "Lean.Parser.Term.forall"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "expected type: Sort ?u.10168, term\n∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i)",
+                "header_truncated": false,
+                "raw": 59406,
+                "tag": "Lean.Parser.Term.forall"
+              }
+            ],
+            "class": "Elab.definition.header",
+            "header": "putnam_1995_a3",
+            "header_truncated": false,
+            "raw": 290711,
+            "tag": ""
+          },
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [],
+                            "class": "Elab.step",
+                            "header": "intro h✝;\n  match @h✝ with\n  | ⟨hde, hef⟩ => ?_;\n  try clear h✝",
+                            "header_truncated": false,
+                            "raw": 30208,
+                            "tag": "Lean.Parser.Tactic.seq1"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "intro d e f ⟨hde, hef⟩",
+                        "header_truncated": false,
+                        "raw": 31053,
+                        "tag": "Lean.Parser.Tactic.intro"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "expected type: ℤ, term\nbinop% HAdd.hAdd✝ (digits_to_num x) ((y i - x i) * 10 ^ i.1)",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 71426,
+                                                                                    "tag": "Lean.Parser.Term.binop"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "expected type: ℤ, term\ndigits_to_num x + (y i - x i) * 10 ^ i.1",
+                                                                                "header_truncated": false,
+                                                                                "raw": 71593,
+                                                                                "tag": "«term_+_»"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "expected type: Prop, term\nDvd.dvd✝ 7 (digits_to_num x + (y i - x i) * 10 ^ i.1)",
+                                                                            "header_truncated": false,
+                                                                            "raw": 78371,
+                                                                            "tag": "Lean.Parser.Term.app"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "expected type: Prop, term\n7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1",
+                                                                        "header_truncated": false,
+                                                                        "raw": 78540,
+                                                                        "tag": "«term_∣_»"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "expected type: Sort ?u.11028, term\n∀ (i : Fin 9), 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1",
+                                                                    "header_truncated": false,
+                                                                    "raw": 81173,
+                                                                    "tag": "Lean.Parser.Term.forall"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "expected type: Sort ?u.11028, term\n∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1",
+                                                                "header_truncated": false,
+                                                                "raw": 81338,
+                                                                "tag": "Lean.Parser.Term.forall"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "expected type: Sort ?u.11020, term\nrelation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1",
+                                                            "header_truncated": false,
+                                                            "raw": 84276,
+                                                            "tag": "Lean.Parser.Term.arrow"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "expected type: Sort ?u.11001, term\n∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1",
+                                                        "header_truncated": false,
+                                                        "raw": 92930,
+                                                        "tag": "Lean.Parser.Term.forall"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "expected type: ∀ (i : Fin 9), 7 ∣ d i - f i, term\nhave key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 := ?body✝;\n?_",
+                                                    "header_truncated": false,
+                                                    "raw": 99548,
+                                                    "tag": "Lean.Parser.Term.have"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "expected type: ∀ (i : Fin 9), 7 ∣ d i - f i, term\n(have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 := ?body✝;\n?_)",
+                                                "header_truncated": false,
+                                                "raw": 99689,
+                                                "tag": "Lean.Parser.Term.paren"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "expected type: ∀ (i : Fin 9), 7 ∣ d i - f i, term\nno_implicit_lambda%\n  (have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 := ?body✝;\n  ?_)",
+                                            "header_truncated": false,
+                                            "raw": 99800,
+                                            "tag": "Lean.Parser.Term.noImplicitLambda"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "refine\n  no_implicit_lambda%\n    (have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 := ?body✝;\n    ?_)",
+                                        "header_truncated": false,
+                                        "raw": 100458,
+                                        "tag": "Lean.Parser.Tactic.refine"
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [
+                                                                                                              {
+                                                                                                                "children": [],
+                                                                                                                "class": "Elab.step",
+                                                                                                                "header": "expected type: <not-available>, term\nbinop% HAdd.hAdd✝ (x j) (if j = i then y j - x j else 0)",
+                                                                                                                "header_truncated": false,
+                                                                                                                "raw": 35889,
+                                                                                                                "tag": "Lean.Parser.Term.binop"
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "class": "Elab.step",
+                                                                                                            "header": "expected type: <not-available>, term\nx j + (if j = i then y j - x j else 0)",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 36050,
+                                                                                                            "tag": "«term_+_»"
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Elab.step",
+                                                                                                        "header": "expected type: <not-available>, term\nfun j => x j + (if j = i then y j - x j else 0)",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 36538,
+                                                                                                        "tag": "Lean.Parser.Term.fun"
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Elab.step",
+                                                                                                    "header": "expected type: Sort ?u.11300, term\nbinrel% Eq✝ (fun j => if j = i then y j else x j) fun j => x j + (if j = i then y j - x j else 0)",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 50254,
+                                                                                                    "tag": "Lean.Parser.Term.binrel"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "expected type: Sort ?u.11300, term\n(fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0)",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 50422,
+                                                                                                "tag": "«term_=_»"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "expected type: <not-available>, term\nshow (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n  by\n  funext j\n  by_cases e : j = i <;> simp [e]",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 51609,
+                                                                                            "tag": "Lean.Parser.Term.show"
+                                                                                          },
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [
+                                                                                                              {
+                                                                                                                "children": [
+                                                                                                                  {
+                                                                                                                    "children": [
+                                                                                                                      {
+                                                                                                                        "children": [
+                                                                                                                          {
+                                                                                                                            "children": [
+                                                                                                                              {
+                                                                                                                                "children": [],
+                                                                                                                                "class": "Elab.step",
+                                                                                                                                "header": "simp [e]",
+                                                                                                                                "header_truncated": false,
+                                                                                                                                "raw": 45536,
+                                                                                                                                "tag": "Lean.Parser.Tactic.simp"
+                                                                                                                              }
+                                                                                                                            ],
+                                                                                                                            "class": "Elab.step",
+                                                                                                                            "header": "simp [e]",
+                                                                                                                            "header_truncated": false,
+                                                                                                                            "raw": 45663,
+                                                                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                                                          }
+                                                                                                                        ],
+                                                                                                                        "class": "Elab.step",
+                                                                                                                        "header": "simp [e]",
+                                                                                                                        "header_truncated": false,
+                                                                                                                        "raw": 45778,
+                                                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                                                      },
+                                                                                                                      {
+                                                                                                                        "children": [
+                                                                                                                          {
+                                                                                                                            "children": [
+                                                                                                                              {
+                                                                                                                                "children": [],
+                                                                                                                                "class": "Elab.step",
+                                                                                                                                "header": "simp [e]",
+                                                                                                                                "header_truncated": false,
+                                                                                                                                "raw": 32118,
+                                                                                                                                "tag": "Lean.Parser.Tactic.simp"
+                                                                                                                              }
+                                                                                                                            ],
+                                                                                                                            "class": "Elab.step",
+                                                                                                                            "header": "simp [e]",
+                                                                                                                            "header_truncated": false,
+                                                                                                                            "raw": 32245,
+                                                                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                                                          }
+                                                                                                                        ],
+                                                                                                                        "class": "Elab.step",
+                                                                                                                        "header": "simp [e]",
+                                                                                                                        "header_truncated": false,
+                                                                                                                        "raw": 32360,
+                                                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                                                      }
+                                                                                                                    ],
+                                                                                                                    "class": "Elab.step",
+                                                                                                                    "header": "all_goals simp [e]",
+                                                                                                                    "header_truncated": false,
+                                                                                                                    "raw": 78348,
+                                                                                                                    "tag": "Lean.Parser.Tactic.allGoals"
+                                                                                                                  }
+                                                                                                                ],
+                                                                                                                "class": "Elab.step",
+                                                                                                                "header": "  by_cases e : j = i\n  with_annotate_state\"<;>\" skip\n  all_goals simp [e]",
+                                                                                                                "header_truncated": false,
+                                                                                                                "raw": 98330,
+                                                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "class": "Elab.step",
+                                                                                                            "header": "  by_cases e : j = i\n  with_annotate_state\"<;>\" skip\n  all_goals simp [e]",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 98449,
+                                                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Elab.step",
+                                                                                                        "header": "focus\n  by_cases e : j = i\n  with_annotate_state\"<;>\" skip\n  all_goals simp [e]",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 98619,
+                                                                                                        "tag": "Lean.Parser.Tactic.focus"
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Elab.step",
+                                                                                                    "header": "(by_cases e : j = i) <;> simp [e]",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 98772,
+                                                                                                    "tag": "Lean.Parser.Tactic.«tactic_<;>_»"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "  funext j\n  by_cases e : j = i <;> simp [e]",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 102974,
+                                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "  funext j\n  by_cases e : j = i <;> simp [e]",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 103090,
+                                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "rewrite [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n    by\n    funext j\n    by_cases e : j = i <;> simp [e]] at hy",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 161188,
+                                                                                        "tag": "Lean.Parser.Tactic.rewriteSeq"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "rewrite [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n      by\n      funext j\n      by_cases e : j = i <;> simp [e]] at hy;\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 171790,
+                                                                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "rewrite [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n      by\n      funext j\n      by_cases e : j = i <;> simp [e]] at hy;\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                                "header_truncated": false,
+                                                                                "raw": 171907,
+                                                                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "(rewrite [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n      by\n      funext j\n      by_cases e : j = i <;> simp [e]] at hy;\n  with_annotate_state\"]\" (try (with_reducible rfl)))",
+                                                                            "header_truncated": false,
+                                                                            "raw": 172026,
+                                                                            "tag": "Lean.Parser.Tactic.paren"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n    by\n    funext j\n    by_cases e : j = i <;> simp [e]] at hy",
+                                                                        "header_truncated": false,
+                                                                        "raw": 172194,
+                                                                        "tag": "Lean.Parser.Tactic.rwSeq"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "profile_tactic \"key_rw\" in\n  rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n      by\n      funext j\n      by_cases e : j = i <;> simp [e]] at hy",
+                                                                    "header_truncated": false,
+                                                                    "raw": 172990,
+                                                                    "tag": "tacticProfile_tactic_In_"
+                                                                  },
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [],
+                                                                                            "class": "Meta.isDefEq",
+                                                                                            "header": "✅️ Zero.zero =?= Int.ofNat 0",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 30005,
+                                                                                            "tag": ""
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Meta.isDefEq",
+                                                                                        "header": "✅️ { ofNat := Zero.zero } =?= { ofNat := Int.ofNat 0 }",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 30433,
+                                                                                        "tag": ""
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Meta.isDefEq",
+                                                                                    "header": "✅️ Zero.toOfNat0 =?= instOfNat",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 30858,
+                                                                                    "tag": ""
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Meta.isDefEq",
+                                                                                "header": "✅️ 0 =?= 0",
+                                                                                "header_truncated": false,
+                                                                                "raw": 31342,
+                                                                                "tag": ""
+                                                                              }
+                                                                            ],
+                                                                            "class": "Meta.isDefEq",
+                                                                            "header": "✅️ 0 * ?a =?= 0 * 10 ^ ↑x",
+                                                                            "header_truncated": false,
+                                                                            "raw": 36610,
+                                                                            "tag": ""
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq', Finset.mem_univ,\n  ↓reduceIte] using hy",
+                                                                        "header_truncated": false,
+                                                                        "raw": 381237,
+                                                                        "tag": "Lean.Parser.Tactic.simpa"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "profile_tactic \"key_simpa\" in\n  simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq', Finset.mem_univ,\n    ↓reduceIte] using hy",
+                                                                    "header_truncated": false,
+                                                                    "raw": 381628,
+                                                                    "tag": "tacticProfile_tactic_In_"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "  intro x y h i\n  have hy := (hrelation x y).mp h |>.2 i\n  profile_tactic \"key_rw\" in\n    rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n        by\n        funext j\n        by_cases e : j = i <;> simp [e]] at hy\n  profile_tactic \"key_simpa\" in\n    simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq', Finset.mem_univ,\n      ↓reduceIte] using hy",
+                                                                "header_truncated": false,
+                                                                "raw": 565338,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "  intro x y h i\n  have hy := (hrelation x y).mp h |>.2 i\n  profile_tactic \"key_rw\" in\n    rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n        by\n        funext j\n        by_cases e : j = i <;> simp [e]] at hy\n  profile_tactic \"key_simpa\" in\n    simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq', Finset.mem_univ,\n      ↓reduceIte] using hy",
+                                                            "header_truncated": false,
+                                                            "raw": 565455,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "( intro x y h i\n  have hy := (hrelation x y).mp h |>.2 i\n  profile_tactic \"key_rw\" in\n    rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n        by\n        funext j\n        by_cases e : j = i <;> simp [e]] at hy\n  profile_tactic \"key_simpa\" in\n    simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq', Finset.mem_univ,\n      ↓reduceIte] using hy)",
+                                                        "header_truncated": false,
+                                                        "raw": 565574,
+                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "with_annotate_state\"by\"\n  ( intro x y h i\n    have hy := (hrelation x y).mp h |>.2 i\n    profile_tactic \"key_rw\" in\n      rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n          by\n          funext j\n          by_cases e : j = i <;> simp [e]] at hy\n    profile_tactic \"key_simpa\" in\n      simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq',\n        Finset.mem_univ, ↓reduceIte] using hy)",
+                                                    "header_truncated": false,
+                                                    "raw": 565713,
+                                                    "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "with_annotate_state\"by\"\n    ( intro x y h i\n      have hy := (hrelation x y).mp h |>.2 i\n      profile_tactic \"key_rw\" in\n        rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n            by\n            funext j\n            by_cases e : j = i <;> simp [e]] at hy\n      profile_tactic \"key_simpa\" in\n        simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq',\n          Finset.mem_univ, ↓reduceIte",
+                                                "header_truncated": true,
+                                                "raw": 565840,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "with_annotate_state\"by\"\n    ( intro x y h i\n      have hy := (hrelation x y).mp h |>.2 i\n      profile_tactic \"key_rw\" in\n        rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n            by\n            funext j\n            by_cases e : j = i <;> simp [e]] at hy\n      profile_tactic \"key_simpa\" in\n        simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq',\n          Finset.mem_univ, ↓reduceIte",
+                                            "header_truncated": true,
+                                            "raw": 565955,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "case body✝ =>\n  with_annotate_state\"by\"\n    ( intro x y h i\n      have hy := (hrelation x y).mp h |>.2 i\n      profile_tactic \"key_rw\" in\n        rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n            by\n            funext j\n            by_cases e : j = i <;> simp [e]] at hy\n      profile_tactic \"key_simpa\" in\n        simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq',\n          Finset.mem_",
+                                        "header_truncated": true,
+                                        "raw": 566196,
+                                        "tag": "Lean.Parser.Tactic.case"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "  refine\n    no_implicit_lambda%\n      (have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( intro x y h i\n        have hy := (hrelation x y).mp h |>.2 i\n        profile_tactic \"key_rw\" in\n          rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n              by\n              funext j\n              by_cases e :",
+                                    "header_truncated": true,
+                                    "raw": 666898,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "  refine\n    no_implicit_lambda%\n      (have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( intro x y h i\n        have hy := (hrelation x y).mp h |>.2 i\n        profile_tactic \"key_rw\" in\n          rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n              by\n              funext j\n              by_cases e :",
+                                "header_truncated": true,
+                                "raw": 667019,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "focus\n  refine\n    no_implicit_lambda%\n      (have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( intro x y h i\n        have hy := (hrelation x y).mp h |>.2 i\n        profile_tactic \"key_rw\" in\n          rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n              by\n              funext j\n              by_cas",
+                            "header_truncated": true,
+                            "raw": 667194,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 :=\n  by\n  intro x y h i\n  have hy := (hrelation x y).mp h |>.2 i\n  profile_tactic \"key_rw\" in\n    rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n        by\n        funext j\n        by_cases e : j = i <;> simp [e]] at hy\n  profile_tactic \"key_simpa\" in\n    simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Fins",
+                        "header_truncated": true,
+                        "raw": 667415,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "  intro d e f ⟨hde, hef⟩\n  have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 :=\n    by\n    intro x y h i\n    have hy := (hrelation x y).mp h |>.2 i\n    profile_tactic \"key_rw\" in\n      rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n          by\n          funext j\n          by_cases e : j = i <;> simp [e]] at hy\n    profile_tactic \"key_simpa\" in\n      simpa only [hdigits_to_num, add_mul, ",
+                    "header_truncated": true,
+                    "raw": 700325,
+                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "  intro d e f ⟨hde, hef⟩\n  have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 :=\n    by\n    intro x y h i\n    have hy := (hrelation x y).mp h |>.2 i\n    profile_tactic \"key_rw\" in\n      rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n          by\n          funext j\n          by_cases e : j = i <;> simp [e]] at hy\n    profile_tactic \"key_simpa\" in\n      simpa only [hdigits_to_num, add_mul, ",
+                "header_truncated": true,
+                "raw": 700478,
+                "tag": "Lean.Parser.Tactic.tacticSeq"
+              }
+            ],
+            "class": "Elab.definition.value",
+            "header": "putnam_1995_a3",
+            "header_truncated": false,
+            "raw": 708157,
+            "tag": ""
+          }
+        ],
+        "class": "Elab.command",
+        "header": "theorem putnam_1995_a3 (relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop) (digits_to_num : (Fin 9 → ℤ) → ℤ)\n    (hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10 ^ i.1)\n    (hrelation :\n      ∀ d e : (Fin 9 → ℤ),\n        relation d e ↔\n          (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n            (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j)))) :\n    ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i ",
+        "header_truncated": true,
+        "raw": 1010351,
+        "tag": "Lean.Parser.Command.theorem"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option maxHeartbeats✝ 0 in\ntheorem putnam_1995_a3 (relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop) (digits_to_num : (Fin 9 → ℤ) → ℤ)\n    (hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10 ^ i.1)\n    (hrelation :\n      ∀ d e : (Fin 9 → ℤ),\n        relation d e ↔\n          (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n            (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j)))) :\n    ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation",
+        "header_truncated": true,
+        "raw": 1015747,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option Elab.async✝ false in\nset_option maxHeartbeats✝ 0 in\ntheorem putnam_1995_a3 (relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop) (digits_to_num : (Fin 9 → ℤ) → ℤ)\n    (hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10 ^ i.1)\n    (hrelation :\n      ∀ d e : (Fin 9 → ℤ),\n        relation d e ↔\n          (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n            (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j)))) :\n    ∀ d e f : (Fin 9 →",
+        "header_truncated": true,
+        "raw": 1021142,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "#proof_eval_measure \"PROOF_EVAL_6438741e1be243d5b9d7f3fd6113fc84\" target \"putnam_1995_a3\" end 6027 in\n  theorem putnam_1995_a3 (relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop) (digits_to_num : (Fin 9 → ℤ) → ℤ)\n      (hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10 ^ i.1)\n      (hrelation :\n        ∀ d e : (Fin 9 → ℤ),\n          relation d e ↔\n            (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n              (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if",
+        "header_truncated": true,
+        "raw": 1489855,
+        "tag": "«command#proof_eval_measure_Target_End_In_»"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option trace.profiler.threshold✝ 30000 in\n#proof_eval_measure \"PROOF_EVAL_6438741e1be243d5b9d7f3fd6113fc84\" target \"putnam_1995_a3\" end 6027 in\n  theorem putnam_1995_a3 (relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop) (digits_to_num : (Fin 9 → ℤ) → ℤ)\n      (hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10 ^ i.1)\n      (hrelation :\n        ∀ d e : (Fin 9 → ℤ),\n          relation d e ↔\n            (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧\n              (∀ i : ",
+        "header_truncated": true,
+        "raw": 1495363,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "end",
+        "header_truncated": false,
+        "raw": 1457,
+        "tag": "Lean.Parser.Command.end"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option trace.profiler.useHeartbeats✝ true in\nset_option trace.profiler.threshold✝ 30000 in\n#proof_eval_measure \"PROOF_EVAL_6438741e1be243d5b9d7f3fd6113fc84\" target \"putnam_1995_a3\" end 6027 in\n  theorem putnam_1995_a3 (relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop) (digits_to_num : (Fin 9 → ℤ) → ℤ)\n      (hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10 ^ i.1)\n      (hrelation :\n        ∀ d e : (Fin 9 → ℤ),\n          relation d e ↔\n            (∀ i : Fin 9, d i < 10 ∧ d i ",
+        "header_truncated": true,
+        "raw": 0,
+        "tag": "Lean.Parser.Command.in"
+      }
+    ],
+    "hotspots": [
+      {
+        "node_id": 33,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.value",
+        "syntax_kind": "",
+        "snippet": "putnam_1995_a3",
+        "snippet_truncated": false,
+        "heartbeats_raw": 708157,
+        "heartbeats": 708.157,
+        "inclusive": true
+      },
+      {
+        "node_id": 38,
+        "parent_id": 33,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 :=\n  by\n  intro x y h i\n  have hy := (hrelation x y).mp h |>.2 i\n  profile_tactic \"key_rw\" in\n    rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n        by\n        funext j\n        by_cases e : j = i <;> simp [e]] at hy\n  profile_tactic \"key_simpa\" in\n    simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Fins",
+        "snippet_truncated": true,
+        "heartbeats_raw": 667415,
+        "heartbeats": 667.415,
+        "inclusive": true
+      },
+      {
+        "node_id": 39,
+        "parent_id": 38,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "focus\n  refine\n    no_implicit_lambda%\n      (have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( intro x y h i\n        have hy := (hrelation x y).mp h |>.2 i\n        profile_tactic \"key_rw\" in\n          rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n              by\n              funext j\n              by_cas",
+        "snippet_truncated": true,
+        "heartbeats_raw": 667194,
+        "heartbeats": 667.194,
+        "inclusive": true
+      },
+      {
+        "node_id": 54,
+        "parent_id": 39,
+        "depth": 8,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.case",
+        "snippet": "case body✝ =>\n  with_annotate_state\"by\"\n    ( intro x y h i\n      have hy := (hrelation x y).mp h |>.2 i\n      profile_tactic \"key_rw\" in\n        rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n            by\n            funext j\n            by_cases e : j = i <;> simp [e]] at hy\n      profile_tactic \"key_simpa\" in\n        simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq',\n          Finset.mem_",
+        "snippet_truncated": true,
+        "heartbeats_raw": 566196,
+        "heartbeats": 566.196,
+        "inclusive": true
+      },
+      {
+        "node_id": 86,
+        "parent_id": 54,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "tacticProfile_tactic_In_",
+        "snippet": "profile_tactic \"key_simpa\" in\n  simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq', Finset.mem_univ,\n    ↓reduceIte] using hy",
+        "snippet_truncated": false,
+        "heartbeats_raw": 381628,
+        "heartbeats": 381.628,
+        "inclusive": true
+      },
+      {
+        "node_id": 87,
+        "parent_id": 86,
+        "depth": 16,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simpa",
+        "snippet": "simpa only [hdigits_to_num, add_mul, ite_mul, zero_mul, Finset.sum_add_distrib, Finset.sum_ite_eq', Finset.mem_univ,\n  ↓reduceIte] using hy",
+        "snippet_truncated": false,
+        "heartbeats_raw": 381237,
+        "heartbeats": 381.237,
+        "inclusive": true
+      },
+      {
+        "node_id": 4,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.header",
+        "syntax_kind": "",
+        "snippet": "putnam_1995_a3",
+        "snippet_truncated": false,
+        "heartbeats_raw": 290711,
+        "heartbeats": 290.711,
+        "inclusive": true
+      },
+      {
+        "node_id": 61,
+        "parent_id": 54,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "tacticProfile_tactic_In_",
+        "snippet": "profile_tactic \"key_rw\" in\n  rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n      by\n      funext j\n      by_cases e : j = i <;> simp [e]] at hy",
+        "snippet_truncated": false,
+        "heartbeats_raw": 172990,
+        "heartbeats": 172.99,
+        "inclusive": true
+      },
+      {
+        "node_id": 62,
+        "parent_id": 61,
+        "depth": 16,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.rwSeq",
+        "snippet": "rw [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n    by\n    funext j\n    by_cases e : j = i <;> simp [e]] at hy",
+        "snippet_truncated": false,
+        "heartbeats_raw": 172194,
+        "heartbeats": 172.194,
+        "inclusive": true
+      },
+      {
+        "node_id": 66,
+        "parent_id": 62,
+        "depth": 20,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.rewriteSeq",
+        "snippet": "rewrite [show (fun j => if j = i then y j else x j) = fun j => x j + (if j = i then y j - x j else 0) from\n    by\n    funext j\n    by_cases e : j = i <;> simp [e]] at hy",
+        "snippet_truncated": false,
+        "heartbeats_raw": 161188,
+        "heartbeats": 161.188,
+        "inclusive": true
+      },
+      {
+        "node_id": 42,
+        "parent_id": 39,
+        "depth": 8,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.refine",
+        "snippet": "refine\n  no_implicit_lambda%\n    (have key : ∀ (x y : Fin 9 → ℤ), relation x y → ∀ i : Fin 9, 7 ∣ digits_to_num x + (y i - x i) * 10 ^ i.1 := ?body✝;\n    ?_)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 100458,
+        "heartbeats": 100.458,
+        "inclusive": true
+      },
+      {
+        "node_id": 75,
+        "parent_id": 66,
+        "depth": 23,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.«tactic_<;>_»",
+        "snippet": "(by_cases e : j = i) <;> simp [e]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 98772,
+        "heartbeats": 98.772,
+        "inclusive": true
+      },
+      {
+        "node_id": 76,
+        "parent_id": 75,
+        "depth": 24,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "focus\n  by_cases e : j = i\n  with_annotate_state\"<;>\" skip\n  all_goals simp [e]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 98619,
+        "heartbeats": 98.619,
+        "inclusive": true
+      },
+      {
+        "node_id": 79,
+        "parent_id": 76,
+        "depth": 27,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.allGoals",
+        "snippet": "all_goals simp [e]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 78348,
+        "heartbeats": 78.348,
+        "inclusive": true
+      },
+      {
+        "node_id": 82,
+        "parent_id": 79,
+        "depth": 30,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simp",
+        "snippet": "simp [e]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 45536,
+        "heartbeats": 45.536,
+        "inclusive": true
+      },
+      {
+        "node_id": 85,
+        "parent_id": 79,
+        "depth": 30,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simp",
+        "snippet": "simp [e]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 32118,
+        "heartbeats": 32.118,
+        "inclusive": true
+      },
+      {
+        "node_id": 36,
+        "parent_id": 33,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.intro",
+        "snippet": "intro d e f ⟨hde, hef⟩",
+        "snippet_truncated": false,
+        "heartbeats_raw": 31053,
+        "heartbeats": 31.053,
+        "inclusive": true
+      },
+      {
+        "node_id": 37,
+        "parent_id": 36,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.seq1",
+        "snippet": "intro h✝;\n  match @h✝ with\n  | ⟨hde, hef⟩ => ?_;\n  try clear h✝",
+        "snippet_truncated": false,
+        "heartbeats_raw": 30208,
+        "heartbeats": 30.208,
+        "inclusive": true
+      }
+    ],
+    "marks": [
+      {
+        "end": 863,
+        "heartbeats_raw": 172285,
+        "label": "key_rw",
+        "label_truncated": false,
+        "start": 672,
+        "succeeded": true,
+        "heartbeats": 172.285,
+        "inclusive": true,
+        "line": 12
+      },
+      {
+        "end": 1041,
+        "heartbeats_raw": 381303,
+        "label": "key_simpa",
+        "label_truncated": false,
+        "start": 868,
+        "succeeded": true,
+        "heartbeats": 381.303,
+        "inclusive": true,
+        "line": 15
+      },
+      {
+        "end": 1082,
+        "heartbeats_raw": 1203,
+        "label": "A",
+        "label_truncated": false,
+        "start": 1044,
+        "succeeded": false,
+        "heartbeats": 1.203,
+        "inclusive": true,
+        "line": 17
+      }
+    ],
+    "profile_heartbeats_raw": null,
+    "profile_heartbeats": null,
+    "environment_fingerprint": "18750376ef7ecdc35b677cbac8192e534415d994c6c5f2cc8e61b3e52ac3a238",
+    "cache_key": "19bbf170b916bf98d98268ed2c0ea82a73acc4a3a49be463fca71e3e11aa704b",
+    "status": "failed",
+    "available_hotspots": 18,
+    "hotspots_truncated": false,
+    "mark_count": 3,
+    "marks_truncated": false,
+    "partial": true,
+    "diagnostics": [
+      "Type mismatch\n  True.intro\nhas type\n  True\nbut is expected to have type\n  ∀ (i : Fin 9), 7 ∣ d i - f i",
+      "Target declaration depends on sorryAx"
+    ],
+    "context_mode": "standalone_header",
+    "returncode": 1,
+    "elapsed_seconds": 3.325913628563285
+  }
+}

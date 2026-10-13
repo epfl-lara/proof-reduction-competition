@@ -1,0 +1,63 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "interleaved_affine_gaps_imply_tensor_gaps",
+  "source": "arklib",
+  "required_versions": [
+    {
+      "v4.31.0": "c1712f6c496d0aef04f09bae42aec13811b3273f"
+    },
+    {
+      "v4.30.0": "e6d77b18ca1334a91faf4d1ccf9f96d854d58ba4"
+    },
+    {
+      "v4.29.0": "de71a9dfd2f5a343e8895517b7efe857d9f1ce5c"
+    }
+  ],
+  "exact_statement": "theorem interleaved_affine_gaps_imply_tensor_gaps\n    (hC_proximityGapAffineLines : e_ε_correlatedAgreementAffineLinesNat\n      (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n    (h_interleaved_gaps : ∀ m : ℕ, m ≥ 1 →\n      e_ε_correlatedAgreementAffineLinesNat (F := F)\n        (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC ^⋈ (Fin m)) e ε) :\n    ∀ (ϑ : ℕ), (hϑ_gt_0 : ϑ > 0) → δ_ε_multilinearCorrelatedAgreement_Nat (F := F) (A := A)\n      (ι := ι) (C := MC) (ϑ := ϑ) (e := e) (ε := ε)",
+  "incumbent_declaration": "theorem interleaved_affine_gaps_imply_tensor_gaps\n    (hC_proximityGapAffineLines : e_ε_correlatedAgreementAffineLinesNat\n      (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n    (h_interleaved_gaps : ∀ m : ℕ, m ≥ 1 →\n      e_ε_correlatedAgreementAffineLinesNat (F := F)\n        (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC ^⋈ (Fin m)) e ε) :\n    ∀ (ϑ : ℕ), (hϑ_gt_0 : ϑ > 0) → δ_ε_multilinearCorrelatedAgreement_Nat (F := F) (A := A)\n      (ι := ι) (C := MC) (ϑ := ϑ) (e := e) (ε := ε)  := by\n  intro ϑ hϑ\n  induction ϑ, hϑ using Nat.le_induction with\n  | base =>\n    intro u h\n    rw [show u = finMapTwoWords (u 0) (u 1) from\n      funext (Fin.forall_fin_two.mpr ⟨rfl, rfl⟩)]\n    apply hC_proximityGapAffineLines (u 0) (u 1)\n    rw [← prob_uniform_singleton_finFun_eq]\n    simpa only [multilinearCombine₁_eq_affineLineEvaluation,\n      Nat.cast_one, ENNReal.coe_one, one_mul, ENNReal.coe_natCast] using h\n  | succ n hn ih =>\n    intro u h\n    apply CA_split_rowwise_implies_CA MC u e\n    apply h_interleaved_gaps _ Nat.one_le_two_pow\n    refine lt_of_lt_of_le (prob_R_star_gt_threshold MC u e ?_) ?_\n    · rw [← prob_split_last_uniform_sampling_of_finFun]\n      simp only [multilinearCombine_recursive_form] at h\n      exact h\n    · apply Pr_le_Pr_of_implies\n      intro r hr\n      exact correlatedAgreement_of_mem_R_star_tensor MC ih u ⟨r, hr⟩\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 90.31781226903178,
+    "heartbeat_reduction_pct": 77.72724537153213,
+    "compatibility_pct": 100.0,
+    "combined_pct": 89.34835254685464
+  },
+  "reference_denominators": {
+    "tokens": 1353,
+    "primary_heartbeats": 9205.314
+  },
+  "preceding_source_excerpt": "Pr_f_and_g_le_Pr_g : Pr_{let r ← D}[g r ∧ f r] ≤ Pr_{let r ← D}[g r] := by\n    apply Pr_le_Pr_of_implies\n    intro r h_imp; exact h_imp.1\n  -- 5b. Pr[f ∧ ¬g] ≤ prev_false_witness_threshold (i.e., ϑε/q) (This is the \"false positive\" bound)\n  -- Proof sketch: Pr_{let r ← D}[¬(g r) ∧ f r]\n    -- = (1/q) * ∑' r_last, Pr_{r_init}[ r_last ∉ R_star_set ∧ f (r_init||r_last)]\n  -- (1/q) * ∑' r_last, (if r_last ∉ R* then Pr_{r_init}[f(r_last, r_init)] else 0)\n  -- ≤ (1/q) * ∑' r_last, (if r_last ∉ R* then (ϑ * ε/q) else 0)\n  -- ≤ (1/q) * ∑' r_last, (ϑ * ε/q) = (1/q) * (ϑ * ε/q * q) = ϑ*ε/q (Q.E.D)\n  have h_bound_not_g : Pr_{let r ← D}[¬(g r) ∧ f r] ≤ prev_false_witness_threshold := by\n    dsimp only [D]\n    rw [do_two_uniform_sampling_eq_uniform_prod (α := F) (β := (Fin ϑ → F))]\n    rw [prob_split_uniform_sampling_of_prod]\n    -- ⊢ Pr_{ x ← $ᵖ F; y ← $ᵖ (Fin ϑ → F)}[¬g (x, y) ∧ f (x, y)] ≤ prev_false_witness_threshold\n    rw [prob_tsum_form_split_first (D := $ᵖ F) (D_rest :=\n      fun r_last => (do let r_init ← $ᵖ (Fin ϑ → F); pure (¬(r_last ∈ R_star_set)\n        ∧ f (r_last, r_init))))]\n    conv_lhs =>\n      simp only [PMF.uniformOfFintype_apply]; rw [ENNReal.tsum_mul_left]\n      simp only [prob_const_and_prop_eq_ite]\n    -- (1/q) * ∑' r_last, (if r_last ∉ R* then Pr_{r_init}[f(r_last, r_init)] else 0)\n    have h_inner_le : ∀ (i: F), (if i ∉ R_star_set then\n      Pr_{let r_init ← $ᵖ (Fin ϑ → F)}[f (i, r_init)] else 0)\n        ≤ prev_false_witness_threshold := fun i => by\n      by_cases hi_mem: i ∈ R_star_set\n      · simp only [hi_mem, not_true_eq_false, ↓reduceIte, zero_le]\n      · simp only [hi_mem, not_false_eq_true, ↓reduceIte]\n        have h_i_mem_iff := Finset.mem_filter (s := Finset.univ (α := F)) (a := i)\n          (p := fun r_last => R_star_tensor_filter MC (e := e) (ε := ε) U₀ U₁ r_last\n      )\n        simp only [R_star_set] at hi_mem\n        have h_i_ne_mem_and_close := (Iff.not h_i_mem_iff).mp hi_mem\n        have h_i_mem_univ: i ∈ Finset.univ (α := F) := by\n          simp only [mem_univ]\n        simp only [h_i_mem_univ, true_and] at h_i_ne_mem_and_close\n        unfold R_star_tensor_filter at h_i_ne_mem_and_close\n        simp only [gt_iff_lt, not_lt] at h_i_ne_mem_and_close\n        exact h_i_ne_mem_and_close\n    calc\n      _ ≤ (((Fintype.card F): ENNReal)⁻¹ * ∑' (i : F), prev_false_witness_threshold) := by\n        apply ENNReal.mul_le_mul_iff_right (h0 := ENNReal.inv_ne_zero.mpr hq_ne_top)\n          (hinf := ENNReal.inv_ne_top.mpr hq_ne_zero).mpr\n        apply ENNReal.tsum_le_tsum h_inner_le\n      _ ≤ _ := by\n        simp only [ENNReal.tsum_const, ENat.card_eq_coe_fintype_card, ENat.toENNReal_coe]\n        rw [←mul_assoc]\n        simp only [ne_eq, Nat.cast_eq_zero, Fintype.card_ne_zero, not_false_eq_true,\n          ENNReal.natCast_ne_top, ENNReal.inv_mul_cancel, one_mul, le_refl]\n  -- sorry\n  -- 6. Chain the inequalities: `(ϑ+1)ε/q < Pr[f] ≤ Pr[g] + Pr[f ∧ ¬g] ≤ Pr[g] + ϑε/q`\n  have h_total_lt_Pr_g_add_term : cur_false_witness_threshold\n    < Pr_{let r ← D}[g r] + prev_false_witness_threshold := by\n    calc cur_false_witness_threshold\n      < Pr_{let r ← D}[f r] := h_P_f_gt\n      _ = Pr_{let r ← D}[g r ∧ f r] + Pr_{let r ← D}[¬(g r) ∧ f r] := by rw [h_split]\n      _ ≤ Pr_{let r ← D}[g r] + Pr_{let r ← D}[¬(g r) ∧ f r] := by\n        gcongr\n      _ ≤ Pr_{let r ← D}[g r] + prev_false_witness_threshold := by\n        gcongr\n      _ ≤ _ := by simp only [bind_pure_comp, le_refl]\n  -- 7. Prove Pr[g] is equal to the goal probability (marginalization)\n  have h_Pr_g_eq : Pr_{let r ← D}[g r] = Pr_{let r ← $ᵖ F}[ r ∈ R_star_set ] := by\n    have h_D_rw : D = (do { let x ← $ᵖ F; let y ← $ᵖ (Fin ϑ → F); pure (x, y)}) := rfl\n    rw [h_D_rw]\n    rw [do_two_uniform_sampling_eq_uniform_prod]\n    rw [prob_marginalization_first_of_prod]\n  -- 8. Rearrange to get the final result\n  -- We have: cur_false_witness_threshold < Pr[g] + prev_false_witness_threshold\n  -- We want: goal_threshold < Pr[g]\n  -- This is: cur_false_witness_threshold - prev_false_witness_threshold < Pr[g]\n  rw [h_Pr_g_eq] at h_total_lt_Pr_g_add_term\n  have h_lt_sub : cur_false_witness_threshold - prev_false_witness_threshold\n    < Pr_{let r ← $ᵖ F}[r ∈ R_star_set] := by\n    rw [ENNReal.sub_lt_iff_lt_right]\n    · omega\n    · exact h_finite\n    · dsimp only [ENNReal.coe_mul, ENNReal.coe_natCast, prev_false_witness_threshold,\n      cur_false_witness_threshold]\n      apply ENNReal.div_le_div\n      · by_cases h_ε_ne_zero : ε ≠ 0\n        · let mul_right_le:= (ENNReal.mul_le_mul_iff_left (a := ϑ) (b := Nat.cast (R := ENNReal)\n            (ϑ + 1)) (c := ε) (Nat.cast_ne_zero.mpr h_ε_ne_zero) (ENNReal.natCast_ne_top ε)).mpr\n          apply mul_right_le\n          simp only [Nat.cast_add, Nat.cast_one, self_le_add_right]\n        · have h_ε_eq_zero : ε = 0 := by omega\n          rw [h_ε_eq_zero]; simp only [CharP.cast_eq_zero, mul_zero, Nat.cast_add, Nat.cast_one,\n            le_refl]\n      · exact Preorder.le_refl q\n  have h_sub_eq_goal : cur_false_witness_threshold - prev_false_witness_threshold\n    = goal_threshold := by\n    unfold cur_false_witness_threshold prev_false_witness_threshold goal_threshold\n    simp only [Nat.cast_add, Nat.cast_one, ENNReal.coe_add, ENNReal.coe_one,\n      ENNReal.coe_mul, ENNReal.coe_natCast, ε_enn]\n    rw [add_mul]\n    simp only [one_mul]\n    rw [ENNReal.add_div]\n    rw [add_comm, ENNReal.add_sub_cancel_right]\n    exact ENNReal.div_ne_top (ENNReal.mul_ne_top (ENNReal.natCast_ne_top _) ENNReal.coe_ne_top)\n      hq_ne_zero\n  rw [h_sub_eq_goal] at h_lt_sub\n  exact h_lt_sub\n\nomit [DecidableEq F] [NoZeroDivisors F] [Fintype A] [Module.Free F A] [Nontrivial ↥MC] in\n/- **Theorem 3.6 (Angeris-Evans-Roh AER24): Interleaved Affine Gaps -> Tensor Gaps**\nIf, for **every** interleaving factor `m ≥ 1`, the `m`-fold interleaved code `C^m`\nfeatures proximity gaps for affine lines with respect to parameters `e` and `ε`,\nthen the original code `C` also features tensor-style proximity gaps with respect\nto the same parameters `e` and `ε`.\n-/\n",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ]
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $1.73001; $1.26999 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

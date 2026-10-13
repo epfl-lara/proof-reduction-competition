@@ -1,0 +1,15 @@
+```lean
+lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by
+  generalize eq : [] = Γ at der
+  have lc := der.wf.2.1
+  induction der <;> subst eq
+  case var | sub => grind
+  case app | tapp =>
+    cases lc <;>
+      grind (gen := 2) only [→ canonical_form_abs, → canonical_form_tabs,
+        → Red.abs, → Red.tabs, → Red.appₗ, → Red.appᵣ, → Red.tapp]
+  case let' | case =>
+    grind (gen := 2) only [body_let, body_case, → canonical_form_sum,
+      → Red.let_body, → Red.let_bind, → Red.case_inl, → Red.case_inr, → Red.case]
+  all_goals grind only [Value, → wf, → Red.inl, → Red.inr]
+```

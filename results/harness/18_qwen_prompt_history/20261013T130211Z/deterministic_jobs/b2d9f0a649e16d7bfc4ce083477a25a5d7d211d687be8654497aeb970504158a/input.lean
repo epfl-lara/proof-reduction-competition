@@ -1,0 +1,71 @@
+lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp}
+    (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :
+    ι 𝓣ᶠ(a * [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * b) =
+    ι ([ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by
+  let K := [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF
+  have hC (φs' φs : List 𝓕.CrAnFieldOp) :
+      ι 𝓣ᶠ(ofCrAnListF φs' * K * ofCrAnListF φs) =
+      ι (K * 𝓣ᶠ(ofCrAnListF φs' * ofCrAnListF φs)) := by
+    let l1 := (List.takeWhile (fun c => ¬ crAnTimeOrderRel φ c)
+        ((φs' ++ φs).insertionSort crAnTimeOrderRel)) ++
+        (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) φs')
+    let l2 := (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) φs) ++
+        (List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬ crAnTimeOrderRel c φ)
+        ((φs' ++ φs).insertionSort crAnTimeOrderRel))
+    have hh (χs : List 𝓕.CrAnFieldOp)
+        (hχ : ∀ b ∈ χs, crAnTimeOrderRel φ b ∧ crAnTimeOrderRel b φ) :
+        ι 𝓣ᶠ(ofCrAnListF (φs' ++ χs ++ φs)) =
+        crAnTimeOrderSign (φs' ++ χs ++ φs) •
+        (ι (ofCrAnListF l1) * ι (ofCrAnListF χs) * ι (ofCrAnListF l2)) := by
+      rw [timeOrderF_ofCrAnListF, crAnTimeOrderList,
+        insertionSort_of_eq_list 𝓕.crAnTimeOrderRel φ φs' χs φs hχ]
+      simp only [l1, l2, ofCrAnListF_append, map_smul, map_mul, mul_assoc]
+    have hl : crAnTimeOrderList (φs' ++ φs) = l1 ++ l2 := by
+      rw [crAnTimeOrderList, insertionSort_of_takeWhile_filter 𝓕.crAnTimeOrderRel φ φs' φs]
+      simp only [l1, l2, List.append_assoc]
+    have hS : ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕 |>ₛ φ, 𝓕 |>ₛ ψ) • ι (ofCrAnListF [ψ, φ])
+        = ι [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF := by
+      simp only [superCommuteF_ofCrAnOpF_ofCrAnOpF, ofCrAnListF_cons, ofCrAnListF_nil, map_sub,
+        map_smul, map_mul, mul_one, Algebra.smul_mul_assoc]
+    have hcen := Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ)
+    calc ι 𝓣ᶠ(ofCrAnListF φs' * [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * ofCrAnListF φs)
+        = ι 𝓣ᶠ(ofCrAnListF (φs' ++ [φ, ψ] ++ φs)) -
+          𝓢(𝓕 |>ₛ φ, 𝓕 |>ₛ ψ) • ι 𝓣ᶠ(ofCrAnListF (φs' ++ [ψ, φ] ++ φs)) := by
+          simp only [← ofCrAnListF_singleton, List.singleton_append, ofList_singleton, map_sub,
+            map_smul, mul_sub, sub_mul, Algebra.smul_mul_assoc, Algebra.mul_smul_comm,
+            ← ofCrAnListF_append, superCommuteF_ofCrAnListF_ofCrAnListF]
+      _ = crAnTimeOrderSign (φs' ++ φ :: ψ :: φs) •
+          (ι (ofCrAnListF l1) * (ι (ofCrAnListF [φ, ψ]) -
+          𝓢(𝓕 |>ₛ φ, 𝓕 |>ₛ ψ) • ι (ofCrAnListF [ψ, φ])) * ι (ofCrAnListF l2)) := by
+          rw [hh [φ, ψ] (by simp [hφψ, hψφ]), hh [ψ, φ] (by simp [hφψ, hψφ])]
+          simp only [List.append_assoc, List.cons_append, List.nil_append,
+            ← crAnTimeOrderSign_swap_eq_time hφψ hψφ, mul_sub, sub_mul, Algebra.smul_mul_assoc,
+            Algebra.mul_smul_comm, smul_sub]
+          module
+      _ = crAnTimeOrderSign (φs' ++ φ :: ψ :: φs) •
+          ι (K * ofCrAnListF (crAnTimeOrderList (φs' ++ φs))) := by
+          rw [hS, hcen (ι (ofCrAnListF l1)), mul_assoc, ← map_mul, ← ofCrAnListF_append, ← hl,
+            ← map_mul]
+      _ = ι (K * 𝓣ᶠ(ofCrAnListF φs' * ofCrAnListF φs)) := by
+          rw [← ofCrAnListF_append, timeOrderF_ofCrAnListF]
+          by_cases hq : (𝓕 |>ₛ φ) = (𝓕 |>ₛ ψ)
+          · rw [crAnTimeOrderSign, Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ hq.symm,
+              ← crAnTimeOrderSign, Algebra.mul_smul_comm, map_smul]
+          · simp only [show ι K = 0 from ι_superCommuteF_of_diff_statistic hq, map_mul, zero_mul,
+              mul_zero, smul_zero]
+  refine Submodule.span_induction ?_ ?_ ?_ ?_ (Basis.mem_span ofCrAnListFBasis b)
+  · rintro x ⟨l, rfl⟩
+    refine Submodule.span_induction ?_ ?_ ?_ ?_ (Basis.mem_span ofCrAnListFBasis a)
+    · rintro y ⟨l', rfl⟩
+      simp only [ofListBasis_eq_ofList]
+      exact hC l' l
+    · simp only [zero_mul, mul_zero, map_zero]
+    · intro x y hx hy hpx hpy
+      simp only [add_mul, mul_add, map_add, hpx, hpy]
+    · intro c x hx hpx
+      simp only [Algebra.smul_mul_assoc, Algebra.mul_smul_comm, map_smul, hpx]
+  · simp only [zero_mul, mul_zero, map_zero]
+  · intro x y hx hy hpx hpy
+    simp only [mul_add, map_add, hpx, hpy]
+  · intro c x hx hpx
+    simp only [Algebra.mul_smul_comm, map_smul, hpx]

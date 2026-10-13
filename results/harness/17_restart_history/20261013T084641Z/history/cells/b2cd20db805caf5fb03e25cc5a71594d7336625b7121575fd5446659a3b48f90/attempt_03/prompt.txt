@@ -1,0 +1,204 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "Core.InitsUpdatesComm",
+  "source": "strata",
+  "required_versions": [
+    {
+      "v4.29.1": "384e22374e0872095ad9c6f74c5998c09cfd93a9"
+    },
+    {
+      "v4.27.0": "4348c65a93a3b57b1a4541991ed2d2fcdd9fa35d"
+    },
+    {
+      "v4.26.0": "451e5f047bafa010d178856db76c00029bfa4d7f"
+    }
+  ],
+  "exact_statement": "theorem InitsUpdatesComm\n  {P : PureExpr} {σ σ' σ'' : SemanticStore P}\n  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :\n  UpdateStates σ ks vs σ' →\n  InitStates σ' ks' vs' σ'' →\n  ∃ σ₁,\n    σ₁ = (updatedStates σ ks' vs') ∧\n    InitStates σ ks' vs' σ₁ ∧\n    UpdateStates σ₁ ks vs σ''",
+  "incumbent_declaration": "theorem InitsUpdatesComm\n  {P : PureExpr} {σ σ' σ'' : SemanticStore P}\n  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :\n  UpdateStates σ ks vs σ' →\n  InitStates σ' ks' vs' σ'' →\n  ∃ σ₁,\n    σ₁ = (updatedStates σ ks' vs') ∧\n    InitStates σ ks' vs' σ₁ ∧\n    UpdateStates σ₁ ks vs σ'' := by\n  intro hu hi\n  apply exists_eq_left.mpr\n  constructor\n  apply updatedStatesInit\n  exact InitStatesLength hi\n  exact UpdateStatesNotDefMonotone' (InitStatesNotDefined hi) hu\n  exact InitStatesNodup hi\n  cases UpdateStatesUpdated hu\n  cases InitStatesUpdated hi\n  unfold updatedStates\n  rewrite [updatedStatesComm]\n  apply updatedStatesUpdate\n  exact UpdateStatesLength hu\n  apply updatedStatesDefMonotone\n  exact UpdateStatesDefined' hu\n  simp [List.unzip_zip, UpdateStatesLength hu, InitStatesLength hi]\n  intro k hk hk'\n  cases InitStatesNotDefined hi k hk' ▸ UpdateStatesDefined hu k hk\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 69.64285714285714,
+    "heartbeat_reduction_pct": 95.62492256338871,
+    "compatibility_pct": 100.0,
+    "combined_pct": 88.42259323541528
+  },
+  "reference_denominators": {
+    "tokens": 224,
+    "primary_heartbeats": 4253.479
+  },
+  "preceding_source_excerpt": "by\n  intros Hinit\n  cases Hinit with\n  | update Hold HH Hsome =>\n  constructor\n  . assumption\n  . constructor\n\ntheorem InitStatesReadValues :\n  InitStates σ vs es σ' →\n  ReadValues σ' vs es := by\n  intros Hinit\n  induction Hinit\n  case init_none =>\n    constructor\n  case init_some x v σ₁ x' v' σ'' Hinit Hinits ih =>\n    constructor <;> try assumption\n    have Hrd : ReadValues σ'' [x] [v] := by\n      apply InitStatesReadValuesMonotone (σ:=σ₁)\n      apply InitStateReadValues <;> assumption\n      assumption\n    cases Hrd\n    assumption\n\ntheorem UpdateStatesReadValues :\n  vs.Nodup →\n  UpdateStates σ vs es σ' →\n  ReadValues σ' vs es := by\n  intros Hnd Hinit\n  induction Hinit\n  case update_none =>\n    constructor\n  case update_some x v σ₁ x' v' σ'' Hupdate Hupdates ih =>\n    constructor <;> try assumption\n    have Hrd : ReadValues σ'' [x] [v] := by\n      apply UpdateStatesReadValuesMonotone (σ:=σ₁)\n      exact Hnd\n      apply UpdateStateReadValues <;> assumption\n      assumption\n    cases Hrd\n    assumption\n    apply ih\n    simp_all\n\ntheorem InitVarsInitStates : InitVars σ vars σ' →\n  ∃ modvals, InitStates σ vars modvals σ' := by\n  intros Hinit\n  induction Hinit\n  case init_none =>\n    refine ⟨[], InitStates.init_none⟩\n  case init_some σ x v σ₁ xs σ'' Hup Hhav ih =>\n    cases ih with\n    | intro vs Hups =>\n    refine ⟨v::vs,?_⟩\n    constructor <;> assumption\n\ntheorem InitVarsReadValuesMonotone\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {ks vs' : List P.Ident} {vs : List P.Expr} :\n  ReadValues σ ks vs →\n  InitVars σ vs' σ' →\n  ReadValues σ' ks vs := by\n  intros Hdef Hinit\n  have Hinit' := InitVarsInitStates Hinit\n  cases Hinit' with\n  | intro es' Hinit' =>\n  exact InitStatesReadValuesMonotone Hdef Hinit'\n\ntheorem updatedStateComm\n  {P : PureExpr} {σ : SemanticStore P}\n  {k k' : P.Ident} {v v' : P.Expr} :\n  k ≠ k' →\n  updatedState (updatedState σ k v) k' v' =\n  updatedState (updatedState σ k' v') k v := by\n  intros Hne\n  funext x\n  unfold updatedState\n  by_cases Hxk' : x = k' <;> simp [Hxk']\n  intros Heq\n  by_cases Hxk : x = k <;> simp_all\n\ntheorem updatedStateComm'\n  {P : PureExpr} {σ : SemanticStore P}\n  {k : P.Ident} {v : P.Expr}\n  {kvs : List (P.Ident × P.Expr)} :\n  ¬ k ∈ kvs.unzip.1 →\n  (updatedState (updatedStates' σ kvs) k v) =\n  (updatedStates' (updatedState σ k v) kvs) := by\n  intros Hnd\n  induction kvs generalizing σ <;> simp [updatedStates']\n  case cons h t ih =>\n  rw [ih]\n  rw [updatedStateComm]\n  simp_all; exact fun a => Hnd.1 (Eq.symm a)\n  simp_all\n\ntheorem updatedStatesComm\n  {P : PureExpr} {σ : SemanticStore P}\n  {kvs kvs' : List (P.Ident × P.Expr)} :\n  kvs.unzip.1.Disjoint kvs'.unzip.1 →\n  updatedStates' (updatedStates' σ kvs) kvs' =\n  updatedStates' (updatedStates' σ kvs') kvs := by\n  intros Hnd\n  induction kvs generalizing kvs' σ <;> simp [updatedStates']\n  case cons h t ih =>\n  induction kvs' generalizing σ h <;> simp [updatedStates']\n  case cons h' t' ih' =>\n    rw [← ih']\n    rw [updatedStateComm]\n    rw [updatedStateComm']\n    . simp at Hnd\n      have Hnd' := List.Disjoint.symm Hnd\n      apply List.Disjoint_cons_head\n      apply List.Disjoint.mono_right _ Hnd'\n      simp_all\n    . intros Hin\n      simp_all [List.Disjoint]\n    . simp at *\n      refine List.Disjoint.mono_right ?_ Hnd\n      simp_all\n\ntheorem UpdateStateSomeMonotone\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {k' : P.Ident} {v' : P.Expr} {e : P.Expr} {v : P.Ident} :\n  v ≠ k' →\n  σ k' = some v' →\n  UpdateState P σ v e σ' →\n  σ' k' = some v' := by\n  intros Hne Hdef Heval\n  have Hrd : ReadValues σ [k'] [v'] := by\n    cases Heval with\n    | update Hold HH Hsome =>\n    constructor <;> simp_all\n    constructor\n  have Hrd2 : ReadValues σ' [k'] [v'] := by\n    apply UpdateStateReadValuesMonotone ?_ Hrd Heval\n    simp_all\n  cases Hrd2\n  assumption\n\ntheorem UpdateStatesSomeMonotone\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {k' : P.Ident} {v' : P.Expr}\n  {ks': List P.Ident} {vs': List P.Expr} :\n  ¬ k' ∈ ks' →\n  σ k' = some v' →\n  UpdateStates σ ks' vs' σ' →\n  σ' k' = some v' := by\n  intros Hnin Hsome Hinit\n  induction Hinit <;> try simp_all\n  next Hinit Hinits ih =>\n  apply ih\n  apply UpdateStateSomeMonotone ?_ Hsome Hinit\n  exact fun a => Hnin.1 (Eq.symm a)\n\ntheorem InitStateSomeMonotone\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {k' : P.Ident} {v' : P.Expr} {e : P.Expr} {v : P.Ident} :\n  σ k' = some v' →\n  InitState P σ v e σ' →\n  σ' k' = some v' := by\n  intros Hdef Heval\n  have Hrd : ReadValues σ [k'] [v'] := by\n    cases Heval with\n    | init Hold HH Hsome =>\n    constructor <;> simp_all\n    constructor\n  have Hrd2 : ReadValues σ' [k'] [v'] :=\n    InitStateReadValuesMonotone Hrd Heval\n  cases Hrd2\n  assumption\n\ntheorem InitStateSomeMonotone'\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {k' : P.Ident} {v' : P.Expr} {e : P.Expr} {v : P.Ident} :\n  k' ≠ v →\n  σ' k' = some v' →\n  InitState P σ v e σ' →\n  σ k' = some v' := by\n  intros Hne Hdef Heval\n  have Hrd : ReadValues σ [k'] [v'] := by\n    cases Heval with\n    | init Hold HH Hsome =>\n    constructor <;> simp_all\n    rw [← Hsome]\n    assumption\n    exact fun a => Hne (Eq.symm a)\n    constructor\n  have Hrd2 : ReadValues σ' [k'] [v'] :=\n    InitStateReadValuesMonotone Hrd Heval\n  cases Hrd\n  assumption\n\ntheorem InitStatesSomeMonotone\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {k' : P.Ident} {v' : P.Expr}\n  {ks': List P.Ident} {vs': List P.Expr} :\n  σ k' = some v' →\n  InitStates σ ks' vs' σ' →\n  σ' k' = some v' := by\n  intros Hsome Hinit\n  induction Hinit <;> try simp_all\n  next Hinit Hinits ih =>\n  apply ih\n  apply InitStateSomeMonotone Hsome Hinit\n\ntheorem InitStatesSomeMonotone'\n  {P : PureExpr} {σ σ' : SemanticStore P}\n  {k' : P.Ident} {v' : P.Expr}\n  {ks': List P.Ident} {vs': List P.Expr} :\n  ¬ k' ∈ ks' →\n  σ' k' = some v' →\n  InitStates σ ks' vs' σ' →\n  σ k' = some v' := by\n  intros Hnin Hsome Hinit\n  induction Hinit\n  case init_none => simp_all\n  case init_some Hinit Hinits ih =>\n  apply InitStateSomeMonotone' ?_ ?_ Hinit\n  . simp_all\n  . apply ih <;> simp_all\n\n",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "Core.InitsUpdatesComm",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "ed8150b0104b322a78773de2431a4c300e61556018b505a55dd4a0267d3a2306"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 35,
+        "evidence_sha256": "1cbd18bc22ea7eb0f9b35e49aa5c242b6dff1baa88ea7f2c77601cc35458518f",
+        "accepted": true,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 68.75,
+          "heartbeat_reduction_pct": 96.1922228839028,
+          "compatibility_pct": 100.0,
+          "combined_pct": 88.31407429463427
+        },
+        "previous_best_combined_pct": 88.00720791481179,
+        "reason": "accepted",
+        "change_excerpt": "--- \n+++ \n@@ -10,7 +10,6 @@\n   intro hu hi\n-  have lu := UpdateStatesLength hu\n-  have li := InitStatesLength hi\n   apply exists_eq_left.mpr\n   constructor\n-  apply updatedStatesInit li\n+  apply updatedStatesInit\n+  exact InitStatesLength hi\n   exact UpdateStatesNotDefMonotone' (InitStatesNotDefined hi) hu\n@@ -20,6 +19,7 @@\n   rewrite [updatedStatesComm]\n-  apply updatedStatesUpdate lu\n+  apply updatedStatesUpdate\n+  exact UpdateStatesLength hu\n   apply updatedStatesDefMonotone\n   exact UpdateStatesDefined' hu\n-  simp [List.unzip_zip, *]\n+  simp [List.unzip_zip, UpdateStatesLength hu, InitStat",
+        "change_excerpt_truncated": true,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.29.1\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.29.1\", \"v4.27.0\", \"v4.26.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.29.1\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 36,
+        "evidence_sha256": "deea3d2b372458ba5c850860c83261e84bfbc433778afefc98b62219ec7e809c",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 68.30357142857143,
+          "heartbeat_reduction_pct": 95.80839590368261,
+          "compatibility_pct": 100.0,
+          "combined_pct": 88.03732244408468
+        },
+        "previous_best_combined_pct": 88.31407429463427,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -10,3 +10,5 @@\n   intro hu hi\n-  apply exists_eq_left.mpr\n+  constructor\n+  constructor\n+  rfl\n   constructor",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.29.1\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.29.1\", \"v4.27.0\", \"v4.26.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.29.1\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 37,
+        "evidence_sha256": "ec24687fa8b4d1b19a6d08f64b8035d9787e5351fb7ebf25929e85860fb52298",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 88.31407429463427,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -24,3 +24,2 @@\n   simp [List.unzip_zip, UpdateStatesLength hu, InitStatesLength hi]\n-  intro k hk hk'\n-  cases InitStatesNotDefined hi k hk' ▸ UpdateStatesDefined hu k hk\n+  grind [List.Disjoint, isDefined, isNotDefined, InitStatesNotDefined, UpdateStatesDefined]",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.29.1\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.29.1\", \"v4.27.0\", \"v4.26.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.29.1\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"`grind` failed\\ncase grind\\nP : PureExpr\\nσ σ' σ'' : SemanticStore P\\nks ks' : List P.Ident\\nvs vs' : List P.Expr\\nhu : UpdateStates σ ks vs σ'\\nhi : InitStates σ' ks' vs' σ''\\nh : ¬ks.Disjoint ks'\\nw :"
+      },
+      {
+        "check": 38,
+        "evidence_sha256": "9f40878ad2b5e756637f797b69d5811453fe3a8f21b7fc70e1ef169f7202c3b7",
+        "accepted": true,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 69.64285714285714,
+          "heartbeat_reduction_pct": 95.62492256338871,
+          "compatibility_pct": 100.0,
+          "combined_pct": 88.42259323541528
+        },
+        "previous_best_combined_pct": 88.31407429463427,
+        "reason": "accepted",
+        "change_excerpt": "--- \n+++ \n@@ -16,3 +16,4 @@\n   exact InitStatesNodup hi\n-  rewrite [InitStatesUpdated hi, UpdateStatesUpdated hu]\n+  cases UpdateStatesUpdated hu\n+  cases InitStatesUpdated hi\n   unfold updatedStates",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.29.1\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.29.1\", \"v4.27.0\", \"v4.26.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.29.1\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 39,
+        "evidence_sha256": "06ce01e85488acd3d8a498475d6de132bf77e97ac541ac67e43248eb35297c3f",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 69.64285714285714,
+          "heartbeat_reduction_pct": 95.62515766505489,
+          "compatibility_pct": 100.0,
+          "combined_pct": 88.42267160263735
+        },
+        "previous_best_combined_pct": 88.42259323541528,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -16,4 +16,4 @@\n   exact InitStatesNodup hi\n+  cases InitStatesUpdated hi\n   cases UpdateStatesUpdated hu\n-  cases InitStatesUpdated hi\n   unfold updatedStates",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.29.1\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.29.1\", \"v4.27.0\", \"v4.26.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.29.1\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 2,
+        "evidence_sha256": "915a2ff6462293e6ab7e24b702c59df8efed8d0bb5c9eeefaa2a4d4d9a369877",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"elabRewrite\", \"limit\": 10}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.29.1\", \"query\": \"elabRewrite\", \"matches\": [], \"truncated\": false}",
+        "request_sha256": "9dc1b203741be837be0b797a0f6b8b9a7cfcab99721b62205892b038dd12e099",
+        "response_sha256": "9a9b2f0dc6c8f1819b5a8d5385ba7385bcfa26c0c8f251cb970a218774650fa4"
+      },
+      {
+        "attempt": 2,
+        "evidence_sha256": "c54f9316ff8ac7c386e366c8f33ce11b5b9d46d6c9115989050fc4f7169de48f",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"unzip_zip\", \"limit\": 15}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.29.1\", \"query\": \"unzip_zip\", \"matches\": [\"./Strata/Transform/CallElimCorrect.lean:303:      . rw [List.unzip_zip] <;> grind\", \"./Strata/Transform/CallElimCorrect.lean:335:      . rw [List.unzip_zip] <;> grind\", \"./Strata/Transform/CallElimCorrect.lean:487:      rw [List.unzip_zip] <;> simp_all\", \"./Strata/Transform/CallElimCorrect.lean:488:      rw [List.unzip_zip] <;> simp_all\", \"./Strata/Transform/CallElimCorrect.lean:4061:                            rw [List.unzip_zip]\", \"./Strata/Transform/CallElimCorrect.lean:4062:                            rw [Li",
+        "request_sha256": "b76c280706025111efc28353bcdf52905ccfd895b0203fc1926738b575ff2411",
+        "response_sha256": "6489d9e301d103f473d1e07bfd1b09dec61e191e6fc175159322ffea2264afca"
+      },
+      {
+        "attempt": 2,
+        "evidence_sha256": "288c3556c500adcd06031b641083e4f2ab14128fa5d2a82dbd9c7d57dc6aa8b6",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"unzip.1\", \"limit\": 20}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.29.1\", \"query\": \"unzip.1\", \"matches\": [\"./Strata/Transform/CallElimCorrect.lean:589:  trips.unzip.1.unzip.1.Disjoint (List.flatMap (Imperative.HasVarsPure.getVars (P:=Expression)) trips.unzip.2) →\", \"./Strata/Transform/CallElimCorrect.lean:590:  List.Nodup (trips.unzip.1.unzip.1) →\", \"./Strata/Transform/CallElimCorrect.lean:593:  Imperative.isNotDefined σ (trips.unzip.1.unzip.1) →\", \"./Strata/Transform/CallElimCorrect.lean:597:      (trips.unzip.1.unzip.1) vvs) δ := by\", \"./Strata/Transform/CallElimCorrect.lean:1599:  oldTrips.unzip.2.zip oldTrips.unzip",
+        "request_sha256": "75c1e07f1d65dfed67eb18c9e0dc3fde3798fb4b8959af51a8ba3d10c67e014e",
+        "response_sha256": "efdbb2452ff71c7423caa882f83a270dbea22667c3ca428489b05a8831b24b32"
+      }
+    ],
+    "unverified_model_notes": [
+      {
+        "attempt": 2,
+        "evidence_sha256": "79fb8998553fb36b0b194a0a631d0fbce50d8bfc4c8e951c070577825ab9393c",
+        "kind": "discovery",
+        "text": "New best68tokens/186.093HB/S88.42259. Split anonymous refinement to apply exists_eq_left.mpr; constructor. Split updatedStatesInit/Update/DefMonotone into apply and exact. Remove length aliases and simp [List.unzip_zip, UpdateStatesLength hu, InitStatesLength hi]. Cases UpdateStatesUpdated hu then InitStatesUpdated hi saves2tokens versus rewrite, at cost24HB."
+      },
+      {
+        "attempt": 2,
+        "evidence_sha256": "b90cfe495de84c584ba17b7bf78f8a519428ea68d9a4b84f08fe67e1069558ec",
+        "kind": "rejected",
+        "text": "rw/erw comm without unfold fails keyed head matching; removing all simp length assumptions fails. simp only with * and simp_all only worse than simp starred. Bare Eq.trans contradiction mismatches Option none vs Bool isSome. Direct existential constructors worse. grind facts need forward control; no contradiction derived. Reverse cases order negligible delta below selection margin."
+      }
+    ],
+    "prior_check_count": 40,
+    "prior_event_count": 57,
+    "prior_events_sha256": "6f592efb1488e75c58a9db69e49cf040120332def99833b4606f80755a6d1fdc"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $1.45293; $1.54707 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

@@ -1,0 +1,1764 @@
+{
+  "at": "2026-10-13T16:21:57.809424+00:00",
+  "code": "theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by\n  unfold fiberwiseClose at h_fw_dist_lt\n  unfold hammingClose\n  let C_i := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩\n  let d_fw := fiberwiseDistance 𝔽q β (i := i) steps h_i_add_steps f\n  let d_H := Code.distFromCode f C_i\n  let d_i := BBF_CodeDistance ℓ 𝓡 ⟨i, by omega⟩\n  let d_is := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩\n  obtain ⟨g', hg', h_g'⟩ : ∃ g' ∈ C_i,\n      d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard := by\n    have hne : ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard)\n        '' Set.univ).Nonempty := Set.image_nonempty.mpr Set.univ_nonempty\n    obtain ⟨x, _, hx⟩ := Nat.sInf_mem hne\n    exact ⟨x, x.property, hx.symm⟩\n  let Y := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g'\n  have h_le : {x | f x ≠ g' x}.ncard ≤ (Y ×ˢ (Set.univ : Set (Fin (2 ^ steps)))).ncard := by\n    refine Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n      (fun x => (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n        pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps)\n          (h_i_add_steps := h_i_add_steps) (x := x))) ?_ ?_\n    · intro x hx\n      exact Set.mem_prod.mpr ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩\n    · intro a _ b _ h\n      have ha := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := a) _).mp rfl\n      have hb := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := b) _).mp rfl\n      rw [← ha, ← hb]\n      exact congr_arg (fun p : _ × Fin (2 ^ steps) => qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩)\n        (steps := steps) (h_i_add_steps := fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps)\n        (y := p.1) p.2) h\n  rw [Set.ncard_prod, Set.ncard_univ, Nat.card_fin] at h_le\n  have hb : ({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g') := by\n    rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n    rfl\n  have h_card : Δ₀(f, g') ≤ d_fw * 2 ^ steps := by\n    rw [h_g', ← hb]\n    exact h_le\n  have h_dH : d_H ≤ ((d_fw * 2 ^ steps : ℕ) : ℕ∞) :=\n    (Code.distFromCode_le_dist_to_mem f g' hg').trans (ENat.coe_le_coe.mpr h_card)\n  have h_fw_bound : 2 * d_fw ≤ d_is - 1 :=\n    Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt)\n  have h_alg : (d_is - 1) * 2 ^ steps = d_i - 1 := by\n    have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n    have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n    simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n    rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul]\n  have h_nat : 2 * (d_fw * 2 ^ steps) ≤ d_i - 1 := by\n    rw [← Nat.mul_assoc, ← h_alg]\n    exact Nat.mul_le_mul_right _ h_fw_bound\n  have h5 : 2 * (d_fw * 2 ^ steps) < d_i := by\n    have h_pos : 0 < d_i := by\n      dsimp only [d_i, BBF_CodeDistance]\n      omega\n    omega\n  have h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n    calc (2 : ℕ∞) * d_H\n        ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n      _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm\n  exact h6.trans_lt (ENat.coe_lt_coe.mpr h5)\n",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+    "version": "v4.31.0",
+    "proof_sha256": "0cca71b45fd4305aaea5bffa877f06e3b882d61d57caf95cedc3af1c90daa349",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": null,
+      "threshold_raw": 200000,
+      "limit": 25
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end_local_scope 1",
+        "header_truncated": false,
+        "raw": 1225,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ section",
+        "header_truncated": false,
+        "raw": 1228,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 200000",
+        "header_truncated": false,
+        "raw": 62,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "class": "Elab.definition.header",
+            "header": "✅️ Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+            "header_truncated": false,
+            "raw": 299939,
+            "tag": ""
+          },
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [
+                                                                                                              {
+                                                                                                                "children": [
+                                                                                                                  {
+                                                                                                                    "children": [
+                                                                                                                      {
+                                                                                                                        "children": [
+                                                                                                                          {
+                                                                                                                            "children": [
+                                                                                                                              {
+                                                                                                                                "children": [],
+                                                                                                                                "class": "Meta.synthInstance",
+                                                                                                                                "header": "✅️ CoeT (↥C_i) g (OracleFunction 𝔽q β ⟨↑i, ⋯⟩)",
+                                                                                                                                "header_truncated": false,
+                                                                                                                                "raw": 230825,
+                                                                                                                                "tag": ""
+                                                                                                                              }
+                                                                                                                            ],
+                                                                                                                            "class": "Elab.coe",
+                                                                                                                            "header": "✅️ adding coercion for g : ↥C_i =?= OracleFunction 𝔽q β ⟨↑i, ⋯⟩",
+                                                                                                                            "header_truncated": false,
+                                                                                                                            "raw": 250371,
+                                                                                                                            "tag": ""
+                                                                                                                          }
+                                                                                                                        ],
+                                                                                                                        "class": "Elab.app.args",
+                                                                                                                        "header": "✅️ elabAppArgs (7 args) `@fiberwiseDisagreementSet`",
+                                                                                                                        "header_truncated": false,
+                                                                                                                        "raw": 278894,
+                                                                                                                        "tag": ""
+                                                                                                                      }
+                                                                                                                    ],
+                                                                                                                    "class": "Elab.step",
+                                                                                                                    "header": "✅️ expected type: <not-available>, term\nfiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g",
+                                                                                                                    "header_truncated": false,
+                                                                                                                    "raw": 279104,
+                                                                                                                    "tag": "Lean.Parser.Term.app"
+                                                                                                                  }
+                                                                                                                ],
+                                                                                                                "class": "Elab.step",
+                                                                                                                "header": "✅️ expected type: <not-available>, term\n(fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g)",
+                                                                                                                "header_truncated": false,
+                                                                                                                "raw": 279225,
+                                                                                                                "tag": "Lean.Parser.Term.paren"
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "class": "Elab.step",
+                                                                                                            "header": "✅️ expected type: ℕ, term\n(fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 281075,
+                                                                                                            "tag": "Lean.Parser.Term.proj"
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Elab.step",
+                                                                                                        "header": "✅️ expected type: ↥C_i → ℕ, term\nfun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 335893,
+                                                                                                        "tag": "Lean.Parser.Term.fun"
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Elab.step",
+                                                                                                    "header": "✅️ expected type: ↥C_i → ℕ, term\n(fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard)",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 335994,
+                                                                                                    "tag": "Lean.Parser.Term.paren"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.app.args",
+                                                                                                "header": "✅️ elabAppArgs (2 args) `@Set.image`",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 338177,
+                                                                                                "tag": ""
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "✅️ expected type: <not-available>, term\nimage✝ (fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) Set.univ",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 340342,
+                                                                                            "tag": "Lean.Parser.Term.app"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "✅️ expected type: <not-available>, term\n(fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 340613,
+                                                                                        "tag": "Set.term_''_"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "✅️ expected type: <not-available>, term\n((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ)",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 340715,
+                                                                                    "tag": "Lean.Parser.Term.paren"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "✅️ expected type: Prop, term\n((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty",
+                                                                                "header_truncated": false,
+                                                                                "raw": 341811,
+                                                                                "tag": "Lean.Parser.Term.proj"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "✅️ expected type: ∃ g' ∈ C_i, d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard, term\nhave hne : ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n  Set.image_nonempty.mpr Set.univ_nonempty;\n?_",
+                                                                            "header_truncated": false,
+                                                                            "raw": 420281,
+                                                                            "tag": "Lean.Parser.Term.have"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ expected type: ∃ g' ∈ C_i, d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard, term\nno_implicit_lambda%\n  (have hne :\n    ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n    Set.image_nonempty.mpr Set.univ_nonempty;\n  ?_)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 420370,
+                                                                        "tag": "Lean.Parser.Term.noImplicitLambda"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ refine\n  no_implicit_lambda%\n    (have hne :\n      ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n      Set.image_nonempty.mpr Set.univ_nonempty;\n    ?_)",
+                                                                    "header_truncated": false,
+                                                                    "raw": 420784,
+                                                                    "tag": "Lean.Parser.Tactic.refine"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ refine\n    no_implicit_lambda%\n      (have hne :\n        ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n        Set.image_nonempty.mpr Set.univ_nonempty;\n      ?_);\n  rotate_right",
+                                                                "header_truncated": false,
+                                                                "raw": 420965,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ refine\n    no_implicit_lambda%\n      (have hne :\n        ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n        Set.image_nonempty.mpr Set.univ_nonempty;\n      ?_);\n  rotate_right",
+                                                            "header_truncated": false,
+                                                            "raw": 421051,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ (refine\n    no_implicit_lambda%\n      (have hne :\n        ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n        Set.image_nonempty.mpr Set.univ_nonempty;\n      ?_);\n  rotate_right)",
+                                                        "header_truncated": false,
+                                                        "raw": 421139,
+                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ (refine\n      no_implicit_lambda%\n        (have hne :\n          ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n          Set.image_nonempty.mpr Set.univ_nonempty;\n        ?_);\n    rotate_right)",
+                                                    "header_truncated": false,
+                                                    "raw": 421227,
+                                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "✅️ (refine\n      no_implicit_lambda%\n        (have hne :\n          ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n          Set.image_nonempty.mpr Set.univ_nonempty;\n        ?_);\n    rotate_right)",
+                                                "header_truncated": false,
+                                                "raw": 421313,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ focus\n  (refine\n      no_implicit_lambda%\n        (have hne :\n          ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n          Set.image_nonempty.mpr Set.univ_nonempty;\n        ?_);\n    rotate_right)",
+                                            "header_truncated": false,
+                                            "raw": 421436,
+                                            "tag": "Lean.Parser.Tactic.focus"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ refine_lift\n  have hne :\n    ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n    Set.image_nonempty.mpr Set.univ_nonempty;\n  ?_",
+                                        "header_truncated": false,
+                                        "raw": 421554,
+                                        "tag": "Lean.Parser.Tactic.tacticRefine_lift_"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "✅️ have hne :\n  ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n  Set.image_nonempty.mpr Set.univ_nonempty",
+                                    "header_truncated": false,
+                                    "raw": 421659,
+                                    "tag": "Lean.Parser.Tactic.tacticHave__"
+                                  },
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [],
+                                                "class": "Elab.app.args",
+                                                "header": "✅️ elabAppArgs (2 args) `@Exists.intro`",
+                                                "header_truncated": false,
+                                                "raw": 301232,
+                                                "tag": ""
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ expected type: ∃ g' ∈ C_i, d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard, term\nExists.intro✝ x ⟨x.property, hx.symm⟩",
+                                            "header_truncated": false,
+                                            "raw": 305738,
+                                            "tag": "Lean.Parser.Term.app"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ expected type: ∃ g' ∈ C_i, d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard, term\n⟨x, x.property, hx.symm⟩",
+                                        "header_truncated": false,
+                                        "raw": 306000,
+                                        "tag": "Lean.Parser.Term.anonymousCtor"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "✅️ exact ⟨x, x.property, hx.symm⟩",
+                                    "header_truncated": false,
+                                    "raw": 307867,
+                                    "tag": "Lean.Parser.Tactic.exact"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  have hne :\n    ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n    Set.image_nonempty.mpr Set.univ_nonempty\n  obtain ⟨x, _, hx⟩ := Nat.sInf_mem hne\n  exact ⟨x, x.property, hx.symm⟩",
+                                "header_truncated": false,
+                                "raw": 861201,
+                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ \n  have hne :\n    ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n    Set.image_nonempty.mpr Set.univ_nonempty\n  obtain ⟨x, _, hx⟩ := Nat.sInf_mem hne\n  exact ⟨x, x.property, hx.symm⟩",
+                            "header_truncated": false,
+                            "raw": 861286,
+                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ obtain ⟨g', hg', h_g'⟩ : ∃ g' ∈ C_i, d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard :=\n  by\n  have hne :\n    ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n    Set.image_nonempty.mpr Set.univ_nonempty\n  obtain ⟨x, _, hx⟩ := Nat.sInf_mem hne\n  exact ⟨x, x.property, hx.symm⟩",
+                        "header_truncated": false,
+                        "raw": 1100067,
+                        "tag": "Lean.Parser.Tactic.obtain"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [],
+                                                                            "class": "Elab.app.args",
+                                                                            "header": "✅️ elabAppArgs (3 args) (2 namedArgs) `@Set.ncard_le_ncard_of_injOn`",
+                                                                            "header_truncated": false,
+                                                                            "raw": 268669,
+                                                                            "tag": ""
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ expected type: {x | f x ≠ g' x}.ncard ≤ (Y ×ˢ Set.univ).ncard, term\nSet.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n  (fun x =>\n    (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n      pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x)))\n  ?_ ?_",
+                                                                        "header_truncated": false,
+                                                                        "raw": 269351,
+                                                                        "tag": "Lean.Parser.Term.app"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ refine\n  Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n    (fun x =>\n      (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n        pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x)))\n    ?_ ?_",
+                                                                    "header_truncated": false,
+                                                                    "raw": 482159,
+                                                                    "tag": "Lean.Parser.Tactic.refine"
+                                                                  },
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [],
+                                                                                        "class": "Meta.isDefEq",
+                                                                                        "header": "✅️ qMap_total_fiber 𝔽q β ⟨↑i, ⋯⟩ steps ⋯\n    ((fun x =>\n          (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n            pointToIterateQuotientIndex 𝔽q β ⟨↑i, ⋯⟩ steps h_i_add_steps x))\n        a).1\n    ((fun x =>\n          (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n            pointToIterateQuotientIndex 𝔽q β ⟨↑i, ⋯⟩ steps h_i_add_steps x))\n        a).2 =\n  qMap_total_fiber 𝔽q β ⟨↑i, ⋯⟩ steps ⋯\n    ((fun x =>\n          (iteratedQuotientMap 𝔽q β h_ℓ_",
+                                                                                        "header_truncated": true,
+                                                                                        "raw": 344133,
+                                                                                        "tag": ""
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Meta.isDefEq",
+                                                                                    "header": "✅️ qMap_total_fiber 𝔽q β ⟨↑i, ⋯⟩ steps ⋯\n    ((fun x =>\n          (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n            pointToIterateQuotientIndex 𝔽q β ⟨↑i, ⋯⟩ steps h_i_add_steps x))\n        a).1\n    ((fun x =>\n          (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n            pointToIterateQuotientIndex 𝔽q β ⟨↑i, ⋯⟩ steps h_i_add_steps x))\n        a).2 =\n  qMap_total_fiber 𝔽q β ⟨↑i, ⋯⟩ steps ⋯\n    ((fun x =>\n          (iteratedQuotientMap 𝔽q β h_ℓ_",
+                                                                                    "header_truncated": true,
+                                                                                    "raw": 344211,
+                                                                                    "tag": ""
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "✅️ exact\n  congr_arg\n    (fun p : _ × Fin (2 ^ steps) =>\n      qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps :=\n        fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := p.1) p.2)\n    h",
+                                                                                "header_truncated": false,
+                                                                                "raw": 663310,
+                                                                                "tag": "Lean.Parser.Tactic.exact"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "✅️ \n  intro a _ b _ h\n  have ha := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := a) _).mp rfl\n  have hb := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := b) _).mp rfl\n  rw [← ha, ← hb]\n  exact\n    congr_arg\n      (fun p : _ × Fin (2 ^ steps) =>\n        qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps :=\n          fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := p.1) p.2)\n      h",
+                                                                            "header_truncated": false,
+                                                                            "raw": 927150,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ \n  intro a _ b _ h\n  have ha := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := a) _).mp rfl\n  have hb := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := b) _).mp rfl\n  rw [← ha, ← hb]\n  exact\n    congr_arg\n      (fun p : _ × Fin (2 ^ steps) =>\n        qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps :=\n          fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := p.1) p.2)\n      h",
+                                                                        "header_truncated": false,
+                                                                        "raw": 927236,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ ·\n  intro a _ b _ h\n  have ha := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := a) _).mp rfl\n  have hb := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := b) _).mp rfl\n  rw [← ha, ← hb]\n  exact\n    congr_arg\n      (fun p : _ × Fin (2 ^ steps) =>\n        qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps :=\n          fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := p.1) p.2)\n      h",
+                                                                    "header_truncated": false,
+                                                                    "raw": 927370,
+                                                                    "tag": "Lean.cdot"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ \n  refine\n    Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n      (fun x =>\n        (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n          pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x)))\n      ?_ ?_\n  · intro x hx\n    exact Set.mem_prod.mpr ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩\n  · intro a _ b _ h\n    have ha := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := a) _).mp",
+                                                                "header_truncated": true,
+                                                                "raw": 1491382,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ \n  refine\n    Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n      (fun x =>\n        (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n          pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x)))\n      ?_ ?_\n  · intro x hx\n    exact Set.mem_prod.mpr ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩\n  · intro a _ b _ h\n    have ha := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := a) _).mp",
+                                                            "header_truncated": true,
+                                                            "raw": 1491472,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ (\n  refine\n    Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n      (fun x =>\n        (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n          pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x)))\n      ?_ ?_\n  · intro x hx\n    exact Set.mem_prod.mpr ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩\n  · intro a _ b _ h\n    have ha := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := a) _).m",
+                                                        "header_truncated": true,
+                                                        "raw": 1491564,
+                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ with_annotate_state\"by\"\n  ( refine\n      Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n        (fun x =>\n          (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n            pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x :=\n              x)))\n        ?_ ?_\n    · intro x hx\n      exact Set.mem_prod.mpr ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩\n    · intro a _ b _ h\n      have ha := (is_fiber_iff_generates",
+                                                    "header_truncated": true,
+                                                    "raw": 1491660,
+                                                    "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "✅️ with_annotate_state\"by\"\n    ( refine\n        Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n          (fun x =>\n            (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n              pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x :=\n                x)))\n          ?_ ?_\n      · intro x hx\n        exact Set.mem_prod.mpr ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩\n      · intro a _ b _ h\n        have ha := (",
+                                                "header_truncated": true,
+                                                "raw": 1491747,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ with_annotate_state\"by\"\n    ( refine\n        Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n          (fun x =>\n            (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n              pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x :=\n                x)))\n          ?_ ?_\n      · intro x hx\n        exact Set.mem_prod.mpr ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩\n      · intro a _ b _ h\n        have ha := (",
+                                            "header_truncated": true,
+                                            "raw": 1491832,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( refine\n        Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n          (fun x =>\n            (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n              pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x :=\n                x)))\n          ?_ ?_\n      · intro x hx\n        exact Set.mem_prod.mpr ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩\n      · intro a _ b _ h\n    ",
+                                        "header_truncated": true,
+                                        "raw": 1492002,
+                                        "tag": "Lean.Parser.Tactic.case"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_le : {x | f x ≠ g' x}.ncard ≤ (Y ×ˢ (Set.univ : Set (Fin (2 ^ steps)))).ncard := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( refine\n          Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n            (fun x =>\n              (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n                pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_ad",
+                                    "header_truncated": true,
+                                    "raw": 1605820,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_le : {x | f x ≠ g' x}.ncard ≤ (Y ×ˢ (Set.univ : Set (Fin (2 ^ steps)))).ncard := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( refine\n          Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n            (fun x =>\n              (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n                pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_ad",
+                                "header_truncated": true,
+                                "raw": 1605911,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_le : {x | f x ≠ g' x}.ncard ≤ (Y ×ˢ (Set.univ : Set (Fin (2 ^ steps)))).ncard := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( refine\n          Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n            (fun x =>\n              (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n                pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h",
+                            "header_truncated": true,
+                            "raw": 1606039,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ have h_le : {x | f x ≠ g' x}.ncard ≤ (Y ×ˢ (Set.univ : Set (Fin (2 ^ steps)))).ncard :=\n  by\n  refine\n    Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n      (fun x =>\n        (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n          pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x)))\n      ?_ ?_\n  · intro x hx\n    exact Set.mem_prod.mpr ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩\n  · intro a _ b _ h\n   ",
+                        "header_truncated": true,
+                        "raw": 1606224,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [],
+                                    "class": "Elab.step",
+                                    "header": "✅️ rewrite [Set.ncard_prod, Set.ncard_univ, Nat.card_fin] at h_le; with_annotate_state\"]\" (try (with_reducible rfl))",
+                                    "header_truncated": false,
+                                    "raw": 207241,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ rewrite [Set.ncard_prod, Set.ncard_univ, Nat.card_fin] at h_le; with_annotate_state\"]\" (try (with_reducible rfl))",
+                                "header_truncated": false,
+                                "raw": 207328,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ (rewrite [Set.ncard_prod, Set.ncard_univ, Nat.card_fin] at h_le; with_annotate_state\"]\" (try (with_reducible rfl)))",
+                            "header_truncated": false,
+                            "raw": 207417,
+                            "tag": "Lean.Parser.Tactic.paren"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ rw [Set.ncard_prod, Set.ncard_univ, Nat.card_fin] at h_le",
+                        "header_truncated": false,
+                        "raw": 207549,
+                        "tag": "Lean.Parser.Tactic.rwSeq"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ expected type: <not-available>, term\nΔ₀(f, g')",
+                                                                "header_truncated": false,
+                                                                "raw": 266823,
+                                                                "tag": "choice"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ expected type: Sort ?u.171, term\nbinrel% Eq✝ ({x | f x ≠ g' x} : Set _).ncard Δ₀(f, g')",
+                                                            "header_truncated": false,
+                                                            "raw": 297497,
+                                                            "tag": "Lean.Parser.Term.binrel"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ expected type: Sort ?u.171, term\n({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g')",
+                                                        "header_truncated": false,
+                                                        "raw": 297621,
+                                                        "tag": "«term_=_»"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ expected type: 2 * Δ₀(f, ↑(BBF_Code 𝔽q β ⟨↑i, ⋯⟩)) < ↑(BBF_CodeDistance ℓ 𝓡 ⟨↑i, ⋯⟩), term\nhave hb : ({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g') := ?body✝;\n?_",
+                                                    "header_truncated": false,
+                                                    "raw": 298243,
+                                                    "tag": "Lean.Parser.Term.have"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "✅️ expected type: 2 * Δ₀(f, ↑(BBF_Code 𝔽q β ⟨↑i, ⋯⟩)) < ↑(BBF_CodeDistance ℓ 𝓡 ⟨↑i, ⋯⟩), term\n(have hb : ({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g') := ?body✝;\n?_)",
+                                                "header_truncated": false,
+                                                "raw": 298344,
+                                                "tag": "Lean.Parser.Term.paren"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ expected type: 2 * Δ₀(f, ↑(BBF_Code 𝔽q β ⟨↑i, ⋯⟩)) < ↑(BBF_CodeDistance ℓ 𝓡 ⟨↑i, ⋯⟩), term\nno_implicit_lambda%\n  (have hb : ({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g') := ?body✝;\n  ?_)",
+                                            "header_truncated": false,
+                                            "raw": 298432,
+                                            "tag": "Lean.Parser.Term.noImplicitLambda"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ refine\n  no_implicit_lambda%\n    (have hb : ({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g') := ?body✝;\n    ?_)",
+                                        "header_truncated": false,
+                                        "raw": 298759,
+                                        "tag": "Lean.Parser.Tactic.refine"
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "✅️ rewrite [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 280963,
+                                                                                    "tag": "Lean.Parser.Tactic.rewriteSeq"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "✅️ rewrite [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]; with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                                "header_truncated": false,
+                                                                                "raw": 297998,
+                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "✅️ rewrite [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]; with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                            "header_truncated": false,
+                                                                            "raw": 298085,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ (rewrite [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]; with_annotate_state\"]\" (try (with_reducible rfl)))",
+                                                                        "header_truncated": false,
+                                                                        "raw": 298174,
+                                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]",
+                                                                    "header_truncated": false,
+                                                                    "raw": 298305,
+                                                                    "tag": "Lean.Parser.Tactic.rwSeq"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ \n  rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n  rfl",
+                                                                "header_truncated": false,
+                                                                "raw": 315101,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ \n  rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n  rfl",
+                                                            "header_truncated": false,
+                                                            "raw": 315185,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ (\n  rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n  rfl)",
+                                                        "header_truncated": false,
+                                                        "raw": 315271,
+                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ with_annotate_state\"by\"\n  ( rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n    rfl)",
+                                                    "header_truncated": false,
+                                                    "raw": 315367,
+                                                    "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "✅️ with_annotate_state\"by\"\n    ( rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n      rfl)",
+                                                "header_truncated": false,
+                                                "raw": 315454,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ with_annotate_state\"by\"\n    ( rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n      rfl)",
+                                            "header_truncated": false,
+                                            "raw": 315539,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n      rfl)",
+                                        "header_truncated": false,
+                                        "raw": 315709,
+                                        "tag": "Lean.Parser.Tactic.case"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have hb : ({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g') := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n        rfl)",
+                                    "header_truncated": false,
+                                    "raw": 614638,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have hb : ({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g') := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n        rfl)",
+                                "header_truncated": false,
+                                "raw": 614729,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have hb : ({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g') := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n        rfl)",
+                            "header_truncated": false,
+                            "raw": 614857,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ have hb : ({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g') :=\n  by\n  rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n  rfl",
+                        "header_truncated": false,
+                        "raw": 615042,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [
+                                                                                                              {
+                                                                                                                "children": [
+                                                                                                                  {
+                                                                                                                    "children": [
+                                                                                                                      {
+                                                                                                                        "children": [],
+                                                                                                                        "class": "Kernel",
+                                                                                                                        "header": "✅️ typechecking declarations [Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius._proof_3]",
+                                                                                                                        "header_truncated": false,
+                                                                                                                        "raw": 365704,
+                                                                                                                        "tag": ""
+                                                                                                                      }
+                                                                                                                    ],
+                                                                                                                    "class": "addDecl",
+                                                                                                                    "header": "✅️ adding declarations [Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius._proof_3]",
+                                                                                                                    "header_truncated": false,
+                                                                                                                    "raw": 365938,
+                                                                                                                    "tag": ""
+                                                                                                                  }
+                                                                                                                ],
+                                                                                                                "class": "Elab.step",
+                                                                                                                "header": "✅️ omega",
+                                                                                                                "header_truncated": false,
+                                                                                                                "raw": 805002,
+                                                                                                                "tag": "Lean.Parser.Tactic.omega"
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "class": "Elab.step",
+                                                                                                            "header": "✅️ omega",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 805088,
+                                                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Elab.step",
+                                                                                                        "header": "✅️ omega",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 805172,
+                                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Elab.step",
+                                                                                                    "header": "✅️ (omega)",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 805258,
+                                                                                                    "tag": "Lean.Parser.Tactic.paren"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "✅️ with_annotate_state\"by\" (omega)",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 805354,
+                                                                                                "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "✅️ with_annotate_state\"by\" (omega)",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 805441,
+                                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "✅️ with_annotate_state\"by\" (omega)",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 805526,
+                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "✅️ case body✝ => with_annotate_state\"by\" (omega)",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 805697,
+                                                                                    "tag": "Lean.Parser.Tactic.case"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := ?body✝;\n      ?_)\n  case body✝ => with_annotate_state\"by\" (omega)",
+                                                                                "header_truncated": false,
+                                                                                "raw": 959881,
+                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := ?body✝;\n      ?_)\n  case body✝ => with_annotate_state\"by\" (omega)",
+                                                                            "header_truncated": false,
+                                                                            "raw": 959972,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := ?body✝;\n      ?_)\n  case body✝ => with_annotate_state\"by\" (omega)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 960100,
+                                                                        "tag": "Lean.Parser.Tactic.focus"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega",
+                                                                    "header_truncated": false,
+                                                                    "raw": 960285,
+                                                                    "tag": "Lean.Parser.Tactic.tacticHave__"
+                                                                  },
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [
+                                                                                                              {
+                                                                                                                "children": [
+                                                                                                                  {
+                                                                                                                    "children": [],
+                                                                                                                    "class": "omega",
+                                                                                                                    "header": "✅️ Assuming fact:\n  ℓ - (↑i + steps) + steps < ℓ - ↑i",
+                                                                                                                    "header_truncated": false,
+                                                                                                                    "raw": 225027,
+                                                                                                                    "tag": ""
+                                                                                                                  },
+                                                                                                                  {
+                                                                                                                    "children": [
+                                                                                                                      {
+                                                                                                                        "children": [],
+                                                                                                                        "class": "Kernel",
+                                                                                                                        "header": "✅️ typechecking declarations [Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius._proof_4]",
+                                                                                                                        "header_truncated": false,
+                                                                                                                        "raw": 474782,
+                                                                                                                        "tag": ""
+                                                                                                                      }
+                                                                                                                    ],
+                                                                                                                    "class": "addDecl",
+                                                                                                                    "header": "✅️ adding declarations [Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius._proof_4]",
+                                                                                                                    "header_truncated": false,
+                                                                                                                    "raw": 475001,
+                                                                                                                    "tag": ""
+                                                                                                                  }
+                                                                                                                ],
+                                                                                                                "class": "Elab.step",
+                                                                                                                "header": "✅️ omega",
+                                                                                                                "header_truncated": false,
+                                                                                                                "raw": 986446,
+                                                                                                                "tag": "Lean.Parser.Tactic.omega"
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "class": "Elab.step",
+                                                                                                            "header": "✅️ omega",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 986532,
+                                                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Elab.step",
+                                                                                                        "header": "✅️ omega",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 986616,
+                                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Elab.step",
+                                                                                                    "header": "✅️ (omega)",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 986702,
+                                                                                                    "tag": "Lean.Parser.Tactic.paren"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "✅️ with_annotate_state\"by\" (omega)",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 986798,
+                                                                                                "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "✅️ with_annotate_state\"by\" (omega)",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 986885,
+                                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "✅️ with_annotate_state\"by\" (omega)",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 986970,
+                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "✅️ case body✝ => with_annotate_state\"by\" (omega)",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 987140,
+                                                                                    "tag": "Lean.Parser.Tactic.case"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h2 : ℓ - (↑i + steps) + steps = ℓ - i := ?body✝;\n      ?_)\n  case body✝ => with_annotate_state\"by\" (omega)",
+                                                                                "header_truncated": false,
+                                                                                "raw": 1129806,
+                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h2 : ℓ - (↑i + steps) + steps = ℓ - i := ?body✝;\n      ?_)\n  case body✝ => with_annotate_state\"by\" (omega)",
+                                                                            "header_truncated": false,
+                                                                            "raw": 1129897,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h2 : ℓ - (↑i + steps) + steps = ℓ - i := ?body✝;\n      ?_)\n  case body✝ => with_annotate_state\"by\" (omega)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 1130025,
+                                                                        "tag": "Lean.Parser.Tactic.focus"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega",
+                                                                    "header_truncated": false,
+                                                                    "raw": 1130210,
+                                                                    "tag": "Lean.Parser.Tactic.tacticHave__"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ \n  have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n  have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n  simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n  rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul]",
+                                                                "header_truncated": false,
+                                                                "raw": 2203210,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ \n  have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n  have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n  simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n  rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul]",
+                                                            "header_truncated": false,
+                                                            "raw": 2203295,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ (\n  have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n  have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n  simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n  rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul])",
+                                                        "header_truncated": false,
+                                                        "raw": 2203382,
+                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ with_annotate_state\"by\"\n  ( have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n    have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n    simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n    rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul])",
+                                                    "header_truncated": false,
+                                                    "raw": 2203478,
+                                                    "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "✅️ with_annotate_state\"by\"\n    ( have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n      have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n      simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n      rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul])",
+                                                "header_truncated": false,
+                                                "raw": 2203565,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ with_annotate_state\"by\"\n    ( have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n      have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n      simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n      rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul])",
+                                            "header_truncated": false,
+                                            "raw": 2203650,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n      have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n      simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n      rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul])",
+                                        "header_truncated": false,
+                                        "raw": 2203821,
+                                        "tag": "Lean.Parser.Tactic.case"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_alg : (d_is - 1) * 2 ^ steps = d_i - 1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n        have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n        simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n        rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul])",
+                                    "header_truncated": false,
+                                    "raw": 2256280,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_alg : (d_is - 1) * 2 ^ steps = d_i - 1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n        have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n        simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n        rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul])",
+                                "header_truncated": false,
+                                "raw": 2256371,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_alg : (d_is - 1) * 2 ^ steps = d_i - 1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n        have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n        simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n        rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul])",
+                            "header_truncated": false,
+                            "raw": 2256499,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ have h_alg : (d_is - 1) * 2 ^ steps = d_i - 1 :=\n  by\n  have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n  have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n  simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n  rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul]",
+                        "header_truncated": false,
+                        "raw": 2256684,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [],
+                                                                            "class": "Kernel",
+                                                                            "header": "✅️ typechecking declarations [Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius._proof_6]",
+                                                                            "header_truncated": false,
+                                                                            "raw": 206071,
+                                                                            "tag": ""
+                                                                          }
+                                                                        ],
+                                                                        "class": "addDecl",
+                                                                        "header": "✅️ adding declarations [Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius._proof_6]",
+                                                                        "header_truncated": false,
+                                                                        "raw": 206291,
+                                                                        "tag": ""
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ omega",
+                                                                    "header_truncated": false,
+                                                                    "raw": 511694,
+                                                                    "tag": "Lean.Parser.Tactic.omega"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ \n  have h_pos : 0 < d_i := by\n    dsimp only [d_i, BBF_CodeDistance]\n    omega\n  omega",
+                                                                "header_truncated": false,
+                                                                "raw": 705369,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ \n  have h_pos : 0 < d_i := by\n    dsimp only [d_i, BBF_CodeDistance]\n    omega\n  omega",
+                                                            "header_truncated": false,
+                                                            "raw": 705453,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ (\n  have h_pos : 0 < d_i := by\n    dsimp only [d_i, BBF_CodeDistance]\n    omega\n  omega)",
+                                                        "header_truncated": false,
+                                                        "raw": 705539,
+                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ with_annotate_state\"by\"\n  ( have h_pos : 0 < d_i := by\n      dsimp only [d_i, BBF_CodeDistance]\n      omega\n    omega)",
+                                                    "header_truncated": false,
+                                                    "raw": 705635,
+                                                    "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "✅️ with_annotate_state\"by\"\n    ( have h_pos : 0 < d_i := by\n        dsimp only [d_i, BBF_CodeDistance]\n        omega\n      omega)",
+                                                "header_truncated": false,
+                                                "raw": 705722,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ with_annotate_state\"by\"\n    ( have h_pos : 0 < d_i := by\n        dsimp only [d_i, BBF_CodeDistance]\n        omega\n      omega)",
+                                            "header_truncated": false,
+                                            "raw": 705807,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( have h_pos : 0 < d_i := by\n        dsimp only [d_i, BBF_CodeDistance]\n        omega\n      omega)",
+                                        "header_truncated": false,
+                                        "raw": 705982,
+                                        "tag": "Lean.Parser.Tactic.case"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h5 : 2 * (d_fw * 2 ^ steps) < d_i := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have h_pos : 0 < d_i := by\n          dsimp only [d_i, BBF_CodeDistance]\n          omega\n        omega)",
+                                    "header_truncated": false,
+                                    "raw": 751063,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h5 : 2 * (d_fw * 2 ^ steps) < d_i := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have h_pos : 0 < d_i := by\n          dsimp only [d_i, BBF_CodeDistance]\n          omega\n        omega)",
+                                "header_truncated": false,
+                                "raw": 751154,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h5 : 2 * (d_fw * 2 ^ steps) < d_i := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have h_pos : 0 < d_i := by\n          dsimp only [d_i, BBF_CodeDistance]\n          omega\n        omega)",
+                            "header_truncated": false,
+                            "raw": 751282,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ have h5 : 2 * (d_fw * 2 ^ steps) < d_i :=\n  by\n  have h_pos : 0 < d_i := by\n    dsimp only [d_i, BBF_CodeDistance]\n    omega\n  omega",
+                        "header_truncated": false,
+                        "raw": 751467,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ expected type: 2 * d_H ≤ ↑(2 * (d_fw * 2 ^ steps)), term\ncalc\n  (2 : ℕ∞) * d_H ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n  _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm",
+                                                                    "header_truncated": false,
+                                                                    "raw": 239579,
+                                                                    "tag": "Lean.calc"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ expected type: 2 * Δ₀(f, ↑(BBF_Code 𝔽q β ⟨↑i, ⋯⟩)) < ↑(BBF_CodeDistance ℓ 𝓡 ⟨↑i, ⋯⟩), term\nhave h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n  calc\n    (2 : ℕ∞) * d_H ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n    _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm;\n?_",
+                                                                "header_truncated": false,
+                                                                "raw": 389859,
+                                                                "tag": "Lean.Parser.Term.have"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ expected type: 2 * Δ₀(f, ↑(BBF_Code 𝔽q β ⟨↑i, ⋯⟩)) < ↑(BBF_CodeDistance ℓ 𝓡 ⟨↑i, ⋯⟩), term\nno_implicit_lambda%\n  (have h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n    calc\n      (2 : ℕ∞) * d_H ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n      _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm;\n  ?_)",
+                                                            "header_truncated": false,
+                                                            "raw": 389947,
+                                                            "tag": "Lean.Parser.Term.noImplicitLambda"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ refine\n  no_implicit_lambda%\n    (have h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n      calc\n        (2 : ℕ∞) * d_H ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n        _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm;\n    ?_)",
+                                                        "header_truncated": false,
+                                                        "raw": 453470,
+                                                        "tag": "Lean.Parser.Tactic.refine"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ refine\n    no_implicit_lambda%\n      (have h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n        calc\n          (2 : ℕ∞) * d_H ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n          _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm;\n      ?_);\n  rotate_right",
+                                                    "header_truncated": false,
+                                                    "raw": 453645,
+                                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "✅️ refine\n    no_implicit_lambda%\n      (have h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n        calc\n          (2 : ℕ∞) * d_H ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n          _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm;\n      ?_);\n  rotate_right",
+                                                "header_truncated": false,
+                                                "raw": 453731,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ (refine\n    no_implicit_lambda%\n      (have h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n        calc\n          (2 : ℕ∞) * d_H ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n          _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm;\n      ?_);\n  rotate_right)",
+                                            "header_truncated": false,
+                                            "raw": 453819,
+                                            "tag": "Lean.Parser.Tactic.paren"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ (refine\n      no_implicit_lambda%\n        (have h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n          calc\n            (2 : ℕ∞) * d_H ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n            _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm;\n        ?_);\n    rotate_right)",
+                                        "header_truncated": false,
+                                        "raw": 453907,
+                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "✅️ (refine\n      no_implicit_lambda%\n        (have h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n          calc\n            (2 : ℕ∞) * d_H ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n            _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm;\n        ?_);\n    rotate_right)",
+                                    "header_truncated": false,
+                                    "raw": 453993,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ focus\n  (refine\n      no_implicit_lambda%\n        (have h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n          calc\n            (2 : ℕ∞) * d_H ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n            _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm;\n        ?_);\n    rotate_right)",
+                                "header_truncated": false,
+                                "raw": 454116,
+                                "tag": "Lean.Parser.Tactic.focus"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ refine_lift\n  have h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n    calc\n      (2 : ℕ∞) * d_H ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n      _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm;\n  ?_",
+                            "header_truncated": false,
+                            "raw": 454234,
+                            "tag": "Lean.Parser.Tactic.tacticRefine_lift_"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ have h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n  calc\n    (2 : ℕ∞) * d_H ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n    _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm",
+                        "header_truncated": false,
+                        "raw": 454339,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "✅️ \n  unfold fiberwiseClose at h_fw_dist_lt\n  unfold hammingClose\n  let C_i := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩\n  let d_fw := fiberwiseDistance 𝔽q β (i := i) steps h_i_add_steps f\n  let d_H := Code.distFromCode f C_i\n  let d_i := BBF_CodeDistance ℓ 𝓡 ⟨i, by omega⟩\n  let d_is := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩\n  obtain ⟨g', hg', h_g'⟩ : ∃ g' ∈ C_i, d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard :=\n    by\n    have hne :\n      ((",
+                    "header_truncated": true,
+                    "raw": 8121677,
+                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "✅️ \n  unfold fiberwiseClose at h_fw_dist_lt\n  unfold hammingClose\n  let C_i := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩\n  let d_fw := fiberwiseDistance 𝔽q β (i := i) steps h_i_add_steps f\n  let d_H := Code.distFromCode f C_i\n  let d_i := BBF_CodeDistance ℓ 𝓡 ⟨i, by omega⟩\n  let d_is := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩\n  obtain ⟨g', hg', h_g'⟩ : ∃ g' ∈ C_i, d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard :=\n    by\n    have hne :\n      ((",
+                "header_truncated": true,
+                "raw": 8121764,
+                "tag": "Lean.Parser.Tactic.tacticSeq"
+              }
+            ],
+            "class": "Elab.definition.value",
+            "header": "✅️ Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+            "header_truncated": false,
+            "raw": 8139423,
+            "tag": ""
+          }
+        ],
+        "class": "Elab.command",
+        "header": "✅️ /-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\nthen `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\ntheorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n    (h_i_add_steps : i.val + steps ≤ ℓ) (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n    (h_fw_dist_lt :\n      fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps)\n        (f := f)) :\n ",
+        "header_truncated": true,
+        "raw": 9018348,
+        "tag": "Lean.Parser.Command.theorem"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option maxHeartbeats✝ 0 in\n/-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\nthen `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\ntheorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n    (h_i_add_steps : i.val + steps ≤ ℓ) (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n    (h_fw_dist_lt :\n      fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) (i := i) (steps := steps) (h_i_add_steps := h_i_a",
+        "header_truncated": true,
+        "raw": 9021987,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option Elab.async✝ false in\nset_option maxHeartbeats✝ 0 in\n/-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\nthen `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\ntheorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n    (h_i_add_steps : i.val + steps ≤ ℓ) (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n    (h_fw_dist_lt :\n      fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) (i := i) (steps :",
+        "header_truncated": true,
+        "raw": 9025623,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ #proof_eval_measure \"PROOF_EVAL_e9b0ff88307849fda2be15967cf4f37e\" target\n  \"Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius\" end 76816 in\n  /-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\n  then `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\n  theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n      (h_i_add_steps : i.val + steps ≤ ℓ) (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i,",
+        "header_truncated": true,
+        "raw": 9252678,
+        "tag": "«command#proof_eval_measure_Target_End_In_»"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 200000 in\n#proof_eval_measure \"PROOF_EVAL_e9b0ff88307849fda2be15967cf4f37e\" target\n  \"Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius\" end 76816 in\n  /-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\n  then `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\n  theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n      (h_i_add_steps : i.val + steps ≤ ℓ) (f : OracleFunct",
+        "header_truncated": true,
+        "raw": 9256421,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end",
+        "header_truncated": false,
+        "raw": 898,
+        "tag": "Lean.Parser.Command.end"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.useHeartbeats✝ true in\nset_option trace.profiler.threshold✝ 200000 in\n#proof_eval_measure \"PROOF_EVAL_e9b0ff88307849fda2be15967cf4f37e\" target\n  \"Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius\" end 76816 in\n  /-- if `d⁽ⁱ⁾(f⁽ⁱ⁾, C⁽ⁱ⁾) < d_{ᵢ₊steps} / 2` (fiberwise distance),\n  then `d(f⁽ⁱ⁾, C⁽ⁱ⁾) < dᵢ/2` (regular code distance) -/\n  theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ) [NeZero steps]\n      (h_",
+        "header_truncated": true,
+        "raw": 1,
+        "tag": "Lean.Parser.Command.in"
+      }
+    ],
+    "hotspots": [
+      {
+        "node_id": 5,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.value",
+        "syntax_kind": "",
+        "snippet": "✅️ Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+        "snippet_truncated": false,
+        "heartbeats_raw": 8139423,
+        "heartbeats": 8139.423,
+        "inclusive": true
+      },
+      {
+        "node_id": 86,
+        "parent_id": 5,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have h_alg : (d_is - 1) * 2 ^ steps = d_i - 1 :=\n  by\n  have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n  have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n  simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n  rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2256684,
+        "heartbeats": 2256.684,
+        "inclusive": true
+      },
+      {
+        "node_id": 87,
+        "parent_id": 86,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_alg : (d_is - 1) * 2 ^ steps = d_i - 1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n        have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n        simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n        rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul])",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2256499,
+        "heartbeats": 2256.499,
+        "inclusive": true
+      },
+      {
+        "node_id": 90,
+        "parent_id": 87,
+        "depth": 8,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.case",
+        "snippet": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n      have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n      simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n      rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul])",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2203821,
+        "heartbeats": 2203.821,
+        "inclusive": true
+      },
+      {
+        "node_id": 39,
+        "parent_id": 5,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have h_le : {x | f x ≠ g' x}.ncard ≤ (Y ×ˢ (Set.univ : Set (Fin (2 ^ steps)))).ncard :=\n  by\n  refine\n    Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n      (fun x =>\n        (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n          pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x)))\n      ?_ ?_\n  · intro x hx\n    exact Set.mem_prod.mpr ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩\n  · intro a _ b _ h\n   ",
+        "snippet_truncated": true,
+        "heartbeats_raw": 1606224,
+        "heartbeats": 1606.224,
+        "inclusive": true
+      },
+      {
+        "node_id": 40,
+        "parent_id": 39,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_le : {x | f x ≠ g' x}.ncard ≤ (Y ×ˢ (Set.univ : Set (Fin (2 ^ steps)))).ncard := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( refine\n          Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n            (fun x =>\n              (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n                pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h",
+        "snippet_truncated": true,
+        "heartbeats_raw": 1606039,
+        "heartbeats": 1606.039,
+        "inclusive": true
+      },
+      {
+        "node_id": 43,
+        "parent_id": 40,
+        "depth": 8,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.case",
+        "snippet": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( refine\n        Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n          (fun x =>\n            (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n              pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x :=\n                x)))\n          ?_ ?_\n      · intro x hx\n        exact Set.mem_prod.mpr ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩\n      · intro a _ b _ h\n    ",
+        "snippet_truncated": true,
+        "heartbeats_raw": 1492002,
+        "heartbeats": 1492.002,
+        "inclusive": true
+      },
+      {
+        "node_id": 111,
+        "parent_id": 90,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1130210,
+        "heartbeats": 1130.21,
+        "inclusive": true
+      },
+      {
+        "node_id": 112,
+        "parent_id": 111,
+        "depth": 16,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h2 : ℓ - (↑i + steps) + steps = ℓ - i := ?body✝;\n      ?_)\n  case body✝ => with_annotate_state\"by\" (omega)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1130025,
+        "heartbeats": 1130.025,
+        "inclusive": true
+      },
+      {
+        "node_id": 8,
+        "parent_id": 5,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.obtain",
+        "snippet": "✅️ obtain ⟨g', hg', h_g'⟩ : ∃ g' ∈ C_i, d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard :=\n  by\n  have hne :\n    ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard) '' Set.univ).Nonempty :=\n    Set.image_nonempty.mpr Set.univ_nonempty\n  obtain ⟨x, _, hx⟩ := Nat.sInf_mem hne\n  exact ⟨x, x.property, hx.symm⟩",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1100067,
+        "heartbeats": 1100.067,
+        "inclusive": true
+      },
+      {
+        "node_id": 115,
+        "parent_id": 112,
+        "depth": 19,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.case",
+        "snippet": "✅️ case body✝ => with_annotate_state\"by\" (omega)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 987140,
+        "heartbeats": 987.14,
+        "inclusive": true
+      },
+      {
+        "node_id": 122,
+        "parent_id": 115,
+        "depth": 26,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.omega",
+        "snippet": "✅️ omega",
+        "snippet_truncated": false,
+        "heartbeats_raw": 986446,
+        "heartbeats": 986.446,
+        "inclusive": true
+      },
+      {
+        "node_id": 97,
+        "parent_id": 90,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega",
+        "snippet_truncated": false,
+        "heartbeats_raw": 960285,
+        "heartbeats": 960.285,
+        "inclusive": true
+      },
+      {
+        "node_id": 98,
+        "parent_id": 97,
+        "depth": 16,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := ?body✝;\n      ?_)\n  case body✝ => with_annotate_state\"by\" (omega)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 960100,
+        "heartbeats": 960.1,
+        "inclusive": true
+      },
+      {
+        "node_id": 53,
+        "parent_id": 43,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.cdot",
+        "snippet": "✅️ ·\n  intro a _ b _ h\n  have ha := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := a) _).mp rfl\n  have hb := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := b) _).mp rfl\n  rw [← ha, ← hb]\n  exact\n    congr_arg\n      (fun p : _ × Fin (2 ^ steps) =>\n        qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps :=\n          fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := p.1) p.2)\n      h",
+        "snippet_truncated": false,
+        "heartbeats_raw": 927370,
+        "heartbeats": 927.37,
+        "inclusive": true
+      },
+      {
+        "node_id": 101,
+        "parent_id": 98,
+        "depth": 19,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.case",
+        "snippet": "✅️ case body✝ => with_annotate_state\"by\" (omega)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 805697,
+        "heartbeats": 805.697,
+        "inclusive": true
+      },
+      {
+        "node_id": 108,
+        "parent_id": 101,
+        "depth": 26,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.omega",
+        "snippet": "✅️ omega",
+        "snippet_truncated": false,
+        "heartbeats_raw": 805002,
+        "heartbeats": 805.002,
+        "inclusive": true
+      },
+      {
+        "node_id": 126,
+        "parent_id": 5,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have h5 : 2 * (d_fw * 2 ^ steps) < d_i :=\n  by\n  have h_pos : 0 < d_i := by\n    dsimp only [d_i, BBF_CodeDistance]\n    omega\n  omega",
+        "snippet_truncated": false,
+        "heartbeats_raw": 751467,
+        "heartbeats": 751.467,
+        "inclusive": true
+      },
+      {
+        "node_id": 127,
+        "parent_id": 126,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h5 : 2 * (d_fw * 2 ^ steps) < d_i := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have h_pos : 0 < d_i := by\n          dsimp only [d_i, BBF_CodeDistance]\n          omega\n        omega)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 751282,
+        "heartbeats": 751.282,
+        "inclusive": true
+      },
+      {
+        "node_id": 130,
+        "parent_id": 127,
+        "depth": 8,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.case",
+        "snippet": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    ( have h_pos : 0 < d_i := by\n        dsimp only [d_i, BBF_CodeDistance]\n        omega\n      omega)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 705982,
+        "heartbeats": 705.982,
+        "inclusive": true
+      },
+      {
+        "node_id": 56,
+        "parent_id": 53,
+        "depth": 18,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.exact",
+        "snippet": "✅️ exact\n  congr_arg\n    (fun p : _ × Fin (2 ^ steps) =>\n      qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps :=\n        fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps) (y := p.1) p.2)\n    h",
+        "snippet_truncated": false,
+        "heartbeats_raw": 663310,
+        "heartbeats": 663.31,
+        "inclusive": true
+      },
+      {
+        "node_id": 63,
+        "parent_id": 5,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have hb : ({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g') :=\n  by\n  rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n  rfl",
+        "snippet_truncated": false,
+        "heartbeats_raw": 615042,
+        "heartbeats": 615.042,
+        "inclusive": true
+      },
+      {
+        "node_id": 64,
+        "parent_id": 63,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have hb : ({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g') := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n        rfl)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 614857,
+        "heartbeats": 614.857,
+        "inclusive": true
+      },
+      {
+        "node_id": 137,
+        "parent_id": 130,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.omega",
+        "snippet": "✅️ omega",
+        "snippet_truncated": false,
+        "heartbeats_raw": 511694,
+        "heartbeats": 511.694,
+        "inclusive": true
+      },
+      {
+        "node_id": 50,
+        "parent_id": 43,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.refine",
+        "snippet": "✅️ refine\n  Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n    (fun x =>\n      (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n        pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps) (h_i_add_steps := h_i_add_steps) (x := x)))\n    ?_ ?_",
+        "snippet_truncated": false,
+        "heartbeats_raw": 482159,
+        "heartbeats": 482.159,
+        "inclusive": true
+      }
+    ],
+    "marks": [],
+    "profile_heartbeats_raw": 9025963,
+    "profile_heartbeats": 9025.963,
+    "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+    "cache_key": "95d1110ba29389c313ec4ff51532daaf15c6b80df0392457da33be8385e30753",
+    "status": "ok",
+    "available_hotspots": 66,
+    "hotspots_truncated": true,
+    "mark_count": 0,
+    "marks_truncated": false,
+    "partial": false,
+    "diagnostics": [],
+    "context_mode": "full_file_replacement",
+    "returncode": 0,
+    "elapsed_seconds": 6.094061579555273
+  }
+}

@@ -163,6 +163,7 @@ def test_high_score_with_failed_version_cannot_replace_best(make_session):
     assert not response["all_versions_passed"] and not response["accepted_as_best"]
     assert response["passing_rate_pct"] == 50
     assert session.best_code == ORIGINAL
+    assert response["component_delta_from_previous_best_pp"] is None
 
 
 def test_primary_failure_reports_actual_pass_rate_and_gated_score(make_session):
@@ -174,6 +175,7 @@ def test_primary_failure_reports_actual_pass_rate_and_gated_score(make_session):
     response = session.check(GOOD)
     assert response["score_tuple"] == [0.0, 0.0, 0.0] and response["total_score"] == 0
     assert response["passing_rate_pct"] == 50 and not response["accepted_as_best"]
+    assert response["component_delta_from_previous_best_pp"] is None
 
 
 def test_unknown_measurements_remain_unknown(make_session):
@@ -185,6 +187,69 @@ def test_unknown_measurements_remain_unknown(make_session):
     response = session.check(GOOD)
     assert response["score_tuple"] == [None, None, None]
     assert response["total_score"] is None and not response["accepted_as_best"]
+    assert response["component_delta_from_previous_best_pp"] is None
+
+
+def test_score_explanation_preserves_longer_faster_best_across_resume(make_session):
+    session = make_session()
+    for code, tokens, heartbeats in ((GOOD, 40, 200), (WORSE, 20, 600)):
+        value = make_session.evaluator.values[code]
+        value["candidate"]["length"] = tokens
+        value["per_version"]["v1"]["heartbeats"] = heartbeats
+        value["scores"] = {
+            "length_reduction_pct": 100 - tokens,
+            "heartbeat_reduction_pct": 100 - heartbeats / 10,
+            "compatibility_pct": 100,
+            "combined_pct": (300 - tokens - heartbeats / 10) / 3,
+        }
+    good = session.check(GOOD)
+    assert good["accepted_as_best"]
+    assert good["component_delta_from_previous_best_pp"] == pytest.approx(
+        {"length": 20, "heartbeats": 80 / 3, "compatibility": 0}
+    )
+    shorter = session.check(WORSE)
+    assert shorter["source_tokens"] < good["source_tokens"]
+    assert not shorter["accepted_as_best"] and shorter["best_proof"] == GOOD
+    assert shorter["component_delta_from_previous_best_pp"] == pytest.approx(
+        {"length": 20 / 3, "heartbeats": -40 / 3, "compatibility": 0}
+    )
+    for result in (good, shorter):
+        assert sum(result["component_delta_from_previous_best_pp"].values()) == (
+            pytest.approx(result["delta_from_previous_best_pp"])
+        )
+        assert result["best_remaining_score_loss_pp"] == pytest.approx(
+            {"length": 40 / 3, "heartbeats": 20 / 3}
+        )
+    resumed = make_session()
+    status = resumed.status()
+    assert (
+        status["best_remaining_score_loss_pp"] == good["best_remaining_score_loss_pp"]
+    )
+    assert sum(status["best_remaining_score_loss_pp"].values()) == pytest.approx(
+        100 - status["total_score"]
+    )
+    duplicate = resumed.check(GOOD)
+    assert duplicate["component_delta_from_previous_best_pp"] == {
+        "length": 0,
+        "heartbeats": 0,
+        "compatibility": 0,
+    }
+    assert make_session.evaluator.calls == [GOOD, WORSE]
+
+
+def test_score_loss_retains_negative_reduction_without_clipping(make_session):
+    session = make_session()
+    value = make_session.evaluator.values[GOOD]
+    value["scores"].update(
+        length_reduction_pct=-20,
+        heartbeat_reduction_pct=80,
+        combined_pct=160 / 3,
+    )
+    result = session.check(GOOD)
+    assert result["accepted_as_best"]
+    assert result["best_remaining_score_loss_pp"] == pytest.approx(
+        {"length": 40, "heartbeats": 20 / 3}
+    )
 
 
 def cleanup_result(make_session, code=CLEANED, score=85):

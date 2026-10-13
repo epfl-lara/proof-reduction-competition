@@ -1,0 +1,198 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "fundamental_theorem_of_variational_calculus'",
+  "source": "physlib",
+  "required_versions": [
+    {
+      "v4.32.0": "c48433678e8fb6306ebcd48453300c8e16058a62"
+    }
+  ],
+  "exact_statement": "lemma fundamental_theorem_of_variational_calculus' {f : Y → V}\n    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]\n    [OpensMeasurableSpace Y]\n    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :\n    f = 0",
+  "incumbent_declaration": "lemma fundamental_theorem_of_variational_calculus' {f : Y → V}\n    (μ : Measure Y) [IsFiniteMeasureOnCompacts μ] [μ.IsOpenPosMeasure]\n    [OpensMeasurableSpace Y]\n    (hf : Continuous f) (hg : ∀ g, IsTestFunction g → ∫ x, ⟪f x, g x⟫_ℝ ∂μ = 0) :\n    f = 0 := by\n  ext x\n  apply (inner_self_eq_zero' (𝕜 := ℝ)).mp\n  refine le_antisymm ?_ real_inner_self_nonneg'\n  by_contra! hp\n  have hc := Continuous.inner' (𝕜 := ℝ) f (fun _ => f x) hf continuous_const\n  obtain ⟨φ, hsub, hcomp, hsmooth, hrange, heq⟩ :=\n    exists_contDiff_tsupport_subset (hc.continuousAt (Ioi_mem_nhds hp))\n  refine ((hsmooth.continuous.fun_mul hc).integral_pos_of_hasCompactSupport_nonneg_nonzero\n    hcomp.mul_right ?_ (mul_ne_zero (heq.trans_ne one_ne_zero) hp.ne')).ne' (by\n    simpa only [inner_smul_right'] using\n      hg _\n        (IsTestFunction.smul_right ⟨hsmooth, hcomp⟩ (contDiff_const (c := f x))))\n  intro y\n  by_cases hy : y ∈ tsupport φ\n  · exact mul_nonneg (hrange ⟨y, rfl⟩).1 (le_of_lt (hsub hy))\n  · simp [image_eq_zero_of_notMem_tsupport hy]\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 83.19623971797884,
+    "heartbeat_reduction_pct": 87.95710651007039,
+    "compatibility_pct": 100.0,
+    "combined_pct": 90.38444874268309
+  },
+  "reference_denominators": {
+    "tokens": 851,
+    "primary_heartbeats": 11951.837
+  },
+  "preceding_source_excerpt": "/-\nCopyright (c) 2025 Tomas Skrivan. All rights reserved.\nReleased under Apache 2.0 license as described in the file LICENSE.\nAuthors: Tomas Skrivan, Joseph Tooby-Smith\n-/\nmodule\n\npublic import Physlib.Mathematics.VariationalCalculus.IsTestFunction\npublic import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct\n\nimport Lean\n\n/-!\n\n# Fundamental lemma of the calculus of variations\n\nThe key took in variational calculus is:\n```\n∀ h, ∫ x, f x * h x = 0 → f = 0\n```\nwhich allows use to go from reasoning about integrals to reasoning about functions.\n\n## Overview of variational calculus\n\nThe variational calculus API in Physlib is designed to match and formalize the physicists intuition\nof variational calculus. It is not designed to be a general API for variational calculus.\n\nWithin variational caclulus we are interested in function transformations, `F : (X → U) → (Y → V)`.\nIn physics this functional is often of the form `L : (Time → U) → Time → ℝ`,\nwhich represents the Lagrangian of a system. We will use this to explain the formalization\nwithin this API.\n\nThe action is nominally given by\n$$S[u] = \\int L(u, t) dt,$$\nhowever it is convenient to\nintroduce another function `φ` and define the action as\n$$S[u] = \\int φ(t) L(u, t) dt.$$\nIn the end we will set `φ := fun _ => 1`.\n\nWe now consider $$\\frac{\\partial}{\\partial s} S[u + s * \\delta u]$$ at `s = 0`,\nwhich is the variational derivative of `S` at `u` in the direction `δu`.\nThis is equal to\n$$\n\\int φ(t) * \\left. \\frac{\\partial}{\\partial s} L(u + s * \\delta u, t)\\right|_{s = 0}dt\n$$\nLet us denote the function\n$$\n\\delta u,\\, t \\mapsto \\left. \\frac{\\partial}{\\partial s} L(u + s * \\delta u, t)\\right|_{s = 0}\n$$ as `Lᵤ : (Time → U) → (Time → ℝ)`.\nThen the variational derivative is\n$$\\int φ (t) Lᵤ(δu, t) dt.$$\n\nIt may then be possible to find a function `Gᵤ : (Time → ℝ) → Time → U`\nsuch that\n$$\n\\int φ(t) Lᵤ(δu, t) dt = \\int \\langle Gᵤ(φ, t), δu(t)\\rangle dt\n$$\nThis is usually done by integration by parts.\n\nWe now set `φ := fun _ => 1` and get `grad u := Gᵤ (fun _ => 1)`, which is the\nvariational gradient at `u`. The Euler–Lagrange equations, for example, are then `grad u = 0`.\n\nIn our API, the relationship between\n- `Lᵤ` and `Gᵤ` is captured by the `HasVarAdjoint`.\n- `L` and `Gᵤ` by `HasVarAdjDeriv`.\n- `L` and `grad u` by `HasVarGradientAt`.\n\nIn practice we assume that `L` has a certain locality property\n`IsLocalizedFunctionTransform`, which allows us to work with functions\n`φ` and `δu` which have compact support.\n\nThis API assumes that `U` is an inner-product space. This can be considered as the full\nconfiguration space, or a local chart thereof.\n\n## References\n\n- https://leanprover.zulipchat.com/#narrow/channel/479953-Physlib/topic/Variational.20Calculus/with/529022834\n\n-/\n\n@[expose] public section\n\nopen MeasureTheory InnerProductSpace InnerProductSpace'\n\nvariable\n  {X} [NormedAddCommGroup X] [NormedSpace ℝ X] [MeasurableSpace X]\n  {V} [NormedAddCommGroup V] [NormedSpace ℝ V] [InnerProductSpace' ℝ V]\n  {Y} [NormedAddCommGroup Y] [InnerProductSpace ℝ Y] [FiniteDimensional ℝ Y][MeasurableSpace Y]",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "fundamental_theorem_of_variational_calculus'",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "2c6c75b2e4b932007a784b4514b5e5441be908c87e76ea5534344739b25dfb68"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 56,
+        "evidence_sha256": "b9920edacbd4505de0d481395f9736c8e3e0b06ee8608fd40cfafdaa860e01de",
+        "accepted": true,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 83.19623971797884,
+          "heartbeat_reduction_pct": 87.95710651007039,
+          "compatibility_pct": 100.0,
+          "combined_pct": 90.38444874268309
+        },
+        "previous_best_combined_pct": 90.23049493731332,
+        "reason": "accepted",
+        "change_excerpt": "--- \n+++ \n@@ -12,5 +12,5 @@\n     exists_contDiff_tsupport_subset (hc.continuousAt (Ioi_mem_nhds hp))\n-  refine ((hsmooth.continuous.mul hc).integral_pos_of_hasCompactSupport_nonneg_nonzero\n+  refine ((hsmooth.continuous.fun_mul hc).integral_pos_of_hasCompactSupport_nonneg_nonzero\n     hcomp.mul_right ?_ (mul_ne_zero (heq.trans_ne one_ne_zero) hp.ne')).ne' (by\n-    simpa only [inner_smul_right', Pi.mul_apply] using\n+    simpa only [inner_smul_right'] using\n       hg _",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.32.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.32.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.32.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 77,
+        "evidence_sha256": "167ba6d21e1ffc7b2c560c1f04403b84a53955eedc6e507ae8c3469d57838532",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 82.96122209165688,
+          "heartbeat_reduction_pct": 87.86692790405357,
+          "compatibility_pct": 100.0,
+          "combined_pct": 90.27604999857014
+        },
+        "previous_best_combined_pct": 90.38444874268309,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -12,7 +12,6 @@\n     exists_contDiff_tsupport_subset (hc.continuousAt (Ioi_mem_nhds hp))\n+  have hz := hg _ (IsTestFunction.smul_right ⟨hsmooth, hcomp⟩ (contDiff_const (c := f x)))\n+  simp only [inner_smul_right'] at hz\n   refine ((hsmooth.continuous.fun_mul hc).integral_pos_of_hasCompactSupport_nonneg_nonzero\n-    hcomp.mul_right ?_ (mul_ne_zero (heq.trans_ne one_ne_zero) hp.ne')).ne' (by\n-    simpa only [inner_smul_right'] using\n-      hg _\n-        (IsTestFunction.smul_right ⟨hsmooth, hcomp⟩ (contDiff_const (c := f x))))\n+    hcomp.mul_right ?_ (mul_ne_zero (heq.trans_ne one_ne_",
+        "change_excerpt_truncated": true,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.32.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.32.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.32.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 78,
+        "evidence_sha256": "ab2605e6035b366039e641ef4bae32b19c160639357af88987e3ef931f760436",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 90.38444874268309,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -13,3 +13,3 @@\n   refine ((hsmooth.continuous.fun_mul hc).integral_pos_of_hasCompactSupport_nonneg_nonzero\n-    hcomp.mul_right ?_ (mul_ne_zero (heq.trans_ne one_ne_zero) hp.ne')).ne' (by\n+    hcomp.mul_right ?_ (by simpa only [heq, one_mul] using hp.ne')).ne' (by\n     simpa only [inner_smul_right'] using",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.32.0\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.32.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.32.0\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"Type mismatch: After simplification, term\\n  LT.lt.ne' hp\\n has type\\n  ⟪f x, f x⟫_ℝ ≠ 0\\nbut is expected to have type\\n  φ ?m.195 * ⟪f ?m.195, f x⟫_ℝ ≠ 0\", \"unsolved goals\\nV : Type u_2\\ninst✝⁹ : NormedAddCommGroup V\\ninst✝"
+      },
+      {
+        "check": 79,
+        "evidence_sha256": "fe1ab4ea5b22ad89c13e21b4d362b7fbe0886f7dbbac88d78f7354da7e96d59d",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 82.6086956521739,
+          "heartbeat_reduction_pct": 88.12413522707848,
+          "compatibility_pct": 100.0,
+          "combined_pct": 90.24427695975079
+        },
+        "previous_best_combined_pct": 90.38444874268309,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -7,4 +7,4 @@\n   apply (inner_self_eq_zero' (𝕜 := ℝ)).mp\n-  refine le_antisymm ?_ real_inner_self_nonneg'\n-  by_contra! hp\n+  refine ((eq_or_lt_of_le real_inner_self_nonneg').resolve_right ?_).symm\n+  intro hp\n   have hc := Continuous.inner' (𝕜 := ℝ) f (fun _ => f x) hf continuous_const",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.32.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.32.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.32.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 80,
+        "evidence_sha256": "b34fe9282490750a72d5309aac569ad7489265f8582e24d8af7e7c6c478130a5",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 83.07873090481786,
+          "heartbeat_reduction_pct": 82.80647569072437,
+          "compatibility_pct": 100.0,
+          "combined_pct": 88.62840219851408
+        },
+        "previous_best_combined_pct": 90.38444874268309,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -16,3 +16,3 @@\n       hg _\n-        (IsTestFunction.smul_right ⟨hsmooth, hcomp⟩ (contDiff_const (c := f x))))\n+        ⟨hsmooth.smul_const (f x), hcomp.smul_right (f' := fun _ => f x)⟩)\n   intro y",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.32.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.32.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.32.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 3,
+        "evidence_sha256": "852f930a044bababa73442c67ce2a4a474f2a0a75d7bb01c1355ab1c15d1ea9d",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"eq_or_lt_of_le\", \"limit\": 5}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.32.0\", \"query\": \"eq_or_lt_of_le\", \"matches\": [\"./QuantumInfo/Entropy/Relative.lean:728:        filter_upwards [ hb_nonneg ] with α hα₁ hα₂ ; rcases eq_or_lt_of_le hα₂.1 with hα₃ | hα₃ <;> simp_all [ Real.rpow_def_of_nonneg ] ; ring_nf ;\", \"./QuantumInfo/ForMathlib/HermitianMat/Rpow.lean:1164:  rcases eq_or_lt_of_le hx with rfl | hx'\", \"./QuantumInfo/ForMathlib/HermitianMat/Rpow.lean:1325:  rcases eq_or_lt_of_le ht.1 with rfl | ht0\", \"./Physlib/Relativity/Tensors/Reindexing.lean:517:    · rcases eq_or_lt_of_le (show y.val ≤ n - 1 from by have := y.isLt; ",
+        "request_sha256": "713da8f053ef18227f88d10baaa01e4b5440b6fdf4476a26684e781b34a12491",
+        "response_sha256": "52c633576aac42fe27b1221e15cbef195809221ee6638037f477cadd6bc1a45d"
+      },
+      {
+        "attempt": 3,
+        "evidence_sha256": "ae4262c51da8272b81d0447dd2f581cd6fc141c4b07e92981b832547f396fed3",
+        "request_excerpt": "{\"op\": \"semantic_search\", \"query\": \"continuous function zero if integral against all smooth compactly supported test functions is zero\", \"limit\": 5}",
+        "response_excerpt": "{\"kind\": \"semantic_search\", \"version\": \"v4.32.0\", \"query\": \"continuous function zero if integral against all smooth compactly supported test functions is zero\", \"packages\": [\"Aesop\", \"AesopTest\", \"Archive\", \"Batteries\", \"BatteriesTest\", \"BibtexQuery\", \"Cache\", \"Cli\", \"CliTest\", \"Counterexamples\", \"DocGen4\", \"DownstreamTest\", \"ImportGraph\", \"ImportGraphTest\", \"Init\", \"Lean\", \"LeanSearchClient\", \"LeanSearchClientTest\", \"MD4Lean\", \"MD4LeanTest\", \"MD4LeanTestDriver\", \"Main\", \"MainGraph\", \"MainUnusedTransitiveImports\", \"Mathlib\", \"MathlibTest\", \"Physlib\", \"PhyslibAlpha\", \"Plausible\", \"PlausibleTest",
+        "request_sha256": "04d60a7a12bf5e3ec0d2d655cac827977abc2bfc3dc12eb4e6cff716b2501a70",
+        "response_sha256": "6b4b190c33ed0eb88a150319ce456ff191ccd58b67abf4c919d928f6812c766a"
+      },
+      {
+        "attempt": 3,
+        "evidence_sha256": "a0c8c5288ef35572f72886b1c88b77aaf32b9ae98bc9cf4b3c5b1e14fbe8fa18",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"theorem eq_or_lt_of_le\", \"limit\": 10}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.32.0\", \"query\": \"theorem eq_or_lt_of_le\", \"matches\": [\"./.lake/packages/mathlib/Mathlib/Order/Basic.lean:269:theorem eq_or_lt_of_le (h : a ≤ b) : a = b ∨ a < b := (lt_or_eq_of_le h).symm\"], \"truncated\": false}",
+        "request_sha256": "a034d87539c3a5690cd550ff9e4480506a43536a4bacfad2d54854b9be759365",
+        "response_sha256": "6c9e840e13d42f8b19eaefab0f7633cbbaefd21817a969374f45d05554332f0d"
+      }
+    ],
+    "unverified_model_notes": [
+      {
+        "attempt": 2,
+        "evidence_sha256": "503ac4caec28acadfbbeb7a6d977ecfe9dc73736bb68c5432c24a1350a32721a",
+        "kind": "discovery",
+        "text": "Continuous.fun_mul gives a lambda rather than Pi multiplication, allowing removal of Pi.mul_apply from the hg simpa. Verified 143 tokens, 1439.347 hb, score 90.38444874. funext x instead of ext x saves 3.558 hb but alone did not clear the selection margin."
+      },
+      {
+        "attempt": 3,
+        "evidence_sha256": "90168abab691e4c1d6925cf653e62e8a6e77809522d96130caa3412cbc3a9898",
+        "kind": "rejected",
+        "text": "Direct IsTestFunction record via hsmooth.smul_const (f x), hcomp.smul_right is valid 135 tokens/2113hb, regresses vs alias143/1439. Explicit F, explicit hg g, explicit support f' do not fix it; fun_smul record140/2155. Local hz + simp145/1450; eq_or_lt_of_le resolve_right148/1419 also regress."
+      }
+    ],
+    "prior_check_count": 81,
+    "prior_event_count": 155,
+    "prior_events_sha256": "5f4f8ff9f77ed266a803f382af9f86237cde1f35d84c680cf2a2a5c409dd6f89"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $2.389; $0.611004 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

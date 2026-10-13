@@ -1,0 +1,295 @@
+{
+  "at": "2026-10-13T16:12:24.984057+00:00",
+  "code": "theorem fold_advances_evaluation_poly\n  (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡)\n  (coeffs : Fin (2 ^ (ℓ - ↑i)) → L) (r_chal : L) :\n  let P_i : L[X] := intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i, by\n    exact Nat.lt_trans (n := i) (k := ℓ+1) (m := ℓ) (h₁ := i.isLt) (by exact Nat.lt_add_one ℓ)\n  ⟩) coeffs\n  let f_i := fun (x : (sDomain 𝔽q β h_ℓ_add_R_rate)\n      ⟨i, by exact Nat.lt_trans (n := i) (k := r) (m := ℓ) (h₁ := by omega) (by omega)⟩) =>\n    P_i.eval (x.val : L)\n  let f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)\n  let new_coeffs := fun j : Fin (2^(ℓ - (i + 1))) =>\n    (1 - r_chal) * (coeffs ⟨j.val * 2, by\n      rw [←Nat.add_zero (j.val * 2)]\n      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))\n        (i := 0) (by omega) (by omega)\n    ⟩) +\n    r_chal * (coeffs ⟨j.val * 2 + 1, by\n      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))\n        (i := 1) (by omega) (by omega)\n    ⟩)\n  let P_i_plus_1 :=\n    intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i+1, by omega⟩) new_coeffs\n  ∀ (y : (sDomain 𝔽q β h_ℓ_add_R_rate)\n    ⟨i+1, by omega⟩), f_i_plus_1 y = P_i_plus_1.eval y.val := by\n  intro P_i f_i f_i_plus_1 new_coeffs P_i_plus_1 y\n  profile_tactic \"sets\" in\n  set fiberMap := qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := 1)\n    (h_i_add_steps := by simp only; omega) (y := y)\n  set x₀ := fiberMap 0\n  set x₁ := fiberMap 1\n  let P₀ := evenRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  let P₁ := oddRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  have hq (k : Fin 2) : (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval (fiberMap k).val = y := by\n    rw [generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega)\n      (x := fiberMap k) (y := y) ⟨k, rfl⟩,\n      iteratedQuotientMap_k_eq_1_is_qMap 𝔽q β h_ℓ_add_R_rate i (by omega) (fiberMap k)]\n  have h_diff : x₁.val - x₀.val = 1 := by\n    profile_tactic \"fz\" in\n    have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n    have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n    profile_tactic \"e01\" in\n    have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n    have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n    profile_tactic \"hir\" in\n    have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n    profile_tactic \"hb\" in\n    have hb : ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR)\n        ⟨0, Nat.sub_pos_of_lt h_iR⟩ : L) = 1 :=\n      get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate _ h_iR\n    profile_tactic \"simpdiff\" in\n    simp only [fz0, fz1, zero_smul, one_smul, x₀, x₁, fiberMap, Submodule.coe_add, e₀, e₁,\n      zero_add, hb]\n    profile_tactic \"ringdiff\" in\n    ring\n  have h_eval (x : (sDomain 𝔽q β h_ℓ_add_R_rate) ⟨i, by omega⟩) (k : Fin 2) (hx : x = fiberMap k) :\n      P_i.eval x.val = P₀.eval y.val + x.val * P₁.eval y.val := by\n    subst hx\n    simp only [evaluation_poly_split_identity 𝔽q β h_ℓ_add_R_rate i coeffs, P_i, P₀, P₁,\n      Polynomial.eval_add, eval_comp, Polynomial.eval_mul, Polynomial.eval_X, hq k]\n  have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := by\n    profile_tactic \"simpdef\" in\n    simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement,\n      oddRefinement]\n    profile_tactic \"rwsum\" in\n    rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n    profile_tactic \"congr\" in\n    refine Finset.sum_congr rfl (fun j _ => ?_)\n    profile_tactic \"simpC\" in\n    simp only [Polynomial.C_add, Polynomial.C_mul]\n    profile_tactic \"ringdiff\" in\n    ring\n  calc f_i_plus_1 y\n    = f_i x₀ * ((1 - r_chal) * x₁.val - r_chal) +\n        f_i x₁ * (r_chal - (1 - r_chal) * x₀.val) := rfl\n    _ = (P₀.eval y.val + x₀.val * P₁.eval y.val) * ((1 - r_chal) * x₁.val - r_chal) +\n        (P₀.eval y.val + x₁.val * P₁.eval y.val) * (r_chal - (1 - r_chal) * x₀.val) := by\n      profile_tactic \"step2\" in\n      simp only [f_i, h_eval x₀ 0 rfl, h_eval x₁ 1 rfl]\n    _ = (1 - r_chal) * P₀.eval y.val + r_chal * P₁.eval y.val := by\n      profile_tactic \"step3a\" in\n      rw [show x₁.val = x₀.val + 1 from by rw [← h_diff, add_comm, sub_add_cancel]]\n      ring\n    _ = P_i_plus_1.eval y.val := by\n      profile_tactic \"step4a\" in\n      rw [← h_poly]\n      profile_tactic \"step4b\" in\n      simp only [Polynomial.eval_add, Polynomial.eval_mul, Polynomial.eval_C]\n",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "Binius.BinaryBasefold.fold_advances_evaluation_poly",
+    "version": "v4.31.0",
+    "proof_sha256": "350d31304105736b7a4546cc3c730bfa922718d612bc24ae829a00a8a941f433",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": null,
+      "threshold_raw": 10000000,
+      "limit": 20
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end_local_scope 1",
+        "header_truncated": false,
+        "raw": 1225,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ section",
+        "header_truncated": false,
+        "raw": 1228,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 10000000",
+        "header_truncated": false,
+        "raw": 62,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n  is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n-/\ntheorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n    (r_chal : L) :\n    let P_i : L[X] :=\n      intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n        ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1) (m := ℓ) (h₁ := i.isLt) (by exact Nat.lt_add_one ℓ)⟩) coeffs\n ",
+        "header_truncated": true,
+        "raw": 13304285,
+        "tag": "Lean.Parser.Command.theorem"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option maxHeartbeats✝ 0 in\n/-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n  is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n-/\ntheorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n    (r_chal : L) :\n    let P_i : L[X] :=\n      intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n        ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1) (m := ℓ) (h₁ := i.isLt) (by exa",
+        "header_truncated": true,
+        "raw": 13307930,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option Elab.async✝ false in\nset_option maxHeartbeats✝ 0 in\n/-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n  is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n-/\ntheorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n    (r_chal : L) :\n    let P_i : L[X] :=\n      intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n        ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1)",
+        "header_truncated": true,
+        "raw": 13311573,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ #proof_eval_measure \"PROOF_EVAL_96ff37da508d4817834f5a406de0d1d1\" target\n  \"Binius.BinaryBasefold.fold_advances_evaluation_poly\" end 52495 in\n  /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n    is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n  -/\n  theorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n      (r_chal : L) :\n      let P_i : L[X] :=\n        intermediateEva",
+        "header_truncated": true,
+        "raw": 13476630,
+        "tag": "«command#proof_eval_measure_Target_End_In_»"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 10000000 in\n#proof_eval_measure \"PROOF_EVAL_96ff37da508d4817834f5a406de0d1d1\" target\n  \"Binius.BinaryBasefold.fold_advances_evaluation_poly\" end 52495 in\n  /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n    is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n  -/\n  theorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n      (r_chal : L) ",
+        "header_truncated": true,
+        "raw": 13480380,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end",
+        "header_truncated": false,
+        "raw": 898,
+        "tag": "Lean.Parser.Command.end"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.useHeartbeats✝ true in\nset_option trace.profiler.threshold✝ 10000000 in\n#proof_eval_measure \"PROOF_EVAL_96ff37da508d4817834f5a406de0d1d1\" target\n  \"Binius.BinaryBasefold.fold_advances_evaluation_poly\" end 52495 in\n  /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n    is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n  -/\n  theorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coe",
+        "header_truncated": true,
+        "raw": 0,
+        "tag": "Lean.Parser.Command.in"
+      }
+    ],
+    "hotspots": [],
+    "marks": [
+      {
+        "end": 1425,
+        "heartbeats_raw": 418999,
+        "label": "sets",
+        "label_truncated": false,
+        "start": 1275,
+        "succeeded": true,
+        "heartbeats": 418.999,
+        "inclusive": true,
+        "line": 26
+      },
+      {
+        "end": 2008,
+        "heartbeats_raw": 88799,
+        "label": "fz",
+        "label_truncated": false,
+        "start": 1924,
+        "succeeded": true,
+        "heartbeats": 88.799,
+        "inclusive": true,
+        "line": 38
+      },
+      {
+        "end": 2165,
+        "heartbeats_raw": 113231,
+        "label": "e01",
+        "label_truncated": false,
+        "start": 2075,
+        "succeeded": true,
+        "heartbeats": 113.231,
+        "inclusive": true,
+        "line": 41
+      },
+      {
+        "end": 2309,
+        "heartbeats_raw": 72868,
+        "label": "hir",
+        "label_truncated": false,
+        "start": 2237,
+        "succeeded": true,
+        "heartbeats": 72.868,
+        "inclusive": true,
+        "line": 44
+      },
+      {
+        "end": 2540,
+        "heartbeats_raw": 333118,
+        "label": "hb",
+        "label_truncated": false,
+        "start": 2314,
+        "succeeded": true,
+        "heartbeats": 333.118,
+        "inclusive": true,
+        "line": 46
+      },
+      {
+        "end": 2684,
+        "heartbeats_raw": 1128774,
+        "label": "simpdiff",
+        "label_truncated": false,
+        "start": 2545,
+        "succeeded": true,
+        "heartbeats": 1128.774,
+        "inclusive": true,
+        "line": 50
+      },
+      {
+        "end": 2726,
+        "heartbeats_raw": 250799,
+        "label": "ringdiff",
+        "label_truncated": false,
+        "start": 2689,
+        "succeeded": true,
+        "heartbeats": 250.799,
+        "inclusive": true,
+        "line": 53
+      },
+      {
+        "end": 3316,
+        "heartbeats_raw": 338898,
+        "label": "simpdef",
+        "label_truncated": false,
+        "start": 3177,
+        "succeeded": true,
+        "heartbeats": 338.898,
+        "inclusive": true,
+        "line": 61
+      },
+      {
+        "end": 3412,
+        "heartbeats_raw": 1013260,
+        "label": "rwsum",
+        "label_truncated": false,
+        "start": 3321,
+        "succeeded": true,
+        "heartbeats": 1013.26,
+        "inclusive": true,
+        "line": 64
+      },
+      {
+        "end": 3490,
+        "heartbeats_raw": 168987,
+        "label": "congr",
+        "label_truncated": false,
+        "start": 3417,
+        "succeeded": true,
+        "heartbeats": 168.987,
+        "inclusive": true,
+        "line": 66
+      },
+      {
+        "end": 3571,
+        "heartbeats_raw": 103251,
+        "label": "simpC",
+        "label_truncated": false,
+        "start": 3495,
+        "succeeded": true,
+        "heartbeats": 103.251,
+        "inclusive": true,
+        "line": 68
+      },
+      {
+        "end": 3613,
+        "heartbeats_raw": 601666,
+        "label": "ringdiff",
+        "label_truncated": false,
+        "start": 3576,
+        "succeeded": true,
+        "heartbeats": 601.666,
+        "inclusive": true,
+        "line": 70
+      },
+      {
+        "end": 4004,
+        "heartbeats_raw": 66937,
+        "label": "step2",
+        "label_truncated": false,
+        "start": 3923,
+        "succeeded": true,
+        "heartbeats": 66.937,
+        "inclusive": true,
+        "line": 77
+      },
+      {
+        "end": 4189,
+        "heartbeats_raw": 452803,
+        "label": "step3a",
+        "label_truncated": false,
+        "start": 4079,
+        "succeeded": true,
+        "heartbeats": 452.803,
+        "inclusive": true,
+        "line": 80
+      },
+      {
+        "end": 4289,
+        "heartbeats_raw": 65435,
+        "label": "step4a",
+        "label_truncated": false,
+        "start": 4243,
+        "succeeded": true,
+        "heartbeats": 65.435,
+        "inclusive": true,
+        "line": 84
+      },
+      {
+        "end": 4400,
+        "heartbeats_raw": 247534,
+        "label": "step4b",
+        "label_truncated": false,
+        "start": 4296,
+        "succeeded": true,
+        "heartbeats": 247.534,
+        "inclusive": true,
+        "line": 86
+      }
+    ],
+    "profile_heartbeats_raw": 13311920,
+    "profile_heartbeats": 13311.92,
+    "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+    "cache_key": "f3f96099e3297db6795a821d0cf004ca64d5ca81c805392e1e7482b3036ce04d",
+    "status": "ok",
+    "available_hotspots": 0,
+    "hotspots_truncated": false,
+    "mark_count": 16,
+    "marks_truncated": false,
+    "partial": false,
+    "diagnostics": [],
+    "context_mode": "full_file_replacement",
+    "returncode": 0,
+    "elapsed_seconds": 4.564021183177829
+  }
+}

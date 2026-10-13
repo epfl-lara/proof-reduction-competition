@@ -1,0 +1,176 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "interleaved_affine_gaps_imply_tensor_gaps",
+  "source": "arklib",
+  "required_versions": [
+    {
+      "v4.31.0": "c1712f6c496d0aef04f09bae42aec13811b3273f"
+    },
+    {
+      "v4.30.0": "e6d77b18ca1334a91faf4d1ccf9f96d854d58ba4"
+    },
+    {
+      "v4.29.0": "de71a9dfd2f5a343e8895517b7efe857d9f1ce5c"
+    }
+  ],
+  "exact_statement": "theorem interleaved_affine_gaps_imply_tensor_gaps\n    (hC_proximityGapAffineLines : e_ε_correlatedAgreementAffineLinesNat\n      (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n    (h_interleaved_gaps : ∀ m : ℕ, m ≥ 1 →\n      e_ε_correlatedAgreementAffineLinesNat (F := F)\n        (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC ^⋈ (Fin m)) e ε) :\n    ∀ (ϑ : ℕ), (hϑ_gt_0 : ϑ > 0) → δ_ε_multilinearCorrelatedAgreement_Nat (F := F) (A := A)\n      (ι := ι) (C := MC) (ϑ := ϑ) (e := e) (ε := ε)",
+  "incumbent_declaration": "theorem interleaved_affine_gaps_imply_tensor_gaps\n    (hC_proximityGapAffineLines : e_ε_correlatedAgreementAffineLinesNat\n      (F := F) (A := A) (ι := ι) (C := MC) (e := e) (ε := ε))\n    (h_interleaved_gaps : ∀ m : ℕ, m ≥ 1 →\n      e_ε_correlatedAgreementAffineLinesNat (F := F)\n        (A := InterleavedSymbol A (Fin m)) (ι := ι) (C := MC ^⋈ (Fin m)) e ε) :\n    ∀ (ϑ : ℕ), (hϑ_gt_0 : ϑ > 0) → δ_ε_multilinearCorrelatedAgreement_Nat (F := F) (A := A)\n      (ι := ι) (C := MC) (ϑ := ϑ) (e := e) (ε := ε) := by\n  letI : Nonempty F := ⟨0⟩\n  refine Nat.le_induction ?_ ?_\n  ·\n    intro u hp\n    have hu : finMapTwoWords (u 0) (u 1) = u :=\n      funext (Fin.forall_fin_two.mpr ⟨rfl, rfl⟩)\n    refine hu ▸ hC_proximityGapAffineLines (u 0) (u 1) ?_\n    rw [← prob_uniform_singleton_finFun_eq]\n    simp only [multilinearCombine₁_eq_affineLineEvaluation,\n      Nat.cast_one, ENNReal.coe_one, one_mul] at hp\n    exact hp\n  · intro n hn ih u hp\n    apply CA_split_rowwise_implies_CA MC u e\n    apply h_interleaved_gaps _ Nat.one_le_two_pow\n    apply lt_of_lt_of_le (prob_R_star_gt_threshold MC u e (by\n      rw [← prob_split_last_uniform_sampling_of_finFun]\n      simp only [multilinearCombine_recursive_form] at hp\n      exact hp))\n    apply Pr_le_Pr_of_implies\n    intro r hr\n    apply correlatedAgreement_of_mem_R_star_tensor MC ih u ⟨r, hr⟩\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 90.39172209903917,
+    "heartbeat_reduction_pct": 84.90898843863447,
+    "compatibility_pct": 100.0,
+    "combined_pct": 91.76690351255787
+  },
+  "reference_denominators": {
+    "tokens": 1353,
+    "primary_heartbeats": 9205.314
+  },
+  "preceding_source_excerpt": "Pr_f_and_g_le_Pr_g : Pr_{let r ← D}[g r ∧ f r] ≤ Pr_{let r ← D}[g r] := by\n    apply Pr_le_Pr_of_implies\n    intro r h_imp; exact h_imp.1\n  -- 5b. Pr[f ∧ ¬g] ≤ prev_false_witness_threshold (i.e., ϑε/q) (This is the \"false positive\" bound)\n  -- Proof sketch: Pr_{let r ← D}[¬(g r) ∧ f r]\n    -- = (1/q) * ∑' r_last, Pr_{r_init}[ r_last ∉ R_star_set ∧ f (r_init||r_last)]\n  -- (1/q) * ∑' r_last, (if r_last ∉ R* then Pr_{r_init}[f(r_last, r_init)] else 0)\n  -- ≤ (1/q) * ∑' r_last, (if r_last ∉ R* then (ϑ * ε/q) else 0)\n  -- ≤ (1/q) * ∑' r_last, (ϑ * ε/q) = (1/q) * (ϑ * ε/q * q) = ϑ*ε/q (Q.E.D)\n  have h_bound_not_g : Pr_{let r ← D}[¬(g r) ∧ f r] ≤ prev_false_witness_threshold := by\n    dsimp only [D]\n    rw [do_two_uniform_sampling_eq_uniform_prod (α := F) (β := (Fin ϑ → F))]\n    rw [prob_split_uniform_sampling_of_prod]\n    -- ⊢ Pr_{ x ← $ᵖ F; y ← $ᵖ (Fin ϑ → F)}[¬g (x, y) ∧ f (x, y)] ≤ prev_false_witness_threshold\n    rw [prob_tsum_form_split_first (D := $ᵖ F) (D_rest :=\n      fun r_last => (do let r_init ← $ᵖ (Fin ϑ → F); pure (¬(r_last ∈ R_star_set)\n        ∧ f (r_last, r_init))))]\n    conv_lhs =>\n      simp only [PMF.uniformOfFintype_apply]; rw [ENNReal.tsum_mul_left]\n      simp only [prob_const_and_prop_eq_ite]\n    -- (1/q) * ∑' r_last, (if r_last ∉ R* then Pr_{r_init}[f(r_last, r_init)] else 0)\n    have h_inner_le : ∀ (i: F), (if i ∉ R_star_set then\n      Pr_{let r_init ← $ᵖ (Fin ϑ → F)}[f (i, r_init)] else 0)\n        ≤ prev_false_witness_threshold := fun i => by\n      by_cases hi_mem: i ∈ R_star_set\n      · simp only [hi_mem, not_true_eq_false, ↓reduceIte, zero_le]\n      · simp only [hi_mem, not_false_eq_true, ↓reduceIte]\n        have h_i_mem_iff := Finset.mem_filter (s := Finset.univ (α := F)) (a := i)\n          (p := fun r_last => R_star_tensor_filter MC (e := e) (ε := ε) U₀ U₁ r_last\n      )\n        simp only [R_star_set] at hi_mem\n        have h_i_ne_mem_and_close := (Iff.not h_i_mem_iff).mp hi_mem\n        have h_i_mem_univ: i ∈ Finset.univ (α := F) := by\n          simp only [mem_univ]\n        simp only [h_i_mem_univ, true_and] at h_i_ne_mem_and_close\n        unfold R_star_tensor_filter at h_i_ne_mem_and_close\n        simp only [gt_iff_lt, not_lt] at h_i_ne_mem_and_close\n        exact h_i_ne_mem_and_close\n    calc\n      _ ≤ (((Fintype.card F): ENNReal)⁻¹ * ∑' (i : F), prev_false_witness_threshold) := by\n        apply ENNReal.mul_le_mul_iff_right (h0 := ENNReal.inv_ne_zero.mpr hq_ne_top)\n          (hinf := ENNReal.inv_ne_top.mpr hq_ne_zero).mpr\n        apply ENNReal.tsum_le_tsum h_inner_le\n      _ ≤ _ := by\n        simp only [ENNReal.tsum_const, ENat.card_eq_coe_fintype_card, ENat.toENNReal_coe]\n        rw [←mul_assoc]\n        simp only [ne_eq, Nat.cast_eq_zero, Fintype.card_ne_zero, not_false_eq_true,\n          ENNReal.natCast_ne_top, ENNReal.inv_mul_cancel, one_mul, le_refl]\n  -- sorry\n  -- 6. Chain the inequalities: `(ϑ+1)ε/q < Pr[f] ≤ Pr[g] + Pr[f ∧ ¬g] ≤ Pr[g] + ϑε/q`\n  have h_total_lt_Pr_g_add_term : cur_false_witness_threshold\n    < Pr_{let r ← D}[g r] + prev_false_witness_threshold := by\n    calc cur_false_witness_threshold\n      < Pr_{let r ← D}[f r] := h_P_f_gt\n      _ = Pr_{let r ← D}[g r ∧ f r] + Pr_{let r ← D}[¬(g r) ∧ f r] := by rw [h_split]\n      _ ≤ Pr_{let r ← D}[g r] + Pr_{let r ← D}[¬(g r) ∧ f r] := by\n        gcongr\n      _ ≤ Pr_{let r ← D}[g r] + prev_false_witness_threshold := by\n        gcongr\n      _ ≤ _ := by simp only [bind_pure_comp, le_refl]\n  -- 7. Prove Pr[g] is equal to the goal probability (marginalization)\n  have h_Pr_g_eq : Pr_{let r ← D}[g r] = Pr_{let r ← $ᵖ F}[ r ∈ R_star_set ] := by\n    have h_D_rw : D = (do { let x ← $ᵖ F; let y ← $ᵖ (Fin ϑ → F); pure (x, y)}) := rfl\n    rw [h_D_rw]\n    rw [do_two_uniform_sampling_eq_uniform_prod]\n    rw [prob_marginalization_first_of_prod]\n  -- 8. Rearrange to get the final result\n  -- We have: cur_false_witness_threshold < Pr[g] + prev_false_witness_threshold\n  -- We want: goal_threshold < Pr[g]\n  -- This is: cur_false_witness_threshold - prev_false_witness_threshold < Pr[g]\n  rw [h_Pr_g_eq] at h_total_lt_Pr_g_add_term\n  have h_lt_sub : cur_false_witness_threshold - prev_false_witness_threshold\n    < Pr_{let r ← $ᵖ F}[r ∈ R_star_set] := by\n    rw [ENNReal.sub_lt_iff_lt_right]\n    · omega\n    · exact h_finite\n    · dsimp only [ENNReal.coe_mul, ENNReal.coe_natCast, prev_false_witness_threshold,\n      cur_false_witness_threshold]\n      apply ENNReal.div_le_div\n      · by_cases h_ε_ne_zero : ε ≠ 0\n        · let mul_right_le:= (ENNReal.mul_le_mul_iff_left (a := ϑ) (b := Nat.cast (R := ENNReal)\n            (ϑ + 1)) (c := ε) (Nat.cast_ne_zero.mpr h_ε_ne_zero) (ENNReal.natCast_ne_top ε)).mpr\n          apply mul_right_le\n          simp only [Nat.cast_add, Nat.cast_one, self_le_add_right]\n        · have h_ε_eq_zero : ε = 0 := by omega\n          rw [h_ε_eq_zero]; simp only [CharP.cast_eq_zero, mul_zero, Nat.cast_add, Nat.cast_one,\n            le_refl]\n      · exact Preorder.le_refl q\n  have h_sub_eq_goal : cur_false_witness_threshold - prev_false_witness_threshold\n    = goal_threshold := by\n    unfold cur_false_witness_threshold prev_false_witness_threshold goal_threshold\n    simp only [Nat.cast_add, Nat.cast_one, ENNReal.coe_add, ENNReal.coe_one,\n      ENNReal.coe_mul, ENNReal.coe_natCast, ε_enn]\n    rw [add_mul]\n    simp only [one_mul]\n    rw [ENNReal.add_div]\n    rw [add_comm, ENNReal.add_sub_cancel_right]\n    exact ENNReal.div_ne_top (ENNReal.mul_ne_top (ENNReal.natCast_ne_top _) ENNReal.coe_ne_top)\n      hq_ne_zero\n  rw [h_sub_eq_goal] at h_lt_sub\n  exact h_lt_sub\n\nomit [DecidableEq F] [NoZeroDivisors F] [Fintype A] [Module.Free F A] [Nontrivial ↥MC] in\n/- **Theorem 3.6 (Angeris-Evans-Roh AER24): Interleaved Affine Gaps -> Tensor Gaps**\nIf, for **every** interleaving factor `m ≥ 1`, the `m`-fold interleaved code `C^m`\nfeatures proximity gaps for affine lines with respect to parameters `e` and `ε`,\nthen the original code `C` also features tensor-style proximity gaps with respect\nto the same parameters `e` and `ε`.\n-/\n",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "interleaved_affine_gaps_imply_tensor_gaps",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "40c2feb0d885b72398449cd7de1452dc6515f782bf0b9b85a81e0a7d7c182ba6"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 56,
+        "evidence_sha256": "639806fb18262b390093522ba40fe8cd15a9a351cf7782cd0c2e15420ba754a6",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 91.76690351255787,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -12,7 +12,7 @@\n     intro u hp\n-    have hu : finMapTwoWords (u 0) (u 1) = u :=\n-      funext (Fin.forall_fin_two.mpr ⟨rfl, rfl⟩)\n-    refine hu ▸ hC_proximityGapAffineLines (u 0) (u 1) ?_\n+    refine (show finMapTwoWords (u 0) (u 1) = u from\n+      funext (Fin.forall_fin_two.mpr ⟨rfl, rfl⟩)) ▸\n+      hC_proximityGapAffineLines (u 0) (u 1) ?_\n     rw [← prob_uniform_singleton_finFun_eq]\n-    simp only [multilinearCombine₁_eq_affineLineEvaluation,\n+    rw [multilinearCombine₁_eq_affineLineEvaluation,\n       Nat.cast_one, ENNReal.coe_one, one_mul] at hp\n@@ -22,6 +22,5 @@\n     apply ",
+        "change_excerpt_truncated": true,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.31.0\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.31.0\", \"v4.30.0\", \"v4.29.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.31.0\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"Tactic `rewrite` failed: Did not find an occurrence of the pattern\\n  multilinearCombine ?u ?r\\nin the target expression\\n  (do\\n        let r ← $ᵖ (Fin (Nat.succ 0) → F)\\n        pure (Δ₀(multilinearCo"
+      },
+      {
+        "check": 57,
+        "evidence_sha256": "67db1d739d9056da952f65af9c1cc9723dd38046ba2df0cfd6f40aa496d3c1e3",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 91.76690351255787,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -12,5 +12,5 @@\n     intro u hp\n-    have hu : finMapTwoWords (u 0) (u 1) = u :=\n-      funext (Fin.forall_fin_two.mpr ⟨rfl, rfl⟩)\n-    refine hu ▸ hC_proximityGapAffineLines (u 0) (u 1) ?_\n+    refine (show finMapTwoWords (u 0) (u 1) = u from\n+      funext (Fin.forall_fin_two.mpr ⟨rfl, rfl⟩)) ▸\n+      hC_proximityGapAffineLines (u 0) (u 1) ?_\n     rw [← prob_uniform_singleton_finFun_eq]\n@@ -22,6 +22,5 @@\n     apply h_interleaved_gaps _ Nat.one_le_two_pow\n-    apply lt_of_lt_of_le (prob_R_star_gt_threshold MC u e (by\n+    apply (prob_R_star_gt_threshold MC u e (by\n       rw [← prob",
+        "change_excerpt_truncated": true,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.31.0\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.31.0\", \"v4.30.0\", \"v4.29.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.31.0\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"Type mismatch: After simplification, term\\n  hp\\n has type\\n  @GT.gt ENNReal ENNReal.instPartialOrder.toLT\\n    ((do\\n        let r ← $ᵖ (Fin (n + 1) → F)\\n        pure\\n            (Δ₀(multilinearCombi"
+      },
+      {
+        "check": 58,
+        "evidence_sha256": "d9205f1b7156c8a03dddc27921119817ff163c147a7978bacf94b47e85c6f984",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 91.76690351255787,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -12,5 +12,5 @@\n     intro u hp\n-    have hu : finMapTwoWords (u 0) (u 1) = u :=\n-      funext (Fin.forall_fin_two.mpr ⟨rfl, rfl⟩)\n-    refine hu ▸ hC_proximityGapAffineLines (u 0) (u 1) ?_\n+    refine (show finMapTwoWords (u 0) (u 1) = u from\n+      funext (Fin.forall_fin_two.mpr ⟨rfl, rfl⟩)) ▸\n+      hC_proximityGapAffineLines (u 0) (u 1) ?_\n     rw [← prob_uniform_singleton_finFun_eq]\n@@ -22,6 +22,5 @@\n     apply h_interleaved_gaps _ Nat.one_le_two_pow\n-    apply lt_of_lt_of_le (prob_R_star_gt_threshold MC u e (by\n+    apply (prob_R_star_gt_threshold MC u e (by\n       rw [← prob",
+        "change_excerpt_truncated": true,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.31.0\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.31.0\", \"v4.30.0\", \"v4.29.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.31.0\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"Type mismatch: After simplification, term\\n  hp\\n has type\\n  @GT.gt ENNReal ENNReal.instPartialOrder.toLT\\n    ((do\\n        let r ← $ᵖ (Fin (n + 1) → F)\\n        pure\\n            (Δ₀(multilinearCombi"
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 4,
+        "evidence_sha256": "3236e299357109f3a1a73c4fd01002c58e640c033e7447ca92cbb1b074754031",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"prob_uniform_singleton_finFun_eq\", \"limit\": 4}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.31.0\", \"query\": \"prob_uniform_singleton_finFun_eq\", \"matches\": [\"./ArkLib/Data/Probability/Instances.lean:126:theorem prob_uniform_singleton_finFun_eq {F : Type} [Fintype F] [Nonempty F]\", \"./ArkLib/Data/CodingTheory/ProximityGap/DG25/MainResults.lean:1230:        let prob_eq := prob_uniform_singleton_finFun_eq (F := F)\"], \"truncated\": false}",
+        "request_sha256": "006fc58cbfbce61cb7695d1aa81ce4d544592a533de8182516187de3dd2f3e4b",
+        "response_sha256": "47da3b4cc48eee8a1c6a96f0028f65e193b3587b982b5638f043f9ff69d411f8"
+      },
+      {
+        "attempt": 4,
+        "evidence_sha256": "8407ba62d6fb645273a30f4a319b01e180ba6f226b141a454a085a12e9546783",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \"ArkLib/Data/Probability/Instances.lean\", \"start\": 124, \"end\": 134}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \"ArkLib/Data/Probability/Instances.lean\", \"version\": \"v4.31.0\", \"text\": \"124:   simp only [Fintype.card_unique, pow_one]\\n125: \\n126: theorem prob_uniform_singleton_finFun_eq {F : Type} [Fintype F] [Nonempty F]\\n127:     (P : F → Prop) :\\n128:   Pr_{ let r ← $ᵖ (Fin 1 → F) }[\\n129:     P (r 0) ] = Pr_{ let r ←$ᵖ F }[ P r ] := by\\n130:   classical\\n131: -- 1. Unfold both sides using the definition of probability for uniform distributions\\n132:   rw [prob_uniform_eq_card_filter_div_card (F := F)]\\n133:   rw [prob_uniform_eq_card_filter_div_card (F := Fin 1 → F)",
+        "request_sha256": "9f81eb652e5aef1508b308be4e073c3a3977f5282cb215ffcec55d5439e305b5",
+        "response_sha256": "9abba10c2f0df2f0e2555c7a297a54b922bd43dbae279ebe52eba5f550ef2719"
+      },
+      {
+        "attempt": 4,
+        "evidence_sha256": "877d8045b35a385256e778806c451866bbe44aa3adb0e03c150bb57784562b37",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \"ArkLib/Data/Probability/Instances.lean\", \"start\": 356, \"end\": 375}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \"ArkLib/Data/Probability/Instances.lean\", \"version\": \"v4.31.0\", \"text\": \"356: /--\\n357: **Monotonicity of Probability**\\n358: \\n359: If event `A` (defined by predicate `f`) implies event `B` (defined by\\n360: predicate `g`) for all outcomes `r`, then the probability of `A`\\n361: is less than or equal to the probability of `B`.\\n362: -/\\n363: theorem Pr_le_Pr_of_implies {α : Type} (D : PMF α)\\n364:     (f g : α → Prop)\\n365:     (h_imp : ∀ r, f r → g r) :\\n366:     Pr_{ let r ← D }[ f r ] ≤ Pr_{ let r ← D }[ g r ] := by\\n367:   classical\\n368:   -- 1. Unroll b",
+        "request_sha256": "0ef7daf5c6fd525ded8fa0bbd955984feacef2e38995104e1512e2bfe3fbfc5b",
+        "response_sha256": "3571fdb14fb0b07d7c3b0be002460a82a4e252b1b8cec6bda5289ce4b1c32f83"
+      }
+    ],
+    "unverified_model_notes": [
+      {
+        "attempt": 2,
+        "evidence_sha256": "8a3678b703be2a7944111d3cec3ae40a243f572e53fd1dcc8d1a652ce4fb7d2f",
+        "kind": "discovery",
+        "text": "Use bare multilinearCombine₁_eq_affineLineEvaluation and multilinearCombine_recursive_form constants in simp only, without F/u specialization. Valid all three versions,130tokens,1389.175beats,score91.7669035. Classical not needed with specialized final correlatedAgreement lemma."
+      },
+      {
+        "attempt": 4,
+        "evidence_sha256": "67f8b5b7ab4dae17dc1fb15e0c3204522d2cd8de05250e71d098b876c6b5c100",
+        "kind": "rejected",
+        "text": "Attempt4: inline hu+trans_le with explicit interleaving m=(2^n) valid133tokens1387.747hb91.69816 (worse). Base rw identity fails under binders. Recursive simpa only fails v4.31 even with ENNReal.coe_mul and coe_natCast due remaining probability aliases; v4.30/v4.29 pass. Seed retained."
+      },
+      {
+        "attempt": 3,
+        "evidence_sha256": "8191f49cefa00f585fbea621a33a26be6f4bcbf38a68e3e93830bba13a990088",
+        "kind": "next",
+        "text": "Reverse singleton simpa only requires ENNReal.coe_natCast for v4.31; valid133tokens1376.295hb score91.73963, worse. Inline hu plus .trans_le valid129tokens1387.783hb91.79658, +0.02968 below selection margin. Incumbent remains best."
+      }
+    ],
+    "prior_check_count": 58,
+    "prior_event_count": 111,
+    "prior_events_sha256": "06f95f3fc2f0141600268758b3fe7580de2829e381f9a5898c4f0b3aad918be8"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $2.8288; $0.171202 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

@@ -1,0 +1,22 @@
+theorem putnam_1995_a3
+(relation : (Fin 9 → ℤ) → (Fin 9 → ℤ) → Prop)
+(digits_to_num : (Fin 9 → ℤ) → ℤ)
+(hdigits_to_num : digits_to_num = fun dig => ∑ i : Fin 9, (dig i) * 10^i.1)
+(hrelation : ∀ d e : (Fin 9 → ℤ), relation d e ↔ (∀ i : Fin 9, d i < 10 ∧ d i ≥ 0 ∧ e i < 10 ∧ e i ≥ 0) ∧ (∀ i : Fin 9, 7 ∣ (digits_to_num (fun j : Fin 9 => if j = i then e j else d j))))
+: ∀ d e f : (Fin 9 → ℤ), ((relation d e) ∧ (relation e f)) → (∀ i : Fin 9, 7 ∣ d i - f i) := by
+  intro d e f h
+  have hd {a b} (hab : relation a b) (i) :
+      7 ∣ digits_to_num a + (b i - a i) * 10 ^ i.val := by
+    refine (congrArg (7 ∣ ·) ?_).mp (((hrelation a b).mp hab).2 i)
+    rw [hdigits_to_num, ← Int.sub_eq_iff_eq_add', ← Finset.sum_sub_distrib]
+    simp only [← Int.sub_mul, ite_sub, Int.sub_self, ite_mul, Int.zero_mul, Fintype.sum_ite_eq']
+  have hs := Finset.dvd_sum (s := Finset.univ) (fun i _ => hd h.1 i)
+  simp only [Finset.sum_add_distrib, Fin.sum_const, Int.sub_mul,
+    Finset.sum_sub_distrib, ← congrFun hdigits_to_num] at hs
+  have hc : IsCoprime (7 : ℤ) 10 := by decide
+  intro i
+  apply hc.pow_right.dvd_of_dvd_mul_right
+  apply Int.dvd_add_self_mul.mp
+  refine (congrArg (7 ∣ ·) ?_).mp (Int.dvd_sub hs
+      (Int.dvd_add (hd h.1 i) (hd h.2 i)))
+  ring

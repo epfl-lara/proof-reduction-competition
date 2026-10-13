@@ -1,0 +1,187 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "putnam_1964_a4",
+  "source": "putnambench",
+  "required_versions": [
+    {
+      "v4.25.0": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33"
+    },
+    {
+      "v4.26.0": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67"
+    },
+    {
+      "v4.27.0": "a3a10db0e9d66acbebf76c5e6a135066525ac900"
+    }
+  ],
+  "exact_statement": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n)",
+  "incumbent_declaration": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n)    := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let v n : Set.Icc B T := ⟨u n, hB n⟩\n  let f n := (v n, v (n + 1), v (n + 2), v (n + 3))\n  obtain ⟨i, j, hij, h⟩ := Set.finite_univ.exists_lt_map_eq_of_forall_mem\n    (f := f) (fun _ => Set.mem_univ _)\n  let c := j - i\n  have he : ∀ n ≥ i, f (n + c) = f n := by\n    apply Nat.le_induction\n    · simpa only [c, Nat.add_sub_of_le hij.le] using h.symm\n    · intro n hn ih\n      rw [Nat.add_right_comm]\n      simp only [f, v, Prod.mk.injEq, Subtype.mk.injEq] at ih ⊢\n      refine ⟨ih.2.1, ih.2.2.1, ih.2.2.2, ?_⟩\n      apply Int.cast_injective (α := ℝ)\n      erw [(hu (n + c + 4) (Nat.le_add_left _ _)).1, (hu (n + 4) (Nat.le_add_left _ _)).1,\n        ih.1, ih.2.1, ih.2.2.1, ih.2.2.2]\n      rfl\n  exact ⟨i, c, Nat.sub_pos_of_lt hij, fun n hn => congrArg (fun g => g.1.val) (he n hn)⟩\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 87.22442057659696,
+    "heartbeat_reduction_pct": 98.22903993090159,
+    "compatibility_pct": 100.0,
+    "combined_pct": 95.15115350249953
+  },
+  "reference_denominators": {
+    "tokens": 1769,
+    "primary_heartbeats": 141103.125
+  },
+  "preceding_source_excerpt": "import Mathlib\nimport Aesop\n\nimport Lean\n\n\nset_option maxHeartbeats 0\n\nopen Set Function\n\n\n",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "putnam_1964_a4",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "86808ff50e8c3091c346cc9e6b5a1ba81bb8690f8a7625a01956737a6507e82c"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 19,
+        "evidence_sha256": "267d850e6b4e3209b84b19b6c4eb0a7e818c41e5267ea25f2ccc80597cd85dec",
+        "accepted": true,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 86.88524590163934,
+          "heartbeat_reduction_pct": 98.0051299359954,
+          "compatibility_pct": 100.0,
+          "combined_pct": 94.96345861254491
+        },
+        "previous_best_combined_pct": 94.34842907181763,
+        "reason": "accepted",
+        "change_excerpt": "--- \n+++ \n@@ -10,11 +10,14 @@\n     (f := f) (fun _ => Set.mem_univ _)\n-  have step {a b} (h : f a = f b) : f (a + 1) = f (b + 1) := by\n-    simp only [f, v, Prod.mk.injEq, Subtype.mk.injEq] at h ⊢\n-    refine ⟨h.2.1, h.2.2.1, h.2.2.2, ?_⟩\n-    apply Int.cast_injective (α := ℝ)\n-    erw [(hu (a + 4) (by omega)).1, (hu (b + 4) (by omega)).1, h.1, h.2.1, h.2.2.1, h.2.2.2]\n-    rfl\n-  have he : ∀ n ≥ i, f (n + (j - i)) = f n :=\n-    Nat.le_induction (by simpa only [Nat.add_sub_of_le hij.le] using h.symm)\n-      (fun n hn ih => by simpa only [Nat.add_right_comm] using step ih)\n-  exact ⟨i, j - i, N",
+        "change_excerpt_truncated": true,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 20,
+        "evidence_sha256": "9bf872c9d31352aab22f3cf0175ee4a39d04c456aac25a79f55ee6c8f72e1ed9",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 86.77218767665347,
+          "heartbeat_reduction_pct": 98.22766788474742,
+          "compatibility_pct": 100.0,
+          "combined_pct": 94.99995185380028
+        },
+        "previous_best_combined_pct": 94.96345861254491,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -19,3 +19,3 @@\n       apply Int.cast_injective (α := ℝ)\n-      erw [(hu (n + c + 4) (by omega)).1, (hu (n + 4) (by omega)).1,\n+      erw [(hu (n + c + 4) (Nat.le_add_left _ _)).1, (hu (n + 4) (Nat.le_add_left _ _)).1,\n         ih.1, ih.2.1, ih.2.2.1, ih.2.2.2]",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 21,
+        "evidence_sha256": "8a91275f8eed9de39b36c82151e696aa59edbea548736f9c6187d4d105cc28b9",
+        "accepted": true,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 87.22442057659696,
+          "heartbeat_reduction_pct": 98.22903993090159,
+          "compatibility_pct": 100.0,
+          "combined_pct": 95.15115350249953
+        },
+        "previous_best_combined_pct": 94.96345861254491,
+        "reason": "accepted",
+        "change_excerpt": "--- \n+++ \n@@ -6,4 +6,4 @@\n   obtain ⟨B, T, hB⟩ := boundedu\n-  let v (n : ℕ) : Set.Icc B T := ⟨u n, hB n⟩\n-  let f (n : ℕ) := (v n, v (n + 1), v (n + 2), v (n + 3))\n+  let v n : Set.Icc B T := ⟨u n, hB n⟩\n+  let f n := (v n, v (n + 1), v (n + 2), v (n + 3))\n   obtain ⟨i, j, hij, h⟩ := Set.finite_univ.exists_lt_map_eq_of_forall_mem\n@@ -19,3 +19,3 @@\n       apply Int.cast_injective (α := ℝ)\n-      erw [(hu (n + c + 4) (by omega)).1, (hu (n + 4) (by omega)).1,\n+      erw [(hu (n + c + 4) (Nat.le_add_left _ _)).1, (hu (n + 4) (Nat.le_add_left _ _)).1,\n         ih.1, ih.2.1, ih.2.2.1, ih.2.2.2]",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 22,
+        "evidence_sha256": "a2d1433a86893805e0f34a2e21af10ced20b82073ddd302a93d3c613709c964e",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 87.22442057659696,
+          "heartbeat_reduction_pct": 98.22903851349855,
+          "compatibility_pct": 100.0,
+          "combined_pct": 95.15115303003184
+        },
+        "previous_best_combined_pct": 95.15115350249953,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -4,3 +4,3 @@\n (hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n-: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n)    := by\n+: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n   obtain ⟨B, T, hB⟩ := boundedu\n@@ -19,3 +19,4 @@\n       apply Int.cast_injective (α := ℝ)\n-      erw [(hu (n + c + 4) (Nat.le_add_left _ _)).1, (hu (n + 4) (Nat.le_add_left _ _)).1,\n+      erw [(hu (n + c + 4) (Nat.le_add_left _ _)).1,\n+        (hu (n + 4) (Nat.le_add_left _ _)",
+        "change_excerpt_truncated": true,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 0,
+        "evidence_sha256": "ff9d8bc4c895fd77d90a58035ccf3e7a140bd8231e64b923a84c14ceb7c78329",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \".lake/packages/mathlib/Mathlib/Data/Nat/Init.lean\", \"start\": 142, \"end\": 164}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \".lake/packages/mathlib/Mathlib/Data/Nat/Init.lean\", \"version\": \"v4.25.0\", \"text\": \"142: \\n143: /-- Recursion starting at a non-zero number: given a map `C k → C (k+1)` for each `k ≥ n`,\\n144: there is a map from `C n` to each `C m`, `n ≤ m`.\\n145: \\n146: This is a version of `Nat.le.rec` that works for `Sort u`.\\n147: Similarly to `Nat.le.rec`, it can be used as\\n148: ```\\n149: induction hle using Nat.leRec with\\n150: | refl => sorry\\n151: | le_succ_of_le hle ih => sorry\\n152: ```\\n153: -/\\n154: @[elab_as_elim]\\n155: def leRec {n} {motive : (m : ℕ) → n ≤ m →",
+        "request_sha256": "fff3678f1b073fcfa5272b3f1149071e058907df4c1bebfb9854e1944bed1323",
+        "response_sha256": "e1e0255f6d9427797f617e081abf5030f537b3ceabc640338eb3a6251bef59fb"
+      },
+      {
+        "attempt": 0,
+        "evidence_sha256": "6c3724fb0b7e8d1a2f6c942ebe1033d46c711ab087f5bc1da34928db5f782fdf",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \".lake/packages/mathlib/Mathlib/Data/Nat/Init.lean\", \"start\": 206, \"end\": 225}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \".lake/packages/mathlib/Mathlib/Data/Nat/Init.lean\", \"version\": \"v4.25.0\", \"text\": \"206:         (fun _ h ih => le_succ_of_le (le_of_succ_le h) ih) _ h2 =\\n207:       leRec (motive := motive) refl le_succ_of_le h1 := by\\n208:   rw [leRec_trans _ _ (le_succ n) h2, leRec_succ']\\n209: \\n210: /-- Recursion starting at a non-zero number: given a map `C k → C (k + 1)` for each `k`,\\n211: there is a map from `C n` to each `C m`, `n ≤ m`. For a version where the assumption is only made\\n212: when `k ≥ n`, see `Nat.leRec`. -/\\n213: @[elab_as_elim]\\n214: def leRecOn {C",
+        "request_sha256": "d153b8f11ed8d74b2e315d77939f710687723a5d64bf55e7d5b587d23261d1da",
+        "response_sha256": "8f90da8854b413c74ce1f73a35a3fc16f9cfe0c573be45414d0d91332a5bd224"
+      },
+      {
+        "attempt": 0,
+        "evidence_sha256": "7f2eb32919b0ace0fc2b359083828a1dfd013f6a57a74a080f21de5cfd9a981b",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"Nat.le.rec\", \"limit\": 8}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.25.0\", \"query\": \"Nat.le.rec\", \"matches\": [\"./.lake/packages/mathlib/Mathlib/Data/Nat/Init.lean:146:This is a version of `Nat.le.rec` that works for `Sort u`.\", \"./.lake/packages/mathlib/Mathlib/Data/Nat/Init.lean:147:Similarly to `Nat.le.rec`, it can be used as\", \"./.lake/packages/mathlib/Mathlib/Data/Nat/Init.lean:167:theorem leRec_eq_leRec : @Nat.leRec.{0} = @Nat.le.rec := rfl\"], \"truncated\": false}",
+        "request_sha256": "b09540c233fcc56a582d2736e122ee3d956d9b0e4dbd585da62a948053eb2956",
+        "response_sha256": "ae56ca6c524c7af2bf32e3cd07e583615e13ff763aad3ac22a72f4fadb307bb1"
+      }
+    ],
+    "unverified_model_notes": [
+      {
+        "attempt": 0,
+        "evidence_sha256": "10088642a8063c46263ec96b6f6de53c2b04c9a2ba97e95e96e42d70be5da110",
+        "kind": "discovery",
+        "text": "Best structure: v n : Set.Icc B T bounded subtype; f n tuple of v at n,n+1,n+2,n+3. Set.finite_univ.exists_lt_map_eq_of_forall_mem supplies i<j equal states. Specialized Nat.le_induction proves f(n+c)=f n directly for n>=i, c=j-i, avoiding general step helper and tail arithmetic. Unannotated let v n/let f n infer Nat successfully. Best 226 tokens, 2498.880 heartbeats, score 95.15115 all versions."
+      },
+      {
+        "attempt": 0,
+        "evidence_sha256": "1051d61dafe00347470f4ba14bdd07131eb149f016c5c5ed9fdca9ed041766a5",
+        "kind": "rejected",
+        "text": "simp +arith only [state equalities] and dsimp only [Nat.sub,Nat.pred,Nat.add] made no progress. Ordinary rw cannot match subtraction offsets; erw matches but needs final rfl for RHS offsets. convert congrArg ... using 3 failed with inference/kernel mismatch; direct threshold induction avoids it. Fin4 Pi representations need more projection/bound proofs than subtype tuples."
+      }
+    ],
+    "prior_check_count": 22,
+    "prior_event_count": 49,
+    "prior_events_sha256": "a99f6805722c8e6ea8f23e3dd28c5491989f9e98257c0de78368e51392a2b73e"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $1.29604; $1.70396 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

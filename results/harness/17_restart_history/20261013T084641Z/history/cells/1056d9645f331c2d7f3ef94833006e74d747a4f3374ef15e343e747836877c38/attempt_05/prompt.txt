@@ -1,0 +1,190 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "Cslib.SKI.parallelReduction_diamond",
+  "source": "cslib",
+  "required_versions": [
+    {
+      "v4.33.0-rc2": "3aa9d4416c185e0b9faeb72bbd65abe85b95dbcc"
+    },
+    {
+      "v4.32.0": "197a7be621263b84c67ca4f803f69205b36d06df"
+    },
+    {
+      "v4.31.0": "8ea71c8df91acd63285515a04da952b23b78d266"
+    },
+    {
+      "v4.30.0": "c7944a9fb44c3298f1a960a5e574ab23a6ab8ed5"
+    }
+  ],
+  "exact_statement": "theorem parallelReduction_diamond : Diamond ParallelReduction",
+  "incumbent_declaration": "theorem parallelReduction_diamond : Diamond ParallelReduction := by\n  intro a a₁ a₂ h₁ h₂\n  induction h₁ generalizing a₂\n  case refl => exact ⟨_, h₂, .refl _⟩\n  all_goals cases h₂\n  case' red_I.par | red_K.par | red_S.par => apply _root_.symm\n  case red_I.par | par.red_I =>\n    obtain rfl := I_irreducible _ ‹_›\n    exact ⟨_, .red_I _, ‹_›⟩\n  case red_K.par | par.red_K =>\n    obtain ⟨x, hx, rfl⟩ := Ka_irreducible _ _ ‹_›\n    exact ⟨_, .red_K .., hx⟩\n  case red_S.par | par.red_S =>\n    obtain ⟨x, y, hx, hy, rfl⟩ := Sab_irreducible _ _ _ ‹_›\n    exact ⟨_, .red_S .., by apply ParallelReduction.par <;> apply ParallelReduction.par <;> assumption⟩\n  case par.par iha ihb e f ha' hb' =>\n    obtain ⟨x, hx⟩ := iha ha'\n    obtain ⟨y, hy⟩ := ihb hb'\n    exact ⟨_, .par hx.1 hy.1, .par hx.2 hy.2⟩\n  repeat' constructor\n  all_goals assumption\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 57.739557739557746,
+    "heartbeat_reduction_pct": 72.77023629238293,
+    "compatibility_pct": 100.0,
+    "combined_pct": 76.8365980106469
+  },
+  "reference_denominators": {
+    "tokens": 407,
+    "primary_heartbeats": 1384.048
+  },
+  "preceding_source_excerpt": "/-\nCopyright (c) 2025 Thomas Waring. All rights reserved.\nReleased under Apache 2.0 license as described in the file LICENSE.\nAuthors: Thomas Waring\n-/\n\nmodule\n\npublic import Cslib.Languages.CombinatoryLogic.Defs\npublic import Cslib.Foundations.Relation.Confluence\n\nimport Lean\n\n\n/-!\n# SKI reduction is confluent\n\nThis file proves the **Church-Rosser** theorem for the SKI calculus, that is, if `a ↠ b` and\n`a ↠ c`, `b ↠ d` and `c ↠ d` for some term `d`. More strongly (though equivalently), we show\nthat the relation of having a common reduct is transitive — in the above situation, `a` and `b`,\nand `a` and `c` have common reducts, so the result implies the same of `b` and `c`. Note that\n`MJoin Red` is symmetric (trivially) and reflexive (since `↠` is), so we in fact show that\n`MJoin Red` is an equivalence.\n\nOur proof\nfollows the method of Tait and Martin-Löf for the lambda calculus, as presented for instance in\nChapter 4 of Peter Selinger's notes:\n<https://www.mscs.dal.ca/~selinger/papers/papers/lambdanotes.pdf>.\n\n## Main definitions\n\n- `ParallelReduction` : a relation `⭢ₚ` on terms such that `⭢ ⊆ ⭢ₚ ⊆ ↠`, allowing simultaneous\nreduction on the head and tail of a term.\n\n## Main results\n\n- `parallelReduction_diamond` : parallel reduction satisfies the diamond property, that is, it is\nconfluent in a single step.\n- `mJoin_red_equivalence` : by a general result, the diamond property for `⭢ₚ` implies the same\nfor its reflexive-transitive closure. This closure is exactly `↠`, which implies the\n**Church-Rosser** theorem as sketched above.\n-/\n\n@[expose] public section\n\nnamespace Cslib\n\nnamespace SKI\n\nopen Red MRed Relation\n\n/-- A reduction step allowing simultaneous reduction of disjoint redexes -/\n@[reduction_sys \"ₚ\"]\ninductive ParallelReduction : SKI → SKI → Prop\n  /-- Parallel reduction is reflexive, -/\n  | refl (a : SKI) : ParallelReduction a a\n  /-- Contains `Red`, -/\n  | red_I (a : SKI) : ParallelReduction (I ⬝ a) a\n  | red_K (a b : SKI) : ParallelReduction (K ⬝ a ⬝ b) a\n  | red_S (a b c : SKI) : ParallelReduction (S ⬝ a ⬝ b ⬝ c) (a ⬝ c ⬝ (b ⬝ c))\n  /-- and allows simultaneous reduction of disjoint redexes. -/\n  | par ⦃a a' b b' : SKI⦄ :\n      ParallelReduction a a' → ParallelReduction b b' → ParallelReduction (a ⬝ b) (a' ⬝ b')\n\n/-- The inclusion `(· ⭢ₚ ·) ≤ (· ↠ ·)`. -/\ntheorem ParallelReduction.le_reflTransGen_red :\n    (· ⭢ₚ ·) ≤ (· ↠ ·) := by\n  intro a a' h\n  cases h\n  case refl => exact Relation.ReflTransGen.refl\n  case par a a' b b' ha hb =>\n    apply parallel_mRed\n    · exact ha.le_reflTransGen_red\n    · exact hb.le_reflTransGen_red\n  case red_I => exact Relation.ReflTransGen.single (Red.red_I a')\n  case red_K b => exact Relation.ReflTransGen.single (Red.red_K a' b)\n  case red_S a b c => exact Relation.ReflTransGen.single (Red.red_S a b c)\n\n/-- The inclusion `(· ⭢ ·) ≤ (· ⭢ₚ ·)`. -/\ntheorem Red.le_parallelReduction :\n    (· ⭢ ·) ≤ (· ⭢ₚ ·) := by\n  intro a a' h\n  cases h\n  case red_S => apply ParallelReduction.red_S\n  case red_K => apply ParallelReduction.red_K\n  case red_I => apply ParallelReduction.red_I\n  case red_head a a' b h =>\n    apply ParallelReduction.par\n    · exact h.le_parallelReduction\n    · exact ParallelReduction.refl b\n  case red_tail a b b' h =>\n    apply ParallelReduction.par\n    · exact ParallelReduction.refl a\n    · exact h.le_parallelReduction\n\n/-- The relations `⭢` and `⭢ₚ` have the same reflexive-transitive closure. -/\ntheorem reflTransGen_parallelReduction_mRed :\n    ReflTransGen ParallelReduction = ReflTransGen Red := by\n  apply le_antisymm\n  · exact reflTransGen_le_of_le ParallelReduction.le_reflTransGen_red\n  · exact ReflTransGen.mono Red.le_parallelReduction\n\n/-!\nIrreducibility for the (partially applied) primitive combinators.\n\nTODO: possibly these should be proven more generally (in another file) for `↠`.\n-/\n\nlemma I_irreducible (a : SKI) (h : I ⭢ₚ a) : a = I := by\n  cases h\n  rfl\n\nlemma K_irreducible (a : SKI) (h : K ⭢ₚ a) : a = K := by\n  cases h\n  rfl\n\nlemma Ka_irreducible (a c : SKI) (h : (K ⬝ a) ⭢ₚ c) : ∃ a', a ⭢ₚ a' ∧ c = K ⬝ a' := by\n  cases h\n  case refl => use a, .refl a\n  case par b a' h h' => rw [K_irreducible b h]; use a'\n\nlemma S_irreducible (a : SKI) (h : S ⭢ₚ a) : a = S := by\n  cases h\n  rfl\n\nlemma Sa_irreducible (a c : SKI) (h : (S ⬝ a) ⭢ₚ c) : ∃ a', a ⭢ₚ a' ∧ c = S ⬝ a' := by\n  cases h\n  case refl =>\n    exact ⟨a, ParallelReduction.refl a, rfl⟩\n  case par b a' h h' => rw [S_irreducible b h]; use a'\n\nlemma Sab_irreducible (a b c : SKI) (h : (S ⬝ a ⬝ b) ⭢ₚ c) :\n    ∃ a' b', a ⭢ₚ a' ∧ b ⭢ₚ b' ∧ c = S ⬝ a' ⬝ b' := by\n  cases h\n  case refl => use a, b, .refl a, .refl b\n  case par c b' hc hb =>\n    let ⟨d, hd⟩ := Sa_irreducible a c hc\n    rw [hd.2]\n    use d, b', hd.1",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "Cslib.SKI.parallelReduction_diamond",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "631734e40da8de956407b8c5168e703d481b0a4da2d5cbb243e6289eaad406a9"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 86,
+        "evidence_sha256": "f4b005a32e2761ea805858ece70ced53d9baa37849bcdf81e41c924a72e2e7ae",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 58.23095823095823,
+          "heartbeat_reduction_pct": 71.29297538813682,
+          "compatibility_pct": 100.0,
+          "combined_pct": 76.50797787303169
+        },
+        "previous_best_combined_pct": 76.8365980106469,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -7,3 +7,3 @@\n   case red_I.par | par.red_I =>\n-    obtain rfl := I_irreducible _ ‹_›\n+    cases ‹ParallelReduction I _›\n     exact ⟨_, .red_I _, ‹_›⟩",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\", \"v4.30.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.32.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.31.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.30.0\", \"status\":"
+      },
+      {
+        "check": 89,
+        "evidence_sha256": "45aefa1e384fd08e5ff6053db4b85a6ad39398f6073b9b1ddd462fd8c91cadab",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 76.8365980106469,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -19,3 +19,2 @@\n     exact ⟨_, .par hx.1 hy.1, .par hx.2 hy.2⟩\n-  repeat' constructor\n-  all_goals assumption\n+  repeat' constructor <;> assumption",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\", \"v4.30.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"unsolved goals\\ncase red_I.refl\\na a₁ a✝ : SKI\\n⊢ Join ParallelReduction a✝ (I ⬝ a✝)\\n\\ncase red_I.red_I\\na a₁ a✝ : SKI\\n⊢ Join ParallelReduction a✝ a✝\\n\\ncase red_K.refl\\na a₁ a✝"
+      },
+      {
+        "check": 93,
+        "evidence_sha256": "32c82ef9b1d1f93072a13882f1a1016d5b459ac586dc23e095db318c261f0edf",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 58.476658476658486,
+          "heartbeat_reduction_pct": 67.14983873391674,
+          "compatibility_pct": 100.0,
+          "combined_pct": 75.20883240352508
+        },
+        "previous_best_combined_pct": 76.8365980106469,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -12,5 +12,5 @@\n     exact ⟨_, .red_K .., hx⟩\n-  case red_S.par | par.red_S =>\n+  case' red_S.par | par.red_S =>\n     obtain ⟨x, y, hx, hy, rfl⟩ := Sab_irreducible _ _ _ ‹_›\n-    exact ⟨_, .red_S .., by apply ParallelReduction.par <;> apply ParallelReduction.par <;> assumption⟩\n+    refine ⟨_, .red_S .., ?_⟩\n   case par.par iha ihb e f ha' hb' =>\n@@ -19,3 +19,2 @@\n     exact ⟨_, .par hx.1 hy.1, .par hx.2 hy.2⟩\n-  repeat' constructor\n-  all_goals assumption\n+  repeat' (first | assumption | constructor)",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\", \"v4.30.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.32.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.31.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.30.0\", \"status\":"
+      },
+      {
+        "check": 94,
+        "evidence_sha256": "e921b20b3554a0c5f0226f667ad189eae230a656e01cea2e658c0044d59837fc",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 76.8365980106469,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -12,5 +12,5 @@\n     exact ⟨_, .red_K .., hx⟩\n-  case red_S.par | par.red_S =>\n+  case' red_S.par | par.red_S =>\n     obtain ⟨x, y, hx, hy, rfl⟩ := Sab_irreducible _ _ _ ‹_›\n-    exact ⟨_, .red_S .., by apply ParallelReduction.par <;> apply ParallelReduction.par <;> assumption⟩\n+    refine ⟨_, .red_S .., ?_⟩\n   case par.par iha ihb e f ha' hb' =>\n@@ -19,3 +19,2 @@\n     exact ⟨_, .par hx.1 hy.1, .par hx.2 hy.2⟩\n-  repeat' constructor\n-  all_goals assumption\n+  repeat' (first | assumption | apply ParallelReduction.refl | apply ParallelReduction.par | constructor)",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\", \"v4.30.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"unsolved goals\\ncase red_S.refl.h.right.a.a\\na a₁ a✝ b✝ c✝ : SKI\\n⊢ (S ⬝ a✝) ⭢ₚ a✝\\n\\ncase red_S.refl.h.right.a.a\\na a₁ a✝ b✝ c✝ : SKI\\n⊢ b✝ ⭢ₚ c✝\\n\\ncase red_S.refl.h.right.a\\na "
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 4,
+        "evidence_sha256": "3a259e112f8801167a2e3df306aa9c6879bb5a96569340e7ccddb020caa2e4c6",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"Join.symm\", \"limit\": 15}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.33.0-rc2\", \"query\": \"Join.symm\", \"matches\": [\"./.lake/packages/mathlib/Mathlib/Logic/Relation.lean:923:protected instance Join.symm : Std.Symm (Join r) where\", \"./.lake/packages/mathlib/Mathlib/Logic/Relation.lean:926:@[deprecated (since := \\\"2026-06-10\\\")] alias symmetric_join := Join.symm\", \"./.lake/packages/mathlib/Mathlib/Logic/Relation.lean:943:  ⟨Join.refl.refl, Join.symm.symm _ _, isTrans_join h |>.trans _ _ _⟩\"], \"truncated\": false}",
+        "request_sha256": "c271178332b32bc9b6863e0aa52576a7870061aee3491baaba472a7b73c6282e",
+        "response_sha256": "b90f16d809afa91c5a8ef3c3a4e618253f3ec6481e60da4a7bd650c4221d2fe8"
+      },
+      {
+        "attempt": 4,
+        "evidence_sha256": "8ecd393626c112adef2e8c7cb5d010da6204e2fc4ec7d3951ffd54353f4d1aa8",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \".lake/packages/mathlib/Mathlib/Logic/Relation.lean\", \"start\": 890, \"end\": 956}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \".lake/packages/mathlib/Mathlib/Logic/Relation.lean\", \"version\": \"v4.33.0-rc2\", \"text\": \"890: \\n891: section Join\\n892: \\n893: open ReflTransGen ReflGen\\n894: \\n895: /-- A sufficient condition for the Church-Rosser property. -/\\n896: theorem church_rosser (h : ∀ a b c, r a b → r a c → ∃ d, ReflGen r b d ∧ ReflTransGen r c d)\\n897:     (hab : ReflTransGen r a b) (hac : ReflTransGen r a c) : Join (ReflTransGen r) b c := by\\n898:   induction hab with\\n899:   | refl => exact ⟨c, hac, refl⟩\\n900:   | @tail d e _ hde ih =>\\n901:     rcases ih with ⟨b, hdb, hcb⟩\\n90",
+        "request_sha256": "ef34f9873fcaa04dac91030e5a99336bcabc65ecc1cae7801750887f7a1e527d",
+        "response_sha256": "ac3d520716c8b0ef9367048b5ddd41b307e278e6edf37b491ecf14c2e7486531"
+      },
+      {
+        "attempt": 4,
+        "evidence_sha256": "966825f5ee1376ce9aaa4cb12379e931eaa03346528b83d4fc9ae3341c2735c9",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \"Cslib/Languages/CombinatoryLogic/Defs.lean\", \"start\": 1, \"end\": 65}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \"Cslib/Languages/CombinatoryLogic/Defs.lean\", \"version\": \"v4.33.0-rc2\", \"text\": \"1: /-\\n2: Copyright (c) 2025 Thomas Waring. All rights reserved.\\n3: Released under Apache 2.0 license as described in the file LICENSE.\\n4: Authors: Thomas Waring\\n5: -/\\n6: \\n7: module\\n8: \\n9: public import Cslib.Foundations.Relation.Attr\\n10: public import Cslib.Foundations.Relation.Defs\\n11: public meta import Mathlib.Tactic.ToDual\\n12: \\n13: /-!\\n14: # SKI Combinatory Logic\\n15: \\n16: This file defines the syntax and operational semantics (reduction rules) of combinatory lo",
+        "request_sha256": "580102440b79130270f384f874c6e2280651a67a81d2f4268d68955112a2d274",
+        "response_sha256": "b3d3022aec0d7c865936ed91a0c4a76f2a7b75c60b718fb82063dfce0abe19b9"
+      }
+    ],
+    "unverified_model_notes": [
+      {
+        "attempt": 2,
+        "evidence_sha256": "541e556883ef9597d004385ccdc940a1eaddbb580ddc92ec851333725d3d1fd4",
+        "kind": "discovery",
+        "text": "Seed profile: cases h₂ across branches ~123 HB, S critical pairs ~74 HB, repeat constructor ~51 HB. External refine for S lowers HB ~1.38 only; multiline repeat apply par saves 2 tokens but adds ~6.4 HB, both below selection margin. Fully qualified constructors and And named projections do not reduce token count."
+      },
+      {
+        "attempt": 4,
+        "evidence_sha256": "0e9fcf4e8f4e80cbe0e1fdb613e72d305905c93f65217141667c77bea4b33e2a",
+        "kind": "rejected",
+        "text": "Attempt 04 retained seed. Moving h₂ introduction after induction:174t/379.187HB; par.par nested .elim:172t/377.672HB; inline cases of I proof:170t/397.319HB. All worse. Deferring S critical residuals to global repeat constructor:165t/417.163HB; assumption-first loop:169t/454.662HB, both worse. Explicit refl/par-priority loop invalid because par preempted red_S. Explicit final existential and fully unpacked par.par were duplicate regressive trials."
+      }
+    ],
+    "prior_check_count": 95,
+    "prior_event_count": 66,
+    "prior_events_sha256": "1d24902db9db6e428d431ea01380b8bbe3b878dc2d7fd2181f23583dc0244cc9"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $2.42292; $0.577082 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

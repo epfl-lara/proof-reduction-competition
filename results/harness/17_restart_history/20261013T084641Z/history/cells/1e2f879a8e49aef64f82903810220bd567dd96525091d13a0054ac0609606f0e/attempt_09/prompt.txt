@@ -1,0 +1,204 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "Cslib.CCS.bisimilarity_congr_choice",
+  "source": "cslib",
+  "required_versions": [
+    {
+      "v4.33.0-rc2": "3aa9d4416c185e0b9faeb72bbd65abe85b95dbcc"
+    },
+    {
+      "v4.32.0": "197a7be621263b84c67ca4f803f69205b36d06df"
+    },
+    {
+      "v4.31.0": "8ea71c8df91acd63285515a04da952b23b78d266"
+    }
+  ],
+  "exact_statement": "theorem bisimilarity_congr_choice :\n    (p ~[lts (defs := defs)] q) → (choice p r) ~[lts (defs := defs)] (choice q r)",
+  "incumbent_declaration": "theorem bisimilarity_congr_choice :\n    (p ~[lts (defs := defs)] q) → (choice p r) ~[lts (defs := defs)] (choice q r) := by\n  intro h\n  rw [HomBisimilarity.symm_simulation]\n  exists _, ChoiceBisim.choice h\n  constructor\n  · constructor\n    grind only [ChoiceBisim, → Bisimilarity.symm]\n  rintro s t (h | h) μ s' ht\n  case' choice =>\n    cases ht <;> rename_i ht\n  case choice.choiceR =>\n    exact ⟨_, .choiceR ht, .bisim (HomBisimilarity.refl _)⟩\n  all_goals\n    obtain ⟨t', ht', h'⟩ := h.follow_fst ht\n    refine ⟨t', ?_, .bisim h'⟩\n    try apply Tr.choiceL\n    exact ht'\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 66.53386454183267,
+    "heartbeat_reduction_pct": 89.87398741040047,
+    "compatibility_pct": 100.0,
+    "combined_pct": 85.46928398407772
+  },
+  "reference_denominators": {
+    "tokens": 251,
+    "primary_heartbeats": 3859.535
+  },
+  "preceding_source_excerpt": "p q r r' htr =>\n      exists p.par (q.par r')\n      grind\n    case com p q r μ p' μ' r' _ htr htr' =>\n      cases htr\n      case parL p' _ =>\n        use p'.par (q.par r')\n        grind\n      case parR q' _ =>\n        use p.par (q'.par r')\n        grind\n      case com => grind\n  case left.assoc =>\n    intro s2' htr\n    unfold lts at *\n    cases htr\n    case parR htr =>\n      cases htr\n      case parL p q r q' _ =>\n        exists (p.par q').par r\n        grind\n      case parR p q r r' _ =>\n        exists (p.par q).par r'\n        grind\n      case com p q r μ q' μ' r' _ htrp htrq =>\n        use (p.par q').par r'\n        grind\n    case parL p q r p' htr =>\n      exists (p'.par q).par r\n      grind\n    case com p q r μ p' μ' q' _ htr htr' =>\n      cases htr'\n      case parL q' _ =>\n        use (p'.par q').par r\n        grind\n      case parR r' _ =>\n        use (p'.par q).par r'\n        grind\n      case com => grind\n  all_goals grind\n\nprivate inductive ChoiceNil : Process Name Constant → Process Name Constant → Prop where\n  | nil : ChoiceNil (choice p nil) p\n  | id : ChoiceNil p p\n\n/-- P + 𝟎 ~ P -/\ntheorem bisimilarity_choice_nil : (choice p nil) ~[lts (defs := defs)] p := by\n  use ChoiceNil, ChoiceNil.nil\n  intro s1 s2 hr μ\n  apply And.intro <;> cases hr\n  case left.nil =>\n    unfold lts\n    grind [ChoiceNil]\n  case right.nil =>\n    intro s2' htr\n    exists s2'\n    constructor\n    · apply Tr.choiceL\n      assumption\n    · exact ChoiceNil.id\n  all_goals grind [ChoiceNil]\n\n@[local grind]\nprivate inductive ChoiceIdem : Process Name Constant → Process Name Constant → Prop where\n  | idem : ChoiceIdem (choice p p) p\n  | id : ChoiceIdem p p\n\n/-- P + P ~ P -/\ntheorem bisimilarity_choice_idem :\n    (choice p p) ~[lts (defs := defs)] p := by\n  exists ChoiceIdem\n  apply And.intro\n  case left => grind\n  case right =>\n    intro s1 s2 hr μ\n    apply And.intro <;> cases hr <;> unfold lts\n    case right.idem =>\n      intro s1' htr\n      exists s1'\n      grind\n    all_goals grind\n\nprivate inductive ChoiceComm : Process Name Constant → Process Name Constant → Prop where\n  | choiceComm : ChoiceComm (choice p q) (choice q p)\n  | bisim : (p ~[lts (defs := defs)] q) → ChoiceComm p q\n\nopen Bisimilarity in\n/-- P + Q ~ Q + P -/\ntheorem bisimilarity_choice_comm : (choice p q) ~[lts (defs := defs)] (choice q p) := by\n  exists @ChoiceComm Name Constant defs\n  repeat constructor\n  intro s1 s2 hr μ\n  cases hr\n  case choiceComm p q =>\n    constructor\n    case left =>\n      intro s1' htr\n      exists s1'\n      constructor\n      · unfold lts\n        cases htr with grind\n      · grind [HomBisimilarity.refl, ChoiceComm]\n    case right =>\n      intro s1' htr\n      exists s1'\n      constructor\n      · unfold lts\n        cases htr with grind\n      · grind [HomBisimilarity.refl, ChoiceComm]\n  case bisim h =>\n    grind [IsBisimulation, ChoiceComm]\n\nprivate inductive ChoiceAssoc : Process Name Constant → Process Name Constant → Prop where\n  | assoc : ChoiceAssoc (choice p (choice q r)) (choice (choice p q) r)\n  | id : ChoiceAssoc p p\n\n/-- P + (Q + R) ~ (P + Q) + R -/\ntheorem bisimilarity_choice_assoc :\n    (choice p (choice q r)) ~[lts (defs := defs)] (choice (choice p q) r) := by\n  use ChoiceAssoc, ChoiceAssoc.assoc\n  intro s1 s2 hr μ\n  apply And.intro <;> cases hr\n  case left.assoc p q r =>\n    intro s htr\n    refine ⟨s, ?_, ChoiceAssoc.id⟩\n    cases htr\n    case choiceL htr => apply Tr.choiceL; apply Tr.choiceL; assumption\n    case choiceR htr =>\n      cases htr\n      case choiceL htr => apply Tr.choiceL; apply Tr.choiceR; assumption\n      case choiceR htr => apply Tr.choiceR; assumption\n  case right.assoc p q r =>\n    intro s htr\n    refine ⟨s, ?_, ChoiceAssoc.id⟩\n    cases htr\n    case choiceL htr =>\n      cases htr\n      case choiceL htr => apply Tr.choiceL; assumption\n      case choiceR htr => apply Tr.choiceR; apply Tr.choiceL; assumption\n    case choiceR htr => apply Tr.choiceR; apply Tr.choiceR; assumption\n  all_goals grind [ChoiceAssoc.id]\n\n@[local grind]\nprivate inductive PreBisim : Process Name Constant → Process Name Constant → Prop where\n| pre : (p ~[lts (defs := defs)] q) → PreBisim (pre μ p) (pre μ q)\n| bisim : (p ~[lts (defs := defs)] q) → PreBisim p q\n\n/-- P ~ Q → μ.P ~ μ.Q -/\ntheorem bisimilarity_congr_pre :\n    (p ~[lts (defs := defs)] q) → (pre μ p) ~[lts (defs := defs)] (pre μ q) := by\n  intro hpq\n  exists @PreBisim _ _ defs\n  constructor\n  · grind\n  intro s1 s2 hr μ'\n  cases hr\n  case pre p' q' μ hbis =>\n    unfold lts\n    constructor <;> intro _ _ <;> [exists q'; exists p'] <;> grind\n  case bisim => grind [IsBisimulation, IsBisimulation.le_bisimilarity]\n\n@[local grind]\nprivate inductive ResBisim : Process Name Constant → Process Name Constant → Prop where\n| res : (p ~[lts (defs := defs)] q) → ResBisim (res a p) (res a q)\n-- | bisim : (p ~[lts (defs := defs)] q) → ResBisim p q\n\n/-- P ~ Q → (ν a) P ~ (ν a) Q -/\ntheorem bisimilarity_congr_res :\n    (p ~[lts (defs := defs)] q) → (res a p) ~[lts (defs := defs)] (res a q) := by\n  intro hpq\n  exists @ResBisim _ _ defs\n  constructor\n  · grind\n  intro s1 s2 hr μ'\n  cases hr\n  rename_i p q a h\n  constructor\n  case left =>\n    intro s1' htr\n    cases htr with | res _ _ htr =>\n    obtain ⟨q', _, bisim⟩ := h.follow_fst htr\n    exists res a q'\n    unfold lts at *\n    #adaptation_note\n    /-- A grind regression found moving to nightly-2026-03-31 (changes from lean#13166) -/\n    split_ands\n    · grind\n    · exact ResBisim.res bisim\n  case right =>\n    intro s2' htr\n    cases htr with | res _ _ htr =>\n    obtain ⟨p', _, bisim⟩ := h.follow_snd htr\n    exists res a p'\n    unfold lts at *\n    #adaptation_note\n    /-- A grind regression found moving to nightly-2026-03-31 (changes from lean#13166) -/\n    split_ands\n    · grind\n    · exact ResBisim.res bisim\n\nprivate inductive ChoiceBisim : Process Name Constant → Process Name Constant → Prop where\n| choice : (p ~[lts (defs := defs)] q) → ChoiceBisim (choice p r) (choice q r)\n| bisim : (p ~[lts (defs := defs)] q) → ChoiceBisim p q",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "Cslib.CCS.bisimilarity_congr_choice",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "aea66e9da79a57f7c08fd0dddd8881d36026350a01890267e591e30ac542c874"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 65,
+        "evidence_sha256": "3809f19255f136ac11d18c0883c7a8e8f6bc9ba7138489d7d17a6f81aaceb62d",
+        "accepted": true,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 66.53386454183267,
+          "heartbeat_reduction_pct": 89.87398741040047,
+          "compatibility_pct": 100.0,
+          "combined_pct": 85.46928398407772
+        },
+        "previous_best_combined_pct": 85.18872974691124,
+        "reason": "accepted",
+        "change_excerpt": "--- \n+++ \n@@ -4,3 +4,3 @@\n   rw [HomBisimilarity.symm_simulation]\n-  exists ChoiceBisim, ChoiceBisim.choice h\n+  exists _, ChoiceBisim.choice h\n   constructor\n@@ -16,2 +16,3 @@\n     refine ⟨t', ?_, .bisim h'⟩\n-    solve_by_elim only [ht', Tr.choiceL]\n+    try apply Tr.choiceL\n+    exact ht'",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.32.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.31.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 90,
+        "evidence_sha256": "d00d4af7b4fa69f4d19152fc8be5551e062478c0f75d1fe87d7156c1f4114c3b",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 66.93227091633467,
+          "heartbeat_reduction_pct": 89.40919048538231,
+          "compatibility_pct": 100.0,
+          "combined_pct": 85.44715380057232
+        },
+        "previous_best_combined_pct": 85.46928398407772,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -16,3 +16,3 @@\n     refine ⟨t', ?_, .bisim h'⟩\n-    try apply Tr.choiceL\n+    try constructor\n     exact ht'",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.32.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.31.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 91,
+        "evidence_sha256": "d760f712824d1a516a8adf7a278c0e9adee7337d120c9a699631eba9ad4812b5",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 66.93227091633467,
+          "heartbeat_reduction_pct": 88.28143804888413,
+          "compatibility_pct": 100.0,
+          "combined_pct": 85.0712363217396
+        },
+        "previous_best_combined_pct": 85.46928398407772,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -16,3 +16,2 @@\n     refine ⟨t', ?_, .bisim h'⟩\n-    try apply Tr.choiceL\n-    exact ht'\n+    solve_by_elim [Tr.choiceL]",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.32.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.31.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 92,
+        "evidence_sha256": "46eaa654df435aaf4678523a6228dee5c89b5043bd15953f676dc2bbfd9602fe",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 66.93227091633467,
+          "heartbeat_reduction_pct": 88.28449541201206,
+          "compatibility_pct": 100.0,
+          "combined_pct": 85.07225544278225
+        },
+        "previous_best_combined_pct": 85.46928398407772,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -16,3 +16,2 @@\n     refine ⟨t', ?_, .bisim h'⟩\n-    try apply Tr.choiceL\n-    exact ht'\n+    apply_rules [Tr.choiceL]",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.32.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.31.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 95,
+        "evidence_sha256": "1f5dc9317b67107bdc24dbd4d5d4e9b72003336b6f57ed3c47e791f87a4cf090",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 66.53386454183267,
+          "heartbeat_reduction_pct": 89.87362467240224,
+          "compatibility_pct": 100.0,
+          "combined_pct": 85.46916307141164
+        },
+        "previous_best_combined_pct": 85.46928398407772,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -11,3 +11,3 @@\n     cases ht <;> rename_i ht\n-  case choice.choiceR =>\n+  case choiceR =>\n     exact ⟨_, .choiceR ht, .bisim (HomBisimilarity.refl _)⟩",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.33.0-rc2\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.33.0-rc2\", \"v4.32.0\", \"v4.31.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.33.0-rc2\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.32.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.31.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 8,
+        "evidence_sha256": "7fa7e0ee56f6ca807afb4ff706fcbaf5e80be25951183ae72e2b31f96e5bfbb9",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \"Cslib/Languages/CCS/BehaviouralTheory.lean\", \"start\": 425, \"end\": 505}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \"Cslib/Languages/CCS/BehaviouralTheory.lean\", \"version\": \"v4.33.0-rc2\", \"text\": \"425: \\n426: /-- Bisimilarity is a congruence in CCS. -/\\n427: theorem bisimilarity_is_congruence\\n428:     (p q : Process Name Constant) (c : Context Name Constant) (h : p ~[lts (defs := defs)] q) :\\n429:     (c.fill p) ~[lts (defs := defs)] (c.fill q) := by\\n430:   induction c with\\n431:   | parR r c _ =>\\n432:     calc\\n433:       _ ~[lts (defs := defs)] (c.fill p |>.par r)  := by grind\\n434:       _ ~[lts (defs := defs)] (c.fill q |>.par r)  := by grind [bisimilarity_congr_par",
+        "request_sha256": "56dae20e7d2c999bb8a1ffde6e793010338756cd703e4aecf1980e5fe916805b",
+        "response_sha256": "56a8f61715a1ab7a067b1a25e8991278c92aac7d37d53afe965710a6e53c1c45"
+      },
+      {
+        "attempt": 8,
+        "evidence_sha256": "074c2602e4b7bf7d6b91ef042448f7f928cce557de689eeefdf7808895926f61",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \"Cslib/Foundations/Semantics/LTS/Bisimulation.lean\", \"start\": 428, \"end\": 450}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \"Cslib/Foundations/Semantics/LTS/Bisimulation.lean\", \"version\": \"v4.33.0-rc2\", \"text\": \"428:   ext s₁ s₂\\n429:   exact (Deterministic.bisim_tfae s₁ s₂).out 0 1\\n430: \\n431: /-- Homogeneous bisimilarity can also be characterized through symmetric simulations. -/\\n432: theorem HomBisimilarity.symm_simulation :\\n433:   HomBisimilarity lts =\\n434:     fun s₁ s₂ => ∃ r, r s₁ s₂ ∧ Std.Symm r ∧ IsHomSimulation lts r := by\\n435:   ext s₁ s₂\\n436:   constructor\\n437:   · intro h\\n438:     use lts.HomBisimilarity, h\\n439:     exact ⟨⟨fun _ _ => Bisimilarity.symm⟩, (Bis",
+        "request_sha256": "51ef58167948e3067af1120a0558e06180fd1c0f9c9c9a148f56363ce5c5b1e3",
+        "response_sha256": "6ec77dec03eecf8c81f6490ab541c269a34e5b363e58dd6d141dadc40353df6b"
+      },
+      {
+        "attempt": 8,
+        "evidence_sha256": "dce46e9b8a29562add92f432f1808f21079f98e663884ab60a77712da765a548",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \"Cslib/Languages/CCS/BehaviouralTheory.lean\", \"start\": 350, \"end\": 390}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \"Cslib/Languages/CCS/BehaviouralTheory.lean\", \"version\": \"v4.33.0-rc2\", \"text\": \"350:       obtain ⟨rel, hr, hb⟩ := hbisim\\n351:       cases htr\\n352:       case choiceL a b c htr =>\\n353:         obtain ⟨s1', htr1, hr1⟩ := hb.follow_snd hr htr\\n354:         exists s1'\\n355:         constructor\\n356:         · apply Tr.choiceL htr1\\n357:         · constructor\\n358:           apply hb.le_bisimilarity _ _ hr1\\n359:       case choiceR a b c htr =>\\n360:         exists s2'\\n361:         constructor\\n362:         · apply Tr.choiceR htr\\n363:         · constructor\\",
+        "request_sha256": "9db3ccd9e77654a4ac24675c51a725e918f90365b275c2c00f660366a4805afa",
+        "response_sha256": "9e3d5bff7f1fcd88ee1809e1d0b3b9aec7423f948afdd6e6afad504e7798e696"
+      }
+    ],
+    "unverified_model_notes": [
+      {
+        "attempt": 5,
+        "evidence_sha256": "5405ae3d43ed63c482271f9d86d2f3dfea27225d72d5125aa8562e53343b625b",
+        "kind": "discovery",
+        "text": "Profile seed symmetry grind ~117.7HB, exists try trivial ~41.1HB, cases ht ~55.5HB. Removing exists automation with refine costs four or more tokens, and measured heartbeat gain is insufficient to improve combined score."
+      },
+      {
+        "attempt": 8,
+        "evidence_sha256": "730301d07ffba7149bb78be33e785dde99b16e13410360696d32e4143cd95879",
+        "kind": "rejected",
+        "text": "Removing symmetry constructor by grind only [Std.Symm, ChoiceBisim, → Bisimilarity.symm] valid all versions,85tokens419.037HB85.09276; regression and duplicate. Kept seed."
+      }
+    ],
+    "prior_check_count": 98,
+    "prior_event_count": 88,
+    "prior_events_sha256": "0114fcc80427ab2a8d822684ad4bae80a3f67391da97201ed0c7352348856a7b"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $2.91252; $0.0874768 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

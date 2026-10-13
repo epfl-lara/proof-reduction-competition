@@ -39,6 +39,13 @@ response contains (length reduction %, heartbeat reduction %, compatibility %),
 their combined score, correctness feedback, and the best all-version-valid proof
 so far. A failed primary check scores zero. Use the combined score, not just source
 length. Invalid or regressive attempts never replace the saved best proof.
+component_delta_from_previous_best_pp splits a valid candidate's score change
+into length, heartbeats and compatibility contributions; positive values help.
+It is null for an invalid or incompletely checked candidate.
+best_remaining_score_loss_pp, also returned by status, shows the best proof's
+length and heartbeat contributions to the gap below 100. These are upper bounds
+relative to an ideal zero-cost proof, not promised achievable gains. Use them to
+prioritize meaningful changes; profile costs remain diagnostic, not score deltas.
 After a valid result, keep investigating concrete ways to improve it: structural
 alternatives, stronger lemmas, smaller local helpers, focused tactics or explicit
 proof terms. Repair failures and compare the scores of valid alternatives. You

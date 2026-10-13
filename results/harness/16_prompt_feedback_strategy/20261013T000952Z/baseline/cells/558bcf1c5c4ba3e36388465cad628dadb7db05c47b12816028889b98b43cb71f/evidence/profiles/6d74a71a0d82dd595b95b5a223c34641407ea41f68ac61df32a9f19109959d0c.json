@@ -1,0 +1,1915 @@
+{
+  "at": "2026-10-13T03:36:42.665469+00:00",
+  "code": "lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d}\n    {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d)\n    (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J)\n    (t : Time) (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) -\n      𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n      𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t := by\n  have h3 : ContDiff ℝ 3 A := hA.of_le (ENat.LEInfty.out)\n  have h2 : ContDiff ℝ 2 A := hA.of_le (ENat.LEInfty.out)\n  have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) :=\n    electricField_apply_contDiff_space h3 t\n  have hEd (j k : Fin d) := Space.deriv_differentiable (hEs j) k\n  have hBt (j : Fin d) := Space.space_deriv_differentiable_time (i := j)\n    (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i)) x\n  have hJt := LorentzCurrentDensity.currentDensity_apply_differentiable_time\n    (hJ.differentiable (by decide)) x i (c := 𝓕.c)\n  have hb (j : Fin d) :\n      ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t =\n      ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x -\n      ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x := by\n    rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n    simp_rw [time_deriv_magneticFieldMatrix A h2]\n    rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)]\n  have hg : (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) =\n      1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x := by\n    have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) =\n        (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) := by\n      funext y\n      simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n        ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1\n    have hd := congrArg (fun f : Space d → ℝ => ∂[i] f x) hg\n    rw [Space.deriv_eq_fderiv_basis,\n      fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt),\n      Space.deriv_eq_fderiv_basis,\n      fderiv_const_mul (LorentzCurrentDensity.chargeDensity_differentiable_space\n        (hJ.differentiable (by decide)) t).differentiableAt] at hd\n    simpa only [_root_.sum_apply, _root_.smul_apply, smul_eq_mul,\n      ← Space.deriv_eq_fderiv_basis] using hd\n  have he : ∂ₜ (A.electricField 𝓕.c · x i) =\n      (fun s => 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x -\n        1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i) := by\n    funext s\n    rw [Time.deriv_euclid (electricField_differentiable_time h2 x),\n      time_deriv_electricField_of_isExtrema hA J hJ h]\n  rw [he, Time.deriv_eq,\n    fderiv_fun_sub ((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt\n      (hJt.const_mul _).differentiableAt,\n    fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt,\n    fderiv_const_mul hJt.differentiableAt,\n    fderiv_fun_sum (fun j _ => (hBt j).differentiableAt)]\n  simp only [_root_.sub_apply, _root_.smul_apply, _root_.sum_apply, smul_eq_mul,\n    ← Time.deriv_eq, hb, Finset.sum_sub_distrib, mul_sub, hg, FreeSpace.c_sq]\n  field_simp\n  <;> ring\n",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+    "version": "v4.32.0",
+    "proof_sha256": "f735dfe6b8ece03f24180b491bd063855dcfe5e6d0460ad2b8df0a5dcce07dea",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": null,
+      "threshold_raw": 100000,
+      "limit": 20
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "end_local_scope 1",
+        "header_truncated": false,
+        "raw": 1148,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "section",
+        "header_truncated": false,
+        "raw": 1152,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option trace.profiler.threshold✝ 100000",
+        "header_truncated": false,
+        "raw": 62,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [],
+                                            "class": "Elab.step",
+                                            "header": "expected type: (fun x => ℝ) i, term\n∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x",
+                                            "header_truncated": false,
+                                            "raw": 115018,
+                                            "tag": "Lean.Parser.Term.app"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "expected type: (fun x => ℝ) i, term\n(∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x)",
+                                        "header_truncated": false,
+                                        "raw": 115131,
+                                        "tag": "Lean.Parser.Term.paren"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "expected type: Fin d → (fun x => ℝ) i, term\nfun j ↦ (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x)",
+                                    "header_truncated": false,
+                                    "raw": 116200,
+                                    "tag": "Lean.Parser.Term.fun"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "expected type: Fin d → (fun x => ℝ) i, term\n(fun j ↦ (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x))",
+                                "header_truncated": false,
+                                "raw": 116295,
+                                "tag": "Lean.Parser.Term.paren"
+                              }
+                            ],
+                            "class": "Elab.app.args",
+                            "header": "elabAppArgs (2 args) `@Finset.sum`",
+                            "header_truncated": false,
+                            "raw": 127132,
+                            "tag": ""
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "expected type: <not-available>, term\nFinset.sum✝ Finset.univ (fun j ↦ (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x))",
+                        "header_truncated": false,
+                        "raw": 129329,
+                        "tag": "Lean.Parser.Term.app"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "expected type: Sort ?u.26, term\nbinrel% Eq✝ (∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t)\n  (𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) - 𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n    𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t)",
+                    "header_truncated": false,
+                    "raw": 552025,
+                    "tag": "Lean.Parser.Term.binrel"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "expected type: Sort ?u.26, term\n∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n  𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) - 𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n    𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t",
+                "header_truncated": false,
+                "raw": 552144,
+                "tag": "«term_=_»"
+              }
+            ],
+            "class": "Elab.definition.header",
+            "header": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+            "header_truncated": false,
+            "raw": 817533,
+            "tag": ""
+          },
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [],
+                                                                        "class": "Elab.app.args",
+                                                                        "header": "elabAppArgs (3 args) `ContDiff`",
+                                                                        "header_truncated": false,
+                                                                        "raw": 109704,
+                                                                        "tag": ""
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "expected type: Prop, term\nContDiff ℝ 2 (A.electricField 𝓕.c t · j)",
+                                                                    "header_truncated": false,
+                                                                    "raw": 111164,
+                                                                    "tag": "Lean.Parser.Term.app"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "expected type: ∂ₜ (∂ₜ fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t =\n  𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n    𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t, term\nhave hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_space h3 t;\n?_",
+                                                                "header_truncated": false,
+                                                                "raw": 157945,
+                                                                "tag": "Lean.Parser.Term.have"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "expected type: ∂ₜ (∂ₜ fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t =\n  𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n    𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t, term\nno_implicit_lambda%\n  (have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_sp",
+                                                            "header_truncated": true,
+                                                            "raw": 158027,
+                                                            "tag": "Lean.Parser.Term.noImplicitLambda"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "refine\n  no_implicit_lambda%\n    (have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_space h3 t;\n    ?_)",
+                                                        "header_truncated": false,
+                                                        "raw": 167998,
+                                                        "tag": "Lean.Parser.Tactic.refine"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "refine\n    no_implicit_lambda%\n      (have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_space h3 t;\n      ?_);\n  rotate_right",
+                                                    "header_truncated": false,
+                                                    "raw": 168167,
+                                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "refine\n    no_implicit_lambda%\n      (have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_space h3 t;\n      ?_);\n  rotate_right",
+                                                "header_truncated": false,
+                                                "raw": 168247,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "(refine\n    no_implicit_lambda%\n      (have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_space h3 t;\n      ?_);\n  rotate_right)",
+                                            "header_truncated": false,
+                                            "raw": 168329,
+                                            "tag": "Lean.Parser.Tactic.paren"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "(refine\n      no_implicit_lambda%\n        (have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_space h3 t;\n        ?_);\n    rotate_right)",
+                                        "header_truncated": false,
+                                        "raw": 168411,
+                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "(refine\n      no_implicit_lambda%\n        (have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_space h3 t;\n        ?_);\n    rotate_right)",
+                                    "header_truncated": false,
+                                    "raw": 168491,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "focus\n  (refine\n      no_implicit_lambda%\n        (have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_space h3 t;\n        ?_);\n    rotate_right)",
+                                "header_truncated": false,
+                                "raw": 168608,
+                                "tag": "Lean.Parser.Tactic.focus"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "refine_lift\n  have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_space h3 t;\n  ?_",
+                            "header_truncated": false,
+                            "raw": 168720,
+                            "tag": "Lean.Parser.Tactic.tacticRefine_lift_"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_space h3 t",
+                        "header_truncated": false,
+                        "raw": 168819,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [],
+                                                                            "class": "Elab.step",
+                                                                            "header": "expected type: Space d → (fun x => ℝ) j, term\n∂[j] (A.electricField 𝓕.c t · j)",
+                                                                            "header_truncated": false,
+                                                                            "raw": 106300,
+                                                                            "tag": "Lean.Parser.Term.app"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "expected type: Space d → (fun x => ℝ) j, term\n(∂[j] (A.electricField 𝓕.c t · j))",
+                                                                        "header_truncated": false,
+                                                                        "raw": 106396,
+                                                                        "tag": "Lean.Parser.Term.paren"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.app.args",
+                                                                    "header": "elabAppArgs (2 args) `Space.deriv i`",
+                                                                    "header_truncated": false,
+                                                                    "raw": 107219,
+                                                                    "tag": ""
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "expected type: <not-available>, term\n∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x",
+                                                                "header_truncated": false,
+                                                                "raw": 125100,
+                                                                "tag": "Lean.Parser.Term.app"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "expected type: Sort ?u.127, term\nbinrel% Eq✝ (∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t)\n  (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x - ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x)",
+                                                            "header_truncated": false,
+                                                            "raw": 320821,
+                                                            "tag": "Lean.Parser.Term.binrel"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "expected type: Sort ?u.127, term\n∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t =\n  ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x - ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x",
+                                                        "header_truncated": false,
+                                                        "raw": 320939,
+                                                        "tag": "«term_=_»"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "expected type: ∂ₜ (∂ₜ fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t =\n  𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n    𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t, term\nhave hb (j : Fin d) :\n  ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t =\n    ∂[j] (∂[j] (A.electricField 𝓕",
+                                                    "header_truncated": true,
+                                                    "raw": 324588,
+                                                    "tag": "Lean.Parser.Term.have"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "expected type: ∂ₜ (∂ₜ fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t =\n  𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n    𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t, term\n(have hb (j : Fin d) :\n  ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t =\n    ∂[j] (∂[j] (A.electricField ",
+                                                "header_truncated": true,
+                                                "raw": 324683,
+                                                "tag": "Lean.Parser.Term.paren"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "expected type: ∂ₜ (∂ₜ fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t =\n  𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n    𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t, term\nno_implicit_lambda%\n  (have hb (j : Fin d) :\n    ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t =\n      ∂[",
+                                            "header_truncated": true,
+                                            "raw": 324765,
+                                            "tag": "Lean.Parser.Term.noImplicitLambda"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "refine\n  no_implicit_lambda%\n    (have hb (j : Fin d) :\n      ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t =\n        ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x - ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x :=\n      ?body✝;\n    ?_)",
+                                        "header_truncated": false,
+                                        "raw": 325161,
+                                        "tag": "Lean.Parser.Tactic.refine"
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [],
+                                                                                            "class": "Elab.app.args",
+                                                                                            "header": "elabAppArgs (1 args) `@time_deriv_comm_space_deriv`",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 100233,
+                                                                                            "tag": ""
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "expected type: <not-available>, term\nSpace.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 100599,
+                                                                                        "tag": "Lean.Parser.Term.app"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "rewrite [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 147555,
+                                                                                    "tag": "Lean.Parser.Tactic.rewriteSeq"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "rewrite [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))];\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                                "header_truncated": false,
+                                                                                "raw": 162453,
+                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "rewrite [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))];\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                            "header_truncated": false,
+                                                                            "raw": 162534,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "(rewrite [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))];\n  with_annotate_state\"]\" (try (with_reducible rfl)))",
+                                                                        "header_truncated": false,
+                                                                        "raw": 162617,
+                                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]",
+                                                                    "header_truncated": false,
+                                                                    "raw": 162742,
+                                                                    "tag": "Lean.Parser.Tactic.rwSeq"
+                                                                  },
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [],
+                                                                                            "class": "Elab.app.args",
+                                                                                            "header": "elabAppArgs (4 args) `@fun_deriv_sub`",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 153310,
+                                                                                            "tag": ""
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "expected type: <not-available>, term\nSpace.fun_deriv_sub _ _ (hEd i j) (hEd j i)",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 153934,
+                                                                                        "tag": "Lean.Parser.Term.app"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "rewrite [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)]",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 326045,
+                                                                                    "tag": "Lean.Parser.Tactic.rewriteSeq"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "rewrite [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)];\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                                "header_truncated": false,
+                                                                                "raw": 371055,
+                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "rewrite [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)];\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                            "header_truncated": false,
+                                                                            "raw": 371134,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "(rewrite [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)];\n  with_annotate_state\"]\" (try (with_reducible rfl)))",
+                                                                        "header_truncated": false,
+                                                                        "raw": 371215,
+                                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)]",
+                                                                    "header_truncated": false,
+                                                                    "raw": 371338,
+                                                                    "tag": "Lean.Parser.Tactic.rwSeq"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "  rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n  simp_rw [time_deriv_magneticFieldMatrix A h2]\n  rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)]",
+                                                                "header_truncated": false,
+                                                                "raw": 612604,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "  rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n  simp_rw [time_deriv_magneticFieldMatrix A h2]\n  rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)]",
+                                                            "header_truncated": false,
+                                                            "raw": 612683,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "( rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n  simp_rw [time_deriv_magneticFieldMatrix A h2]\n  rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)])",
+                                                        "header_truncated": false,
+                                                        "raw": 612764,
+                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "with_annotate_state\"by\"\n  ( rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n    simp_rw [time_deriv_magneticFieldMatrix A h2]\n    rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)])",
+                                                    "header_truncated": false,
+                                                    "raw": 612854,
+                                                    "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "with_annotate_state\"by\"\n    ( rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n      simp_rw [time_deriv_magneticFieldMatrix A h2]\n      rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)])",
+                                                "header_truncated": false,
+                                                "raw": 612935,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "with_annotate_state\"by\"\n    ( rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n      simp_rw [time_deriv_magneticFieldMatrix A h2]\n      rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)])",
+                                            "header_truncated": false,
+                                            "raw": 613014,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "case body✝ =>\n  with_annotate_state\"by\"\n    ( rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n      simp_rw [time_deriv_magneticFieldMatrix A h2]\n      rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)])",
+                                        "header_truncated": false,
+                                        "raw": 613178,
+                                        "tag": "Lean.Parser.Tactic.case"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "  refine\n    no_implicit_lambda%\n      (have hb (j : Fin d) :\n        ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t =\n          ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x - ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n        simp_rw [time_deriv_magneticFieldMatrix A h2]\n        rw [Space.fun_deriv_sub _ _ (hEd i",
+                                    "header_truncated": true,
+                                    "raw": 938497,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "  refine\n    no_implicit_lambda%\n      (have hb (j : Fin d) :\n        ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t =\n          ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x - ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n        simp_rw [time_deriv_magneticFieldMatrix A h2]\n        rw [Space.fun_deriv_sub _ _ (hEd i",
+                                "header_truncated": true,
+                                "raw": 938582,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "focus\n  refine\n    no_implicit_lambda%\n      (have hb (j : Fin d) :\n        ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t =\n          ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x - ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n        simp_rw [time_deriv_magneticFieldMatrix A h2]\n        rw [Space.fun_deriv_sub _ _ ",
+                            "header_truncated": true,
+                            "raw": 938704,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "have hb (j : Fin d) :\n  ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t =\n    ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x - ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x :=\n  by\n  rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n  simp_rw [time_deriv_magneticFieldMatrix A h2]\n  rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)]",
+                        "header_truncated": false,
+                        "raw": 938883,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [],
+                                                                                "class": "Elab.step",
+                                                                                "header": "expected type: ℝ, term\n∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x",
+                                                                                "header_truncated": false,
+                                                                                "raw": 112889,
+                                                                                "tag": "Lean.Parser.Term.app"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "expected type: Fin d → ℝ, term\nfun j ↦ ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x",
+                                                                            "header_truncated": false,
+                                                                            "raw": 113893,
+                                                                            "tag": "Lean.Parser.Term.fun"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "expected type: Fin d → ℝ, term\n(fun j ↦ ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 113989,
+                                                                        "tag": "Lean.Parser.Term.paren"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.app.args",
+                                                                    "header": "elabAppArgs (2 args) `@Finset.sum`",
+                                                                    "header_truncated": false,
+                                                                    "raw": 122968,
+                                                                    "tag": ""
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "expected type: <not-available>, term\nFinset.sum✝ Finset.univ (fun j ↦ ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x)",
+                                                                "header_truncated": false,
+                                                                "raw": 127696,
+                                                                "tag": "Lean.Parser.Term.app"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "expected type: Sort ?u.149, term\nbinrel% Eq✝ (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) (1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x)",
+                                                            "header_truncated": false,
+                                                            "raw": 223052,
+                                                            "tag": "Lean.Parser.Term.binrel"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "expected type: Sort ?u.149, term\n(∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) = 1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x",
+                                                        "header_truncated": false,
+                                                        "raw": 223171,
+                                                        "tag": "«term_=_»"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "expected type: ∂ₜ (∂ₜ fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t =\n  𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n    𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t, term\nhave hg : (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) = 1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x := ?body✝;\n?_",
+                                                    "header_truncated": false,
+                                                    "raw": 224148,
+                                                    "tag": "Lean.Parser.Term.have"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "expected type: ∂ₜ (∂ₜ fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t =\n  𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n    𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t, term\n(have hg : (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) = 1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x := ?body✝;\n?_)",
+                                                "header_truncated": false,
+                                                "raw": 224243,
+                                                "tag": "Lean.Parser.Term.paren"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "expected type: ∂ₜ (∂ₜ fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t =\n  𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n    𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t, term\nno_implicit_lambda%\n  (have hg : (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) = 1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c ",
+                                            "header_truncated": true,
+                                            "raw": 224325,
+                                            "tag": "Lean.Parser.Term.noImplicitLambda"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "refine\n  no_implicit_lambda%\n    (have hg : (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) = 1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x := ?body✝;\n    ?_)",
+                                        "header_truncated": false,
+                                        "raw": 224705,
+                                        "tag": "Lean.Parser.Tactic.refine"
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [],
+                                                                                                        "class": "Elab.step",
+                                                                                                        "header": "expected type: Sort ?u.169, term\nbinrel% Eq✝ (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y)",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 106146,
+                                                                                                        "tag": "Lean.Parser.Term.binrel"
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Elab.step",
+                                                                                                    "header": "expected type: Sort ?u.169, term\n(fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y)",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 106263,
+                                                                                                    "tag": "«term_=_»"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "expected type: ∑ j, Space.deriv i (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) x =\n  1 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x, term\nhave hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) := ?body✝;\n?_",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 106995,
+                                                                                                "tag": "Lean.Parser.Term.have"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "expected type: ∑ j, Space.deriv i (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) x =\n  1 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x, term\n(have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) := ?body✝;\n?_)",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 107090,
+                                                                                            "tag": "Lean.Parser.Term.paren"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "expected type: ∑ j, Space.deriv i (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) x =\n  1 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x, term\nno_implicit_lambda%\n  (have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n    ?body✝;\n  ?_)",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 107173,
+                                                                                        "tag": "Lean.Parser.Term.noImplicitLambda"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "refine\n  no_implicit_lambda%\n    (have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n      ?body✝;\n    ?_)",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 107710,
+                                                                                    "tag": "Lean.Parser.Tactic.refine"
+                                                                                  },
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [
+                                                                                                              {
+                                                                                                                "children": [],
+                                                                                                                "class": "Elab.step",
+                                                                                                                "header": "simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n  ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1",
+                                                                                                                "header_truncated": false,
+                                                                                                                "raw": 168779,
+                                                                                                                "tag": "Lean.Parser.Tactic.simpa"
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "class": "Elab.step",
+                                                                                                            "header": "  funext y\n  simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n    ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 173035,
+                                                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Elab.step",
+                                                                                                        "header": "  funext y\n  simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n    ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 173117,
+                                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Elab.step",
+                                                                                                    "header": "( funext y\n  simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n    ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1)",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 173201,
+                                                                                                    "tag": "Lean.Parser.Tactic.paren"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "with_annotate_state\"by\"\n  ( funext y\n    simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n      ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1)",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 173291,
+                                                                                                "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "with_annotate_state\"by\"\n    ( funext y\n      simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n        ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1)",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 173372,
+                                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "with_annotate_state\"by\"\n    ( funext y\n      simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n        ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1)",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 173451,
+                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "case body✝ =>\n  with_annotate_state\"by\"\n    ( funext y\n      simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n        ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1)",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 173616,
+                                                                                    "tag": "Lean.Parser.Tactic.case"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "  refine\n    no_implicit_lambda%\n      (have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( funext y\n        simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n          ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1)",
+                                                                                "header_truncated": false,
+                                                                                "raw": 281484,
+                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "  refine\n    no_implicit_lambda%\n      (have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( funext y\n        simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n          ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1)",
+                                                                            "header_truncated": false,
+                                                                            "raw": 281569,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "focus\n  refine\n    no_implicit_lambda%\n      (have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( funext y\n        simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n          ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 281691,
+                                                                        "tag": "Lean.Parser.Tactic.focus"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n  by\n  funext y\n  simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n    ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1",
+                                                                    "header_truncated": false,
+                                                                    "raw": 281870,
+                                                                    "tag": "Lean.Parser.Tactic.tacticHave__"
+                                                                  },
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [
+                                                                                                              {
+                                                                                                                "children": [],
+                                                                                                                "class": "Elab.app.finalize",
+                                                                                                                "header": "Differentiable.differentiableAt\n  (hEd j j) : DifferentiableAt ℝ (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) ?m.499",
+                                                                                                                "header_truncated": false,
+                                                                                                                "raw": 143497,
+                                                                                                                "tag": ""
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "class": "Elab.app.args",
+                                                                                                            "header": "elabAppArgs (1 args)\n  @Differentiable.differentiableAt",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 161664,
+                                                                                                            "tag": ""
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Elab.step",
+                                                                                                        "header": "expected type: DifferentiableAt ℝ (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp j) ?m.499, term\n(hEd j j).differentiableAt",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 164756,
+                                                                                                        "tag": "Lean.Parser.Term.proj"
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Elab.step",
+                                                                                                    "header": "expected type: ∀ i ∈ ?m.483, DifferentiableAt ℝ (Space.deriv i fun x => (electricField 𝓕.c A t x).ofLp i) ?m.499, term\nfun j _ => (hEd j j).differentiableAt",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 173015,
+                                                                                                    "tag": "Lean.Parser.Term.fun"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "expected type: ∀ i ∈ ?m.483, DifferentiableAt ℝ (Space.deriv i fun x => (electricField 𝓕.c A t x).ofLp i) ?m.499, term\n(fun j _ => (hEd j j).differentiableAt)",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 173110,
+                                                                                                "tag": "Lean.Parser.Term.paren"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.app.args",
+                                                                                            "header": "elabAppArgs (1 args) `@fderiv_fun_sum`",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 230091,
+                                                                                            "tag": ""
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "expected type: <not-available>, term\nfderiv_fun_sum (fun j _ => (hEd j j).differentiableAt)",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 231925,
+                                                                                        "tag": "Lean.Parser.Term.app"
+                                                                                      },
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "expected type: DifferentiableAt ℝ (fun x => LorentzCurrentDensity.chargeDensity ?m.527 J t x) ?m.551, term\n(LorentzCurrentDensity.chargeDensity_differentiable_space (hJ.differentiable (by decide)) t).differentiableAt",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 101179,
+                                                                                                "tag": "Lean.Parser.Term.proj"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.app.args",
+                                                                                            "header": "elabAppArgs (1 args) `@fderiv_const_mul`",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 136254,
+                                                                                            "tag": ""
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "expected type: <not-available>, term\nfderiv_const_mul\n  (LorentzCurrentDensity.chargeDensity_differentiable_space (hJ.differentiable (by decide)) t).differentiableAt",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 138202,
+                                                                                        "tag": "Lean.Parser.Term.app"
+                                                                                      },
+                                                                                      {
+                                                                                        "children": [],
+                                                                                        "class": "Meta.check",
+                                                                                        "header": "fun _a =>\n  (∑ i, fderiv ℝ (Space.deriv i fun x => (electricField 𝓕.c A t x).ofLp i) x) (Space.basis i) = _a (Space.basis i)",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 111783,
+                                                                                        "tag": ""
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "rewrite [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt),\n  Space.deriv_eq_fderiv_basis,\n  fderiv_const_mul\n    (LorentzCurrentDensity.chargeDensity_differentiable_space (hJ.differentiable (by decide)) t).differentiableAt] at hd",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 886999,
+                                                                                    "tag": "Lean.Parser.Tactic.rewriteSeq"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "rewrite [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt),\n    Space.deriv_eq_fderiv_basis,\n    fderiv_const_mul\n      (LorentzCurrentDensity.chargeDensity_differentiable_space (hJ.differentiable (by decide))\n          t).differentiableAt] at hd;\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                                "header_truncated": false,
+                                                                                "raw": 901793,
+                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "rewrite [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt),\n    Space.deriv_eq_fderiv_basis,\n    fderiv_const_mul\n      (LorentzCurrentDensity.chargeDensity_differentiable_space (hJ.differentiable (by decide))\n          t).differentiableAt] at hd;\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                            "header_truncated": false,
+                                                                            "raw": 901874,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "(rewrite [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt),\n    Space.deriv_eq_fderiv_basis,\n    fderiv_const_mul\n      (LorentzCurrentDensity.chargeDensity_differentiable_space (hJ.differentiable (by decide))\n          t).differentiableAt] at hd;\n  with_annotate_state\"]\" (try (with_reducible rfl)))",
+                                                                        "header_truncated": false,
+                                                                        "raw": 901957,
+                                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt), Space.deriv_eq_fderiv_basis,\n  fderiv_const_mul\n    (LorentzCurrentDensity.chargeDensity_differentiable_space (hJ.differentiable (by decide)) t).differentiableAt] at hd",
+                                                                    "header_truncated": false,
+                                                                    "raw": 902083,
+                                                                    "tag": "Lean.Parser.Tactic.rwSeq"
+                                                                  },
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [],
+                                                                        "class": "Meta.synthInstance",
+                                                                        "header": "IsZeroApply (Space d →L[ℝ] ℝ) (Space d) ℝ",
+                                                                        "header_truncated": false,
+                                                                        "raw": 101126,
+                                                                        "tag": ""
+                                                                      },
+                                                                      {
+                                                                        "children": [],
+                                                                        "class": "Meta.synthInstance",
+                                                                        "header": "IsSMulApply ℝ (Space d →L[ℝ] ℝ) (Space d) ℝ",
+                                                                        "header_truncated": false,
+                                                                        "raw": 122831,
+                                                                        "tag": ""
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "simpa only [_root_.sum_apply, _root_.smul_apply, smul_eq_mul, ← Space.deriv_eq_fderiv_basis] using hd",
+                                                                    "header_truncated": false,
+                                                                    "raw": 759108,
+                                                                    "tag": "Lean.Parser.Tactic.simpa"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "  have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n    by\n    funext y\n    simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n      ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1\n  have hd := congrArg (fun f : Space d → ℝ => ∂[i] f x) hg\n  rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt), Space.deriv_eq_fderiv_basis,\n    fderiv_const_mul\n      (Lorent",
+                                                                "header_truncated": true,
+                                                                "raw": 1994944,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "  have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n    by\n    funext y\n    simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n      ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1\n  have hd := congrArg (fun f : Space d → ℝ => ∂[i] f x) hg\n  rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt), Space.deriv_eq_fderiv_basis,\n    fderiv_const_mul\n      (Lorent",
+                                                            "header_truncated": true,
+                                                            "raw": 1995024,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "( have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n    by\n    funext y\n    simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n      ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1\n  have hd := congrArg (fun f : Space d → ℝ => ∂[i] f x) hg\n  rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt), Space.deriv_eq_fderiv_basis,\n    fderiv_const_mul\n      (Lorent",
+                                                        "header_truncated": true,
+                                                        "raw": 1995106,
+                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "with_annotate_state\"by\"\n  ( have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n      by\n      funext y\n      simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n        ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1\n    have hd := congrArg (fun f : Space d → ℝ => ∂[i] f x) hg\n    rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt),\n      Space.deriv_eq_fder",
+                                                    "header_truncated": true,
+                                                    "raw": 1995196,
+                                                    "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "with_annotate_state\"by\"\n    ( have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n        by\n        funext y\n        simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n          ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1\n      have hd := congrArg (fun f : Space d → ℝ => ∂[i] f x) hg\n      rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt),\n        Spa",
+                                                "header_truncated": true,
+                                                "raw": 1995277,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "with_annotate_state\"by\"\n    ( have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n        by\n        funext y\n        simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n          ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1\n      have hd := congrArg (fun f : Space d → ℝ => ∂[i] f x) hg\n      rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt),\n        Spa",
+                                            "header_truncated": true,
+                                            "raw": 1995356,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "case body✝ =>\n  with_annotate_state\"by\"\n    ( have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n        by\n        funext y\n        simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n          ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1\n      have hd := congrArg (fun f : Space d → ℝ => ∂[i] f x) hg\n      rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiable",
+                                        "header_truncated": true,
+                                        "raw": 1995521,
+                                        "tag": "Lean.Parser.Tactic.case"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "  refine\n    no_implicit_lambda%\n      (have hg : (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) = 1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n          by\n          funext y\n          simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n            ((isExtrema_iff_gauss_ampere_magnet",
+                                    "header_truncated": true,
+                                    "raw": 2220384,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "  refine\n    no_implicit_lambda%\n      (have hg : (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) = 1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n          by\n          funext y\n          simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n            ((isExtrema_iff_gauss_ampere_magnet",
+                                "header_truncated": true,
+                                "raw": 2220469,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "focus\n  refine\n    no_implicit_lambda%\n      (have hg : (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) = 1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n          by\n          funext y\n          simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n            ((isExtrema_iff_gauss_ampere_",
+                            "header_truncated": true,
+                            "raw": 2220591,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "have hg : (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) = 1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x :=\n  by\n  have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n    by\n    funext y\n    simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n      ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1\n  have hd := congrArg (fun f : Space d → ℝ => ∂[i] f x) hg\n  rw [Space.deriv_eq_fderiv_basis, fderiv",
+                        "header_truncated": true,
+                        "raw": 2220770,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [],
+                                                                        "class": "Elab.step",
+                                                                        "header": "expected type: <not-available>, term\nbinop% HSub.hSub✝ (1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x)\n  (1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 161759,
+                                                                        "tag": "Lean.Parser.Term.binop"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "expected type: <not-available>, term\n1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x - 1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i",
+                                                                    "header_truncated": false,
+                                                                    "raw": 161876,
+                                                                    "tag": "«term_-_»"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "expected type: <not-available>, term\nfun s => 1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x - 1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i",
+                                                                "header_truncated": false,
+                                                                "raw": 162636,
+                                                                "tag": "Lean.Parser.Term.fun"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "expected type: Sort ?u.244, term\nbinrel% Eq✝ (∂ₜ (A.electricField 𝓕.c · x i))\n  (fun s =>\n    1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x - 1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i)",
+                                                            "header_truncated": false,
+                                                            "raw": 236609,
+                                                            "tag": "Lean.Parser.Term.binrel"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "expected type: Sort ?u.244, term\n∂ₜ (A.electricField 𝓕.c · x i) =\n  (fun s =>\n    1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x - 1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i)",
+                                                        "header_truncated": false,
+                                                        "raw": 236726,
+                                                        "tag": "«term_=_»"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "expected type: ∂ₜ (∂ₜ fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t =\n  𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n    𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t, term\nhave he :\n  ∂ₜ (A.electricField 𝓕.c · x i) =\n    (fun s =>\n      1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c",
+                                                    "header_truncated": true,
+                                                    "raw": 237669,
+                                                    "tag": "Lean.Parser.Term.have"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "expected type: ∂ₜ (∂ₜ fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t =\n  𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n    𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t, term\n(have he :\n  ∂ₜ (A.electricField 𝓕.c · x i) =\n    (fun s =>\n      1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.",
+                                                "header_truncated": true,
+                                                "raw": 237764,
+                                                "tag": "Lean.Parser.Term.paren"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "expected type: ∂ₜ (∂ₜ fun x_1 => (electricField 𝓕.c A x_1 x).ofLp i) t =\n  𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n    𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t, term\nno_implicit_lambda%\n  (have he :\n    ∂ₜ (A.electricField 𝓕.c · x i) =\n      (fun s =>\n        1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[",
+                                            "header_truncated": true,
+                                            "raw": 237846,
+                                            "tag": "Lean.Parser.Term.noImplicitLambda"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "refine\n  no_implicit_lambda%\n    (have he :\n      ∂ₜ (A.electricField 𝓕.c · x i) =\n        (fun s =>\n          1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x -\n            1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i) :=\n      ?body✝;\n    ?_)",
+                                        "header_truncated": false,
+                                        "raw": 238274,
+                                        "tag": "Lean.Parser.Tactic.refine"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "  refine\n    no_implicit_lambda%\n      (have he :\n        ∂ₜ (A.electricField 𝓕.c · x i) =\n          (fun s =>\n            1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x -\n              1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( funext s\n        rw [Time.deriv_euclid (electricField_differentiable_time h2 x),\n          time_deriv_electricField_of_isExtrema hA J hJ h])",
+                                    "header_truncated": false,
+                                    "raw": 315087,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "  refine\n    no_implicit_lambda%\n      (have he :\n        ∂ₜ (A.electricField 𝓕.c · x i) =\n          (fun s =>\n            1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x -\n              1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( funext s\n        rw [Time.deriv_euclid (electricField_differentiable_time h2 x),\n          time_deriv_electricField_of_isExtrema hA J hJ h])",
+                                "header_truncated": false,
+                                "raw": 315172,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "focus\n  refine\n    no_implicit_lambda%\n      (have he :\n        ∂ₜ (A.electricField 𝓕.c · x i) =\n          (fun s =>\n            1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x -\n              1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( funext s\n        rw [Time.deriv_euclid (electricField_differentiable_time h2 x),\n          time_deriv_electricField_of_isExtrema hA J hJ h])",
+                            "header_truncated": false,
+                            "raw": 315294,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "have he :\n  ∂ₜ (A.electricField 𝓕.c · x i) =\n    (fun s =>\n      1 / (𝓕.μ₀ * 𝓕.ε₀) * ∑ j, ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x - 1 / 𝓕.ε₀ * J.currentDensity 𝓕.c s x i) :=\n  by\n  funext s\n  rw [Time.deriv_euclid (electricField_differentiable_time h2 x), time_deriv_electricField_of_isExtrema hA J hJ h]",
+                        "header_truncated": false,
+                        "raw": 315473,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [],
+                                                                        "class": "Elab.app.args",
+                                                                        "header": "elabAppArgs (1 args) `@Differentiable.fun_sum`",
+                                                                        "header_truncated": false,
+                                                                        "raw": 112071,
+                                                                        "tag": ""
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "expected type: <not-available>, term\nDifferentiable.fun_sum fun j _ => hBt j",
+                                                                    "header_truncated": false,
+                                                                    "raw": 112772,
+                                                                    "tag": "Lean.Parser.Term.app"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "expected type: <not-available>, term\n(Differentiable.fun_sum fun j _ => hBt j)",
+                                                                "header_truncated": false,
+                                                                "raw": 112871,
+                                                                "tag": "Lean.Parser.Term.paren"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "expected type: <not-available>, term\n(Differentiable.fun_sum fun j _ => hBt j).const_mul _",
+                                                            "header_truncated": false,
+                                                            "raw": 170984,
+                                                            "tag": "Lean.Parser.Term.app"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "expected type: <not-available>, term\n((Differentiable.fun_sum fun j _ => hBt j).const_mul _)",
+                                                        "header_truncated": false,
+                                                        "raw": 171083,
+                                                        "tag": "Lean.Parser.Term.paren"
+                                                      },
+                                                      {
+                                                        "children": [],
+                                                        "class": "Elab.app.args",
+                                                        "header": "elabAppArgs (1 args)\n  @Differentiable.differentiableAt",
+                                                        "header_truncated": false,
+                                                        "raw": 104396,
+                                                        "tag": ""
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "expected type: DifferentiableAt ℝ\n  (fun y => ?m.694 * ∑ i_1 ∈ ?m.681, Space.deriv i_1 (fun x => magneticFieldMatrix 𝓕.c A y x (i_1, i)) x) ?m.706, term\n((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt",
+                                                    "header_truncated": false,
+                                                    "raw": 277020,
+                                                    "tag": "Lean.Parser.Term.proj"
+                                                  },
+                                                  {
+                                                    "children": [],
+                                                    "class": "Elab.step",
+                                                    "header": "expected type: DifferentiableAt ℝ (fun y => ?m.716 * (LorentzCurrentDensity.currentDensity 𝓕.c J y x).ofLp i)\n  ?m.728, term\n(hJt.const_mul _).differentiableAt",
+                                                    "header_truncated": false,
+                                                    "raw": 127051,
+                                                    "tag": "Lean.Parser.Term.proj"
+                                                  }
+                                                ],
+                                                "class": "Elab.app.args",
+                                                "header": "elabAppArgs (2 args) `@fderiv_fun_sub`",
+                                                "header_truncated": false,
+                                                "raw": 426136,
+                                                "tag": ""
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "expected type: <not-available>, term\nfderiv_fun_sub ((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt\n  (hJt.const_mul _).differentiableAt",
+                                            "header_truncated": false,
+                                            "raw": 427998,
+                                            "tag": "Lean.Parser.Term.app"
+                                          },
+                                          {
+                                            "children": [],
+                                            "class": "Meta.check",
+                                            "header": "fun _a =>\n  ((1 / (𝓕.μ₀ * 𝓕.ε₀)) •\n          fderiv ℝ (fun y => ∑ i_1, Space.deriv i_1 (fun x => magneticFieldMatrix 𝓕.c A y x (i_1, i)) x) t -\n        _a)\n      1 =\n    𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n        𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n      𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t",
+                                            "header_truncated": false,
+                                            "raw": 149530,
+                                            "tag": ""
+                                          },
+                                          {
+                                            "children": [],
+                                            "class": "Meta.check",
+                                            "header": "fun _a =>\n  ((1 / (𝓕.μ₀ * 𝓕.ε₀)) • _a -\n        (1 / 𝓕.ε₀) • fderiv ℝ (fun t => (LorentzCurrentDensity.currentDensity 𝓕.c J t x).ofLp i) t)\n      1 =\n    𝓕.c.val ^ 2 * ∑ j, Space.deriv j (Space.deriv j fun x => (electricField 𝓕.c A t x).ofLp i) x -\n        𝓕.c.val ^ 2 / 𝓕.ε₀ * Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n      𝓕.c.val ^ 2 * 𝓕.μ₀ * ∂ₜ (fun x_1 => (LorentzCurrentDensity.currentDensity 𝓕.c J x_1 x).ofLp i) t",
+                                            "header_truncated": false,
+                                            "raw": 171086,
+                                            "tag": ""
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "rewrite [he, Time.deriv_eq,\n  fderiv_fun_sub ((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt\n    (hJt.const_mul _).differentiableAt,\n  fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt, fderiv_const_mul hJt.differentiableAt,\n  fderiv_fun_sum (fun j _ => (hBt j).differentiableAt)]",
+                                        "header_truncated": false,
+                                        "raw": 1300521,
+                                        "tag": "Lean.Parser.Tactic.rewriteSeq"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "rewrite [he, Time.deriv_eq,\n    fderiv_fun_sub ((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt\n      (hJt.const_mul _).differentiableAt,\n    fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt, fderiv_const_mul hJt.differentiableAt,\n    fderiv_fun_sum (fun j _ => (hBt j).differentiableAt)];\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                    "header_truncated": false,
+                                    "raw": 1315795,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "rewrite [he, Time.deriv_eq,\n    fderiv_fun_sub ((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt\n      (hJt.const_mul _).differentiableAt,\n    fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt, fderiv_const_mul hJt.differentiableAt,\n    fderiv_fun_sum (fun j _ => (hBt j).differentiableAt)];\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                "header_truncated": false,
+                                "raw": 1315876,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "(rewrite [he, Time.deriv_eq,\n    fderiv_fun_sub ((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt\n      (hJt.const_mul _).differentiableAt,\n    fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt, fderiv_const_mul hJt.differentiableAt,\n    fderiv_fun_sum (fun j _ => (hBt j).differentiableAt)];\n  with_annotate_state\"]\" (try (with_reducible rfl)))",
+                            "header_truncated": false,
+                            "raw": 1315959,
+                            "tag": "Lean.Parser.Tactic.paren"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "rw [he, Time.deriv_eq,\n  fderiv_fun_sub ((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt\n    (hJt.const_mul _).differentiableAt,\n  fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt, fderiv_const_mul hJt.differentiableAt,\n  fderiv_fun_sum (fun j _ => (hBt j).differentiableAt)]",
+                        "header_truncated": false,
+                        "raw": 1316084,
+                        "tag": "Lean.Parser.Tactic.rwSeq"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [],
+                            "class": "Meta.synthInstance",
+                            "header": "IsSubApply (Time →L[ℝ] ℝ) Time ((fun x => ℝ) i)",
+                            "header_truncated": false,
+                            "raw": 120433,
+                            "tag": ""
+                          },
+                          {
+                            "children": [],
+                            "class": "Meta.synthInstance",
+                            "header": "IsSMulApply ℝ (Time →L[ℝ] ℝ) Time ((fun x => ℝ) i)",
+                            "header_truncated": false,
+                            "raw": 119971,
+                            "tag": ""
+                          },
+                          {
+                            "children": [],
+                            "class": "Meta.synthInstance",
+                            "header": "IsSMulApply ℝ (Time →L[ℝ] ℝ) Time ((fun x => ℝ) i)",
+                            "header_truncated": false,
+                            "raw": 121601,
+                            "tag": ""
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "simp only [_root_.sub_apply, _root_.smul_apply, _root_.sum_apply, smul_eq_mul, ← Time.deriv_eq, hb,\n  Finset.sum_sub_distrib, mul_sub, hg, FreeSpace.c_sq]",
+                        "header_truncated": false,
+                        "raw": 1097677,
+                        "tag": "Lean.Parser.Tactic.simp"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [],
+                                            "class": "Tactic.field_simp",
+                                            "header": "discharge 𝓕.μ₀ ≠ 0",
+                                            "header_truncated": false,
+                                            "raw": 313132,
+                                            "tag": ""
+                                          },
+                                          {
+                                            "children": [],
+                                            "class": "Tactic.field_simp",
+                                            "header": "discharge 𝓕.μ₀ ≠ 0",
+                                            "header_truncated": false,
+                                            "raw": 299127,
+                                            "tag": ""
+                                          },
+                                          {
+                                            "children": [],
+                                            "class": "Tactic.field_simp",
+                                            "header": "discharge 𝓕.ε₀ ≠ 0",
+                                            "header_truncated": false,
+                                            "raw": 299967,
+                                            "tag": ""
+                                          },
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [],
+                                                        "class": "Meta.synthInstance",
+                                                        "header": "Nonempty (Fin d)",
+                                                        "header_truncated": false,
+                                                        "raw": 1022184,
+                                                        "tag": ""
+                                                      }
+                                                    ],
+                                                    "class": "Tactic.field_simp",
+                                                    "header": "discharge IsEmpty (Fin d)",
+                                                    "header_truncated": false,
+                                                    "raw": 1068945,
+                                                    "tag": ""
+                                                  }
+                                                ],
+                                                "class": "Meta.Tactic.simp.discharge",
+                                                "header": "Finset.univ_eq_empty discharge ❌️\n  IsEmpty (Fin d)",
+                                                "header_truncated": false,
+                                                "raw": 1068983,
+                                                "tag": ""
+                                              },
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [],
+                                                        "class": "Meta.synthInstance",
+                                                        "header": "Nonempty (Fin d)",
+                                                        "header_truncated": false,
+                                                        "raw": 1022153,
+                                                        "tag": ""
+                                                      }
+                                                    ],
+                                                    "class": "Tactic.field_simp",
+                                                    "header": "discharge IsEmpty (Fin d)",
+                                                    "header_truncated": false,
+                                                    "raw": 1068854,
+                                                    "tag": ""
+                                                  }
+                                                ],
+                                                "class": "Meta.Tactic.simp.discharge",
+                                                "header": "Finset.univ_eq_empty discharge ❌️\n  IsEmpty (Fin d)",
+                                                "header_truncated": false,
+                                                "raw": 1068892,
+                                                "tag": ""
+                                              }
+                                            ],
+                                            "class": "Tactic.field_simp",
+                                            "header": "discharge 𝓕.ε₀ * ∑ x_1, Space.deriv x_1 (Space.deriv x_1 fun x => (electricField 𝓕.c A t x).ofLp i) x -\n      Space.deriv i (fun x => LorentzCurrentDensity.chargeDensity 𝓕.c J t x) x -\n    𝓕.μ₀ * 𝓕.ε₀ * ∂ₜ (fun t => (LorentzCurrentDensity.currentDensity 𝓕.c J t x).ofLp i) t ≠\n  0",
+                                            "header_truncated": false,
+                                            "raw": 2909833,
+                                            "tag": ""
+                                          },
+                                          {
+                                            "children": [],
+                                            "class": "Tactic.field_simp",
+                                            "header": "discharge 𝓕.μ₀ ≠ 0",
+                                            "header_truncated": false,
+                                            "raw": 300494,
+                                            "tag": ""
+                                          },
+                                          {
+                                            "children": [],
+                                            "class": "Tactic.field_simp",
+                                            "header": "discharge 𝓕.ε₀ ≠ 0",
+                                            "header_truncated": false,
+                                            "raw": 299835,
+                                            "tag": ""
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "field_simp",
+                                        "header_truncated": false,
+                                        "raw": 4836200,
+                                        "tag": "Mathlib.Tactic.FieldSimp.fieldSimp"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "  field_simp\n  with_annotate_state\"<;>\" skip\n  all_goals ring",
+                                    "header_truncated": false,
+                                    "raw": 4836498,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "  field_simp\n  with_annotate_state\"<;>\" skip\n  all_goals ring",
+                                "header_truncated": false,
+                                "raw": 4836580,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "focus\n  field_simp\n  with_annotate_state\"<;>\" skip\n  all_goals ring",
+                            "header_truncated": false,
+                            "raw": 4836696,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "field_simp <;> ring",
+                        "header_truncated": false,
+                        "raw": 4836806,
+                        "tag": "Lean.Parser.Tactic.«tactic_<;>_»"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "  have h3 : ContDiff ℝ 3 A := hA.of_le (ENat.LEInfty.out)\n  have h2 : ContDiff ℝ 2 A := hA.of_le (ENat.LEInfty.out)\n  have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_space h3 t\n  have hEd (j k : Fin d) := Space.deriv_differentiable (hEs j) k\n  have hBt (j : Fin d) :=\n    Space.space_deriv_differentiable_time (i := j) (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i)) x\n  have hJt :=\n    LorentzCurrentDensity.currentDensity_apply_differentiable_t",
+                    "header_truncated": true,
+                    "raw": 11234848,
+                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "  have h3 : ContDiff ℝ 3 A := hA.of_le (ENat.LEInfty.out)\n  have h2 : ContDiff ℝ 2 A := hA.of_le (ENat.LEInfty.out)\n  have hEs (j : Fin d) : ContDiff ℝ 2 (A.electricField 𝓕.c t · j) := electricField_apply_contDiff_space h3 t\n  have hEd (j k : Fin d) := Space.deriv_differentiable (hEs j) k\n  have hBt (j : Fin d) :=\n    Space.space_deriv_differentiable_time (i := j) (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i)) x\n  have hJt :=\n    LorentzCurrentDensity.currentDensity_apply_differentiable_t",
+                "header_truncated": true,
+                "raw": 11234927,
+                "tag": "Lean.Parser.Tactic.tacticSeq"
+              }
+            ],
+            "class": "Elab.definition.value",
+            "header": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+            "header_truncated": false,
+            "raw": 11254794,
+            "tag": ""
+          },
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "class": "Kernel",
+                    "header": "typechecking declarations [Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema]",
+                    "header_truncated": false,
+                    "raw": 381117,
+                    "tag": ""
+                  }
+                ],
+                "class": "addDecl",
+                "header": "adding declarations [Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema]",
+                "header_truncated": false,
+                "raw": 381336,
+                "tag": ""
+              }
+            ],
+            "class": "Elab.def.processPreDef",
+            "header": "process pre-definitions",
+            "header_truncated": false,
+            "raw": 393489,
+            "tag": ""
+          }
+        ],
+        "class": "Elab.command",
+        "header": "theorem time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d} {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d) (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J) (t : Time)\n    (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) - 𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n        𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t :=\n  by\n  have h3 : ContDiff ",
+        "header_truncated": true,
+        "raw": 12521479,
+        "tag": "Lean.Parser.Command.theorem"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d} {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d) (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J) (t : Time)\n    (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) - 𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n        𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t :=\n  by\n  have h3 : ContDiff ℝ ",
+        "header_truncated": true,
+        "raw": 12521708,
+        "tag": "lemma"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option maxHeartbeats✝ 0 in\nlemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d} {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d) (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J) (t : Time)\n    (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) - 𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n        𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ (J.currentDensity 𝓕.c · x i) t ",
+        "header_truncated": true,
+        "raw": 12525126,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option Elab.async✝ false in\nset_option maxHeartbeats✝ 0 in\nlemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d} {𝓕 : FreeSpace}\n    (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d) (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J) (t : Time)\n    (x : Space d) (i : Fin d) :\n    ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n      𝓕.c ^ 2 * ∑ j, (∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x) - 𝓕.c ^ 2 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x -\n        𝓕.c ^ 2 * 𝓕.μ₀ * ∂ₜ",
+        "header_truncated": true,
+        "raw": 12528544,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "#proof_eval_measure \"PROOF_EVAL_f0ebc07e5a89470e8f9edb7b2083bef3\" target\n  \"Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema\" end 21170 in\n  lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d} {𝓕 : FreeSpace}\n      (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d) (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J) (t : Time)\n      (x : Space d) (i : Fin d) :\n      ∂ₜ (∂ₜ (A.electricField 𝓕.c · x i)) t =\n        𝓕.c ^ 2 * ∑ ",
+        "header_truncated": true,
+        "raw": 12578732,
+        "tag": "«command#proof_eval_measure_Target_End_In_»"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option trace.profiler.threshold✝ 100000 in\n#proof_eval_measure \"PROOF_EVAL_f0ebc07e5a89470e8f9edb7b2083bef3\" target\n  \"Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema\" end 21170 in\n  lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d} {𝓕 : FreeSpace}\n      (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d) (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J) (t : Time)\n      (x : Space d) (i : Fin d) :\n      ∂ₜ (∂ₜ (A.ele",
+        "header_truncated": true,
+        "raw": 12582245,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "end",
+        "header_truncated": false,
+        "raw": 841,
+        "tag": "Lean.Parser.Command.end"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option trace.profiler.useHeartbeats✝ true in\nset_option trace.profiler.threshold✝ 100000 in\n#proof_eval_measure \"PROOF_EVAL_f0ebc07e5a89470e8f9edb7b2083bef3\" target\n  \"Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema\" end 21170 in\n  lemma time_deriv_time_deriv_electricField_of_isExtrema {A : ElectromagneticPotential d} {𝓕 : FreeSpace}\n      (hA : ContDiff ℝ ∞ A) (J : LorentzCurrentDensity d) (hJ : ContDiff ℝ ∞ J) (h : IsExtrema 𝓕 A J) (t : Time)\n    ",
+        "header_truncated": true,
+        "raw": 3,
+        "tag": "Lean.Parser.Command.in"
+      }
+    ],
+    "hotspots": [
+      {
+        "node_id": 13,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.value",
+        "syntax_kind": "",
+        "snippet": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+        "snippet_truncated": false,
+        "heartbeats_raw": 11254794,
+        "heartbeats": 11254.794,
+        "inclusive": true
+      },
+      {
+        "node_id": 157,
+        "parent_id": 13,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.«tactic_<;>_»",
+        "snippet": "field_simp <;> ring",
+        "snippet_truncated": false,
+        "heartbeats_raw": 4836806,
+        "heartbeats": 4836.806,
+        "inclusive": true
+      },
+      {
+        "node_id": 158,
+        "parent_id": 157,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "focus\n  field_simp\n  with_annotate_state\"<;>\" skip\n  all_goals ring",
+        "snippet_truncated": false,
+        "heartbeats_raw": 4836696,
+        "heartbeats": 4836.696,
+        "inclusive": true
+      },
+      {
+        "node_id": 161,
+        "parent_id": 158,
+        "depth": 8,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Mathlib.Tactic.FieldSimp.fieldSimp",
+        "snippet": "field_simp",
+        "snippet_truncated": false,
+        "heartbeats_raw": 4836200,
+        "heartbeats": 4836.2,
+        "inclusive": true
+      },
+      {
+        "node_id": 64,
+        "parent_id": 13,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "have hg : (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) = 1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x :=\n  by\n  have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n    by\n    funext y\n    simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n      ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1\n  have hd := congrArg (fun f : Space d → ℝ => ∂[i] f x) hg\n  rw [Space.deriv_eq_fderiv_basis, fderiv",
+        "snippet_truncated": true,
+        "heartbeats_raw": 2220770,
+        "heartbeats": 2220.77,
+        "inclusive": true
+      },
+      {
+        "node_id": 65,
+        "parent_id": 64,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "focus\n  refine\n    no_implicit_lambda%\n      (have hg : (∑ j, ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x) = 1 / 𝓕.ε₀ * ∂[i] (J.chargeDensity 𝓕.c t ·) x :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n          by\n          funext y\n          simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n            ((isExtrema_iff_gauss_ampere_",
+        "snippet_truncated": true,
+        "heartbeats_raw": 2220591,
+        "heartbeats": 2220.591,
+        "inclusive": true
+      },
+      {
+        "node_id": 79,
+        "parent_id": 65,
+        "depth": 8,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.case",
+        "snippet": "case body✝ =>\n  with_annotate_state\"by\"\n    ( have hg : (fun y => ∑ j, ∂[j] (A.electricField 𝓕.c t · j) y) = (fun y => 1 / 𝓕.ε₀ * J.chargeDensity 𝓕.c t y) :=\n        by\n        funext y\n        simpa only [Space.div, div_eq_mul_inv, one_mul, mul_one, mul_comm] using\n          ((isExtrema_iff_gauss_ampere_magneticFieldMatrix hA J hJ).mp h t y).1\n      have hd := congrArg (fun f : Space d → ℝ => ∂[i] f x) hg\n      rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiable",
+        "snippet_truncated": true,
+        "heartbeats_raw": 1995521,
+        "heartbeats": 1995.521,
+        "inclusive": true
+      },
+      {
+        "node_id": 136,
+        "parent_id": 13,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.rwSeq",
+        "snippet": "rw [he, Time.deriv_eq,\n  fderiv_fun_sub ((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt\n    (hJt.const_mul _).differentiableAt,\n  fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt, fderiv_const_mul hJt.differentiableAt,\n  fderiv_fun_sum (fun j _ => (hBt j).differentiableAt)]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1316084,
+        "heartbeats": 1316.084,
+        "inclusive": true
+      },
+      {
+        "node_id": 140,
+        "parent_id": 136,
+        "depth": 8,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.rewriteSeq",
+        "snippet": "rewrite [he, Time.deriv_eq,\n  fderiv_fun_sub ((Differentiable.fun_sum fun j _ => hBt j).const_mul _).differentiableAt\n    (hJt.const_mul _).differentiableAt,\n  fderiv_const_mul (Differentiable.fun_sum fun j _ => hBt j).differentiableAt, fderiv_const_mul hJt.differentiableAt,\n  fderiv_fun_sum (fun j _ => (hBt j).differentiableAt)]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1300521,
+        "heartbeats": 1300.521,
+        "inclusive": true
+      },
+      {
+        "node_id": 153,
+        "parent_id": 13,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simp",
+        "snippet": "simp only [_root_.sub_apply, _root_.smul_apply, _root_.sum_apply, smul_eq_mul, ← Time.deriv_eq, hb,\n  Finset.sum_sub_distrib, mul_sub, hg, FreeSpace.c_sq]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1097677,
+        "heartbeats": 1097.677,
+        "inclusive": true
+      },
+      {
+        "node_id": 29,
+        "parent_id": 13,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "have hb (j : Fin d) :\n  ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t =\n    ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x - ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x :=\n  by\n  rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n  simp_rw [time_deriv_magneticFieldMatrix A h2]\n  rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 938883,
+        "heartbeats": 938.883,
+        "inclusive": true
+      },
+      {
+        "node_id": 30,
+        "parent_id": 29,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "focus\n  refine\n    no_implicit_lambda%\n      (have hb (j : Fin d) :\n        ∂ₜ (fun s => ∂[j] (A.magneticFieldMatrix 𝓕.c s · (j, i)) x) t =\n          ∂[j] (∂[j] (A.electricField 𝓕.c t · i)) x - ∂[i] (∂[j] (A.electricField 𝓕.c t · j)) x :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n        simp_rw [time_deriv_magneticFieldMatrix A h2]\n        rw [Space.fun_deriv_sub _ _ ",
+        "snippet_truncated": true,
+        "heartbeats_raw": 938704,
+        "heartbeats": 938.704,
+        "inclusive": true
+      },
+      {
+        "node_id": 104,
+        "parent_id": 79,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.rwSeq",
+        "snippet": "rw [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt), Space.deriv_eq_fderiv_basis,\n  fderiv_const_mul\n    (LorentzCurrentDensity.chargeDensity_differentiable_space (hJ.differentiable (by decide)) t).differentiableAt] at hd",
+        "snippet_truncated": false,
+        "heartbeats_raw": 902083,
+        "heartbeats": 902.083,
+        "inclusive": true
+      },
+      {
+        "node_id": 108,
+        "parent_id": 104,
+        "depth": 19,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.rewriteSeq",
+        "snippet": "rewrite [Space.deriv_eq_fderiv_basis, fderiv_fun_sum (fun j _ => (hEd j j).differentiableAt),\n  Space.deriv_eq_fderiv_basis,\n  fderiv_const_mul\n    (LorentzCurrentDensity.chargeDensity_differentiable_space (hJ.differentiable (by decide)) t).differentiableAt] at hd",
+        "snippet_truncated": false,
+        "heartbeats_raw": 886999,
+        "heartbeats": 886.999,
+        "inclusive": true
+      },
+      {
+        "node_id": 4,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.header",
+        "syntax_kind": "",
+        "snippet": "Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema",
+        "snippet_truncated": false,
+        "heartbeats_raw": 817533,
+        "heartbeats": 817.533,
+        "inclusive": true
+      },
+      {
+        "node_id": 120,
+        "parent_id": 79,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simpa",
+        "snippet": "simpa only [_root_.sum_apply, _root_.smul_apply, smul_eq_mul, ← Space.deriv_eq_fderiv_basis] using hd",
+        "snippet_truncated": false,
+        "heartbeats_raw": 759108,
+        "heartbeats": 759.108,
+        "inclusive": true
+      },
+      {
+        "node_id": 43,
+        "parent_id": 30,
+        "depth": 8,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.case",
+        "snippet": "case body✝ =>\n  with_annotate_state\"by\"\n    ( rw [Space.time_deriv_comm_space_deriv (magneticFieldMatrix_contDiff (c := 𝓕.c) A h3 (j, i))]\n      simp_rw [time_deriv_magneticFieldMatrix A h2]\n      rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)])",
+        "snippet_truncated": false,
+        "heartbeats_raw": 613178,
+        "heartbeats": 613.178,
+        "inclusive": true
+      },
+      {
+        "node_id": 176,
+        "parent_id": null,
+        "depth": 3,
+        "kind": "phase",
+        "class": "Kernel",
+        "syntax_kind": "",
+        "snippet": "typechecking declarations [Electromagnetism.ElectromagneticPotential.time_deriv_time_deriv_electricField_of_isExtrema]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 381117,
+        "heartbeats": 381.117,
+        "inclusive": true
+      },
+      {
+        "node_id": 57,
+        "parent_id": 43,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.rwSeq",
+        "snippet": "rw [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 371338,
+        "heartbeats": 371.338,
+        "inclusive": true
+      },
+      {
+        "node_id": 61,
+        "parent_id": 57,
+        "depth": 19,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.rewriteSeq",
+        "snippet": "rewrite [Space.fun_deriv_sub _ _ (hEd i j) (hEd j i), Space.deriv_commute _ (hEs j)]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 326045,
+        "heartbeats": 326.045,
+        "inclusive": true
+      }
+    ],
+    "marks": [],
+    "profile_heartbeats_raw": 12528876,
+    "profile_heartbeats": 12528.876,
+    "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+    "cache_key": "4b466ac83d6c9fd3eaec465f67992e9d97fabf73e2c7ad3f75846d2349530592",
+    "status": "ok",
+    "available_hotspots": 36,
+    "hotspots_truncated": true,
+    "mark_count": 0,
+    "marks_truncated": false,
+    "partial": false,
+    "diagnostics": [],
+    "context_mode": "full_file_replacement",
+    "returncode": 0,
+    "elapsed_seconds": 6.08064616099
+  }
+}

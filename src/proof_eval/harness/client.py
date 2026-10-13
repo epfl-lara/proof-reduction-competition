@@ -19,6 +19,14 @@ def main():
     profile.add_argument("--threshold-raw", type=int, default=10_000)
     profile.add_argument("--limit", type=int, default=20)
     commands.add_parser("status")
+    remember = commands.add_parser(
+        "remember",
+        help="Save an unverified note for same-theorem restarts when enabled",
+    )
+    remember.add_argument(
+        "--kind", choices=("discovery", "rejected", "next"), required=True
+    )
+    remember.add_argument("--text", required=True)
     commands.add_parser("finish").add_argument("--reason", required=True)
     search = commands.add_parser("search")
     search.add_argument("query")

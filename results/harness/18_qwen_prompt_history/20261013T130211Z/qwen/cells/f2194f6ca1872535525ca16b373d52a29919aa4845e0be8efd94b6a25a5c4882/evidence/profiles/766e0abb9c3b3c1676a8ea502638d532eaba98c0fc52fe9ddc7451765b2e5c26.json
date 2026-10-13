@@ -1,0 +1,185 @@
+{
+  "at": "2026-10-13T16:11:44.021115+00:00",
+  "code": "theorem fold_advances_evaluation_poly\n  (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡)\n  (coeffs : Fin (2 ^ (ℓ - ↑i)) → L) (r_chal : L) :\n  let P_i : L[X] := intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i, by\n    exact Nat.lt_trans (n := i) (k := ℓ+1) (m := ℓ) (h₁ := i.isLt) (by exact Nat.lt_add_one ℓ)\n  ⟩) coeffs\n  let f_i := fun (x : (sDomain 𝔽q β h_ℓ_add_R_rate)\n      ⟨i, by exact Nat.lt_trans (n := i) (k := r) (m := ℓ) (h₁ := by omega) (by omega)⟩) =>\n    P_i.eval (x.val : L)\n  let f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)\n  let new_coeffs := fun j : Fin (2^(ℓ - (i + 1))) =>\n    (1 - r_chal) * (coeffs ⟨j.val * 2, by\n      rw [←Nat.add_zero (j.val * 2)]\n      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))\n        (i := 0) (by omega) (by omega)\n    ⟩) +\n    r_chal * (coeffs ⟨j.val * 2 + 1, by\n      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))\n        (i := 1) (by omega) (by omega)\n    ⟩)\n  let P_i_plus_1 :=\n    intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i+1, by omega⟩) new_coeffs\n  ∀ (y : (sDomain 𝔽q β h_ℓ_add_R_rate)\n    ⟨i+1, by omega⟩), f_i_plus_1 y = P_i_plus_1.eval y.val := by\n  profile_tactic \"intro\" in\n  intro P_i f_i f_i_plus_1 new_coeffs P_i_plus_1 y\n  set fiberMap := qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩) (steps := 1)\n    (h_i_add_steps := by simp only; omega) (y := y)\n  set x₀ := fiberMap 0\n  set x₁ := fiberMap 1\n  let P₀ := evenRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  let P₁ := oddRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  profile_tactic \"hq\" in\n  have hq (k : Fin 2) : (AdditiveNTT.qMap 𝔽q β ⟨i, by omega⟩).eval (fiberMap k).val = y := by\n    rw [generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega)\n      (x := fiberMap k) (y := y) ⟨k, rfl⟩,\n      iteratedQuotientMap_k_eq_1_is_qMap 𝔽q β h_ℓ_add_R_rate i (by omega) (fiberMap k)]\n  profile_tactic \"hdiff\" in\n  have h_diff : x₁.val - x₀.val = 1 := by\n    have fz0 : Fin2ToF2 𝔽q 0 = (0 : 𝔽q) := by simp [Fin2ToF2]\n    have fz1 : Fin2ToF2 𝔽q 1 = (1 : 𝔽q) := by simp [Fin2ToF2]\n    have e₀ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 0\n    have e₁ := qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y 1\n    have h_iR : ↑i < ℓ + 𝓡 := fin_ℓ_lt_ℓ_add_R i\n    have hb : ((sDomain_basis 𝔽q β h_ℓ_add_R_rate ⟨i, Nat.lt_trans h_iR h_ℓ_add_R_rate⟩ h_iR)\n        ⟨0, Nat.sub_pos_of_lt h_iR⟩ : L) = 1 :=\n      get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate _ h_iR\n    simp only [fz0, fz1, zero_smul, one_smul, x₀, x₁, fiberMap, Submodule.coe_add, e₀, e₁,\n      zero_add, hb]\n    ring\n  profile_tactic \"heval\" in\n  have h_eval (x : (sDomain 𝔽q β h_ℓ_add_R_rate) ⟨i, by omega⟩) (k : Fin 2) (hx : x = fiberMap k) :\n      P_i.eval x.val = P₀.eval y.val + x.val * P₁.eval y.val := by\n    subst hx\n    simp only [evaluation_poly_split_identity 𝔽q β h_ℓ_add_R_rate i coeffs, P_i, P₀, P₁,\n      Polynomial.eval_add, eval_comp, Polynomial.eval_mul, Polynomial.eval_X, hq k]\n  profile_tactic \"hpoly\" in\n  have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := by\n    simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement,\n      oddRefinement]\n    rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]\n    refine Finset.sum_congr rfl (fun j _ => ?_)\n    simp only [Polynomial.C_add, Polynomial.C_mul]\n    ring\n  profile_tactic \"calc\" in\n  calc f_i_plus_1 y\n    = f_i x₀ * ((1 - r_chal) * x₁.val - r_chal) +\n        f_i x₁ * (r_chal - (1 - r_chal) * x₀.val) := rfl\n    _ = (P₀.eval y.val + x₀.val * P₁.eval y.val) * ((1 - r_chal) * x₁.val - r_chal) +\n        (P₀.eval y.val + x₁.val * P₁.eval y.val) * (r_chal - (1 - r_chal) * x₀.val) := by\n      simp only [f_i, h_eval x₀ 0 rfl, h_eval x₁ 1 rfl]\n    _ = (1 - r_chal) * P₀.eval y.val + r_chal * P₁.eval y.val := by\n      rw [show x₁.val = x₀.val + 1 from by rw [← h_diff, add_comm, sub_add_cancel]]\n      ring\n    _ = P_i_plus_1.eval y.val := by\n      rw [← h_poly]\n      simp only [Polynomial.eval_add, Polynomial.eval_mul, Polynomial.eval_C]\n",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "Binius.BinaryBasefold.fold_advances_evaluation_poly",
+    "version": "v4.31.0",
+    "proof_sha256": "8bd22287f3f03d2bbf5fae5315f28ac589c6f49f391d1306275d8fd4ca01ab51",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": null,
+      "threshold_raw": 10000000,
+      "limit": 20
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end_local_scope 1",
+        "header_truncated": false,
+        "raw": 1225,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ section",
+        "header_truncated": false,
+        "raw": 1228,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 10000000",
+        "header_truncated": false,
+        "raw": 62,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n  is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n-/\ntheorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n    (r_chal : L) :\n    let P_i : L[X] :=\n      intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n        ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1) (m := ℓ) (h₁ := i.isLt) (by exact Nat.lt_add_one ℓ)⟩) coeffs\n ",
+        "header_truncated": true,
+        "raw": 13300764,
+        "tag": "Lean.Parser.Command.theorem"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option maxHeartbeats✝ 0 in\n/-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n  is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n-/\ntheorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n    (r_chal : L) :\n    let P_i : L[X] :=\n      intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n        ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1) (m := ℓ) (h₁ := i.isLt) (by exa",
+        "header_truncated": true,
+        "raw": 13304409,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option Elab.async✝ false in\nset_option maxHeartbeats✝ 0 in\n/-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n  is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n-/\ntheorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n    (r_chal : L) :\n    let P_i : L[X] :=\n      intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n        ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1)",
+        "header_truncated": true,
+        "raw": 13308052,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ #proof_eval_measure \"PROOF_EVAL_cd035dd0f62747c7a4311ce4bf7a4c81\" target\n  \"Binius.BinaryBasefold.fold_advances_evaluation_poly\" end 52170 in\n  /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n    is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n  -/\n  theorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n      (r_chal : L) :\n      let P_i : L[X] :=\n        intermediateEva",
+        "header_truncated": true,
+        "raw": 13473109,
+        "tag": "«command#proof_eval_measure_Target_End_In_»"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 10000000 in\n#proof_eval_measure \"PROOF_EVAL_cd035dd0f62747c7a4311ce4bf7a4c81\" target\n  \"Binius.BinaryBasefold.fold_advances_evaluation_poly\" end 52170 in\n  /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n    is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n  -/\n  theorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n      (r_chal : L) ",
+        "header_truncated": true,
+        "raw": 13476859,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end",
+        "header_truncated": false,
+        "raw": 898,
+        "tag": "Lean.Parser.Command.end"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.useHeartbeats✝ true in\nset_option trace.profiler.threshold✝ 10000000 in\n#proof_eval_measure \"PROOF_EVAL_cd035dd0f62747c7a4311ce4bf7a4c81\" target\n  \"Binius.BinaryBasefold.fold_advances_evaluation_poly\" end 52170 in\n  /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n    is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n  -/\n  theorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coe",
+        "header_truncated": true,
+        "raw": 0,
+        "tag": "Lean.Parser.Command.in"
+      }
+    ],
+    "hotspots": [],
+    "marks": [
+      {
+        "end": 1300,
+        "heartbeats_raw": 1172,
+        "label": "intro",
+        "label_truncated": false,
+        "start": 1224,
+        "succeeded": true,
+        "heartbeats": 1.172,
+        "inclusive": true,
+        "line": 25
+      },
+      {
+        "end": 1903,
+        "heartbeats_raw": 665621,
+        "label": "hq",
+        "label_truncated": false,
+        "start": 1586,
+        "succeeded": true,
+        "heartbeats": 665.621,
+        "inclusive": true,
+        "line": 33
+      },
+      {
+        "end": 2604,
+        "heartbeats_raw": 2610562,
+        "label": "hdiff",
+        "label_truncated": false,
+        "start": 1906,
+        "succeeded": true,
+        "heartbeats": 2610.562,
+        "inclusive": true,
+        "line": 38
+      },
+      {
+        "end": 2985,
+        "heartbeats_raw": 504616,
+        "label": "heval",
+        "label_truncated": false,
+        "start": 2607,
+        "succeeded": true,
+        "heartbeats": 504.616,
+        "inclusive": true,
+        "line": 51
+      },
+      {
+        "end": 3392,
+        "heartbeats_raw": 2437779,
+        "label": "hpoly",
+        "label_truncated": false,
+        "start": 2988,
+        "succeeded": true,
+        "heartbeats": 2437.779,
+        "inclusive": true,
+        "line": 57
+      },
+      {
+        "end": 4075,
+        "heartbeats_raw": 2094206,
+        "label": "calc",
+        "label_truncated": false,
+        "start": 3395,
+        "succeeded": true,
+        "heartbeats": 2094.206,
+        "inclusive": true,
+        "line": 65
+      }
+    ],
+    "profile_heartbeats_raw": 13308399,
+    "profile_heartbeats": 13308.399,
+    "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+    "cache_key": "457f905ed3a0d8b481def6d4e5d74be7adc5d34e163abcef82a7d833e4c27a70",
+    "status": "ok",
+    "available_hotspots": 0,
+    "hotspots_truncated": false,
+    "mark_count": 6,
+    "marks_truncated": false,
+    "partial": false,
+    "diagnostics": [],
+    "context_mode": "full_file_replacement",
+    "returncode": 0,
+    "elapsed_seconds": 4.396759198978543
+  }
+}

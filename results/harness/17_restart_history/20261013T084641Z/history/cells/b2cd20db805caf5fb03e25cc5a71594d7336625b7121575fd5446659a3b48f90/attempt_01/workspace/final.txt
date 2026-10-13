@@ -1,0 +1,24 @@
+```lean
+theorem InitsUpdatesComm
+  {P : PureExpr} {σ σ' σ'' : SemanticStore P}
+  {ks ks' : List P.Ident} {vs vs' : List P.Expr} :
+  UpdateStates σ ks vs σ' →
+  InitStates σ' ks' vs' σ'' →
+  ∃ σ₁,
+    σ₁ = (updatedStates σ ks' vs') ∧
+    InitStates σ ks' vs' σ₁ ∧
+    UpdateStates σ₁ ks vs σ'' := by
+  intro hu hi
+  have lu := UpdateStatesLength hu
+  have li := InitStatesLength hi
+  refine exists_eq_left.mpr ⟨updatedStatesInit li
+      (UpdateStatesNotDefMonotone' (InitStatesNotDefined hi) hu) (InitStatesNodup hi), ?_⟩
+  rewrite [InitStatesUpdated hi, UpdateStatesUpdated hu]
+  unfold updatedStates
+  rewrite [updatedStatesComm]
+  exact updatedStatesUpdate lu
+    (updatedStatesDefMonotone (UpdateStatesDefined' hu))
+  rewrite [List.unzip_zip lu, List.unzip_zip li]
+  intro k hk hk'
+  cases InitStatesNotDefined hi k hk' ▸ UpdateStatesDefined hu k hk
+```

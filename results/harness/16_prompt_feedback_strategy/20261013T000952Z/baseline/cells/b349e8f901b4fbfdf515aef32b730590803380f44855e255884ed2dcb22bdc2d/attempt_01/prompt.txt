@@ -1,0 +1,66 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+  "source": "arklib",
+  "required_versions": [
+    {
+      "v4.31.0": "c1712f6c496d0aef04f09bae42aec13811b3273f"
+    },
+    {
+      "v4.30.0": "e6d77b18ca1334a91faf4d1ccf9f96d854d58ba4"
+    },
+    {
+      "v4.29.0": "de71a9dfd2f5a343e8895517b7efe857d9f1ce5c"
+    },
+    {
+      "v4.28.0": "673fa440714eb1949b8b50a28f2a4f52b1837e9b"
+    }
+  ],
+  "exact_statement": "theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f",
+  "incumbent_declaration": "theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by\n  have hid : (BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, Nat.lt_succ_of_le h_i_add_steps⟩ - 1) * 2 ^ steps =\n      BBF_CodeDistance ℓ 𝓡 ⟨i, fin_ℓ_lt_ℓ_add_one i⟩ - 1 := by\n    dsimp only [BBF_CodeDistance, Nat.add_one_sub_one]\n    rw [Nat.sub_mul, ← Nat.pow_add, ← Nat.pow_add,\n      Nat.sub_add_eq_sub_sub_rev _ _ _ (Nat.le_add_left _ _) (Nat.le_add_right_of_le h_i_add_steps),\n      Nat.add_sub_cancel,\n      Nat.sub_add_eq_sub_sub_rev _ _ _ (Nat.le_add_left _ _) h_i_add_steps,\n      Nat.add_sub_cancel]\n  let C := BBF_Code 𝔽q β (ℓ := ℓ) (𝓡 := 𝓡) (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, fin_ℓ_lt_ℓ_add_one i⟩\n  let D := fun g : C => (fiberwiseDisagreementSet 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) i steps h_i_add_steps f g.val).ncard\n  obtain ⟨g, _, hg⟩ := Nat.sInf_mem (s := D '' Set.univ)\n    (Set.image_nonempty.mpr ⟨0, Set.mem_univ _⟩)\n  let Y := fiberwiseDisagreementSet 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) i steps h_i_add_steps f g.val\n  let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n  let k := pointToIterateQuotientIndex 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) (i := ⟨i, fin_ℓ_lt_ℓ_add_one i⟩) steps h_i_add_steps\n  let e : {x // f x ≠ g.val x} → Y × Fin (2 ^ steps) :=\n    fun x => (⟨q x.val, ⟨x.val, rfl, x.property⟩⟩, k x.val)\n  have hr (x : _) :=\n    (is_fiber_iff_generates_quotient_point 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n      i steps h_i_add_steps x (q x)).mp rfl\n  have he : Function.Injective e := by\n    intro x z h\n    have hq : q x.val = q z.val := congrArg (fun t => t.1.val) h\n    have hk : k x.val = k z.val := congrArg Prod.snd h\n    apply Subtype.ext\n    exact (hr x.val).symm.trans ((congrArg₂ _ hq hk).trans (hr z.val))\n  have hb := Nat.card_le_card_of_injective e he\n  rw [Nat.card_prod, Nat.card_fin, Nat.card_eq_fintype_card, Fintype.card_subtype,\n    Nat.card_coe_set_eq] at hb\n  have hf := Nat.le_of_lt_succ (ENat.coe_lt_coe.mp h_fw_dist_lt)\n  change 2 * sInf (D '' Set.univ) ≤ _ at hf\n  rw [← hg] at hf\n  unfold hammingClose\n  apply lt_of_le_of_lt (mul_le_mul_left' (Code.distFromCode_le_dist_to_mem (C := C) f g.val g.property) 2)\n  change ((2 : ℕ) : ℕ∞) * (hammingDist f g.val : ℕ∞) < _\n  rw [← ENat.coe_mul, ENat.coe_lt_coe]\n  apply Nat.lt_of_le_pred (Nat.succ_pos _)\n  exact (Nat.mul_le_mul_left 2 hb).trans\n    ((Nat.mul_assoc _ _ _).symm.le.trans ((Nat.mul_le_mul_right _ hf).trans hid.le))\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 68.01093643198905,
+    "heartbeat_reduction_pct": 78.76429740741325,
+    "compatibility_pct": 100.0,
+    "combined_pct": 82.25841127980077
+  },
+  "reference_denominators": {
+    "tokens": 1463,
+    "primary_heartbeats": 15652.051
+  },
+  "preceding_source_excerpt": ") := by\n        -- We found `g_closest` by taking the `sInf` of all distances, and `hg_min`\n        -- shows that the distance to `g_closest` achieves this `sInf`.\n        have h_distFromCode_eq_sInf : d = sInf SENat := by\n          apply le_antisymm\n          · -- Part 1 : `d ≤ sInf ...`\n            simp only [d, distFromCode]\n            apply sInf_le_sInf\n            intro a ha\n            -- `a` is in `SENat`, so `a = ↑Δ₀(f, g)` for some codeword `g`.\n            rcases (Set.mem_image _ _ _).mp ha with ⟨g, _, rfl⟩\n            -- We must show `a` is in the set for `d`, which is `{d' | ∃ v, ↑Δ₀(f, v) ≤ d'}`.\n            -- We can use `g` itself as the witness `v`, since `↑Δ₀(f, g) ≤ ↑Δ₀(f, g)`.\n            use g; simp only [Fin.eta, Subtype.coe_prop, le_refl, and_self]\n          · -- Part 2 : `sInf ... ≤ d`\n            simp only [d, distFromCode]\n            apply le_sInf\n            -- Let `d'` be any element in the set that `d` is the infimum of.\n            intro d' h_d'\n            -- Unpack `h_d'` : there exists some `v` in the code such that\n            -- `↑(hammingDist f v) ≤ d'`.\n            rcases h_d' with ⟨v, hv_mem, h_dist_v_le_d'⟩\n            -- By definition, `sInf SENat` is a lower bound for all elements in `SENat`.\n            -- The element `↑(hammingDist f v)` is in `SENat`.\n            have h_sInf_le_dist_v : sInf SENat ≤ ↑(hammingDist f v) := by\n              apply sInf_le -- ⊢ ↑Δ₀(f, v) ∈ SENat\n              rw [Set.mem_image]\n              -- ⊢ ∃ x ∈ Set.univ, ↑Δ₀(f, ↑x) = ↑Δ₀(f, v)\n              simp only [Fin.eta, Set.mem_univ, Nat.cast_inj, true_and, Subtype.exists, exists_prop]\n              -- ⊢ ∃ a ∈ C_i, Δ₀(f, a) = Δ₀(f, v)\n              use v\n              exact And.symm ⟨rfl, hv_mem⟩\n            -- Now, chain the inequalities : `sInf SENat ≤ ↑(dist_to_any_v) ≤ d'`.\n            exact h_sInf_le_dist_v.trans h_dist_v_le_d'\n        rw [h_distFromCode_eq_sInf, ←h_coe_sinfS_eq_sinfSENat, ←hg_min]\n      rw [h_dist_eq_hamming]\n      rw [ENat.toNat_coe]\n    -- Get the closest polynomial\n    obtain ⟨p, hp_deg_lt, hp_eval⟩ : ∃ p, p ∈ Polynomial.degreeLT L k ∧\n      (fun (x : sDomain 𝔽q β h_ℓ_add_R_rate (i := ⟨i, by omega⟩)) ↦ p.eval (↑x)) = g_closest := by\n      simp only [Fin.eta, BBF_Code, ReedSolomon.code, ReedSolomon.evalOnPoints, Function.Embedding.coeFn_mk,\n        Submodule.mem_map, LinearMap.coe_mk, AddHom.coe_mk, C_i] at hg_mem\n      rcases hg_mem with ⟨p_witness, hp_prop, hp_eq⟩\n      use p_witness\n    have natDeg_p_lt_k : p.natDegree < k := by\n      simp only [mem_degreeLT] at hp_deg_lt\n      by_cases hi : i = ℓ\n      · simp only [hi, tsub_self, pow_zero, cast_one, lt_one_iff, k] at ⊢ hp_deg_lt\n        by_cases hp_p_eq_0 : p = 0\n        · rw [hp_p_eq_0, Polynomial.natDegree_zero];\n        · rw [Polynomial.natDegree_eq_of_degree_eq_some]\n          have h_deg_p : p.degree = 0 := by\n            have h_le_zero : p.degree ≤ 0 := by\n              exact WithBot.lt_one_iff_le_zero.mp hp_deg_lt\n            have h_deg_ne_bot : p.degree ≠ ⊥ := by\n              rw [Polynomial.degree_ne_bot]; omega\n            apply le_antisymm h_le_zero (zero_le_degree_iff.mpr hp_p_eq_0)\n          simp only [h_deg_p, CharP.cast_eq_zero]\n      · by_cases hp_p_eq_0 : p = 0\n        · rw [hp_p_eq_0, Polynomial.natDegree_zero];\n          have h_i_lt_ℓ : i < ℓ := by omega\n          simp only [ofNat_pos, pow_pos, k]\n        · rw [Polynomial.natDegree_lt_iff_degree_lt (by omega)]\n          exact hp_deg_lt\n    have h_decoder_succeeds : BerlekampWelch.decoder e k ωs f_vals = some p := by\n      apply BerlekampWelch.decoder_eq_some\n      · -- ⊢ `2 * e < d_i = n - k + 1`\n        simp only [domain_size, k]; rw [sDomain_card 𝔽q β (h_i := by omega),]\n        · -- ⊢ 2 * e < 2 ^ (ℓ + 𝓡 - ↑i) - 2 ^ (ℓ - ↑i) + 1\n          simp only [hammingClose, BBF_CodeDistance, cast_add, ENat.coe_sub, cast_pow, cast_ofNat,\n            cast_one] at h_within_radius;\n          have h_lt_eq : ↑(2 * Δ₀(f, ↑(BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) i)).toNat) =\n  2 * Δ₀(f, ↑(BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) i)) := by\n            simp only [cast_mul, cast_ofNat]\n            rw [ENat.coe_toNat]\n            exact h_dist_ne_top\n          apply ENat.coe_lt_coe.mp\n          rw [h_lt_eq, hF₂.out]\n          exact h_within_radius\n      · -- ⊢ `k ≤ domain_size`. This holds by the problem setup.\n        simp only [k, domain_size]\n        rw [sDomain_card 𝔽q β (h_i := by omega), hF₂.out]\n        apply Nat.pow_le_pow_right (by omega) -- ⊢ ℓ - ↑i ≤ ℓ + 𝓡 - ↑⟨↑i, ⋯⟩\n        simp only [tsub_le_iff_right]\n        omega\n      · -- ⊢ Function.Injective ωs\n        simp only [ωs]\n        -- The composition of two injective functions (`Equiv.symm` and `Subtype.val`) is injective.\n        exact Function.Injective.comp Subtype.val_injective (Equiv.injective _)\n      · -- ⊢ `p.natDegree < k`. This is true from `hp_deg`.\n        exact natDeg_p_lt_k\n      · -- ⊢ `Δ₀(f_vals, (fun a ↦ Polynomial.eval a p) ∘ ωs) ≤ e`\n        change hammingDist f_vals ((fun a ↦ Polynomial.eval a p) ∘ ωs) ≤ e\n        simp only [ωs]\n        have h_functions_eq : (fun a ↦ Polynomial.eval a p) ∘ ωs\n          = g_closest ∘ domain_to_fin.symm := by\n          ext j; simp only [Function.comp_apply, Fin.eta, ωs]\n          rw [←hp_eval]\n        rw [h_functions_eq]\n        -- ⊢ Δ₀(f_vals, g_closest ∘ ⇑domain_to_fin.symm) ≤ e\n        simp only [Fin.eta, ge_iff_le, f_vals]\n        -- ⊢ Δ₀(fun j ↦ f (domain_to_fin.symm j), g_closest ∘ ⇑domain_to_fin.symm) ≤ e\n        calc\n          _ ≤ hammingDist f g_closest := by\n            apply hammingDist_le_of_outer_comp_injective f g_closest domain_to_fin.symm\n              (hg := by exact Equiv.injective domain_to_fin.symm)\n          _ ≤ e := by exact h_dist_f\n    simp only [ne_eq, berlekamp_welch_result]\n    simp only [h_decoder_succeeds, reduceCtorEq, not_false_eq_true]\n  let p : L[X] := berlekamp_welch_result.get (Option.ne_none_iff_isSome.mp h_ne_none)\n  exact fun x => p.eval x.val\n\nomit [CharP L 2] [NeZero ℓ] in",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly extracts an invariant, typing rule, normalization fact, or relation from a separate hypothesis.",
+      "action": "Inspect the inductive evidence and consider induction on that evidence so its constructors provide the invariant and recursive hypotheses together.",
+      "check": "Verify dependent indices, generalized variables and induction hypotheses. A different induction is useful only if it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "explicit_witnesses",
+      "trigger": "Broad automation discovers constructors, witnesses, case facts or canonical forms that are already apparent from the argument.",
+      "action": "Read the constructors and supporting lemmas; supply explicit witnesses, projections and theorem applications. Leave focused arithmetic and simplification to automation.",
+      "check": "A slightly longer source can win on heartbeats. Do not replace every tactic blindly; check the whole declaration and version compatibility."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a finite counting, continuity, support, span, recurrence or quotient argument.",
+      "action": "Choose a representation that lets an existing library theorem do the central work. Search by the mathematical property and the types of the objects, not only the target theorem name.",
+      "check": "Prove the connection to the new representation locally, account for conversion overhead, and verify the exact assumptions."
+    }
+  ]
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $0.944187; $2.05581 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

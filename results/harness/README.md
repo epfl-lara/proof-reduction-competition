@@ -20,6 +20,9 @@ at the beginning and end. Historical conditions below remain separate evidence.
 | [12: local discovery tools](12_source_discovery/README.md) | Qwen3.8-Flash-Next/xhigh via Lemex | Literal dependency search and frozen semantic discovery; 15/15 complete, 78.815525% locally | 15 |
 | [13: web discovery tools](13_web_search/README.md) | Qwen3.8-Flash-Next/xhigh via Lemex | Matched web-enabled trial stopped by user at 7/15; no full-cohort mean | 15 |
 | [14: offline stagnation replay](14_replay_stagnation/PROTOCOL.md) | Sol 6.1/max; Qwen/Gemini descriptive | Saved evidence only, no model or Lean calls; pre-registered stopping-policy gate | 45 Sol cells |
+| [16: prompt, feedback and strategy bundle](16_prompt_feedback_strategy/README.md) | Sol 6.1/max | Complete and audited: revised 89.448630%, recovered control 89.265062%; see recovery qualifications | 15 per arm |
+| [17: bounded restart history](17_restart_history/README.md) | Sol 6.1/max | Complete and audited: 89.904622%, +0.455991 pp over revised control; remains opt-in | 15 |
+| [18: Qwen prompt and history follow-up](18_qwen_prompt_history/README.md) | Qwen3.8-Flash-Next/xhigh via Lemex | Complete and audited: 81.769564%; historical comparison is not matched, cost unknown | 15 |
 
 The [Qwen submission](09_qwen_flash_next/submission.jsonl) reaches
 **78.219958% locally**, with 100% compatibility and **36/36** passing version

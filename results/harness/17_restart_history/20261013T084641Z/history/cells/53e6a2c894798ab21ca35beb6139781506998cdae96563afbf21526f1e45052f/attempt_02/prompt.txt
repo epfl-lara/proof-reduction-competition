@@ -1,0 +1,204 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "putnam_1964_a4",
+  "source": "putnambench",
+  "required_versions": [
+    {
+      "v4.25.0": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33"
+    },
+    {
+      "v4.26.0": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67"
+    },
+    {
+      "v4.27.0": "a3a10db0e9d66acbebf76c5e6a135066525ac900"
+    }
+  ],
+  "exact_statement": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n)",
+  "incumbent_declaration": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n)    := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let v n : Set.Icc B T := ⟨u n, hB n⟩\n  let f n := (v n, v (n + 1), v (n + 2), v (n + 3))\n  obtain ⟨i, j, hij, h⟩ := Finite.wellQuasiOrdered Eq f\n  let c := j - i\n  have he : ∀ n ≥ i, f (n + c) = f n := by\n    apply Nat.le_induction\n    · simpa only [c, Nat.add_sub_of_le hij.le] using h.symm\n    · intro n hn ih\n      rw [Nat.add_right_comm]\n      simp [f, v] at ih ⊢\n      simp [ih]\n      apply Int.cast_injective (α := ℝ)\n      simp only [hu, ge_iff_le, Nat.reduceLeDiff, Nat.reduceSubDiff, ih]\n  exact ⟨i, c, Nat.sub_pos_of_lt hij, fun n hn => congr($(he n hn).1.val)⟩\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 90.22046353872244,
+    "heartbeat_reduction_pct": 98.48030296990234,
+    "compatibility_pct": 100.0,
+    "combined_pct": 96.23358883620826
+  },
+  "reference_denominators": {
+    "tokens": 1769,
+    "primary_heartbeats": 141103.125
+  },
+  "preceding_source_excerpt": "import Mathlib\nimport Aesop\n\nimport Lean\n\n\nset_option maxHeartbeats 0\n\nopen Set Function\n\n\n",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "putnam_1964_a4",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "86808ff50e8c3091c346cc9e6b5a1ba81bb8690f8a7625a01956737a6507e82c"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 31,
+        "evidence_sha256": "604f55f38205b27e4ae3dcdbeb1837f14e4d38f7a9ba14e5a0657ef84d328790",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 89.20293951384963,
+          "heartbeat_reduction_pct": 96.91298048856112,
+          "compatibility_pct": 100.0,
+          "combined_pct": 95.37197333413691
+        },
+        "previous_best_combined_pct": 95.61011198766937,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -6,2 +6,3 @@\n   have hr n := (hu (n + 4) (Nat.le_add_left _ _)).1\n+  simp [Nat.add_sub_assoc] at hr\n   obtain ⟨B, T, hB⟩ := boundedu\n@@ -19,5 +20,3 @@\n       apply Int.cast_injective (α := ℝ)\n-      erw [hr (n + c), hr n,\n-        ih.1, ih.2.1, ih.2.2.1, ih.2.2.2]\n-      rfl\n+      simp only [hr, ih]\n   exact ⟨i, c, Nat.sub_pos_of_lt hij, fun n hn => congr($(he n hn).1.val)⟩",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 33,
+        "evidence_sha256": "1a25ab030d5228e05b156c22b051a777ee5d52031294c0a9d6dfff0713cf5e4d",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 95.89312306197786,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -5,4 +5,2 @@\n : (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n)    := by\n-  have hr n := (hu (n + 4) (Nat.le_add_left _ _)).1\n-  simp only [Nat.reduceSubDiff] at hr\n   obtain ⟨B, T, hB⟩ := boundedu\n@@ -20,3 +18,3 @@\n       apply Int.cast_injective (α := ℝ)\n-      simp only [hr, ih]\n+      simp only [hu, Nat.reduceLeDiff, Nat.reduceSubDiff, ih]\n   exact ⟨i, c, Nat.sub_pos_of_lt hij, fun n hn => congr($(he n hn).1.val)⟩",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.25.0\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"`simp` made no progress\"]}, {\"version\": \"v4.26.0\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"`simp` made no progress\"]}, {\"version\": \"v4.27.0\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"`s"
+      },
+      {
+        "check": 35,
+        "evidence_sha256": "2bad9b312664ebeecc124173ef04b4a6eb44d330486c0e449f3bf2d25828e7d5",
+        "accepted": true,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 90.1639344262295,
+          "heartbeat_reduction_pct": 98.12033078643722,
+          "compatibility_pct": 100.0,
+          "combined_pct": 96.0947550708889
+        },
+        "previous_best_combined_pct": 95.9880396277429,
+        "reason": "accepted",
+        "change_excerpt": "--- \n+++ \n@@ -5,3 +5,2 @@\n : (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n)    := by\n-  have hr n := (hu (n + 4) (Nat.le_add_left _ _)).1\n   obtain ⟨B, T, hB⟩ := boundedu\n@@ -19,3 +18,3 @@\n       apply Int.cast_injective (α := ℝ)\n-      simp only [hr, Nat.reduceSubDiff, ih]\n+      simp (disch := omega) only [hu, Nat.reduceSubDiff, ih]\n   exact ⟨i, c, Nat.sub_pos_of_lt hij, fun n hn => congr($(he n hn).1.val)⟩",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 36,
+        "evidence_sha256": "a2fe16fcaafd4cffca3f895dab7910fdfcc0314dabf50ac5527795a8aa1d8123",
+        "accepted": true,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 90.22046353872244,
+          "heartbeat_reduction_pct": 98.48030296990234,
+          "compatibility_pct": 100.0,
+          "combined_pct": 96.23358883620826
+        },
+        "previous_best_combined_pct": 96.0947550708889,
+        "reason": "accepted",
+        "change_excerpt": "--- \n+++ \n@@ -18,3 +18,3 @@\n       apply Int.cast_injective (α := ℝ)\n-      simp (disch := omega) only [hu, Nat.reduceSubDiff, ih]\n+      simp only [hu, ge_iff_le, Nat.reduceLeDiff, Nat.reduceSubDiff, ih]\n   exact ⟨i, c, Nat.sub_pos_of_lt hij, fun n hn => congr($(he n hn).1.val)⟩",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 37,
+        "evidence_sha256": "5cae49bbbc5c011df9754b0c8d42e1726bb742921f264d8310414ad9460da41b",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 90.61616732617298,
+          "heartbeat_reduction_pct": 94.37754266604655,
+          "compatibility_pct": 100.0,
+          "combined_pct": 94.99790333073985
+        },
+        "previous_best_combined_pct": 96.23358883620826,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -18,3 +18,3 @@\n       apply Int.cast_injective (α := ℝ)\n-      simp only [hu, ge_iff_le, Nat.reduceLeDiff, Nat.reduceSubDiff, ih]\n+      simp [hu, ih]\n   exact ⟨i, c, Nat.sub_pos_of_lt hij, fun n hn => congr($(he n hn).1.val)⟩",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 1,
+        "evidence_sha256": "402ec92155cf3886f54970bd91eb91721bbab73d070b2ad03a9363e05fadbb76",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"(disch := omega)\", \"limit\": 8}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.25.0\", \"query\": \"(disch := omega)\", \"matches\": [\"./.lake/packages/mathlib/Mathlib/Order/Interval/Set/Fin.lean:645:  simp (disch := omega)\"], \"truncated\": false}",
+        "request_sha256": "2d2b6cbfd56b36b0386564c9a4e63d3f2b5026c5c49367f64accc3a3fdbc5745",
+        "response_sha256": "e25f7e087f95849dd10df2b3d57ec990167610cb8248b6f95691cdad7defb7d9"
+      },
+      {
+        "attempt": 1,
+        "evidence_sha256": "d307baafb24acd037af14ca888cf3a502a56398b3c1abab14deea6cd3402cf2c",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"(discharger := omega)\", \"limit\": 8}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.25.0\", \"query\": \"(discharger := omega)\", \"matches\": [], \"truncated\": false}",
+        "request_sha256": "80e5aeb6226071a7730c5536d84a6d23cdef61d2bf0a7ce2f06dc336b1ed6dbc",
+        "response_sha256": "a9ea0836ec0c684ccde251179eb07bcb5dd97975d022275b7845e7024d5ff721"
+      },
+      {
+        "attempt": 1,
+        "evidence_sha256": "d0a31a739516f35aa0183acee50187bbb6c8803835651e8fa6612ae1530747f9",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"ge_iff_le\", \"limit\": 6}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.25.0\", \"query\": \"ge_iff_le\", \"matches\": [\"./.lake/packages/batteries/Batteries/Data/List/Lemmas.lean:554:      append_assoc, append_eq_nil_iff, ge_iff_le, and_imp]\", \"./.lake/packages/batteries/Batteries/Data/List/Lemmas.lean:588:              append_cancel_right_eq, exists_eq_left', ge_iff_le, true_and]\", \"./.lake/packages/batteries/Batteries/Data/List/Lemmas.lean:595:      simp only [some.injEq, Prod.mk.injEq, append_assoc, ge_iff_le]\", \"./.lake/packages/batteries/Batteries/Data/String/Lemmas.lean:452:  simp only [Pos.Raw.extract, Pos.Raw.byteIdx_add_",
+        "request_sha256": "ae83f5e18b0eda9c3909095a046f220daccb4af4be5c8f9f53a68d295e13497f",
+        "response_sha256": "f4a3a193d071d9e8f1dc67e3ffac72c13e768500eb46bc62d83d1a76e5a5681e"
+      }
+    ],
+    "unverified_model_notes": [
+      {
+        "attempt": 1,
+        "evidence_sha256": "e8761a09f21078d9afe40a8a4a48c864754ec73959a2bbbb154e086f3d4f94c2",
+        "kind": "discovery",
+        "text": "Best 173 tokens, 2144.34 heartbeats, score 96.23359. Use Finite.wellQuasiOrdered Eq f to get ordered repeat without explicit univ. After tuple unfolding and first-three equality simp, apply Int.cast_injective (α:=ℝ), then simp only [hu, ge_iff_le, Nat.reduceLeDiff, Nat.reduceSubDiff, ih]. This avoids shifted hr helper and all erw arithmetic/cast rewrites; ge_iff_le is essential so Nat.reduceLeDiff discharges n>=4."
+      },
+      {
+        "attempt": 1,
+        "evidence_sha256": "9422b69322cca15f19c151e6fda490735471a6104cadab43abd3ea6585528bb1",
+        "kind": "rejected",
+        "text": "simp only [hu,Nat.reduceLeDiff,Nat.reduceSubDiff,ih] fails without ge_iff_le: GE.ge must unfold to LE.le for arithmetic simproc. simp [hu,ih] valid but 7933hb; focus simp only list gives2144hb. Global simp [Nat.add_sub_assoc] at normalized hr costs2804hb. c required in initial simpa only to unfold local period."
+      }
+    ],
+    "prior_check_count": 38,
+    "prior_event_count": 69,
+    "prior_events_sha256": "507e472af225fe601a22c2927ad195b5ac879ba885d5cecfa0bc658b061394e7"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $1.89242; $1.10758 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

@@ -17,6 +17,9 @@ from proof_eval.providers.spending import native_cost_guard, native_cost_stop
 from .archived_schedules import attempt_condition
 from .attempts import attempt_folders
 from .prompts import budget_suffix
+from .restart_history import VERSION
+from .restart_history import read_events as read_history_events
+from .restart_history_audit import audit_history_attempt
 from .tracking import (
     ATTEMPT_EVIDENCE_VERSION,
     CLEANUP_RESERVE_SECONDS,
@@ -50,6 +53,17 @@ def audit_attempts(
             "Attempt count exceeds the configured restart policy",
         )
     previous_end = 0
+    history_enabled = config.get("restart_history_version") is not None
+    history_events = read_history_events(folder / "evidence")
+    _require(
+        (
+            config.get("restart_history_version") == VERSION
+            if history_enabled
+            else not history_events
+        ),
+        "Unsupported or unconfigured restart history",
+    )
+    previous_event_end = 0
     for number, (attempt, record, generation) in enumerate(
         zip(folders, records, result["generations"])
     ):
@@ -119,6 +133,16 @@ def audit_attempts(
             and payload["incumbent_scores"] == record["incumbent_evaluation"]["scores"],
             "Restart prompt does not match its verified incumbent",
         )
+        previous_event_end = audit_history_attempt(
+            config,
+            result,
+            record,
+            payload,
+            checks,
+            number,
+            previous_event_end,
+            history_events,
+        )
         if number:
             first_messages = read(folders[0] / "request.json")["messages"]
             first_payload, _ = json.JSONDecoder().raw_decode(
@@ -128,12 +152,22 @@ def audit_attempts(
                 {
                     key: value
                     for key, value in payload.items()
-                    if key not in ("incumbent_declaration", "incumbent_scores")
+                    if key
+                    not in (
+                        "incumbent_declaration",
+                        "incumbent_scores",
+                        "restart_history",
+                    )
                 }
                 == {
                     key: value
                     for key, value in first_payload.items()
-                    if key not in ("incumbent_declaration", "incumbent_scores")
+                    if key
+                    not in (
+                        "incumbent_declaration",
+                        "incumbent_scores",
+                        "restart_history",
+                    )
                 },
                 "Restart changed the fixed theorem context or denominators",
             )
@@ -259,6 +293,9 @@ def audit_attempts(
                 ),
                 "Controlled cost stop has no budget evidence",
             )
+    _require(
+        previous_event_end == len(history_events), "Unbound restart history events"
+    )
     if records and not result.get("time_budget", {}).get("exhausted", False):
         stop = read(folder / "search_stop.json")
         _require(

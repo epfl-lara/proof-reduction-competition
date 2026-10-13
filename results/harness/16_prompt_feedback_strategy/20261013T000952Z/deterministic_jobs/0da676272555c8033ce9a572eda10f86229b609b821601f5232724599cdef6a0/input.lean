@@ -1,0 +1,11 @@
+theorem bisimilarity_congr_choice :
+    (p ~[lts (defs := defs)] q) → (choice p r) ~[lts (defs := defs)] (choice q r) := by
+  intro h
+  exists ChoiceBisim, ChoiceBisim.choice h
+  rintro s t (h | h) μ <;>
+    apply (Bisimilarity.isBisimulation _ _ h μ).imp <;> intro hf s' ht
+  case' choice | choice => cases ht <;> rename_i ht
+  case choiceR | choiceR => use s', Tr.choiceR ht, ChoiceBisim.bisim (HomBisimilarity.refl _)
+  all_goals exact (hf _ ht).imp fun _ => And.imp (by
+    try exact id
+    all_goals exact Tr.choiceL) ChoiceBisim.bisim

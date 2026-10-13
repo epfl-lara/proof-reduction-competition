@@ -1,0 +1,184 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+  "source": "arklib",
+  "required_versions": [
+    {
+      "v4.31.0": "c1712f6c496d0aef04f09bae42aec13811b3273f"
+    },
+    {
+      "v4.30.0": "e6d77b18ca1334a91faf4d1ccf9f96d854d58ba4"
+    },
+    {
+      "v4.29.0": "de71a9dfd2f5a343e8895517b7efe857d9f1ce5c"
+    },
+    {
+      "v4.28.0": "673fa440714eb1949b8b50a28f2a4f52b1837e9b"
+    }
+  ],
+  "exact_statement": "theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f",
+  "incumbent_declaration": "theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by\n  let C := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, fin_ℓ_lt_ℓ_add_one i⟩\n  let Y (g : C) := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g.val\n  let S := (fun g => (Y g).ncard) '' Set.univ\n  obtain ⟨g, _, hg⟩ := Nat.sInf_mem (Set.image_nonempty.mpr Set.univ_nonempty : S.Nonempty)\n  change (Y g).ncard = fiberwiseDistance 𝔽q β i steps h_i_add_steps f at hg\n  let D : Set _ := {x | f x ≠ g.val x}\n  let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps\n  let k := pointToIterateQuotientIndex 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    ⟨i, fin_ℓ_lt_ℓ_add_one i⟩ steps h_i_add_steps\n  have hr x :=\n    (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps x (q x)).mp rfl\n  have hd := Set.ncard_le_ncard_of_injOn (fun x => (q x, k x))\n    (s := D) (t := Y g ×ˢ (Set.univ : Set (Fin (2 ^ steps))))\n    (fun x hx => ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩)\n    (by\n      intro x hx z hz h\n      obtain ⟨hq, hk⟩ := Prod.mk.inj h\n      exact (hr x).symm.trans ((congrArg₂ _ hq hk).trans (hr z)))\n  rw [Set.ncard_prod, Set.ncard_univ, Nat.card_fin,\n    Set.ncard_eq_toFinset_card', Set.toFinset_setOf] at hd\n  have hb := Nat.mul_le_mul_right (2 ^ steps)\n    (Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt))\n  rw [←hg, mul_assoc, Nat.sub_mul,\n    ←Nat.sub_sub,\n    pow_sub_mul_pow 2 (Nat.le_sub_of_add_le' (h_i_add_steps.trans (Nat.le_add_right ℓ 𝓡))),\n    ←Nat.sub_sub, pow_sub_mul_pow 2 (Nat.le_sub_of_add_le' h_i_add_steps)] at hb\n  have hn := Nat.lt_succ_of_le ((Nat.mul_le_mul_left 2 hd).trans hb)\n  exact (mul_le_mul_left' (Code.distFromCode_le_dist_to_mem f g.val g.property) 2).trans_lt\n    (ENat.coe_lt_coe.2 hn)\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 76.89678742310322,
+    "heartbeat_reduction_pct": 81.90417984199003,
+    "compatibility_pct": 100.0,
+    "combined_pct": 86.26698908836443
+  },
+  "reference_denominators": {
+    "tokens": 1463,
+    "primary_heartbeats": 15652.051
+  },
+  "preceding_source_excerpt": ") := by\n        -- We found `g_closest` by taking the `sInf` of all distances, and `hg_min`\n        -- shows that the distance to `g_closest` achieves this `sInf`.\n        have h_distFromCode_eq_sInf : d = sInf SENat := by\n          apply le_antisymm\n          · -- Part 1 : `d ≤ sInf ...`\n            simp only [d, distFromCode]\n            apply sInf_le_sInf\n            intro a ha\n            -- `a` is in `SENat`, so `a = ↑Δ₀(f, g)` for some codeword `g`.\n            rcases (Set.mem_image _ _ _).mp ha with ⟨g, _, rfl⟩\n            -- We must show `a` is in the set for `d`, which is `{d' | ∃ v, ↑Δ₀(f, v) ≤ d'}`.\n            -- We can use `g` itself as the witness `v`, since `↑Δ₀(f, g) ≤ ↑Δ₀(f, g)`.\n            use g; simp only [Fin.eta, Subtype.coe_prop, le_refl, and_self]\n          · -- Part 2 : `sInf ... ≤ d`\n            simp only [d, distFromCode]\n            apply le_sInf\n            -- Let `d'` be any element in the set that `d` is the infimum of.\n            intro d' h_d'\n            -- Unpack `h_d'` : there exists some `v` in the code such that\n            -- `↑(hammingDist f v) ≤ d'`.\n            rcases h_d' with ⟨v, hv_mem, h_dist_v_le_d'⟩\n            -- By definition, `sInf SENat` is a lower bound for all elements in `SENat`.\n            -- The element `↑(hammingDist f v)` is in `SENat`.\n            have h_sInf_le_dist_v : sInf SENat ≤ ↑(hammingDist f v) := by\n              apply sInf_le -- ⊢ ↑Δ₀(f, v) ∈ SENat\n              rw [Set.mem_image]\n              -- ⊢ ∃ x ∈ Set.univ, ↑Δ₀(f, ↑x) = ↑Δ₀(f, v)\n              simp only [Fin.eta, Set.mem_univ, Nat.cast_inj, true_and, Subtype.exists, exists_prop]\n              -- ⊢ ∃ a ∈ C_i, Δ₀(f, a) = Δ₀(f, v)\n              use v\n              exact And.symm ⟨rfl, hv_mem⟩\n            -- Now, chain the inequalities : `sInf SENat ≤ ↑(dist_to_any_v) ≤ d'`.\n            exact h_sInf_le_dist_v.trans h_dist_v_le_d'\n        rw [h_distFromCode_eq_sInf, ←h_coe_sinfS_eq_sinfSENat, ←hg_min]\n      rw [h_dist_eq_hamming]\n      rw [ENat.toNat_coe]\n    -- Get the closest polynomial\n    obtain ⟨p, hp_deg_lt, hp_eval⟩ : ∃ p, p ∈ Polynomial.degreeLT L k ∧\n      (fun (x : sDomain 𝔽q β h_ℓ_add_R_rate (i := ⟨i, by omega⟩)) ↦ p.eval (↑x)) = g_closest := by\n      simp only [Fin.eta, BBF_Code, ReedSolomon.code, ReedSolomon.evalOnPoints, Function.Embedding.coeFn_mk,\n        Submodule.mem_map, LinearMap.coe_mk, AddHom.coe_mk, C_i] at hg_mem\n      rcases hg_mem with ⟨p_witness, hp_prop, hp_eq⟩\n      use p_witness\n    have natDeg_p_lt_k : p.natDegree < k := by\n      simp only [mem_degreeLT] at hp_deg_lt\n      by_cases hi : i = ℓ\n      · simp only [hi, tsub_self, pow_zero, cast_one, lt_one_iff, k] at ⊢ hp_deg_lt\n        by_cases hp_p_eq_0 : p = 0\n        · rw [hp_p_eq_0, Polynomial.natDegree_zero];\n        · rw [Polynomial.natDegree_eq_of_degree_eq_some]\n          have h_deg_p : p.degree = 0 := by\n            have h_le_zero : p.degree ≤ 0 := by\n              exact WithBot.lt_one_iff_le_zero.mp hp_deg_lt\n            have h_deg_ne_bot : p.degree ≠ ⊥ := by\n              rw [Polynomial.degree_ne_bot]; omega\n            apply le_antisymm h_le_zero (zero_le_degree_iff.mpr hp_p_eq_0)\n          simp only [h_deg_p, CharP.cast_eq_zero]\n      · by_cases hp_p_eq_0 : p = 0\n        · rw [hp_p_eq_0, Polynomial.natDegree_zero];\n          have h_i_lt_ℓ : i < ℓ := by omega\n          simp only [ofNat_pos, pow_pos, k]\n        · rw [Polynomial.natDegree_lt_iff_degree_lt (by omega)]\n          exact hp_deg_lt\n    have h_decoder_succeeds : BerlekampWelch.decoder e k ωs f_vals = some p := by\n      apply BerlekampWelch.decoder_eq_some\n      · -- ⊢ `2 * e < d_i = n - k + 1`\n        simp only [domain_size, k]; rw [sDomain_card 𝔽q β (h_i := by omega),]\n        · -- ⊢ 2 * e < 2 ^ (ℓ + 𝓡 - ↑i) - 2 ^ (ℓ - ↑i) + 1\n          simp only [hammingClose, BBF_CodeDistance, cast_add, ENat.coe_sub, cast_pow, cast_ofNat,\n            cast_one] at h_within_radius;\n          have h_lt_eq : ↑(2 * Δ₀(f, ↑(BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) i)).toNat) =\n  2 * Δ₀(f, ↑(BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) i)) := by\n            simp only [cast_mul, cast_ofNat]\n            rw [ENat.coe_toNat]\n            exact h_dist_ne_top\n          apply ENat.coe_lt_coe.mp\n          rw [h_lt_eq, hF₂.out]\n          exact h_within_radius\n      · -- ⊢ `k ≤ domain_size`. This holds by the problem setup.\n        simp only [k, domain_size]\n        rw [sDomain_card 𝔽q β (h_i := by omega), hF₂.out]\n        apply Nat.pow_le_pow_right (by omega) -- ⊢ ℓ - ↑i ≤ ℓ + 𝓡 - ↑⟨↑i, ⋯⟩\n        simp only [tsub_le_iff_right]\n        omega\n      · -- ⊢ Function.Injective ωs\n        simp only [ωs]\n        -- The composition of two injective functions (`Equiv.symm` and `Subtype.val`) is injective.\n        exact Function.Injective.comp Subtype.val_injective (Equiv.injective _)\n      · -- ⊢ `p.natDegree < k`. This is true from `hp_deg`.\n        exact natDeg_p_lt_k\n      · -- ⊢ `Δ₀(f_vals, (fun a ↦ Polynomial.eval a p) ∘ ωs) ≤ e`\n        change hammingDist f_vals ((fun a ↦ Polynomial.eval a p) ∘ ωs) ≤ e\n        simp only [ωs]\n        have h_functions_eq : (fun a ↦ Polynomial.eval a p) ∘ ωs\n          = g_closest ∘ domain_to_fin.symm := by\n          ext j; simp only [Function.comp_apply, Fin.eta, ωs]\n          rw [←hp_eval]\n        rw [h_functions_eq]\n        -- ⊢ Δ₀(f_vals, g_closest ∘ ⇑domain_to_fin.symm) ≤ e\n        simp only [Fin.eta, ge_iff_le, f_vals]\n        -- ⊢ Δ₀(fun j ↦ f (domain_to_fin.symm j), g_closest ∘ ⇑domain_to_fin.symm) ≤ e\n        calc\n          _ ≤ hammingDist f g_closest := by\n            apply hammingDist_le_of_outer_comp_injective f g_closest domain_to_fin.symm\n              (hg := by exact Equiv.injective domain_to_fin.symm)\n          _ ≤ e := by exact h_dist_f\n    simp only [ne_eq, berlekamp_welch_result]\n    simp only [h_decoder_succeeds, reduceCtorEq, not_false_eq_true]\n  let p : L[X] := berlekamp_welch_result.get (Option.ne_none_iff_isSome.mp h_ne_none)\n  exact fun x => p.eval x.val\n\nomit [CharP L 2] [NeZero ℓ] in",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "b4b9cd5741ce2527f466fcd7ff805a5f2e2037e08b55db052056a19177e11993"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 28,
+        "evidence_sha256": "9026dbb984f639fb70f3154c87e288992bfd4f2167ba9b4ead2b4279cc976cf0",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 76.62337662337663,
+          "heartbeat_reduction_pct": -6846.357675425412,
+          "compatibility_pct": 100.0,
+          "combined_pct": -2223.2447662673453
+        },
+        "previous_best_combined_pct": 86.13296193059045,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -20,6 +20,5 @@\n     (fun x hx => ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩)\n-    (by\n-      intro x hx z hz h\n-      obtain ⟨hq, hk⟩ := Prod.mk.inj h\n-      exact (hr x).symm.trans ((congrArg₂ _ hq hk).trans (hr z)))\n+    (Function.LeftInverse.injective (f := fun x => (q x, k x))\n+      (g := Function.uncurry (qMap_total_fiber 𝔽q β _ steps\n+        (fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps))) hr).injOn\n   rw [Set.ncard_prod, Set.ncard_univ, Nat.card_fin] at hd\n@@ -33,4 +32,3 @@\n   have hn := Nat.lt_succ_of_le ((Nat.mul_le_mul_left 2 hd).trans hb)\n-  unfold hammingClose\n-  apply (mul_le_m",
+        "change_excerpt_truncated": true,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.31.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.31.0\", \"v4.30.0\", \"v4.29.0\", \"v4.28.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.31.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.30.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.29.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.28.0\", \"status\": \"passed\", \""
+      },
+      {
+        "check": 29,
+        "evidence_sha256": "6e43f1a3e99c4010996e14daca1f36409df12d110e4e3e2f8d9c385428c01a3a",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 75.87149692412851,
+          "heartbeat_reduction_pct": 82.45721279594605,
+          "compatibility_pct": 100.0,
+          "combined_pct": 86.10956990669153
+        },
+        "previous_best_combined_pct": 86.13296193059045,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -34,3 +34,4 @@\n   unfold hammingClose\n-  apply (mul_le_mul_left' (Code.distFromCode_le_dist_to_mem f g.val g.property) 2).trans_lt\n-  exact ENat.coe_lt_coe.2 hn\n+  rw [two_mul] at hn ⊢\n+  have hc := Code.distFromCode_le_dist_to_mem f g.val g.property\n+  exact (add_le_add hc hc).trans_lt (ENat.coe_lt_coe.2 hn)",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.31.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.31.0\", \"v4.30.0\", \"v4.29.0\", \"v4.28.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.31.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.30.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.29.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.28.0\", \"status\": \"passed\", \""
+      },
+      {
+        "check": 30,
+        "evidence_sha256": "b0101ef527c92583329d6800cc07294a0cea8765780667cbd1f142110d2ab2fc",
+        "accepted": true,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 76.89678742310322,
+          "heartbeat_reduction_pct": 81.90417984199003,
+          "compatibility_pct": 100.0,
+          "combined_pct": 86.26698908836443
+        },
+        "previous_best_combined_pct": 86.13296193059045,
+        "reason": "accepted",
+        "change_excerpt": "--- \n+++ \n@@ -24,4 +24,4 @@\n       exact (hr x).symm.trans ((congrArg₂ _ hq hk).trans (hr z)))\n-  rw [Set.ncard_prod, Set.ncard_univ, Nat.card_fin] at hd\n-  rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf] at hd\n+  rw [Set.ncard_prod, Set.ncard_univ, Nat.card_fin,\n+    Set.ncard_eq_toFinset_card', Set.toFinset_setOf] at hd\n   have hb := Nat.mul_le_mul_right (2 ^ steps)\n@@ -33,4 +33,3 @@\n   have hn := Nat.lt_succ_of_le ((Nat.mul_le_mul_left 2 hd).trans hb)\n-  unfold hammingClose\n-  apply (mul_le_mul_left' (Code.distFromCode_le_dist_to_mem f g.val g.property) 2).trans_lt\n-  exact ENat.coe_lt",
+        "change_excerpt_truncated": true,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.31.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.31.0\", \"v4.30.0\", \"v4.29.0\", \"v4.28.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.31.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.30.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.29.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.28.0\", \"status\": \"passed\", \""
+      },
+      {
+        "check": 31,
+        "evidence_sha256": "de68e23fc7fd8f0632be130b88f22093000838649bd7ad3ffe0d7f58b0dcb951",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 76.21326042378674,
+          "heartbeat_reduction_pct": 79.91109280183153,
+          "compatibility_pct": 100.0,
+          "combined_pct": 85.37478440853943
+        },
+        "previous_best_combined_pct": 86.26698908836443,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -20,6 +20,6 @@\n     (fun x hx => ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩)\n-    (by\n-      intro x hx z hz h\n-      obtain ⟨hq, hk⟩ := Prod.mk.inj h\n-      exact (hr x).symm.trans ((congrArg₂ _ hq hk).trans (hr z)))\n+    (Function.LeftInverse.injective (f := fun x => (q x, k x))\n+      (g := Function.uncurry (qMap_total_fiber 𝔽q β\n+        ⟨i, fin_ℓ_lt_r (h_ℓ_add_R_rate := h_ℓ_add_R_rate) i⟩ steps\n+        (fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps))) hr).injOn\n   rw [Set.ncard_prod, Set.ncard_univ, Nat.card_fin,",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.31.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.31.0\", \"v4.30.0\", \"v4.29.0\", \"v4.28.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.31.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.30.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.29.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.28.0\", \"status\": \"passed\", \""
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 1,
+        "evidence_sha256": "de714f54164bbcae46d0e0e6acbae39653782f23492d71cc11aa5520846877e3",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"theorem Injective.injOn\", \"limit\": 3}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.31.0\", \"query\": \"theorem Injective.injOn\", \"matches\": [], \"truncated\": false}",
+        "request_sha256": "b9517f1b039f9547fbe378323425668696e2bcaef1f8d0e990260bb93662f955",
+        "response_sha256": "9d15dbb6f534a0f1237b7108199b6f55b8be90c8c52336e5a675ea4b298f4e07"
+      },
+      {
+        "attempt": 1,
+        "evidence_sha256": "2bcc1e1ee8236d8a29b98adfc4221e4a425509e64d64fc327ee40e254df611c3",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"def uncurry\", \"limit\": 5}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.31.0\", \"query\": \"def uncurry\", \"matches\": [\"./.lake/packages/mathlib/Mathlib/LinearAlgebra/TensorProduct/Basic.lean:174:def uncurry : (M →ₛₗ[σ₁₂] N →ₛₗ[σ₁₂] P₂) →ₗ[R₂] M ⊗[R] N →ₛₗ[σ₁₂] P₂ where\", \"./.lake/packages/mathlib/Mathlib/LinearAlgebra/TensorProduct/Tower.lean:143:def uncurry : (M →ₗ[A] N →ₗ[R] P) →ₗ[B] M ⊗[R] N →ₗ[A] P where\", \"./.lake/packages/mathlib/Mathlib/LinearAlgebra/Multilinear/Curry.lean:272:def uncurrySum\", \"./.lake/packages/mathlib/Mathlib/Topology/Homotopy/HomotopyGroup.lean:207:protected def uncurry (p : Ω^ M (Ω^ N X x) const) : C",
+        "request_sha256": "2d96695a1243f61cdad2404274efcfb71fc9d9ebd046839eed249ff54fa9aa18",
+        "response_sha256": "85eeb81a7c22a064f1c783fe601b0e0efd45520f8ab70b2dfb58071a0ec05900"
+      },
+      {
+        "attempt": 1,
+        "evidence_sha256": "f3c09864ec7d6cf2fb8417dab1f76e714dd9f3a9138743d836d0a782423c7a82",
+        "request_excerpt": "{\"op\": \"read\", \"path\": \"ArkLib/ProofSystem/Binius/BinaryBasefold/Prelude.lean\", \"start\": 174, \"end\": 189}",
+        "response_excerpt": "{\"kind\": \"source_excerpt\", \"path\": \"ArkLib/ProofSystem/Binius/BinaryBasefold/Prelude.lean\", \"version\": \"v4.31.0\", \"text\": \"174: in which the LSB repsents the FIRST qMap `q⁽ⁱ⁾`, and the MSB represents the LAST `q⁽ⁱ⁺steps⁻¹⁾`\\n175: -/\\n176: noncomputable def qMap_total_fiber\\n177:     -- S^i is source domain, S^{i + steps} is the target domain\\n178:       (i : Fin r) (steps : ℕ) (h_i_add_steps : i.val + steps < ℓ + 𝓡)\\n179:         (y : sDomain 𝔽q β h_ℓ_add_R_rate (i := ⟨i.val + steps, by omega⟩)) :\\n180:     Fin (2 ^ steps) → sDomain 𝔽q β h_ℓ_add_R_rate i :=\\n181:   if h_steps : steps = 0 then ",
+        "request_sha256": "d755574d9527d356569295d9606ea6aaacd7021905bf8573b293c511a973963c",
+        "response_sha256": "31da88597575b6402fe80b30cc4e968effdfa2f065271495bb85242b0e0084ba"
+      }
+    ],
+    "unverified_model_notes": [
+      {
+        "attempt": 1,
+        "evidence_sha256": "d0d59c47db90fdb8668fdb5fd4b5a2f72a9bd090cf2f7dd2c83a230f2480ae41",
+        "kind": "rejected",
+        "text": "LeftInverse.injective with uncurry qMap_total_fiber regressed: inferred Fin index used 1087247 H; explicit Fin index fixed inference but still 348 tokens/3144 H vs best 338/2832. Finset disagreement representation and additive final bound were also worse."
+      }
+    ],
+    "prior_check_count": 32,
+    "prior_event_count": 82,
+    "prior_events_sha256": "040fd7f64996d1424770a1bfaaa8d9e85456950a730deb027f4f577529f4738a"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $2.22803; $0.771971 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

@@ -1,0 +1,34 @@
+```lean
+lemma Typing.progress (der : Typing [] t τ) : t.Value ∨ ∃ t', t ⭢βᵛ t' := by
+  generalize eq : [] = Γ at der
+  have lc := der.wf.2.1
+  induction der <;> subst eq
+  case var => simp_all
+  case abs | tabs => grind only [Value]
+  case app l r ih_l ih_r =>
+    right
+    rcases ih_l rfl l.wf.2.1 with vl | ⟨_, hl⟩
+    · obtain ⟨_, _, rfl⟩ := l.canonical_form_abs vl
+      rcases ih_r rfl r.wf.2.1 with vr | ⟨_, hr⟩ <;>
+        grind only [→ Value.lc, → Red.abs, → Red.appᵣ]
+    · exact ⟨_, .appₗ r.wf.2.1 hl⟩
+  case tapp der _ ih =>
+    cases lc with | tapp lc₁ lc₂ =>
+      specialize ih rfl lc₁
+      grind only [→ canonical_form_tabs, → Red.tabs, → Red.tapp]
+  case let' _ _ ih _ =>
+    obtain ⟨lc₁, body⟩ := body_let.mp lc
+    specialize ih rfl lc₁
+    grind only [→ Red.let_body, → Red.let_bind]
+  case inl der _ ih | inr der _ ih =>
+    rcases ih rfl der.wf.2.1 with val | ⟨_, red⟩ <;>
+      grind only [Value, → Red.inl, → Red.inr]
+  case case der _ _ ih _ _ =>
+    right
+    obtain ⟨lc₁, body₂, body₃⟩ := body_case.mp lc
+    rcases ih rfl lc₁ with val | ⟨_, red⟩
+    · obtain ⟨_, rfl | rfl⟩ := der.canonical_form_sum val <;> cases val <;>
+        grind only [→ Red.case_inl, → Red.case_inr]
+    · exact ⟨_, .case red body₂ body₃⟩
+  case sub _ _ ih => exact ih rfl lc
+```

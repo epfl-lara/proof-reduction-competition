@@ -1,0 +1,11 @@
+# Qwen transfer test of changes 1–4
+
+User requested trying the improved harness with Qwen. Launch one full 15-theorem condition on the exact configured target **Qwen/Qwen3.8-Flash-Next**, **xhigh**, via native Lemex. Use three parallel workers, original/D0 seeds, a 3420-second (57-minute) whole-problem deadline including tools and cleanup, default 20 optimization restarts plus two terminal transport recoveries. No pilot, model substitution, extra independent baseline or budget reset.
+
+Use the identical runtime and prompt/card bytes tested in the completed Sol step-4 experiment: revised general priorities, component feedback, five strategy cards, and bounded audited same-theorem restart history. The only model-track changes are provider/model/effort, fixed provider concurrency and the standard open-model time budget. Native sampling defaults remain unchanged; the installed pinned catalog declares 200,000 context tokens. No temperature override. Inputs, cached denominators, versions, all-version gating and edge cleanup remain fixed. No original references are remeasured.
+
+The historical Qwen condition scored 79.52193448106793%. Its old runtime/prompt and CLI differ, so comparison is descriptive transfer evidence only: it cannot isolate the causal effect of restart history or any one bundle component. The Sol 89.90462173057266% score is also not a matched Qwen control. Report these qualifications.
+
+The entire runtime and native Lemex plus code-mode companion are physically copied and hashed. Credentials enter child environments only; none are copied into artifacts. Unknown Qwen gateway pricing remains unknown, and no dollar cap is claimed. Preserve every request, partial proof and unknown usage. Active or indeterminate requests cannot be resampled; time budgets never restart on resume.
+
+Run saved-evidence audit after all cells terminate. Report completeness, retained-proof validity, full-cohort mean only if complete, components, history utilization and known/unknown usage separately. AGY observes and reports; Codex owns safe repairs. Controlled deadline stops and failed Lean candidates are ordinary search outcomes. No follow-on model run is authorized automatically.

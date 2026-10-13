@@ -1,0 +1,374 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 0355f067d..74b460ad4 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -4,8 +4,9 @@ This repository optimizes Lean proofs for Lean Refactor Arena. Read `README.md`
+ and `docs/ARCHITECTURE.md` before changing the runtime. The active model conditions
+ are **gpt-6.1-sol/max** and **gpt-6-astra/max**. The default search uses the revised
+ prompt, score feedback, and deterministic cleanup at the beginning and end.
+-There is one canonical prompt in `prompts/refactor_system.md`, with the revised
+-V2 five-card context in `prompts/strategy_bank.json`. Provider probes use native
++There is one canonical prompt in `prompts/refactor_system.md`, with the experimental
++priority and five-card revision in `prompts/strategy_bank.json`; historical V2
++runs retain their frozen bytes. Provider probes use native
+ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
+ `Qwen/Qwen3.8-Flash-Next/xhigh`) and Claude Code
+ (`claude-opus-5-5/max`), keeping the same task and host proof tools.
+diff --git a/README.md b/README.md
+index 86d85b500..6907ddab0 100644
+--- a/README.md
++++ b/README.md
+@@ -174,9 +174,15 @@ handoffs are retired. Their saved reports and evidence remain available for
+ read-only inspection and audit; they cannot seed or resume a new search.
+ 
+ There is one active task policy: [refactor_system.md](prompts/refactor_system.md)
+-and its five-card [strategy bank](prompts/strategy_bank.json), preserving the
+-revised V2 contents used for the recent Sol runs. There is no prompt-version or
+-search-mode selector. All providers use score feedback and cleanup at the edges.
++and its five-card [strategy bank](prompts/strategy_bank.json). The experimental
++revision prioritizes obvious local reductions, structural changes and measured
++score losses, with cards for induction aligned with recursion, logical
++reformulation and controlled inference. Check feedback separates length and
++heartbeat contributions to a valid candidate's score change and shows the best
++proof's remaining score loss. This is the bundle under evaluation, not a measured
++improvement. Historical V2 runs retain their frozen prompts. There is no
++prompt-version or search-mode selector. All providers use score feedback and
++cleanup at the edges; restarts still carry only the best verified proof.
+ 
+ Native Lemex, Claude Code and Google Antigravity run the same task with their own shell/edit tools:
+ 
+diff --git a/docs/ARCHITECTURE.md b/docs/ARCHITECTURE.md
+index 0817d87b8..7e1b57fa7 100644
+--- a/docs/ARCHITECTURE.md
++++ b/docs/ARCHITECTURE.md
+@@ -124,7 +124,8 @@ native CLI. Omitted conditions default to DeepSeek V4.1 Flash/high, Opus
+ 5.5/max or Gemini 3.8 Flash/high respectively; Codex defaults remain Sol
+ 6.1/max and Astra/max. Only the active `score_edges`
+ policy can be launched. Historical modes remain readable by the evidence auditor.
+-The canonical prompt and bank retain the revised V2 bytes. Provider wrapper
++The canonical prompt and five-card bank contain the experimental priority and
++strategy revision; historical V2 runs retain their frozen bytes. Provider wrapper
+ instructions may describe a different command working directory; they do not
+ change the mathematical task, context, score or proof-selection policy.
+ 
+@@ -153,6 +154,17 @@ Only a proof passing every version and improving the combined score by more than
+ attempts preserve the ledger. The original seed is reconstructed from cached
+ reference evidence, without compiling it again.
+ 
++`harness/score_feedback.py` explains saved measurements without changing scoring
++or selection. `component_delta_from_previous_best_pp` reports the length,
++heartbeat and compatibility contributions to a candidate's combined-score
++change, each divided by three. It is null unless both declarations pass every
++required version and have finite component scores. Check and status return
++`best_remaining_score_loss_pp`, the incumbent's length and heartbeat losses
++relative to an ideal zero-token, zero-heartbeat proof. These are upper bounds,
++not forecasts of achievable gains; negative reductions remain unclipped. The
++host computes deltas before replacing the incumbent and headroom after selection.
++This feedback adds no Lean calls and exposes no scores in correctness-only mode.
++
+ `harness/semantic.py` owns LeanExplore discovery, enabled by default. Set
+ `RunConfig.semantic_search=SemanticSearchConfig(index_directory, embedding_directory)`
+ or use the default `semantic_search=True` to discover already cached assets during
+diff --git a/prompts/refactor_system.md b/prompts/refactor_system.md
+index a8ee02f29..fe4f46b2f 100644
+--- a/prompts/refactor_system.md
++++ b/prompts/refactor_system.md
+@@ -4,9 +4,9 @@ Preserve the exact statement; change only the proof body. Keep imported files un
+ 
+ Maximize S = (L + H + C) / 3: L = 100*(1 - proof_body_tokens/reference_tokens), H = 100*(1 - primary_version_heartbeats/reference_heartbeats), C = 100*(passing_required_versions/required_versions). References are fixed. Preserve validity across every listed version. A longer proof can have a better score when it eliminates enough elaboration/search. Comments and whitespace do not reduce token length. A failed primary proof or changed statement scores zero. Do not assign a universal cost to a tactic.
+ 
+-Start by understanding which parts of the argument actually establish the theorem. Consider whether an existing lemma or a better representation eliminates an entire block, whether induction on evidence exposes a needed invariant, and whether repeated branches can share a local helper. Inspect the definitions and signatures needed for the chosen idea in the pinned source; do not guess names from memory. The structural cards are suggestions, not a mandatory sequence. Use the relevant ones and ignore the rest.
++Start from the supplied verified proof. Take obvious contractions of wrappers, aliases, or redundant hints when present; the seed may already include deterministic cleanup. Then look for an existing lemma, a better representation, or an induction that removes an entire block of reasoning. Inspect the needed definitions and full signatures in the pinned source; do not guess names from memory. The structural cards are conditional suggestions, not a mandatory sequence.
+ 
+-Where witnesses or constructors are already known, give Lean that information explicitly. Use automation on the remaining small goals. Aim to replace expensive proof discovery with a clear derivation while retaining useful simplification. Inspect local goal states when an error or an opaque branch makes the required term unclear. Use tool feedback to correct the declaration according to the experiment mode described below.
++Use the remaining token and heartbeat score losses to choose where an improvement could matter. If heartbeat loss is material and its cause is unclear, profile the relevant proof or block. Replace unnecessary search with a focused derivation; make ambiguous witnesses or types explicit and allow determined information to be inferred. Expose useful assumptions and invariants before invoking broad automation. Inspect local goals when an error or an opaque branch makes the needed term unclear. After structural changes, reconsider newly redundant local steps before exhaustive tactic-list minimization. A short plateau alone does not establish exhaustion: consider a different structural hypothesis. Lean heartbeat cost, tool elapsed time, and model spending are different quantities; verify the full score and every required version after each proposed change.
+ 
+ Use ordinary kernel-checked Lean. Never use sorry, admit, axioms, native_decide, ofReduceBool, ofReduceNat, unsafe code, metaprogramming, syntax changes, attributes, options, evaluation commands, or context changes. Replace query tactics such as exact?, apply?, simp?, aesop?, and grind? with concrete proofs before submitting.
+ 
+diff --git a/prompts/strategy_bank.json b/prompts/strategy_bank.json
+index ccded8bf9..5959af121 100644
+--- a/prompts/strategy_bank.json
++++ b/prompts/strategy_bank.json
+@@ -10,9 +10,9 @@
+     },
+     {
+       "id": "induct_on_evidence",
+-      "trigger": "Syntax induction repeatedly extracts an invariant, typing rule, normalization fact, or relation from a separate hypothesis.",
+-      "action": "Inspect the inductive evidence and consider induction on that evidence so its constructors provide the invariant and recursive hypotheses together.",
+-      "check": "Verify dependent indices, generalized variables and induction hypotheses. A different induction is useful only if it simplifies the obligations."
++      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
++      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
++      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+     },
+     {
+       "id": "factor_local_identity",
+@@ -21,16 +21,16 @@
+       "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+     },
+     {
+-      "id": "explicit_witnesses",
+-      "trigger": "Broad automation discovers constructors, witnesses, case facts or canonical forms that are already apparent from the argument.",
+-      "action": "Read the constructors and supporting lemmas; supply explicit witnesses, projections and theorem applications. Leave focused arithmetic and simplification to automation.",
+-      "check": "A slightly longer source can win on heartbeats. Do not replace every tactic blindly; check the whole declaration and version compatibility."
++      "id": "control_inference",
++      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
++      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
++      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+     },
+     {
+       "id": "change_representation",
+-      "trigger": "The proof manually unfolds a finite counting, continuity, support, span, recurrence or quotient argument.",
+-      "action": "Choose a representation that lets an existing library theorem do the central work. Search by the mathematical property and the types of the objects, not only the target theorem name.",
+-      "check": "Prove the connection to the new representation locally, account for conversion overhead, and verify the exact assumptions."
++      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
++      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
++      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+     }
+   ]
+ }
+diff --git a/src/proof_eval/harness/prompts.py b/src/proof_eval/harness/prompts.py
+index 22afe7cb6..92fab1ac8 100644
+--- a/src/proof_eval/harness/prompts.py
++++ b/src/proof_eval/harness/prompts.py
+@@ -39,6 +39,13 @@ response contains (length reduction %, heartbeat reduction %, compatibility %),
+ their combined score, correctness feedback, and the best all-version-valid proof
+ so far. A failed primary check scores zero. Use the combined score, not just source
+ length. Invalid or regressive attempts never replace the saved best proof.
++component_delta_from_previous_best_pp splits a valid candidate's score change
++into length, heartbeats and compatibility contributions; positive values help.
++It is null for an invalid or incompletely checked candidate.
++best_remaining_score_loss_pp, also returned by status, shows the best proof's
++length and heartbeat contributions to the gap below 100. These are upper bounds
++relative to an ideal zero-cost proof, not promised achievable gains. Use them to
++prioritize meaningful changes; profile costs remain diagnostic, not score deltas.
+ After a valid result, keep investigating concrete ways to improve it: structural
+ alternatives, stronger lemmas, smaller local helpers, focused tactics or explicit
+ proof terms. Repair failures and compare the scores of valid alternatives. You
+diff --git a/src/proof_eval/harness/session.py b/src/proof_eval/harness/session.py
+index 538f006fe..6e5870021 100644
+--- a/src/proof_eval/harness/session.py
++++ b/src/proof_eval/harness/session.py
+@@ -31,6 +31,7 @@ from proof_eval.verification.references import (
+ )
+ 
+ from . import web
++from .score_feedback import component_deltas, remaining_score_loss
+ from .source import SourceTools
+ 
+ 
+@@ -177,6 +178,7 @@ class ProofSession:
+             )
+             feedback = build_validity_feedback(evaluation, self.versions)
+             previous = self.best_evaluation["scores"]["combined_pct"]
++            deltas = component_deltas(evaluation, self.best_evaluation, self.versions)
+             record = {
+                 "number": len(self.checks) + 1,
+                 "at": now(),
+@@ -206,6 +208,10 @@ class ProofSession:
+                 "delta_from_previous_best_pp": (
+                     None if numeric is None else numeric - previous
+                 ),
++                "component_delta_from_previous_best_pp": deltas,
++                "best_remaining_score_loss_pp": remaining_score_loss(
++                    self.best_evaluation, self.versions
++                ),
+                 "best_scores": self.best_evaluation["scores"],
+                 "best_proof": self.best_code,
+             }
+@@ -222,6 +228,9 @@ class ProofSession:
+             "attempts": len(self.checks),
+             **self._score_view(self.best_evaluation),
+             "best_proof": self.best_code,
++            "best_remaining_score_loss_pp": remaining_score_loss(
++                self.best_evaluation, self.versions
++            ),
+             "finished": self.finished,
+         }
+         if self.deadline_at is not None:
+diff --git a/tests/test_agent_harness.py b/tests/test_agent_harness.py
+index 05df0bfdb..891fe1367 100644
+--- a/tests/test_agent_harness.py
++++ b/tests/test_agent_harness.py
+@@ -163,6 +163,7 @@ def test_high_score_with_failed_version_cannot_replace_best(make_session):
+     assert not response["all_versions_passed"] and not response["accepted_as_best"]
+     assert response["passing_rate_pct"] == 50
+     assert session.best_code == ORIGINAL
++    assert response["component_delta_from_previous_best_pp"] is None
+ 
+ 
+ def test_primary_failure_reports_actual_pass_rate_and_gated_score(make_session):
+@@ -174,6 +175,7 @@ def test_primary_failure_reports_actual_pass_rate_and_gated_score(make_session):
+     response = session.check(GOOD)
+     assert response["score_tuple"] == [0.0, 0.0, 0.0] and response["total_score"] == 0
+     assert response["passing_rate_pct"] == 50 and not response["accepted_as_best"]
++    assert response["component_delta_from_previous_best_pp"] is None
+ 
+ 
+ def test_unknown_measurements_remain_unknown(make_session):
+@@ -185,6 +187,69 @@ def test_unknown_measurements_remain_unknown(make_session):
+     response = session.check(GOOD)
+     assert response["score_tuple"] == [None, None, None]
+     assert response["total_score"] is None and not response["accepted_as_best"]
++    assert response["component_delta_from_previous_best_pp"] is None
++
++
++def test_score_explanation_preserves_longer_faster_best_across_resume(make_session):
++    session = make_session()
++    for code, tokens, heartbeats in ((GOOD, 40, 200), (WORSE, 20, 600)):
++        value = make_session.evaluator.values[code]
++        value["candidate"]["length"] = tokens
++        value["per_version"]["v1"]["heartbeats"] = heartbeats
++        value["scores"] = {
++            "length_reduction_pct": 100 - tokens,
++            "heartbeat_reduction_pct": 100 - heartbeats / 10,
++            "compatibility_pct": 100,
++            "combined_pct": (300 - tokens - heartbeats / 10) / 3,
++        }
++    good = session.check(GOOD)
++    assert good["accepted_as_best"]
++    assert good["component_delta_from_previous_best_pp"] == pytest.approx(
++        {"length": 20, "heartbeats": 80 / 3, "compatibility": 0}
++    )
++    shorter = session.check(WORSE)
++    assert shorter["source_tokens"] < good["source_tokens"]
++    assert not shorter["accepted_as_best"] and shorter["best_proof"] == GOOD
++    assert shorter["component_delta_from_previous_best_pp"] == pytest.approx(
++        {"length": 20 / 3, "heartbeats": -40 / 3, "compatibility": 0}
++    )
++    for result in (good, shorter):
++        assert sum(result["component_delta_from_previous_best_pp"].values()) == (
++            pytest.approx(result["delta_from_previous_best_pp"])
++        )
++        assert result["best_remaining_score_loss_pp"] == pytest.approx(
++            {"length": 40 / 3, "heartbeats": 20 / 3}
++        )
++    resumed = make_session()
++    status = resumed.status()
++    assert (
++        status["best_remaining_score_loss_pp"] == good["best_remaining_score_loss_pp"]
++    )
++    assert sum(status["best_remaining_score_loss_pp"].values()) == pytest.approx(
++        100 - status["total_score"]
++    )
++    duplicate = resumed.check(GOOD)
++    assert duplicate["component_delta_from_previous_best_pp"] == {
++        "length": 0,
++        "heartbeats": 0,
++        "compatibility": 0,
++    }
++    assert make_session.evaluator.calls == [GOOD, WORSE]
++
++
++def test_score_loss_retains_negative_reduction_without_clipping(make_session):
++    session = make_session()
++    value = make_session.evaluator.values[GOOD]
++    value["scores"].update(
++        length_reduction_pct=-20,
++        heartbeat_reduction_pct=80,
++        combined_pct=160 / 3,
++    )
++    result = session.check(GOOD)
++    assert result["accepted_as_best"]
++    assert result["best_remaining_score_loss_pp"] == pytest.approx(
++        {"length": 40, "heartbeats": 20 / 3}
++    )
+ 
+ 
+ def cleanup_result(make_session, code=CLEANED, score=85):
+diff --git a/tests/test_runtime_contracts.py b/tests/test_runtime_contracts.py
+index 03f1a4d1c..c06479141 100644
+--- a/tests/test_runtime_contracts.py
++++ b/tests/test_runtime_contracts.py
+@@ -36,12 +36,9 @@ def test_measurement_source_still_matches_every_saved_reference():
+     assert len(pins) == 36 and set(pins) == {expected}
+ 
+ 
+-def test_sol_prompt_preserved_and_only_profile_tools_extend_the_checkpoint():
++def test_prompt_revision_preserves_frozen_task_inputs_and_safety_contract():
+     old = ROOT / "results/harness/05_model_config"
+-    assert (
+-        tool_instructions("score_edges").removesuffix(PROFILE_TOOLS)
+-        == read(old / "config.json")["tool_instructions"]
+-    )
++    assert PROFILE_TOOLS in tool_instructions("score_edges")
+     assert PROFILE_TOOLS not in tool_instructions("correctness")
+     for name, pack in load_inputs().items():
+         previous = read(
+@@ -50,9 +47,16 @@ def test_sol_prompt_preserved_and_only_profile_tools_extend_the_checkpoint():
+             / fingerprint((name, "gpt-6.1-sol", "max", "score_edges"))
+             / "input.json"
+         )
+-        assert (
+-            messages(pack, starting_point(pack, "score_edges")) == previous["messages"]
+-        )
++        current = messages(pack, starting_point(pack, "score_edges"))
++        old_policy = previous["messages"][0]["content"].split("\n\n")
++        new_policy = current[0]["content"].split("\n\n")
++        assert new_policy[:3] == old_policy[:3]  # Task, output and scoring contract.
++        assert new_policy[-2:] == old_policy[-2:]  # Proof safety and read scope.
++        before = json.loads(previous["messages"][1]["content"].split("\n", 1)[1])
++        after = json.loads(current[1]["content"].split("\n", 1)[1])
++        before.pop("structural_strategy_cards")
++        after.pop("structural_strategy_cards")
++        assert after == before
+ 
+ 
+ def test_package_imports_only_maintained_library_modules():
+diff --git a/src/proof_eval/harness/score_feedback.py b/src/proof_eval/harness/score_feedback.py
+new file mode 100644
+index 000000000..3ce94400e
+--- /dev/null
++++ b/src/proof_eval/harness/score_feedback.py
+@@ -0,0 +1,52 @@
++"""Explain existing scores without measuring proofs or changing selection."""
++
++from __future__ import annotations
++
++import math
++from collections.abc import Sequence
++
++from proof_eval.verification.feedback import all_versions_passed
++
++COMPONENTS = {
++    "length": "length_reduction_pct",
++    "heartbeats": "heartbeat_reduction_pct",
++    "compatibility": "compatibility_pct",
++}
++
++
++def _components(evaluation: dict, versions: Sequence[str]) -> dict[str, float] | None:
++    if not all_versions_passed(evaluation, versions):
++        return None
++    scores = evaluation.get("scores", {})
++    result = {}
++    for name, field in COMPONENTS.items():
++        value = scores.get(field)
++        if (
++            isinstance(value, bool)
++            or not isinstance(value, (int, float))
++            or not math.isfinite(value)
++        ):
++            return None
++        result[name] = float(value)
++    return result
++
++
++def component_deltas(
++    candidate: dict, previous_best: dict, versions: Sequence[str]
++) -> dict[str, float] | None:
++    """Return contributions to combined-score change for two eligible proofs."""
++    current = _components(candidate, versions)
++    previous = _components(previous_best, versions)
++    if current is None or previous is None:
++        return None
++    return {name: (current[name] - previous[name]) / 3 for name in COMPONENTS}
++
++
++def remaining_score_loss(
++    evaluation: dict, versions: Sequence[str]
++) -> dict[str, float] | None:
++    """Return token/heartbeat loss from the ideal zero-cost proof, not a forecast."""
++    components = _components(evaluation, versions)
++    if components is None:
++        return None
++    return {name: (100 - components[name]) / 3 for name in ("length", "heartbeats")}

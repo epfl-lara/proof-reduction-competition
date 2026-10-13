@@ -1,0 +1,1116 @@
+{
+  "at": "2026-10-13T01:09:09.507924+00:00",
+  "code": "lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp}\n    (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * b) =\n    ι ([ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by\n  induction Basis.mem_span ofCrAnListFBasis b using Submodule.span_induction with\n  | mem b hb =>\n    rcases hb with ⟨ys, rfl⟩\n    rw [ofListBasis_eq_ofList]\n    induction Basis.mem_span ofCrAnListFBasis a using Submodule.span_induction with\n    | mem a ha =>\n      rcases ha with ⟨xs, rfl⟩\n      rw [ofListBasis_eq_ofList]\n      let l1 := (List.takeWhile (fun c => ¬ crAnTimeOrderRel φ c)\n        ((xs ++ ys).insertionSort crAnTimeOrderRel)) ++\n        (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) xs)\n      let l2 := (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) ys) ++\n        (List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬ crAnTimeOrderRel c φ)\n        ((xs ++ ys).insertionSort crAnTimeOrderRel))\n      have hs (l : List 𝓕.CrAnFieldOp) (h : ∀ c ∈ l,\n          crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) :\n          ι (ofCrAnListF (crAnTimeOrderList (xs ++ l ++ ys))) =\n          ι (ofCrAnListF l1) * ι (ofCrAnListF l) * ι (ofCrAnListF l2) := by\n        rw [crAnTimeOrderList, insertionSort_of_eq_list _ φ xs l ys h]\n        simp only [ofCrAnListF_append, map_mul, l1, l2, mul_assoc]\n      have hc : ι (ofCrAnListF [φ, ψ]) -\n          𝓢(𝓕 |>ₛ φ, 𝓕 |>ₛ ψ) • ι (ofCrAnListF [ψ, φ]) =\n          ι [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF := by\n        rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n        simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul,\n          map_mul, Algebra.smul_mul_assoc]\n      calc\n        _ = crAnTimeOrderSign (xs ++ φ :: ψ :: ys) •\n            (ι (ofCrAnListF l1) * ι [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF *\n              ι (ofCrAnListF l2)) := by\n          conv_lhs =>\n            rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton,\n              superCommuteF_ofCrAnListF_ofCrAnListF]\n            simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm,\n              Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n              timeOrderF_ofCrAnListF]\n          simp only [List.append_assoc, List.cons_append, List.nil_append] at hs ⊢\n          rw [← crAnTimeOrderSign_swap_eq_time hφψ hψφ]\n          have h12 := hs [φ, ψ] (by simp_all)\n          have h21 := hs [ψ, φ] (by simp_all)\n          simp only [List.cons_append, List.nil_append] at h12 h21\n          rw [h12, h21, ← hc]\n          simp only [smul_sub, mul_sub, sub_mul, Algebra.mul_smul_comm,\n            Algebra.smul_mul_assoc]\n          module\n        _ = ι ([ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * 𝓣ᶠ(ofCrAnListF xs * ofCrAnListF ys)) := by\n          rw [Subalgebra.mem_center_iff.mp\n            (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ)]\n          have hr : crAnTimeOrderList (xs ++ ys) = l1 ++ l2 := by\n            simpa only [crAnTimeOrderList, l1, l2, List.append_assoc] using\n              insertionSort_of_takeWhile_filter 𝓕.crAnTimeOrderRel φ xs ys\n          rw [mul_assoc, ← map_mul, ← ofCrAnListF_append, ← hr]\n          by_cases hq : (𝓕 |>ₛ φ) ≠ (𝓕 |>ₛ ψ)\n          · simp only [ι_superCommuteF_of_diff_statistic hq, zero_mul, smul_zero, map_mul]\n          · rw [crAnTimeOrderSign, Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ\n              (not_ne_iff.mp hq).symm, ← crAnTimeOrderSign,\n              ← ofCrAnListF_append, timeOrderF_ofCrAnListF]\n            simp only [map_mul, map_smul, Algebra.mul_smul_comm]\n    | zero => simp only [zero_mul, map_zero, mul_zero]\n    | add x y hx hy hpx hpy =>\n      simp only [add_mul, map_add, mul_add, hpx, hpy]\n    | smul c x hx hpx =>\n      simp only [Algebra.smul_mul_assoc, map_smul, Algebra.mul_smul_comm, hpx]\n  | zero => simp only [mul_zero, map_zero]\n  | add x y hx hy hpx hpy => simp only [mul_add, map_add, hpx, hpy]\n  | smul c x hx hpx => simp only [Algebra.mul_smul_comm, map_smul, hpx]\n",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time",
+    "version": "v4.32.0",
+    "proof_sha256": "b5048a41edf521dfc023f0c9c9f12480dd81fb1c13b9b7bd0f766c0e00ec55ab",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": null,
+      "threshold_raw": 1000000,
+      "limit": 20
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "end_local_scope 1",
+        "header_truncated": false,
+        "raw": 1148,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "section",
+        "header_truncated": false,
+        "raw": 1152,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option trace.profiler.threshold✝ 1000000",
+        "header_truncated": false,
+        "raw": 62,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "expected type: Sort ?u.99, term\nbinrel% Eq✝ (ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕|>ₛφ,𝓕|>ₛψ) • ι (ofCrAnListF [ψ, φ])) (ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF)",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 1131221,
+                                                                                    "tag": "Lean.Parser.Term.binrel"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "expected type: Sort ?u.99, term\nι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕|>ₛφ,𝓕|>ₛψ) • ι (ofCrAnListF [ψ, φ]) = ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF",
+                                                                                "header_truncated": false,
+                                                                                "raw": 1131358,
+                                                                                "tag": "«term_=_»"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "expected type: ι (timeOrderF (ofCrAnListF xs * (superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ) * ofCrAnListF ys)) =\n  ι ((superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ) * timeOrderF (ofCrAnListF xs * ofCrAnListF ys)), term\nhave hc : ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕|>ₛφ,𝓕|>ₛψ) • ι (ofCrAnListF [ψ, φ]) = ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF := ?body✝;\n?_",
+                                                                            "header_truncated": false,
+                                                                            "raw": 1133433,
+                                                                            "tag": "Lean.Parser.Term.have"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "expected type: ι (timeOrderF (ofCrAnListF xs * (superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ) * ofCrAnListF ys)) =\n  ι ((superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ) * timeOrderF (ofCrAnListF xs * ofCrAnListF ys)), term\n(have hc : ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕|>ₛφ,𝓕|>ₛψ) • ι (ofCrAnListF [ψ, φ]) = ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF := ?body✝;\n?_)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 1133528,
+                                                                        "tag": "Lean.Parser.Term.paren"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "expected type: ι (timeOrderF (ofCrAnListF xs * (superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ) * ofCrAnListF ys)) =\n  ι ((superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ) * timeOrderF (ofCrAnListF xs * ofCrAnListF ys)), term\nno_implicit_lambda%\n  (have hc : ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕|>ₛφ,𝓕|>ₛψ) • ι (ofCrAnListF [ψ, φ]) = ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF := ?body✝;\n  ?_)",
+                                                                    "header_truncated": false,
+                                                                    "raw": 1133610,
+                                                                    "tag": "Lean.Parser.Term.noImplicitLambda"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "refine\n  no_implicit_lambda%\n    (have hc : ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕|>ₛφ,𝓕|>ₛψ) • ι (ofCrAnListF [ψ, φ]) = ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF :=\n      ?body✝;\n    ?_)",
+                                                                "header_truncated": false,
+                                                                "raw": 1133966,
+                                                                "tag": "Lean.Parser.Tactic.refine"
+                                                              },
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc]",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 1581429,
+                                                                                            "tag": "Lean.Parser.Tactic.simp"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "  rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n  simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc]",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 1631244,
+                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "  rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n  simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc]",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 1631323,
+                                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "( rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n  simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc])",
+                                                                                "header_truncated": false,
+                                                                                "raw": 1631404,
+                                                                                "tag": "Lean.Parser.Tactic.paren"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "with_annotate_state\"by\"\n  ( rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n    simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc])",
+                                                                            "header_truncated": false,
+                                                                            "raw": 1631494,
+                                                                            "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "with_annotate_state\"by\"\n    ( rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n      simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc])",
+                                                                        "header_truncated": false,
+                                                                        "raw": 1631575,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "with_annotate_state\"by\"\n    ( rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n      simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc])",
+                                                                    "header_truncated": false,
+                                                                    "raw": 1631654,
+                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "case body✝ =>\n  with_annotate_state\"by\"\n    ( rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n      simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc])",
+                                                                "header_truncated": false,
+                                                                "raw": 1631818,
+                                                                "tag": "Lean.Parser.Tactic.case"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "  refine\n    no_implicit_lambda%\n      (have hc : ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕|>ₛφ,𝓕|>ₛψ) • ι (ofCrAnListF [ψ, φ]) = ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n        simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc])",
+                                                            "header_truncated": false,
+                                                            "raw": 2765942,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "  refine\n    no_implicit_lambda%\n      (have hc : ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕|>ₛφ,𝓕|>ₛψ) • ι (ofCrAnListF [ψ, φ]) = ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n        simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc])",
+                                                        "header_truncated": false,
+                                                        "raw": 2766027,
+                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "focus\n  refine\n    no_implicit_lambda%\n      (have hc : ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕|>ₛφ,𝓕|>ₛψ) • ι (ofCrAnListF [ψ, φ]) = ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n        simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc])",
+                                                    "header_truncated": false,
+                                                    "raw": 2766149,
+                                                    "tag": "Lean.Parser.Tactic.focus"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "have hc : ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕|>ₛφ,𝓕|>ₛψ) • ι (ofCrAnListF [ψ, φ]) = ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF :=\n  by\n  rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n  simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc]",
+                                                "header_truncated": false,
+                                                "raw": 2766328,
+                                                "tag": "Lean.Parser.Tactic.tacticHave__"
+                                              },
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n  map_sub, map_smul, timeOrderF_ofCrAnListF]",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 1888870,
+                                                                                        "tag": "Lean.Parser.Tactic.Conv.simp"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "  rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n  simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n    map_sub, map_smul, timeOrderF_ofCrAnListF]",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 2049452,
+                                                                                    "tag": "Lean.Parser.Tactic.Conv.convSeq1Indented"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "  rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n  simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n    map_sub, map_smul, timeOrderF_ofCrAnListF]",
+                                                                                "header_truncated": false,
+                                                                                "raw": 2049530,
+                                                                                "tag": "Lean.Parser.Tactic.Conv.convSeq"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "( rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n  simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n    map_sub, map_smul, timeOrderF_ofCrAnListF])",
+                                                                            "header_truncated": false,
+                                                                            "raw": 2049610,
+                                                                            "tag": "Lean.Parser.Tactic.Conv.paren"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "lhs;\n  ( rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n      map_sub, map_smul, timeOrderF_ofCrAnListF])",
+                                                                        "header_truncated": false,
+                                                                        "raw": 2052467,
+                                                                        "tag": "Lean.Parser.Tactic.Conv.convSeq1Indented"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "lhs;\n  ( rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n      map_sub, map_smul, timeOrderF_ofCrAnListF])",
+                                                                    "header_truncated": false,
+                                                                    "raw": 2052544,
+                                                                    "tag": "Lean.Parser.Tactic.Conv.convSeq"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "conv => lhs;\n  ( rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n      map_sub, map_smul, timeOrderF_ofCrAnListF])",
+                                                                "header_truncated": false,
+                                                                "raw": 2062966,
+                                                                "tag": "Lean.Parser.Tactic.Conv.conv"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "conv_lhs =>\n  rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n  simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n    map_sub, map_smul, timeOrderF_ofCrAnListF]",
+                                                            "header_truncated": false,
+                                                            "raw": 2063469,
+                                                            "tag": "Mathlib.Tactic.Conv.convLHS"
+                                                          },
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [],
+                                                                                                            "class": "Meta.Tactic.simp.discharge",
+                                                                                                            "header": "IsEmpty.forall_iff discharge ❌️\n  IsEmpty (∀ c ∈ l, crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ)",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 1154322,
+                                                                                                            "tag": ""
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Elab.step",
+                                                                                                        "header": "simp_all",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 3487408,
+                                                                                                        "tag": "Lean.Parser.Tactic.simpAll"
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Elab.step",
+                                                                                                    "header": "simp_all",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 3487488,
+                                                                                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "simp_all",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 3487566,
+                                                                                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "refine\n  no_implicit_lambda%\n    (have h12 := hs [φ, ψ] (by simp_all);\n    ?_)",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 3502400,
+                                                                                            "tag": "Lean.Parser.Tactic.refine"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "refine\n    no_implicit_lambda%\n      (have h12 := hs [φ, ψ] (by simp_all);\n      ?_);\n  rotate_right",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 3502569,
+                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "refine\n    no_implicit_lambda%\n      (have h12 := hs [φ, ψ] (by simp_all);\n      ?_);\n  rotate_right",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 3502649,
+                                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "(refine\n    no_implicit_lambda%\n      (have h12 := hs [φ, ψ] (by simp_all);\n      ?_);\n  rotate_right)",
+                                                                                "header_truncated": false,
+                                                                                "raw": 3502731,
+                                                                                "tag": "Lean.Parser.Tactic.paren"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "(refine\n      no_implicit_lambda%\n        (have h12 := hs [φ, ψ] (by simp_all);\n        ?_);\n    rotate_right)",
+                                                                            "header_truncated": false,
+                                                                            "raw": 3502813,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "(refine\n      no_implicit_lambda%\n        (have h12 := hs [φ, ψ] (by simp_all);\n        ?_);\n    rotate_right)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 3502893,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "focus\n  (refine\n      no_implicit_lambda%\n        (have h12 := hs [φ, ψ] (by simp_all);\n        ?_);\n    rotate_right)",
+                                                                    "header_truncated": false,
+                                                                    "raw": 3503010,
+                                                                    "tag": "Lean.Parser.Tactic.focus"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "refine_lift\n  have h12 := hs [φ, ψ] (by simp_all);\n  ?_",
+                                                                "header_truncated": false,
+                                                                "raw": 3503122,
+                                                                "tag": "Lean.Parser.Tactic.tacticRefine_lift_"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "have h12 := hs [φ, ψ] (by simp_all)",
+                                                            "header_truncated": false,
+                                                            "raw": 3503221,
+                                                            "tag": "Lean.Parser.Tactic.tacticHave__"
+                                                          },
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [],
+                                                                                                            "class": "Meta.Tactic.simp.discharge",
+                                                                                                            "header": "IsEmpty.forall_iff discharge ❌️\n  IsEmpty (∀ c ∈ l, crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ)",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 1154014,
+                                                                                                            "tag": ""
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Elab.step",
+                                                                                                        "header": "simp_all",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 3796426,
+                                                                                                        "tag": "Lean.Parser.Tactic.simpAll"
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Elab.step",
+                                                                                                    "header": "simp_all",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 3796506,
+                                                                                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "simp_all",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 3796584,
+                                                                                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "refine\n  no_implicit_lambda%\n    (have h21 := hs [ψ, φ] (by simp_all);\n    ?_)",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 3812102,
+                                                                                            "tag": "Lean.Parser.Tactic.refine"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "refine\n    no_implicit_lambda%\n      (have h21 := hs [ψ, φ] (by simp_all);\n      ?_);\n  rotate_right",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 3812271,
+                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "refine\n    no_implicit_lambda%\n      (have h21 := hs [ψ, φ] (by simp_all);\n      ?_);\n  rotate_right",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 3812351,
+                                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "(refine\n    no_implicit_lambda%\n      (have h21 := hs [ψ, φ] (by simp_all);\n      ?_);\n  rotate_right)",
+                                                                                "header_truncated": false,
+                                                                                "raw": 3812433,
+                                                                                "tag": "Lean.Parser.Tactic.paren"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "(refine\n      no_implicit_lambda%\n        (have h21 := hs [ψ, φ] (by simp_all);\n        ?_);\n    rotate_right)",
+                                                                            "header_truncated": false,
+                                                                            "raw": 3812515,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "(refine\n      no_implicit_lambda%\n        (have h21 := hs [ψ, φ] (by simp_all);\n        ?_);\n    rotate_right)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 3812595,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "focus\n  (refine\n      no_implicit_lambda%\n        (have h21 := hs [ψ, φ] (by simp_all);\n        ?_);\n    rotate_right)",
+                                                                    "header_truncated": false,
+                                                                    "raw": 3812712,
+                                                                    "tag": "Lean.Parser.Tactic.focus"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "refine_lift\n  have h21 := hs [ψ, φ] (by simp_all);\n  ?_",
+                                                                "header_truncated": false,
+                                                                "raw": 3812824,
+                                                                "tag": "Lean.Parser.Tactic.tacticRefine_lift_"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "have h21 := hs [ψ, φ] (by simp_all)",
+                                                            "header_truncated": false,
+                                                            "raw": 3812923,
+                                                            "tag": "Lean.Parser.Tactic.tacticHave__"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "  conv_lhs =>\n    rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n      map_sub, map_smul, timeOrderF_ofCrAnListF]\n  simp only [List.append_assoc, List.cons_append, List.nil_append] at hs ⊢\n  rw [← crAnTimeOrderSign_swap_eq_time hφψ hψφ]\n  have h12 := hs [φ, ψ] (by simp_all)\n  have h21 := hs [ψ, φ] (by simp_all)\n  simp only [List.con",
+                                                        "header_truncated": true,
+                                                        "raw": 11375593,
+                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "  conv_lhs =>\n    rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n      map_sub, map_smul, timeOrderF_ofCrAnListF]\n  simp only [List.append_assoc, List.cons_append, List.nil_append] at hs ⊢\n  rw [← crAnTimeOrderSign_swap_eq_time hφψ hψφ]\n  have h12 := hs [φ, ψ] (by simp_all)\n  have h21 := hs [ψ, φ] (by simp_all)\n  simp only [List.con",
+                                                    "header_truncated": true,
+                                                    "raw": 11375671,
+                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                  },
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [],
+                                                                        "class": "Elab.step",
+                                                                        "header": "simp only [map_mul, map_smul, Algebra.mul_smul_comm]",
+                                                                        "header_truncated": false,
+                                                                        "raw": 1186277,
+                                                                        "tag": "Lean.Parser.Tactic.simp"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "  rw [crAnTimeOrderSign, Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ (not_ne_iff.mp hq).symm, ← crAnTimeOrderSign, ←\n    ofCrAnListF_append, timeOrderF_ofCrAnListF]\n  simp only [map_mul, map_smul, Algebra.mul_smul_comm]",
+                                                                    "header_truncated": false,
+                                                                    "raw": 1580112,
+                                                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "  rw [crAnTimeOrderSign, Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ (not_ne_iff.mp hq).symm, ← crAnTimeOrderSign, ←\n    ofCrAnListF_append, timeOrderF_ofCrAnListF]\n  simp only [map_mul, map_smul, Algebra.mul_smul_comm]",
+                                                                "header_truncated": false,
+                                                                "raw": 1580191,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "· rw [crAnTimeOrderSign, Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ (not_ne_iff.mp hq).symm, ← crAnTimeOrderSign, ←\n    ofCrAnListF_append, timeOrderF_ofCrAnListF]\n  simp only [map_mul, map_smul, Algebra.mul_smul_comm]",
+                                                            "header_truncated": false,
+                                                            "raw": 1580318,
+                                                            "tag": "Lean.cdot"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "  rw [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ)]\n  have hr : crAnTimeOrderList (xs ++ ys) = l1 ++ l2 := by\n    simpa only [crAnTimeOrderList, l1, l2, List.append_assoc] using\n      insertionSort_of_takeWhile_filter 𝓕.crAnTimeOrderRel φ xs ys\n  rw [mul_assoc, ← map_mul, ← ofCrAnListF_append, ← hr]\n  by_cases hq : (𝓕|>ₛφ) ≠ (𝓕|>ₛψ)\n  · simp only [ι_superCommuteF_of_diff_statistic hq, zero_mul, smul_zero, map_mul]\n  · rw [crAnTimeOrderSign, Wick.koszulSign_eq",
+                                                        "header_truncated": true,
+                                                        "raw": 4031377,
+                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "  rw [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ)]\n  have hr : crAnTimeOrderList (xs ++ ys) = l1 ++ l2 := by\n    simpa only [crAnTimeOrderList, l1, l2, List.append_assoc] using\n      insertionSort_of_takeWhile_filter 𝓕.crAnTimeOrderRel φ xs ys\n  rw [mul_assoc, ← map_mul, ← ofCrAnListF_append, ← hr]\n  by_cases hq : (𝓕|>ₛφ) ≠ (𝓕|>ₛψ)\n  · simp only [ι_superCommuteF_of_diff_statistic hq, zero_mul, smul_zero, map_mul]\n  · rw [crAnTimeOrderSign, Wick.koszulSign_eq",
+                                                    "header_truncated": true,
+                                                    "raw": 4031460,
+                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "calc\n  _ =\n      crAnTimeOrderSign (xs ++ φ :: ψ :: ys) •\n        (ι (ofCrAnListF l1) * ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ι (ofCrAnListF l2)) :=\n    by\n    conv_lhs =>\n      rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n      simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc,\n        ← ofCrAnListF_append, map_sub, map_smul, timeOrderF_ofCrAnListF]\n    simp only [List.append_assoc, List.cons_append, List.nil_a",
+                                                "header_truncated": true,
+                                                "raw": 15938302,
+                                                "tag": "Lean.calcTactic"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "  rcases ha with ⟨xs, rfl⟩\n  rw [ofListBasis_eq_ofList]\n  let l1 :=\n    (List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((xs ++ ys).insertionSort crAnTimeOrderRel)) ++\n      (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) xs)\n  let l2 :=\n    (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) ys) ++\n      (List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬crAnTimeOrderRel c φ) ((xs ++ ys).insertionSort crAnTimeOrderRel))\n  have hs (l : List 𝓕.CrAnFieldOp) (h : ∀ ",
+                                            "header_truncated": true,
+                                            "raw": 19785351,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "  rcases ha with ⟨xs, rfl⟩\n  rw [ofListBasis_eq_ofList]\n  let l1 :=\n    (List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((xs ++ ys).insertionSort crAnTimeOrderRel)) ++\n      (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) xs)\n  let l2 :=\n    (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) ys) ++\n      (List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬crAnTimeOrderRel c φ) ((xs ++ ys).insertionSort crAnTimeOrderRel))\n  have hs (l : List 𝓕.CrAnFieldOp) (h : ∀ ",
+                                        "header_truncated": true,
+                                        "raw": 19785442,
+                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [],
+                                                "class": "Elab.step",
+                                                "header": "simp only [add_mul, map_add, mul_add, hpx, hpy]",
+                                                "header_truncated": false,
+                                                "raw": 1290469,
+                                                "tag": "Lean.Parser.Tactic.simp"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "simp only [add_mul, map_add, mul_add, hpx, hpy]",
+                                            "header_truncated": false,
+                                            "raw": 1290550,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "simp only [add_mul, map_add, mul_add, hpx, hpy]",
+                                        "header_truncated": false,
+                                        "raw": 1290629,
+                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [],
+                                                "class": "Elab.step",
+                                                "header": "simp only [Algebra.smul_mul_assoc, map_smul, Algebra.mul_smul_comm, hpx]",
+                                                "header_truncated": false,
+                                                "raw": 1804263,
+                                                "tag": "Lean.Parser.Tactic.simp"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "simp only [Algebra.smul_mul_assoc, map_smul, Algebra.mul_smul_comm, hpx]",
+                                            "header_truncated": false,
+                                            "raw": 1804344,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "simp only [Algebra.smul_mul_assoc, map_smul, Algebra.mul_smul_comm, hpx]",
+                                        "header_truncated": false,
+                                        "raw": 1804423,
+                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "induction Basis.mem_span ofCrAnListFBasis a using Submodule.span_induction with\n| mem a ha =>\n  rcases ha with ⟨xs, rfl⟩\n  rw [ofListBasis_eq_ofList]\n  let l1 :=\n    (List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((xs ++ ys).insertionSort crAnTimeOrderRel)) ++\n      (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) xs)\n  let l2 :=\n    (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) ys) ++\n      (List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬crAnTimeOrderRe",
+                                    "header_truncated": true,
+                                    "raw": 23846974,
+                                    "tag": "Lean.Parser.Tactic.induction"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "  rcases hb with ⟨ys, rfl⟩\n  rw [ofListBasis_eq_ofList]\n  induction Basis.mem_span ofCrAnListFBasis a using Submodule.span_induction with\n  | mem a ha =>\n    rcases ha with ⟨xs, rfl⟩\n    rw [ofListBasis_eq_ofList]\n    let l1 :=\n      (List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((xs ++ ys).insertionSort crAnTimeOrderRel)) ++\n        (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) xs)\n    let l2 :=\n      (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) y",
+                                "header_truncated": true,
+                                "raw": 23989708,
+                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "  rcases hb with ⟨ys, rfl⟩\n  rw [ofListBasis_eq_ofList]\n  induction Basis.mem_span ofCrAnListFBasis a using Submodule.span_induction with\n  | mem a ha =>\n    rcases ha with ⟨xs, rfl⟩\n    rw [ofListBasis_eq_ofList]\n    let l1 :=\n      (List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((xs ++ ys).insertionSort crAnTimeOrderRel)) ++\n        (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) xs)\n    let l2 :=\n      (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) y",
+                            "header_truncated": true,
+                            "raw": 23989796,
+                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                          },
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [],
+                                    "class": "Elab.step",
+                                    "header": "simp only [mul_add, map_add, hpx, hpy]",
+                                    "header_truncated": false,
+                                    "raw": 1274638,
+                                    "tag": "Lean.Parser.Tactic.simp"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "simp only [mul_add, map_add, hpx, hpy]",
+                                "header_truncated": false,
+                                "raw": 1274719,
+                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "simp only [mul_add, map_add, hpx, hpy]",
+                            "header_truncated": false,
+                            "raw": 1274798,
+                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                          },
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [],
+                                    "class": "Elab.step",
+                                    "header": "simp only [Algebra.mul_smul_comm, map_smul, hpx]",
+                                    "header_truncated": false,
+                                    "raw": 1784676,
+                                    "tag": "Lean.Parser.Tactic.simp"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "simp only [Algebra.mul_smul_comm, map_smul, hpx]",
+                                "header_truncated": false,
+                                "raw": 1784757,
+                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "simp only [Algebra.mul_smul_comm, map_smul, hpx]",
+                            "header_truncated": false,
+                            "raw": 1784836,
+                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "induction Basis.mem_span ofCrAnListFBasis b using Submodule.span_induction with\n| mem b hb =>\n  rcases hb with ⟨ys, rfl⟩\n  rw [ofListBasis_eq_ofList]\n  induction Basis.mem_span ofCrAnListFBasis a using Submodule.span_induction with\n  | mem a ha =>\n    rcases ha with ⟨xs, rfl⟩\n    rw [ofListBasis_eq_ofList]\n    let l1 :=\n      (List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((xs ++ ys).insertionSort crAnTimeOrderRel)) ++\n        (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ)",
+                        "header_truncated": true,
+                        "raw": 28008940,
+                        "tag": "Lean.Parser.Tactic.induction"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "induction Basis.mem_span ofCrAnListFBasis b using Submodule.span_induction with\n  | mem b hb =>\n    rcases hb with ⟨ys, rfl⟩\n    rw [ofListBasis_eq_ofList]\n    induction Basis.mem_span ofCrAnListFBasis a using Submodule.span_induction with\n    | mem a ha =>\n      rcases ha with ⟨xs, rfl⟩\n      rw [ofListBasis_eq_ofList]\n      let l1 :=\n        (List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((xs ++ ys).insertionSort crAnTimeOrderRel)) ++\n          (List.filter (fun c => crAnTimeOrderRel φ c ∧ c",
+                    "header_truncated": true,
+                    "raw": 28009030,
+                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "induction Basis.mem_span ofCrAnListFBasis b using Submodule.span_induction with\n  | mem b hb =>\n    rcases hb with ⟨ys, rfl⟩\n    rw [ofListBasis_eq_ofList]\n    induction Basis.mem_span ofCrAnListFBasis a using Submodule.span_induction with\n    | mem a ha =>\n      rcases ha with ⟨xs, rfl⟩\n      rw [ofListBasis_eq_ofList]\n      let l1 :=\n        (List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((xs ++ ys).insertionSort crAnTimeOrderRel)) ++\n          (List.filter (fun c => crAnTimeOrderRel φ c ∧ c",
+                "header_truncated": true,
+                "raw": 28009118,
+                "tag": "Lean.Parser.Tactic.tacticSeq"
+              }
+            ],
+            "class": "Elab.definition.value",
+            "header": "FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time",
+            "header_truncated": false,
+            "raw": 28026088,
+            "tag": ""
+          }
+        ],
+        "class": "Elab.command",
+        "header": "theorem ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ)\n    (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by\n  induction Basis.mem_span ofCrAnListFBasis b using Submodule.span_induction with\n  | mem b hb =>\n    rcases hb with ⟨ys, rfl⟩\n    rw [ofListBasis_eq_ofList]\n    induction Basis.mem_span ofCrAnListFBasis a using Submodule.span_induction with\n  ",
+        "header_truncated": true,
+        "raw": 28766887,
+        "tag": "Lean.Parser.Command.theorem"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ)\n    (a b : 𝓕.FieldOpFreeAlgebra) :\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by\n  induction Basis.mem_span ofCrAnListFBasis b using Submodule.span_induction with\n  | mem b hb =>\n    rcases hb with ⟨ys, rfl⟩\n    rw [ofListBasis_eq_ofList]\n    induction Basis.mem_span ofCrAnListFBasis a using Submodule.span_induction with\n    ",
+        "header_truncated": true,
+        "raw": 28767125,
+        "tag": "lemma"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option maxHeartbeats✝ 0 in\nlemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ)\n    (a b : 𝓕.FieldOpFreeAlgebra) :\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by\n  induction Basis.mem_span ofCrAnListFBasis b using Submodule.span_induction with\n  | mem b hb =>\n    rcases hb with ⟨ys, rfl⟩\n    rw [ofListBasis_eq_ofList]\n    induction Basis.mem_span ofCrAnListFBasis a using Sub",
+        "header_truncated": true,
+        "raw": 28770552,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option Elab.async✝ false in\nset_option maxHeartbeats✝ 0 in\nlemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ)\n    (a b : 𝓕.FieldOpFreeAlgebra) :\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by\n  induction Basis.mem_span ofCrAnListFBasis b using Submodule.span_induction with\n  | mem b hb =>\n    rcases hb with ⟨ys, rfl⟩\n    rw [ofListBasis_eq_ofList]\n    induction Basis.mem_s",
+        "header_truncated": true,
+        "raw": 28773979,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "#proof_eval_measure \"PROOF_EVAL_997458d71d4f4253b0413c4b22ebdd95\" target\n  \"FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time\" end 16296 in\n  lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ)\n      (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :\n      ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by\n    induction Basis.mem_span ofCrAnListFBasis b using Submodule.span_induction with\n",
+        "header_truncated": true,
+        "raw": 28797918,
+        "tag": "«command#proof_eval_measure_Target_End_In_»"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option trace.profiler.threshold✝ 1000000 in\n#proof_eval_measure \"PROOF_EVAL_997458d71d4f4253b0413c4b22ebdd95\" target\n  \"FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time\" end 16296 in\n  lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ)\n      (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :\n      ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by\n    induction Basis.mem_span ofCrAnL",
+        "header_truncated": true,
+        "raw": 28801440,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "end",
+        "header_truncated": false,
+        "raw": 841,
+        "tag": "Lean.Parser.Command.end"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option trace.profiler.useHeartbeats✝ true in\nset_option trace.profiler.threshold✝ 1000000 in\n#proof_eval_measure \"PROOF_EVAL_997458d71d4f4253b0413c4b22ebdd95\" target\n  \"FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time\" end 16296 in\n  lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ)\n      (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :\n      ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a",
+        "header_truncated": true,
+        "raw": 2,
+        "tag": "Lean.Parser.Command.in"
+      }
+    ],
+    "hotspots": [
+      {
+        "node_id": 4,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.value",
+        "syntax_kind": "",
+        "snippet": "FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time",
+        "snippet_truncated": false,
+        "heartbeats_raw": 28026088,
+        "heartbeats": 28026.088,
+        "inclusive": true
+      },
+      {
+        "node_id": 7,
+        "parent_id": 4,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.induction",
+        "snippet": "induction Basis.mem_span ofCrAnListFBasis b using Submodule.span_induction with\n| mem b hb =>\n  rcases hb with ⟨ys, rfl⟩\n  rw [ofListBasis_eq_ofList]\n  induction Basis.mem_span ofCrAnListFBasis a using Submodule.span_induction with\n  | mem a ha =>\n    rcases ha with ⟨xs, rfl⟩\n    rw [ofListBasis_eq_ofList]\n    let l1 :=\n      (List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((xs ++ ys).insertionSort crAnTimeOrderRel)) ++\n        (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ)",
+        "snippet_truncated": true,
+        "heartbeats_raw": 28008940,
+        "heartbeats": 28008.94,
+        "inclusive": true
+      },
+      {
+        "node_id": 10,
+        "parent_id": 7,
+        "depth": 7,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.induction",
+        "snippet": "induction Basis.mem_span ofCrAnListFBasis a using Submodule.span_induction with\n| mem a ha =>\n  rcases ha with ⟨xs, rfl⟩\n  rw [ofListBasis_eq_ofList]\n  let l1 :=\n    (List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((xs ++ ys).insertionSort crAnTimeOrderRel)) ++\n      (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) xs)\n  let l2 :=\n    (List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) ys) ++\n      (List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬crAnTimeOrderRe",
+        "snippet_truncated": true,
+        "heartbeats_raw": 23846974,
+        "heartbeats": 23846.974,
+        "inclusive": true
+      },
+      {
+        "node_id": 31,
+        "parent_id": 10,
+        "depth": 10,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.calcTactic",
+        "snippet": "calc\n  _ =\n      crAnTimeOrderSign (xs ++ φ :: ψ :: ys) •\n        (ι (ofCrAnListF l1) * ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ι (ofCrAnListF l2)) :=\n    by\n    conv_lhs =>\n      rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n      simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc,\n        ← ofCrAnListF_append, map_sub, map_smul, timeOrderF_ofCrAnListF]\n    simp only [List.append_assoc, List.cons_append, List.nil_a",
+        "snippet_truncated": true,
+        "heartbeats_raw": 15938302,
+        "heartbeats": 15938.302,
+        "inclusive": true
+      },
+      {
+        "node_id": 55,
+        "parent_id": 31,
+        "depth": 13,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "have h21 := hs [ψ, φ] (by simp_all)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 3812923,
+        "heartbeats": 3812.923,
+        "inclusive": true
+      },
+      {
+        "node_id": 56,
+        "parent_id": 55,
+        "depth": 14,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticRefine_lift_",
+        "snippet": "refine_lift\n  have h21 := hs [ψ, φ] (by simp_all);\n  ?_",
+        "snippet_truncated": false,
+        "heartbeats_raw": 3812824,
+        "heartbeats": 3812.824,
+        "inclusive": true
+      },
+      {
+        "node_id": 57,
+        "parent_id": 56,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "focus\n  (refine\n      no_implicit_lambda%\n        (have h21 := hs [ψ, φ] (by simp_all);\n        ?_);\n    rotate_right)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 3812712,
+        "heartbeats": 3812.712,
+        "inclusive": true
+      },
+      {
+        "node_id": 63,
+        "parent_id": 57,
+        "depth": 21,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.refine",
+        "snippet": "refine\n  no_implicit_lambda%\n    (have h21 := hs [ψ, φ] (by simp_all);\n    ?_)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 3812102,
+        "heartbeats": 3812.102,
+        "inclusive": true
+      },
+      {
+        "node_id": 66,
+        "parent_id": 63,
+        "depth": 24,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simpAll",
+        "snippet": "simp_all",
+        "snippet_truncated": false,
+        "heartbeats_raw": 3796426,
+        "heartbeats": 3796.426,
+        "inclusive": true
+      },
+      {
+        "node_id": 42,
+        "parent_id": 31,
+        "depth": 13,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "have h12 := hs [φ, ψ] (by simp_all)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 3503221,
+        "heartbeats": 3503.221,
+        "inclusive": true
+      },
+      {
+        "node_id": 43,
+        "parent_id": 42,
+        "depth": 14,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticRefine_lift_",
+        "snippet": "refine_lift\n  have h12 := hs [φ, ψ] (by simp_all);\n  ?_",
+        "snippet_truncated": false,
+        "heartbeats_raw": 3503122,
+        "heartbeats": 3503.122,
+        "inclusive": true
+      },
+      {
+        "node_id": 44,
+        "parent_id": 43,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "focus\n  (refine\n      no_implicit_lambda%\n        (have h12 := hs [φ, ψ] (by simp_all);\n        ?_);\n    rotate_right)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 3503010,
+        "heartbeats": 3503.01,
+        "inclusive": true
+      },
+      {
+        "node_id": 50,
+        "parent_id": 44,
+        "depth": 21,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.refine",
+        "snippet": "refine\n  no_implicit_lambda%\n    (have h12 := hs [φ, ψ] (by simp_all);\n    ?_)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 3502400,
+        "heartbeats": 3502.4,
+        "inclusive": true
+      },
+      {
+        "node_id": 53,
+        "parent_id": 50,
+        "depth": 24,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simpAll",
+        "snippet": "simp_all",
+        "snippet_truncated": false,
+        "heartbeats_raw": 3487408,
+        "heartbeats": 3487.408,
+        "inclusive": true
+      },
+      {
+        "node_id": 13,
+        "parent_id": 10,
+        "depth": 10,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "have hc : ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕|>ₛφ,𝓕|>ₛψ) • ι (ofCrAnListF [ψ, φ]) = ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF :=\n  by\n  rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n  simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2766328,
+        "heartbeats": 2766.328,
+        "inclusive": true
+      },
+      {
+        "node_id": 14,
+        "parent_id": 13,
+        "depth": 11,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "focus\n  refine\n    no_implicit_lambda%\n      (have hc : ι (ofCrAnListF [φ, ψ]) - 𝓢(𝓕|>ₛφ,𝓕|>ₛψ) • ι (ofCrAnListF [ψ, φ]) = ι [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [superCommuteF_ofCrAnOpF_ofCrAnOpF]\n        simp only [ofCrAnListF_cons, ofCrAnListF_nil, mul_one, map_sub, map_smul, map_mul, Algebra.smul_mul_assoc])",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2766149,
+        "heartbeats": 2766.149,
+        "inclusive": true
+      },
+      {
+        "node_id": 34,
+        "parent_id": 31,
+        "depth": 13,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Mathlib.Tactic.Conv.convLHS",
+        "snippet": "conv_lhs =>\n  rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n  simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n    map_sub, map_smul, timeOrderF_ofCrAnListF]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2063469,
+        "heartbeats": 2063.469,
+        "inclusive": true
+      },
+      {
+        "node_id": 35,
+        "parent_id": 34,
+        "depth": 14,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.Conv.conv",
+        "snippet": "conv => lhs;\n  ( rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n      map_sub, map_smul, timeOrderF_ofCrAnListF])",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2062966,
+        "heartbeats": 2062.966,
+        "inclusive": true
+      },
+      {
+        "node_id": 36,
+        "parent_id": 35,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.Conv.convSeq",
+        "snippet": "lhs;\n  ( rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n      map_sub, map_smul, timeOrderF_ofCrAnListF])",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2052544,
+        "heartbeats": 2052.544,
+        "inclusive": true
+      },
+      {
+        "node_id": 38,
+        "parent_id": 36,
+        "depth": 17,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.Conv.paren",
+        "snippet": "( rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n  simp only [ofList_singleton, mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append,\n    map_sub, map_smul, timeOrderF_ofCrAnListF])",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2049610,
+        "heartbeats": 2049.61,
+        "inclusive": true
+      }
+    ],
+    "marks": [],
+    "profile_heartbeats_raw": 28774320,
+    "profile_heartbeats": 28774.32,
+    "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+    "cache_key": "0956ab335b819f0b666fc6d56c88e6fea8f078493b61d84c540be73ea1468e69",
+    "status": "ok",
+    "available_hotspots": 31,
+    "hotspots_truncated": true,
+    "mark_count": 0,
+    "marks_truncated": false,
+    "partial": false,
+    "diagnostics": [],
+    "context_mode": "full_file_replacement",
+    "returncode": 0,
+    "elapsed_seconds": 3.9181503504514694
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "at": "2026-10-13T16:23:55.116799+00:00",
+  "code": "theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)\n    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)\n    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)\n  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)\n    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :\n  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by\n  profile_tactic \"unfolds\" in (unfold fiberwiseClose at h_fw_dist_lt; unfold hammingClose)\n  profile_tactic \"lets\" in (let C_i := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩\n    let d_fw := fiberwiseDistance 𝔽q β (i := i) steps h_i_add_steps f\n    let d_H := Code.distFromCode f C_i\n    let d_i := BBF_CodeDistance ℓ 𝓡 ⟨i, by omega⟩\n    let d_is := BBF_CodeDistance ℓ 𝓡 ⟨i.val + steps, by omega⟩)\n  profile_tactic \"obtain_g\" in (obtain ⟨g', hg', h_g'⟩ : ∃ g' ∈ C_i,\n      d_fw = (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g').ncard := by\n    have hne : ((fun (g : C_i) => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g).ncard)\n        '' Set.univ).Nonempty := Set.image_nonempty.mpr Set.univ_nonempty\n    obtain ⟨x, _, hx⟩ := Nat.sInf_mem hne\n    exact ⟨x, x.property, hx.symm⟩)\n  profile_tactic \"letY\" in (let Y := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g')\n  profile_tactic \"hle\" in (have h_le : {x | f x ≠ g' x}.ncard ≤ (Y ×ˢ (Set.univ : Set (Fin (2 ^ steps)))).ncard := by\n    refine Set.ncard_le_ncard_of_injOn (s := {x | f x ≠ g' x}) (t := Y ×ˢ Set.univ)\n      (fun x => (iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps x,\n        pointToIterateQuotientIndex (i := ⟨i, by omega⟩) (steps := steps)\n          (h_i_add_steps := h_i_add_steps) (x := x))) ?_ ?_\n    · intro x hx\n      exact Set.mem_prod.mpr ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩\n    · intro a _ b _ h\n      have ha := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := a) _).mp rfl\n      have hb := (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps (x := b) _).mp rfl\n      rw [← ha, ← hb]\n      exact congr_arg (fun p : _ × Fin (2 ^ steps) => qMap_total_fiber 𝔽q β (i := ⟨i, by omega⟩)\n        (steps := steps) (h_i_add_steps := fin_ℓ_steps_lt_ℓ_add_R i steps h_i_add_steps)\n        (y := p.1) p.2) h)\n  profile_tactic \"rwnard\" in (rw [Set.ncard_prod, Set.ncard_univ, Nat.card_fin] at h_le)\n  profile_tactic \"hb\" in (have hb : ({x | f x ≠ g' x} : Set _).ncard = Δ₀(f, g') := by\n    rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf]\n    rfl)\n  profile_tactic \"hcard\" in (have h_card : Δ₀(f, g') ≤ d_fw * 2 ^ steps := by\n    rw [h_g', ← hb]\n    exact h_le)\n  profile_tactic \"hdH\" in (have h_dH : d_H ≤ ((d_fw * 2 ^ steps : ℕ) : ℕ∞) :=\n    (Code.distFromCode_le_dist_to_mem f g' hg').trans (ENat.coe_le_coe.mpr h_card))\n  profile_tactic \"fw_bound\" in (have h_fw_bound : 2 * d_fw ≤ d_is - 1 :=\n    Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt))\n  profile_tactic \"h_alg\" in (have h_alg : (d_is - 1) * 2 ^ steps = d_i - 1 := by\n    have h1 : ℓ + 𝓡 - (↑i + steps) + steps = ℓ + 𝓡 - i := by omega\n    have h2 : ℓ - (↑i + steps) + steps = ℓ - i := by omega\n    simp only [d_is, d_i, BBF_CodeDistance, Nat.add_one_sub_one]\n    rw [← h1, ← h2, Nat.pow_add, Nat.pow_add, Nat.sub_mul])\n  profile_tactic \"h_nat\" in (have h_nat : 2 * (d_fw * 2 ^ steps) ≤ d_i - 1 := by\n    rw [← Nat.mul_assoc, ← h_alg]\n    exact Nat.mul_le_mul_right _ h_fw_bound)\n  profile_tactic \"h5\" in (have h5 : 2 * (d_fw * 2 ^ steps) < d_i := by\n    have h_pos : 0 < d_i := by\n      dsimp only [d_i, BBF_CodeDistance]\n      omega\n    omega)\n  profile_tactic \"h6\" in (have h6 : (2 : ℕ∞) * d_H ≤ ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) :=\n    calc (2 : ℕ∞) * d_H\n        ≤ 2 * ((d_fw * 2 ^ steps : ℕ) : ℕ∞) := mul_le_mul_of_nonneg_left h_dH (by norm_num)\n      _ = ((2 * (d_fw * 2 ^ steps) : ℕ) : ℕ∞) := (ENat.coe_mul 2 _).symm)\n  profile_tactic \"fin\" in (exact h6.trans_lt (ENat.coe_lt_coe.mpr h5))\n",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "Binius.BinaryBasefold.fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius",
+    "version": "v4.31.0",
+    "proof_sha256": "2aadff112ce88fdbd1234dfbd00f422490cd039eebf0fe042259329d985f8959",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": null,
+      "threshold_raw": 100000,
+      "limit": 60
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end_local_scope 1",
+        "header_truncated": false,
+        "raw": 1225,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ section",
+        "header_truncated": false,
+        "raw": 1228,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 100000",
+        "header_truncated": false,
+        "raw": 62,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ failed to pretty print term (use 'set_option pp.rawOnError true' for raw representation)",
+        "header_truncated": false,
+        "raw": 3839,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end",
+        "header_truncated": false,
+        "raw": 898,
+        "tag": "Lean.Parser.Command.end"
+      }
+    ],
+    "hotspots": [],
+    "marks": [],
+    "profile_heartbeats_raw": null,
+    "profile_heartbeats": null,
+    "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+    "cache_key": "ace3669fc96576b356beefa511bb499ccc6c0c2cdca6665398557a7db214eb86",
+    "status": "failed",
+    "available_hotspots": 0,
+    "hotspots_truncated": false,
+    "mark_count": 0,
+    "marks_truncated": false,
+    "partial": true,
+    "diagnostics": [
+      "unexpected token 'let'; expected ')'"
+    ],
+    "context_mode": "full_file_replacement",
+    "returncode": 1,
+    "elapsed_seconds": 6.072114123031497
+  }
+}

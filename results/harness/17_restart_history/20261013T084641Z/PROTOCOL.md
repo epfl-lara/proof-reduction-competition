@@ -1,0 +1,11 @@
+# Step 4: bounded same-theorem restart history
+
+The completed changes 1–3 gate selected revised (89.44863042414136%); the recovered baseline scored 89.26506194603208%, historical reference 89.35742200958394%. See the pinned comparison_decision.json for qualifications and exact source report hashes.
+
+Run ONE fresh full 15-theorem cohort on gpt-6.1-sol/max with five workers, $3 per-problem API-equivalent best-effort cost target, no wall-time watchdog, 20 optimization restarts plus two transport recoveries. Start from the same original/D0 prepared seeds; reuse no optimized solution or budget from any previous condition. Keep the winner's canonical prompt, five strategy cards, component feedback, original token/heartbeat denominators, source projects, native CLI, tools, all-version proof gating, selection margin and edge cleanup unchanged.
+
+The only policy addition is opt-in restart_history_version=1: host-derived summaries of at most two accepted and four rejected nonduplicate checks, three recent source observations, and the latest unverified discovery/rejected/next model note (up to 600 characters each). The entire serialized history is bounded to 12,000 characters; evidence events are capped at 64 per attempt. Source text and model notes are not proof certificates. Every summary is scoped to one theorem, model, effort, mode and input hash; its prior evidence prefixes and hashes are reconstructed by audit. The new remember tool only records notes; it does not stop search or modify proof selection.
+
+Compare the completed audited full-cohort mean against the original revised control at 89.44863042414136%. Report all score components, per-theorem deltas, complete/valid status, all prior attempts, reported/estimated/unknown cost, recovery deviations and repeated cleanup gains separately. Do not pool incomplete results or claim an invoice cap. One exploratory cohort does not demonstrate held-out generalization. No additional ablation or new model run is authorized beyond this condition and bounded safe failure recovery.
+
+All runtime and prompt bytes are physically copied and remain frozen until every cell is terminal. AGY observes; Codex owns repairs and launches. Active or indeterminate requests are never resampled; recovery must preserve cumulative spending and failed attempts.

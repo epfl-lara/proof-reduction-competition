@@ -1,0 +1,9 @@
+open OldExpressions in
+theorem extractedOldExprInVars :
+  NormalizedOldExpr post →
+  (extractOldExprVars post).Subset
+  (Imperative.HasVarsPure.getVars post) := by
+  rintro -
+  apply List.Sublist.subset
+  fun_induction extractOldExprVars post <;>
+    repeat' first | apply List.Sublist.append | assumption | apply List.nil_sublist | apply List.Sublist.refl

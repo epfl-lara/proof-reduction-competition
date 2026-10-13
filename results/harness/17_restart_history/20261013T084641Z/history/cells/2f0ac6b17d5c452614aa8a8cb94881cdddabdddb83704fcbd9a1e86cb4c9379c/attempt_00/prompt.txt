@@ -1,0 +1,74 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "CallElimCorrect.extractedOldExprInVars",
+  "source": "strata",
+  "required_versions": [
+    {
+      "v4.26.0": "451e5f047bafa010d178856db76c00029bfa4d7f"
+    }
+  ],
+  "exact_statement": "open OldExpressions in\ntheorem extractedOldExprInVars :\n  NormalizedOldExpr post →\n  (extractOldExprVars post).Subset\n  (Imperative.HasVarsPure.getVars post)",
+  "incumbent_declaration": "open OldExpressions in\ntheorem extractedOldExprInVars :\n  NormalizedOldExpr post →\n  (extractOldExprVars post).Subset\n  (Imperative.HasVarsPure.getVars post) := by\n  intros Hnorm\n  induction post <;>\n    simp [Imperative.HasVarsPure.getVars, extractOldExprVars,\n          Lambda.LExpr.LExpr.getVars] at * <;>\n    try simp_all\n  case app fn e fn_ih e_ih =>\n    unfold extractOldExprVars\n    split\n    . simp [Lambda.LExpr.LExpr.getVars]\n      intros x Hin\n      omega\n    . next Hfalse =>\n      cases Hnorm with\n      | app H1 H2 Hn =>\n      exfalso\n      specialize Hn ?_\n      constructor\n      cases Hn\n      apply Hfalse\n      rfl\n    . cases Hnorm with\n      | app H1 H2 Hn =>\n      apply List.Subset.app\n      . apply List.Subset.trans\n        apply fn_ih\n        exact H1\n        intros x Hin\n        exact List.mem_append_left (Lambda.LExpr.LExpr.getVars e) Hin\n      . apply List.Subset.trans\n        apply e_ih\n        assumption\n        intros x Hin\n        exact List.mem_append_right (Lambda.LExpr.LExpr.getVars fn) Hin\n  case abs ih =>\n    cases Hnorm\n    apply ih <;> assumption\n  case quant trih eih =>\n    cases Hnorm\n    rename_i e_normalized\n    rename_i tr_normalized\n    rename_i tr e ty k\n    apply List.Subset.app\n    . apply List.Subset.trans\n      apply trih <;> assumption\n      intros x Hin\n      simp_all\n    . apply List.Subset.trans\n      apply eih <;> assumption\n      intros x Hin\n      simp_all\n  case ite cih tih eih =>\n    cases Hnorm\n    apply List.Subset.app\n    . apply List.Subset.trans\n      apply cih <;> assumption\n      intros x Hin\n      grind\n    apply List.Subset.app\n    . apply List.Subset.trans\n      apply tih <;> assumption\n      intros x Hin\n      simp_all\n    . apply List.Subset.trans\n      apply eih <;> assumption\n      intros x Hin\n      simp_all\n  case eq ih1 ih2 =>\n    cases Hnorm\n    apply List.Subset.app\n    . apply List.Subset.trans\n      apply ih1 <;> assumption\n      intros x Hin\n      simp_all\n    . apply List.Subset.trans\n      apply ih2 <;> assumption\n      intros x Hin\n      simp_all",
+  "incumbent_scores": {
+    "length_reduction_pct": -4.504504504504503,
+    "heartbeat_reduction_pct": 16.691297181149743,
+    "compatibility_pct": 100.0,
+    "combined_pct": 37.39559755888175
+  },
+  "reference_denominators": {
+    "tokens": 222,
+    "primary_heartbeats": 2697.873
+  },
+  "preceding_source_excerpt": "ft,\n          ExceptT.mk, StateT.bind] at Hgen\n    split at Hgen\n    split at Hgen\n    . next heq =>\n      simp [pure, StateT.pure] at Hgen\n      cases Hgen\n      simp [StateT.map, Functor.map] at heq\n      cases heq\n      rw [← List.map_map]\n      rw [List.map_fst_zip] <;> try simp_all\n      rw [List.map_fst_zip] <;> try simp_all\n      . rfl\n      . simp [genOutExprIdents]\n        rw [genOutExprIdent_len'] <;> simp_all\n      . simp [genOutExprIdents]\n        rw [genOutExprIdent_len'] <;> simp_all\n    . simp [StateT.pure, pure] at Hgen\n      cases Hgen\n  . simp [throw, throwThe, MonadExceptOf.throw,\n          ExceptT.mk, StateT.pure, pure] at Hgen\n    cases Hgen\n\ntheorem genOutExprIdentWFMono :\n  CoreGenState.WF s →\n  genOutExprIdent e s = (l, s') →\n  CoreGenState.WF s' :=\n  fun Hgen => CoreGenState.WFMono' Hgen\n\ntheorem genOutExprIdentsWFMono :\n  CoreGenState.WF s →\n  genOutExprIdents es s = (ls, s') →\n  CoreGenState.WF s' := by\n  intros Hwf Hgen\n  simp [genOutExprIdents] at Hgen\n  induction es generalizing s ls s' <;> simp at Hgen\n  case nil =>\n    simp [StateT.pure, pure] at Hgen\n    cases Hgen <;> simp_all\n  case cons h t ih =>\n    simp [bind, StateT.bind, Functor.map, StateT.map, pure] at Hgen\n    split at Hgen\n    next a s₁ heq =>\n    split at Hgen\n    next a' s₂ heq' =>\n    cases Hgen\n    have HH := genOutExprIdentWFMono Hwf heq\n    exact ih HH heq'\n\ntheorem genOutExprIdentsTripWFMono :\n  CoreGenState.WF s →\n  genOutExprIdentsTrip outs xs s = (Except.ok trips, s') →\n  CoreGenState.WF s' := by\n  intros Hwf Hgen\n  simp [genOutExprIdentsTrip] at *\n  split at Hgen\n  . simp [Functor.map, ExceptT.map, bind,\n          liftM, monadLift, MonadLift.monadLift, ExceptT.lift,\n          ExceptT.mk, StateT.bind] at Hgen\n    split at Hgen\n    split at Hgen\n    . next a heq =>\n      simp [pure, StateT.pure] at Hgen\n      cases Hgen\n      simp [StateT.map, Functor.map] at heq\n      generalize Hgen' : (genOutExprIdents xs s) = gen at heq\n      cases gen with\n      | mk fst snd =>\n      simp at heq\n      cases heq\n      apply genOutExprIdentsWFMono Hwf Hgen'\n    . simp [StateT.pure, pure] at Hgen\n      cases Hgen\n  . simp [throw, throwThe, MonadExceptOf.throw,\n          ExceptT.mk, StateT.pure, pure] at Hgen\n    cases Hgen\n\ntheorem genOldExprIdentGeneratedWF :\n  genOldExprIdent e s = (l, s') → s'.generated = l :: s.generated :=\n  fun Hgen => genCoreIdentGeneratedWF Hgen\n\ntheorem genOldExprIdentsGeneratedWF :\n  genOldExprIdents es s = (ls, s') →\n  ls.reverse ++ s.generated = s'.generated\n  := by\n  intros Hgen\n  simp [genOldExprIdents] at Hgen\n  induction es generalizing s ls s' <;> simp at Hgen\n  case nil =>\n    simp [StateT.pure, pure] at Hgen\n    cases Hgen <;> simp_all\n  case cons h t ih =>\n    simp [bind, StateT.bind, Functor.map, StateT.map, pure] at Hgen\n    split at Hgen\n    next a s₁ heq =>\n    split at Hgen\n    next a' s₂ heq' =>\n    cases Hgen\n    have HH := genOldExprIdentGeneratedWF heq\n    specialize ih heq'\n    simp [HH] at ih\n    simp_all\n\ntheorem genOldExprIdentsTripGeneratedWF { s s' : CoreGenState } :\n  genOldExprIdentsTrip p xs s = (Except.ok trips, s') →\n  trips.unzip.1.unzip.1.reverse ++ s.generated = s'.generated := by\n  intros Hgen\n  apply genOldExprIdentsGeneratedWF (es:=xs)\n  simp [genOldExprIdentsTrip, bind, liftM,] at *\n  simp [Functor.map, ExceptT.bind, ExceptT.bindCont, bind,\n        monadLift, MonadLift.monadLift, ExceptT.lift,\n        ExceptT.mk, StateT.bind] at Hgen\n  split at Hgen\n  split at Hgen\n  . next heq =>\n    simp [bind, StateT.bind] at Hgen\n    split at Hgen\n    next heq' =>\n    simp [ExceptT.bindCont] at Hgen\n    split at Hgen\n    . cases Hgen\n      simp [StateT.map, Functor.map] at heq\n      cases heq\n      rw [← List.map_map]\n      rw [List.map_fst_zip] <;> try simp_all\n      rw [List.map_fst_zip] <;> try simp_all\n      rw [← getIdentTys!_store_same heq']\n      congr\n      . simp [genOldExprIdents]\n        rw [← getIdentTys!_len heq']\n        rw [genOldExprIdent_len'] <;> simp_all\n      . simp [genOldExprIdents]\n        rw [← getIdentTys!_len heq']\n        rw [genOldExprIdent_len'] <;> simp_all\n    . cases Hgen\n  . cases Hgen\n\ntheorem genOldExprIdentWFMono :\n  CoreGenState.WF s →\n  genOldExprIdent e s = (l, s') →\n  CoreGenState.WF s' :=\n  fun Hgen => CoreGenState.WFMono' Hgen\n\ntheorem genOldExprIdentsWFMono :\n  CoreGenState.WF s →\n  genOldExprIdents es s = (ls, s') →\n  CoreGenState.WF s' := by\n  intros Hwf Hgen\n  simp [genOldExprIdents] at Hgen\n  induction es generalizing s ls s' <;> simp at Hgen\n  case nil =>\n    simp [StateT.pure, pure] at Hgen\n    cases Hgen <;> simp_all\n  case cons h t ih =>\n    simp [bind, StateT.bind, Functor.map, StateT.map, pure] at Hgen\n    split at Hgen\n    next a s₁ heq =>\n    split at Hgen\n    next a' s₂ heq' =>\n    cases Hgen\n    have HH := genOldExprIdentWFMono Hwf heq\n    exact ih HH heq'\n\ntheorem genOldExprIdentsTripWFMono :\n  CoreGenState.WF s →\n  genOldExprIdentsTrip outs xs s = (Except.ok trips, s') →\n  CoreGenState.WF s' := by\n  intros Hwf Hgen\n  simp [genOldExprIdentsTrip, bind, liftM,] at *\n  simp [Functor.map, ExceptT.bind, ExceptT.bindCont, bind,\n        monadLift, MonadLift.monadLift, ExceptT.lift,\n        ExceptT.mk, StateT.bind] at Hgen\n  split at Hgen\n  split at Hgen\n  . next heq =>\n    simp [bind, StateT.bind] at Hgen\n    split at Hgen\n    next heq' =>\n    simp [ExceptT.bindCont] at Hgen\n    split at Hgen\n    . cases Hgen\n      simp [StateT.map, Functor.map] at heq\n      cases heq\n      generalize Hgen' : (genOldExprIdents xs s) = gen at heq'\n      cases gen with\n      | mk fst snd =>\n      rw [← getIdentTys!_store_same heq']\n      exact genOldExprIdentsWFMono Hwf Hgen'\n    . cases Hgen\n  . cases Hgen\n\ntheorem List.Subset.trans :\n  List.Subset a b → b.Subset c → a.Subset c := fun H1 H2 _ Hin => H2 (H1 Hin)\n\ntheorem List.Subset.app :\n  List.Subset a c → b.Subset c → (a ++ b).Subset c := by\n  intros H1 H2\n  intros x Hin\n  simp at Hin\n  cases Hin with\n  | inl Hin =>\n    exact H1 Hin\n  | inr Hin =>\n    exact H2 Hin\n\n",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "CallElimCorrect.extractedOldExprInVars",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "3fc2b6156e5865f63f5c6c448e74fd6081be547ba7efebaee556d131ef7dfa7e"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [],
+    "retrieved_source_observations": [],
+    "unverified_model_notes": [],
+    "prior_check_count": 0,
+    "prior_event_count": 0,
+    "prior_events_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $0; $3 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

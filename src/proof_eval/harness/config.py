@@ -50,8 +50,11 @@ class RunConfig:
     semantic_search: SemanticSearchConfig | bool | None = True
     web_search: bool = True
     usage_policy: UsagePolicy | None = None
+    restart_history: bool = False
 
     def __post_init__(self) -> None:
+        if type(self.restart_history) is not bool:
+            raise ValueError("restart_history must be a boolean")
         if type(self.web_search) is not bool:
             raise ValueError("web_search must be a boolean")
         if (

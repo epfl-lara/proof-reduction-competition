@@ -199,7 +199,10 @@ def prepare(
     carry_budgets_from: Path | None = None,
     semantic_search: semantic.SemanticSearchConfig | bool | None = True,
     web_search: bool = True,
+    restart_history: bool = False,
 ) -> dict:
+    if type(restart_history) is not bool:
+        raise ValueError("restart_history must be a boolean")
     if type(web_search) is not bool:
         raise ValueError("web_search must be a boolean")
     if mode not in RUN_MODES:
@@ -317,6 +320,10 @@ def prepare(
         "rate_card": rate_card(provider),
     }
     config.update(paths or {})
+    if restart_history:
+        from .restart_history import VERSION
+
+        config["restart_history_version"] = VERSION
     if semantic_search is not None:
         config["semantic_search"] = semantic.freeze(semantic_search)
     if web_search:

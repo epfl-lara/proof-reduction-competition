@@ -1,0 +1,9 @@
+open OldExpressions in
+theorem substOldPostSubset:
+  (Imperative.HasVarsPure.getVars (P:=Expression)
+    (substOld h2 (Lambda.LExpr.fvar m h1 ty) post)).Subset
+    (Imperative.HasVarsPure.getVars (P:=Expression) post ++ [h1]) := by
+  simp only [Imperative.HasVarsPure.getVars, List.Subset, List.mem_append]
+  intro
+  fun_induction substOld <;>
+    simp only [Lambda.LExpr.LExpr.getVars, List.mem_append] <;> grind only

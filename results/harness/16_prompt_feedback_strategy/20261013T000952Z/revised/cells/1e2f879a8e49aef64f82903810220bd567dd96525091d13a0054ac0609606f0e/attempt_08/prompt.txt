@@ -1,0 +1,63 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "Cslib.CCS.bisimilarity_congr_choice",
+  "source": "cslib",
+  "required_versions": [
+    {
+      "v4.33.0-rc2": "3aa9d4416c185e0b9faeb72bbd65abe85b95dbcc"
+    },
+    {
+      "v4.32.0": "197a7be621263b84c67ca4f803f69205b36d06df"
+    },
+    {
+      "v4.31.0": "8ea71c8df91acd63285515a04da952b23b78d266"
+    }
+  ],
+  "exact_statement": "theorem bisimilarity_congr_choice :\n    (p ~[lts (defs := defs)] q) → (choice p r) ~[lts (defs := defs)] (choice q r)",
+  "incumbent_declaration": "theorem bisimilarity_congr_choice :\n    (p ~[lts (defs := defs)] q) → (choice p r) ~[lts (defs := defs)] (choice q r) := by\n  intro h\n  rewrite [HomBisimilarity.symm_simulation]\n  refine ⟨_, ChoiceBisim.choice h, ⟨?_⟩, ?_⟩\n  · intro s1 s2 hr\n    cases hr <;> constructor <;> symm <;> assumption\n  · intro s1 s2 hr μ s' ht\n    cases hr <;> rename_i h\n    case' choice => cases ht <;> rename_i ht\n    case choice.choiceR =>\n      exact ⟨s', Tr.choiceR ht, ChoiceBisim.bisim (HomBisimilarity.refl _)⟩\n    all_goals\n      exact (h.follow_fst ht).imp fun _ =>\n        And.imp (by first | exact id | exact Tr.choiceL) ChoiceBisim.bisim\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 63.34661354581673,
+    "heartbeat_reduction_pct": 92.81185427778217,
+    "compatibility_pct": 100.0,
+    "combined_pct": 85.38615594119965
+  },
+  "reference_denominators": {
+    "tokens": 251,
+    "primary_heartbeats": 3859.535
+  },
+  "preceding_source_excerpt": "p q r r' htr =>\n      exists p.par (q.par r')\n      grind\n    case com p q r μ p' μ' r' _ htr htr' =>\n      cases htr\n      case parL p' _ =>\n        use p'.par (q.par r')\n        grind\n      case parR q' _ =>\n        use p.par (q'.par r')\n        grind\n      case com => grind\n  case left.assoc =>\n    intro s2' htr\n    unfold lts at *\n    cases htr\n    case parR htr =>\n      cases htr\n      case parL p q r q' _ =>\n        exists (p.par q').par r\n        grind\n      case parR p q r r' _ =>\n        exists (p.par q).par r'\n        grind\n      case com p q r μ q' μ' r' _ htrp htrq =>\n        use (p.par q').par r'\n        grind\n    case parL p q r p' htr =>\n      exists (p'.par q).par r\n      grind\n    case com p q r μ p' μ' q' _ htr htr' =>\n      cases htr'\n      case parL q' _ =>\n        use (p'.par q').par r\n        grind\n      case parR r' _ =>\n        use (p'.par q).par r'\n        grind\n      case com => grind\n  all_goals grind\n\nprivate inductive ChoiceNil : Process Name Constant → Process Name Constant → Prop where\n  | nil : ChoiceNil (choice p nil) p\n  | id : ChoiceNil p p\n\n/-- P + 𝟎 ~ P -/\ntheorem bisimilarity_choice_nil : (choice p nil) ~[lts (defs := defs)] p := by\n  use ChoiceNil, ChoiceNil.nil\n  intro s1 s2 hr μ\n  apply And.intro <;> cases hr\n  case left.nil =>\n    unfold lts\n    grind [ChoiceNil]\n  case right.nil =>\n    intro s2' htr\n    exists s2'\n    constructor\n    · apply Tr.choiceL\n      assumption\n    · exact ChoiceNil.id\n  all_goals grind [ChoiceNil]\n\n@[local grind]\nprivate inductive ChoiceIdem : Process Name Constant → Process Name Constant → Prop where\n  | idem : ChoiceIdem (choice p p) p\n  | id : ChoiceIdem p p\n\n/-- P + P ~ P -/\ntheorem bisimilarity_choice_idem :\n    (choice p p) ~[lts (defs := defs)] p := by\n  exists ChoiceIdem\n  apply And.intro\n  case left => grind\n  case right =>\n    intro s1 s2 hr μ\n    apply And.intro <;> cases hr <;> unfold lts\n    case right.idem =>\n      intro s1' htr\n      exists s1'\n      grind\n    all_goals grind\n\nprivate inductive ChoiceComm : Process Name Constant → Process Name Constant → Prop where\n  | choiceComm : ChoiceComm (choice p q) (choice q p)\n  | bisim : (p ~[lts (defs := defs)] q) → ChoiceComm p q\n\nopen Bisimilarity in\n/-- P + Q ~ Q + P -/\ntheorem bisimilarity_choice_comm : (choice p q) ~[lts (defs := defs)] (choice q p) := by\n  exists @ChoiceComm Name Constant defs\n  repeat constructor\n  intro s1 s2 hr μ\n  cases hr\n  case choiceComm p q =>\n    constructor\n    case left =>\n      intro s1' htr\n      exists s1'\n      constructor\n      · unfold lts\n        cases htr with grind\n      · grind [HomBisimilarity.refl, ChoiceComm]\n    case right =>\n      intro s1' htr\n      exists s1'\n      constructor\n      · unfold lts\n        cases htr with grind\n      · grind [HomBisimilarity.refl, ChoiceComm]\n  case bisim h =>\n    grind [IsBisimulation, ChoiceComm]\n\nprivate inductive ChoiceAssoc : Process Name Constant → Process Name Constant → Prop where\n  | assoc : ChoiceAssoc (choice p (choice q r)) (choice (choice p q) r)\n  | id : ChoiceAssoc p p\n\n/-- P + (Q + R) ~ (P + Q) + R -/\ntheorem bisimilarity_choice_assoc :\n    (choice p (choice q r)) ~[lts (defs := defs)] (choice (choice p q) r) := by\n  use ChoiceAssoc, ChoiceAssoc.assoc\n  intro s1 s2 hr μ\n  apply And.intro <;> cases hr\n  case left.assoc p q r =>\n    intro s htr\n    refine ⟨s, ?_, ChoiceAssoc.id⟩\n    cases htr\n    case choiceL htr => apply Tr.choiceL; apply Tr.choiceL; assumption\n    case choiceR htr =>\n      cases htr\n      case choiceL htr => apply Tr.choiceL; apply Tr.choiceR; assumption\n      case choiceR htr => apply Tr.choiceR; assumption\n  case right.assoc p q r =>\n    intro s htr\n    refine ⟨s, ?_, ChoiceAssoc.id⟩\n    cases htr\n    case choiceL htr =>\n      cases htr\n      case choiceL htr => apply Tr.choiceL; assumption\n      case choiceR htr => apply Tr.choiceR; apply Tr.choiceL; assumption\n    case choiceR htr => apply Tr.choiceR; apply Tr.choiceR; assumption\n  all_goals grind [ChoiceAssoc.id]\n\n@[local grind]\nprivate inductive PreBisim : Process Name Constant → Process Name Constant → Prop where\n| pre : (p ~[lts (defs := defs)] q) → PreBisim (pre μ p) (pre μ q)\n| bisim : (p ~[lts (defs := defs)] q) → PreBisim p q\n\n/-- P ~ Q → μ.P ~ μ.Q -/\ntheorem bisimilarity_congr_pre :\n    (p ~[lts (defs := defs)] q) → (pre μ p) ~[lts (defs := defs)] (pre μ q) := by\n  intro hpq\n  exists @PreBisim _ _ defs\n  constructor\n  · grind\n  intro s1 s2 hr μ'\n  cases hr\n  case pre p' q' μ hbis =>\n    unfold lts\n    constructor <;> intro _ _ <;> [exists q'; exists p'] <;> grind\n  case bisim => grind [IsBisimulation, IsBisimulation.le_bisimilarity]\n\n@[local grind]\nprivate inductive ResBisim : Process Name Constant → Process Name Constant → Prop where\n| res : (p ~[lts (defs := defs)] q) → ResBisim (res a p) (res a q)\n-- | bisim : (p ~[lts (defs := defs)] q) → ResBisim p q\n\n/-- P ~ Q → (ν a) P ~ (ν a) Q -/\ntheorem bisimilarity_congr_res :\n    (p ~[lts (defs := defs)] q) → (res a p) ~[lts (defs := defs)] (res a q) := by\n  intro hpq\n  exists @ResBisim _ _ defs\n  constructor\n  · grind\n  intro s1 s2 hr μ'\n  cases hr\n  rename_i p q a h\n  constructor\n  case left =>\n    intro s1' htr\n    cases htr with | res _ _ htr =>\n    obtain ⟨q', _, bisim⟩ := h.follow_fst htr\n    exists res a q'\n    unfold lts at *\n    #adaptation_note\n    /-- A grind regression found moving to nightly-2026-03-31 (changes from lean#13166) -/\n    split_ands\n    · grind\n    · exact ResBisim.res bisim\n  case right =>\n    intro s2' htr\n    cases htr with | res _ _ htr =>\n    obtain ⟨p', _, bisim⟩ := h.follow_snd htr\n    exists res a p'\n    unfold lts at *\n    #adaptation_note\n    /-- A grind regression found moving to nightly-2026-03-31 (changes from lean#13166) -/\n    split_ands\n    · grind\n    · exact ResBisim.res bisim\n\nprivate inductive ChoiceBisim : Process Name Constant → Process Name Constant → Prop where\n| choice : (p ~[lts (defs := defs)] q) → ChoiceBisim (choice p r) (choice q r)\n| bisim : (p ~[lts (defs := defs)] q) → ChoiceBisim p q",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ]
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $2.83308; $0.166923 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

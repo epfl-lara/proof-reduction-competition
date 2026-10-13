@@ -174,9 +174,31 @@ handoffs are retired. Their saved reports and evidence remain available for
 read-only inspection and audit; they cannot seed or resume a new search.
 
 There is one active task policy: [refactor_system.md](prompts/refactor_system.md)
-and its five-card [strategy bank](prompts/strategy_bank.json), preserving the
-revised V2 contents used for the recent Sol runs. There is no prompt-version or
-search-mode selector. All providers use score feedback and cleanup at the edges.
+and its five-card [strategy bank](prompts/strategy_bank.json). The experimental
+revision prioritizes obvious local reductions, structural changes and measured
+score losses, with cards for induction aligned with recursion, logical
+reformulation and controlled inference. Check feedback separates length and
+heartbeat contributions to a valid candidate's score change and shows the best
+proof's remaining score loss. The exploratory [Sol comparison](results/harness/16_prompt_feedback_strategy/20261013T000952Z/COMPARISON.md)
+measured 89.448630% for this bundle versus 89.265062% for the recovered control;
+the report records recovery qualifications. Historical V2 runs retain their frozen prompts. There is no
+prompt-version or search-mode selector. All providers use score feedback and
+cleanup at the edges. By default, restarts carry only the best verified proof.
+
+The opt-in `--restart-history` / `RunConfig(restart_history=True)` experiment also
+carries bounded same-theorem history: up to two accepted and four rejected
+checked trials, three source observations, and the latest unverified model note
+of each kind (`discovery`, `rejected`, `next`). The host caps the serialized
+history at 12,000 characters and reconstructs it during audit from earlier
+same-condition evidence. Models can save notes with `python tools.py remember
+--kind next --text 'short hypothesis'`; notes never count as proof certificates.
+This changes restart context only and requires a new output. It remains opt-in.
+The [Sol history trial](results/harness/17_restart_history/20261013T084641Z/FINAL_REPORT.md)
+completed at 89.904622% (+0.455991 percentage points over the revised control).
+The [Qwen follow-up](results/harness/18_qwen_prompt_history/20261013T130211Z/FINAL_REPORT.md)
+completed at 81.769564%; its historical comparison is not matched. All cohorts
+have 15 completed theorems and passing audits. These exploratory results do not
+isolate individual changes or establish held-out performance.
 
 Native Lemex, Claude Code and Google Antigravity run the same task with their own shell/edit tools:
 

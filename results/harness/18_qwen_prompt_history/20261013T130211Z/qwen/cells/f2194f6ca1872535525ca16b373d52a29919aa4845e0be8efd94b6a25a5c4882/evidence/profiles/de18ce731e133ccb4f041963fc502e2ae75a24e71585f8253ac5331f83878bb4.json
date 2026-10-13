@@ -1,0 +1,495 @@
+{
+  "at": "2026-10-13T16:45:00.725782+00:00",
+  "code": "theorem fold_advances_evaluation_poly\n  (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡)\n  (coeffs : Fin (2 ^ (ℓ - ↑i)) → L) (r_chal : L) :\n  let P_i : L[X] := intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i, by\n    exact Nat.lt_trans (n := i) (k := ℓ+1) (m := ℓ) (h₁ := i.isLt) (by exact Nat.lt_add_one ℓ)\n  ⟩) coeffs\n  let f_i := fun (x : (sDomain 𝔽q β h_ℓ_add_R_rate)\n      ⟨i, by exact Nat.lt_trans (n := i) (k := r) (m := ℓ) (h₁ := by omega) (by omega)⟩) =>\n    P_i.eval (x.val : L)\n  let f_i_plus_1 := fold (i := ⟨i, by omega⟩) (h_i := by omega) (f := f_i) (r_chal := r_chal)\n  let new_coeffs := fun j : Fin (2^(ℓ - (i + 1))) =>\n    (1 - r_chal) * (coeffs ⟨j.val * 2, by\n      rw [←Nat.add_zero (j.val * 2)]\n      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))\n        (i := 0) (by omega) (by omega)\n    ⟩) +\n    r_chal * (coeffs ⟨j.val * 2 + 1, by\n      apply mul_two_add_bit_lt_two_pow (c := ℓ - i) (a := j) (b := ℓ - (↑i + 1))\n        (i := 1) (by omega) (by omega)\n    ⟩)\n  let P_i_plus_1 :=\n    intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i := ⟨i+1, by omega⟩) new_coeffs\n  ∀ (y : (sDomain 𝔽q β h_ℓ_add_R_rate)\n    ⟨i+1, by omega⟩), f_i_plus_1 y = P_i_plus_1.eval y.val := by\n  intro P_i f_i f_i_plus_1 new_coeffs P_i_plus_1 y\n  let fiberMap := qMap_total_fiber 𝔽q β ⟨i, by omega⟩ 1 h_i_succ_lt y\n  let P₀ := evenRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  let P₁ := oddRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  have h_add : (fiberMap 1).val = 1 + (fiberMap 0).val := by\n    profile_tactic \"hadd\" in\n      (have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n       have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n       have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n       simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n         qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y])\n  have h_eval (k : Fin 2) :\n      f_i (fiberMap k) = P₀.eval y.val + (fiberMap k).val * P₁.eval y.val := by\n    profile_tactic \"heval\" in\n      (rw [generates_quotient_point_if_is_fiber_of_y 𝔽q β i 1 (by omega)\n        (fiberMap k) y ⟨k, rfl⟩,\n        iteratedQuotientMap_k_eq_1_is_qMap 𝔽q β h_ℓ_add_R_rate i (by omega) (fiberMap k)]\n       simp only [evaluation_poly_split_identity 𝔽q β h_ℓ_add_R_rate i coeffs, f_i, P_i, P₀, P₁,\n         Polynomial.eval_add, eval_comp, Polynomial.eval_mul, Polynomial.eval_X])\n  have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := by\n    profile_tactic \"hpoly\" in\n      (simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement,\n        oddRefinement, Finset.mul_sum, ← Finset.sum_add_distrib, Polynomial.C_add,\n        Polynomial.C_mul, add_mul, ← mul_assoc]\n       rfl)\n  profile_tactic \"final\" in\n    (simp only [f_i_plus_1, fold, fiberMap, h_eval 0, h_eval 1, h_add, ← h_poly,\n        Polynomial.eval_add, Polynomial.eval_mul, Polynomial.eval_C]\n     ring)\n",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "Binius.BinaryBasefold.fold_advances_evaluation_poly",
+    "version": "v4.31.0",
+    "proof_sha256": "a76b2b960a20b766226551cddb73c00efea6029cbb14f7c91bbfe1ecd8f94d71",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": null,
+      "threshold_raw": 1000000,
+      "limit": 30
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end_local_scope 1",
+        "header_truncated": false,
+        "raw": 1225,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ section",
+        "header_truncated": false,
+        "raw": 1228,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 1000000",
+        "header_truncated": false,
+        "raw": 62,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "class": "Elab.definition.header",
+            "header": "✅️ Binius.BinaryBasefold.fold_advances_evaluation_poly",
+            "header_truncated": false,
+            "raw": 2786107,
+            "tag": ""
+          },
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "✅️ simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n  qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y]",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 1255939,
+                                                                                    "tag": "Lean.Parser.Tactic.simp"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "✅️ \n  have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n  have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n  have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n  simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n    qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y]",
+                                                                                "header_truncated": false,
+                                                                                "raw": 1558540,
+                                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "✅️ \n  have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n  have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n  have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n  simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n    qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y]",
+                                                                            "header_truncated": false,
+                                                                            "raw": 1558625,
+                                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "✅️ (\n  have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n  have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n  have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n  simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n    qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y])",
+                                                                        "header_truncated": false,
+                                                                        "raw": 1558712,
+                                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "✅️ profile_tactic \"hadd\" in\n  ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n    have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n    have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n    simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n      qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y])",
+                                                                    "header_truncated": false,
+                                                                    "raw": 1559279,
+                                                                    "tag": "tacticProfile_tactic_In_"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "✅️ profile_tactic \"hadd\" in\n    ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n      have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n      have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n      simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n        qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y])",
+                                                                "header_truncated": false,
+                                                                "raw": 1559366,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "✅️ profile_tactic \"hadd\" in\n    ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n      have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n      have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n      simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n        qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y])",
+                                                            "header_truncated": false,
+                                                            "raw": 1559451,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "✅️ (profile_tactic \"hadd\" in\n    ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n      have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n      have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n      simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n        qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y]))",
+                                                        "header_truncated": false,
+                                                        "raw": 1559538,
+                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "✅️ with_annotate_state\"by\"\n  (profile_tactic \"hadd\" in\n      ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n        have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n        have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n        simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n          qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y]))",
+                                                    "header_truncated": false,
+                                                    "raw": 1559634,
+                                                    "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "✅️ with_annotate_state\"by\"\n    (profile_tactic \"hadd\" in\n        ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n          have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n          have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n          simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n            qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y]))",
+                                                "header_truncated": false,
+                                                "raw": 1559721,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "✅️ with_annotate_state\"by\"\n    (profile_tactic \"hadd\" in\n        ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n          have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n          have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n          simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n            qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y]))",
+                                            "header_truncated": false,
+                                            "raw": 1559806,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    (profile_tactic \"hadd\" in\n        ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n          have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n          have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n          simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n            qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y]))",
+                                        "header_truncated": false,
+                                        "raw": 1559977,
+                                        "tag": "Lean.Parser.Tactic.case"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_add : (fiberMap 1).val = 1 + (fiberMap 0).val := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      (profile_tactic \"hadd\" in\n          ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n            have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n            have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n            simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n      ",
+                                    "header_truncated": true,
+                                    "raw": 1673979,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_add : (fiberMap 1).val = 1 + (fiberMap 0).val := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      (profile_tactic \"hadd\" in\n          ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n            have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n            have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n            simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n      ",
+                                "header_truncated": true,
+                                "raw": 1674070,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_add : (fiberMap 1).val = 1 + (fiberMap 0).val := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      (profile_tactic \"hadd\" in\n          ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n            have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n            have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n            simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n ",
+                            "header_truncated": true,
+                            "raw": 1674198,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ have h_add : (fiberMap 1).val = 1 + (fiberMap 0).val := by\n  profile_tactic \"hadd\" in\n    ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n      have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n      have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n      simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n        qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y])",
+                        "header_truncated": false,
+                        "raw": 1674383,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [],
+                                    "class": "Elab.step",
+                                    "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      (profile_tactic \"hpoly\" in\n          ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement,\n              Finset.mul_sum, ← Finset.sum_add_distrib, Polynomial.C_add, Polynomial.C_mul, add_mul, ← mul_assoc]\n            rfl))",
+                                    "header_truncated": false,
+                                    "raw": 1183530,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "✅️ \n  refine\n    no_implicit_lambda%\n      (have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      (profile_tactic \"hpoly\" in\n          ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement,\n              Finset.mul_sum, ← Finset.sum_add_distrib, Polynomial.C_add, Polynomial.C_mul, add_mul, ← mul_assoc]\n            rfl))",
+                                "header_truncated": false,
+                                "raw": 1183621,
+                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      (profile_tactic \"hpoly\" in\n          ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement,\n              Finset.mul_sum, ← Finset.sum_add_distrib, Polynomial.C_add, Polynomial.C_mul, add_mul, ← mul_assoc]\n            rfl))",
+                            "header_truncated": false,
+                            "raw": 1183749,
+                            "tag": "Lean.Parser.Tactic.focus"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "✅️ have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := by\n  profile_tactic \"hpoly\" in\n    ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement,\n        Finset.mul_sum, ← Finset.sum_add_distrib, Polynomial.C_add, Polynomial.C_mul, add_mul, ← mul_assoc]\n      rfl)",
+                        "header_truncated": false,
+                        "raw": 1183934,
+                        "tag": "Lean.Parser.Tactic.tacticHave__"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "✅️ \n  intro P_i f_i f_i_plus_1 new_coeffs P_i_plus_1 y\n  let fiberMap := qMap_total_fiber 𝔽q β ⟨i, by omega⟩ 1 h_i_succ_lt y\n  let P₀ := evenRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  let P₁ := oddRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  have h_add : (fiberMap 1).val = 1 + (fiberMap 0).val := by\n    profile_tactic \"hadd\" in\n      ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n        have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n        have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin",
+                    "header_truncated": true,
+                    "raw": 4515638,
+                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "✅️ \n  intro P_i f_i f_i_plus_1 new_coeffs P_i_plus_1 y\n  let fiberMap := qMap_total_fiber 𝔽q β ⟨i, by omega⟩ 1 h_i_succ_lt y\n  let P₀ := evenRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  let P₁ := oddRefinement 𝔽q β h_ℓ_add_R_rate i coeffs\n  have h_add : (fiberMap 1).val = 1 + (fiberMap 0).val := by\n    profile_tactic \"hadd\" in\n      ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n        have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n        have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin",
+                "header_truncated": true,
+                "raw": 4515723,
+                "tag": "Lean.Parser.Tactic.tacticSeq"
+              }
+            ],
+            "class": "Elab.definition.value",
+            "header": "✅️ Binius.BinaryBasefold.fold_advances_evaluation_poly",
+            "header_truncated": false,
+            "raw": 4537391,
+            "tag": ""
+          }
+        ],
+        "class": "Elab.command",
+        "header": "✅️ /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n  is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n-/\ntheorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n    (r_chal : L) :\n    let P_i : L[X] :=\n      intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n        ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1) (m := ℓ) (h₁ := i.isLt) (by exact Nat.lt_add_one ℓ)⟩) coeffs\n ",
+        "header_truncated": true,
+        "raw": 8258976,
+        "tag": "Lean.Parser.Command.theorem"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option maxHeartbeats✝ 0 in\n/-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n  is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n-/\ntheorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n    (r_chal : L) :\n    let P_i : L[X] :=\n      intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n        ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1) (m := ℓ) (h₁ := i.isLt) (by exa",
+        "header_truncated": true,
+        "raw": 8262612,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option Elab.async✝ false in\nset_option maxHeartbeats✝ 0 in\n/-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n  is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n-/\ntheorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n    (r_chal : L) :\n    let P_i : L[X] :=\n      intermediateEvaluationPoly 𝔽q β h_ℓ_add_R_rate (i :=\n        ⟨i, by exact Nat.lt_trans (n := i) (k := ℓ + 1)",
+        "header_truncated": true,
+        "raw": 8266246,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ #proof_eval_measure \"PROOF_EVAL_08f5e5c4c07243059114f0fe2c3d613d\" target\n  \"Binius.BinaryBasefold.fold_advances_evaluation_poly\" end 50937 in\n  /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n    is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n  -/\n  theorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n      (r_chal : L) :\n      let P_i : L[X] :=\n        intermediateEva",
+        "header_truncated": true,
+        "raw": 8428929,
+        "tag": "«command#proof_eval_measure_Target_End_In_»"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.threshold✝ 1000000 in\n#proof_eval_measure \"PROOF_EVAL_08f5e5c4c07243059114f0fe2c3d613d\" target\n  \"Binius.BinaryBasefold.fold_advances_evaluation_poly\" end 50937 in\n  /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n    is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n  -/\n  theorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coeffs : Fin (2 ^ (ℓ - ↑i)) → L)\n      (r_chal : L) :",
+        "header_truncated": true,
+        "raw": 8432670,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ end",
+        "header_truncated": false,
+        "raw": 898,
+        "tag": "Lean.Parser.Command.end"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "✅️ set_option trace.profiler.useHeartbeats✝ true in\nset_option trace.profiler.threshold✝ 1000000 in\n#proof_eval_measure \"PROOF_EVAL_08f5e5c4c07243059114f0fe2c3d613d\" target\n  \"Binius.BinaryBasefold.fold_advances_evaluation_poly\" end 50937 in\n  /-- Lemma 4.13 : if f⁽ⁱ⁾ is evaluation of P⁽ⁱ⁾(X) over S⁽ⁱ⁾, then fold(f⁽ⁱ⁾, r_chal)\n    is evaluation of P⁽ⁱ⁺¹⁾(X) over S⁽ⁱ⁺¹⁾. At level `i = ℓ`, we have P⁽ˡ⁾ =\n  -/\n  theorem fold_advances_evaluation_poly (i : Fin (ℓ)) (h_i_succ_lt : i + 1 < ℓ + 𝓡) (coef",
+        "header_truncated": true,
+        "raw": 0,
+        "tag": "Lean.Parser.Command.in"
+      }
+    ],
+    "hotspots": [
+      {
+        "node_id": 5,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.value",
+        "syntax_kind": "",
+        "snippet": "✅️ Binius.BinaryBasefold.fold_advances_evaluation_poly",
+        "snippet_truncated": false,
+        "heartbeats_raw": 4537391,
+        "heartbeats": 4537.391,
+        "inclusive": true
+      },
+      {
+        "node_id": 4,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.header",
+        "syntax_kind": "",
+        "snippet": "✅️ Binius.BinaryBasefold.fold_advances_evaluation_poly",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2786107,
+        "heartbeats": 2786.107,
+        "inclusive": true
+      },
+      {
+        "node_id": 8,
+        "parent_id": 5,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have h_add : (fiberMap 1).val = 1 + (fiberMap 0).val := by\n  profile_tactic \"hadd\" in\n    ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n      have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n      have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n      simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n        qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y])",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1674383,
+        "heartbeats": 1674.383,
+        "inclusive": true
+      },
+      {
+        "node_id": 9,
+        "parent_id": 8,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_add : (fiberMap 1).val = 1 + (fiberMap 0).val := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      (profile_tactic \"hadd\" in\n          ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n            have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n            have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n            simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n ",
+        "snippet_truncated": true,
+        "heartbeats_raw": 1674198,
+        "heartbeats": 1674.198,
+        "inclusive": true
+      },
+      {
+        "node_id": 12,
+        "parent_id": 9,
+        "depth": 8,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.case",
+        "snippet": "✅️ case body✝ =>\n  with_annotate_state\"by\"\n    (profile_tactic \"hadd\" in\n        ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n          have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n          have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n          simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n            qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y]))",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1559977,
+        "heartbeats": 1559.977,
+        "inclusive": true
+      },
+      {
+        "node_id": 19,
+        "parent_id": 12,
+        "depth": 15,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "tacticProfile_tactic_In_",
+        "snippet": "✅️ profile_tactic \"hadd\" in\n  ( have fz0 : Fin2ToF2 𝔽q 0 = 0 := rfl\n    have fz1 : Fin2ToF2 𝔽q 1 = 1 := rfl\n    have hb := get_sDomain_first_basis_eq_1 𝔽q β h_ℓ_add_R_rate ⟨i, by omega⟩ (fin_ℓ_lt_ℓ_add_R i)\n    simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n      qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y])",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1559279,
+        "heartbeats": 1559.279,
+        "inclusive": true
+      },
+      {
+        "node_id": 23,
+        "parent_id": 19,
+        "depth": 19,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simp",
+        "snippet": "✅️ simp only [fz0, fz1, zero_smul, one_smul, fiberMap, Submodule.coe_add, zero_add, hb,\n  qMap_total_fiber_one_level_eq 𝔽q β i (by omega) y]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1255939,
+        "heartbeats": 1255.939,
+        "inclusive": true
+      },
+      {
+        "node_id": 24,
+        "parent_id": 5,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.tacticHave__",
+        "snippet": "✅️ have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := by\n  profile_tactic \"hpoly\" in\n    ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement,\n        Finset.mul_sum, ← Finset.sum_add_distrib, Polynomial.C_add, Polynomial.C_mul, add_mul, ← mul_assoc]\n      rfl)",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1183934,
+        "heartbeats": 1183.934,
+        "inclusive": true
+      },
+      {
+        "node_id": 25,
+        "parent_id": 24,
+        "depth": 5,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.focus",
+        "snippet": "✅️ focus\n  refine\n    no_implicit_lambda%\n      (have h_poly : Polynomial.C (1 - r_chal) * P₀ + Polynomial.C r_chal * P₁ = P_i_plus_1 := ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      (profile_tactic \"hpoly\" in\n          ( simp only [P_i_plus_1, new_coeffs, intermediateEvaluationPoly, P₀, P₁, evenRefinement, oddRefinement,\n              Finset.mul_sum, ← Finset.sum_add_distrib, Polynomial.C_add, Polynomial.C_mul, add_mul, ← mul_assoc]\n            rfl))",
+        "snippet_truncated": false,
+        "heartbeats_raw": 1183749,
+        "heartbeats": 1183.749,
+        "inclusive": true
+      }
+    ],
+    "marks": [
+      {
+        "end": 1884,
+        "heartbeats_raw": 1558771,
+        "label": "hadd",
+        "label_truncated": false,
+        "start": 1519,
+        "succeeded": true,
+        "heartbeats": 1558.771,
+        "inclusive": true,
+        "line": 30
+      },
+      {
+        "end": 2397,
+        "heartbeats_raw": 489514,
+        "label": "heval",
+        "label_truncated": false,
+        "start": 1997,
+        "succeeded": true,
+        "heartbeats": 489.514,
+        "inclusive": true,
+        "line": 38
+      },
+      {
+        "end": 2757,
+        "heartbeats_raw": 971713,
+        "label": "hpoly",
+        "label_truncated": false,
+        "start": 2495,
+        "succeeded": true,
+        "heartbeats": 971.713,
+        "inclusive": true,
+        "line": 45
+      },
+      {
+        "end": 2946,
+        "heartbeats_raw": 827011,
+        "label": "final",
+        "label_truncated": false,
+        "start": 2760,
+        "succeeded": true,
+        "heartbeats": 827.011,
+        "inclusive": true,
+        "line": 50
+      }
+    ],
+    "profile_heartbeats_raw": 8266584,
+    "profile_heartbeats": 8266.584,
+    "environment_fingerprint": "2f1de4970c36f54853ee305822f799ed5a98b9bab74babe569859629ac3312b1",
+    "cache_key": "19529994bb70ec540c5c7f223e5f5386aaa4052cf4de71e2a17890d919ac2563",
+    "status": "ok",
+    "available_hotspots": 9,
+    "hotspots_truncated": false,
+    "mark_count": 4,
+    "marks_truncated": false,
+    "partial": false,
+    "diagnostics": [],
+    "context_mode": "full_file_replacement",
+    "returncode": 0,
+    "elapsed_seconds": 4.772400341928005
+  }
+}

@@ -1,0 +1,1904 @@
+{
+  "at": "2026-10-13T09:52:33.417578+00:00",
+  "code": "lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp}\n    (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * b) =\n    ι ([ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) := by\n  let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) :\n    Prop := ι 𝓣ᶠ(a * [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * b) =\n    ι ([ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b))\n  change pb b (Basis.mem_span _ b)\n  apply Submodule.span_induction\n  · rintro x ⟨φs, rfl⟩\n    simp only [ofListBasis_eq_ofList]\n    let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) :\n      Prop := ι 𝓣ᶠ(a * [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * ofCrAnListF φs) =\n      ι ([ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a* ofCrAnListF φs))\n    change pa a (Basis.mem_span _ a)\n    apply Submodule.span_induction\n    · rintro x ⟨φs', rfl⟩\n      simp only [ofListBasis_eq_ofList, pa]\n      let l1 := List.takeWhile (fun c => ¬ crAnTimeOrderRel φ c)\n          ((φs' ++ φs).insertionSort crAnTimeOrderRel) ++\n        List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) φs'\n      let l2 := List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) φs ++\n        List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬ crAnTimeOrderRel c φ)\n          ((φs' ++ φs).insertionSort crAnTimeOrderRel)\n      have ht (l : List 𝓕.CrAnFieldOp)\n          (h : ∀ c ∈ l, crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) :\n          ι 𝓣ᶠ(ofCrAnListF (φs' ++ l ++ φs)) =\n          crAnTimeOrderSign (φs' ++ l ++ φs) •\n            (ι (ofCrAnListF l1) * ι (ofCrAnListF l) * ι (ofCrAnListF l2)) := by\n        rw [timeOrderF_ofCrAnListF, crAnTimeOrderList,\n          insertionSort_of_eq_list _ φ φs' l φs h]\n        simp only [decide_not, Bool.decide_and, ofCrAnListF_append,\n          map_smul, map_mul, l1, l2, mul_assoc]\n      trans crAnTimeOrderSign (φs' ++ [φ, ψ] ++ φs) •\n        (ι (ofCrAnListF l1) * ι [ofCrAnOpF φ, ofCrAnOpF ψ]ₛF * ι (ofCrAnListF l2))\n      · conv_lhs =>\n          rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton,\n            superCommuteF_ofCrAnListF_ofCrAnListF]\n          simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc,\n            ← ofCrAnListF_append, map_sub, map_smul, ofList_singleton, List.singleton_append]\n        rw [ht [φ, ψ] (by simp [hφψ, hψφ]), ht [ψ, φ] (by simp [hφψ, hψφ])]\n        simp only [List.append_assoc, List.cons_append, List.nil_append]\n        rw [crAnTimeOrderSign_swap_eq_time hφψ hψφ]\n        rw [superCommuteF_ofCrAnOpF_ofCrAnOpF, ← ofCrAnListF_singleton,\n          ← ofCrAnListF_singleton]\n        simp only [← ofCrAnListF_append, List.cons_append, List.nil_append,\n          map_sub, map_smul, mul_sub, sub_mul, Algebra.mul_smul_comm,\n          Algebra.smul_mul_assoc, smul_sub]\n        module\n      · rw [Subalgebra.mem_center_iff.mp\n          (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ), mul_assoc,\n          ← map_mul, ← ofCrAnListF_append]\n        have h1 := insertionSort_of_takeWhile_filter 𝓕.crAnTimeOrderRel φ φs' φs\n        have hl : l1 ++ l2 = crAnTimeOrderList (φs' ++ φs) := by\n          simpa only [l1, l2, List.append_assoc, crAnTimeOrderList] using h1.symm\n        rw [hl, map_mul]\n        by_cases hq : (𝓕 |>ₛ φ) ≠ (𝓕 |>ₛ ψ)\n        · simp only [ι_superCommuteF_of_diff_statistic hq, zero_mul, smul_zero]\n        · simp only [List.append_assoc, List.cons_append, List.nil_append]\n          rw [crAnTimeOrderSign,\n            Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ (not_ne_iff.mp hq).symm,\n            ← crAnTimeOrderSign, ← ofCrAnListF_append, timeOrderF_ofCrAnListF]\n          simp only [map_smul, Algebra.mul_smul_comm]\n    · simp only [map_mul, zero_mul, map_zero, mul_zero, pa]\n    · intro x y hx hy hpx hpy\n      simp_all only [map_mul, add_mul, map_add, mul_add, pa]\n    · intro x hx hpx\n      simp_all only [map_mul, Algebra.smul_mul_assoc, map_smul, Algebra.mul_smul_comm, implies_true, pa]\n  · simp only [map_mul, mul_zero, map_zero, pb]\n  · intro x y hx hy hpx hpy\n    simp_all only [map_mul, mul_add, map_add, pb]\n  · intro x hx hpx\n    simp_all only [map_mul, Algebra.mul_smul_comm, map_smul, implies_true, pb]",
+  "profile": {
+    "schema": 1,
+    "kind": "lean_heartbeat_profile",
+    "name": "FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time",
+    "version": "v4.32.0",
+    "proof_sha256": "1803ffd77532593f7898dcab115946b119b31e607b6c83d234ed3ec502ee9c5e",
+    "implementation_sha256": "e3e536514959237f419c08117b356b36b6b4dbc85b71a71267bbfeec827f3789",
+    "options": {
+      "version": null,
+      "threshold_raw": 400000,
+      "limit": 15
+    },
+    "diagnostic_only": true,
+    "cost_semantics": "Inclusive raw IO.getNumHeartbeats deltas; heartbeats = raw / 1000. Instrumented costs include profiler overhead. Nested entries overlap; do not sum them or use them as arena scores. Remove profile_tactic wrappers before check/final output.",
+    "cached": false,
+    "trace": [
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "end_local_scope 1",
+        "header_truncated": false,
+        "raw": 1148,
+        "tag": "Lean.Parser.Command.InternalSyntax.end_local_scope"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "section",
+        "header_truncated": false,
+        "raw": 1152,
+        "tag": "Lean.Parser.Command.section"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option trace.profiler.threshold✝ 400000",
+        "header_truncated": false,
+        "raw": 62,
+        "tag": "Lean.Parser.Command.set_option"
+      },
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [],
+                                                                "class": "Elab.step",
+                                                                "header": "expected type: ι (timeOrderF (a * (superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ) * b)) =\n  ι ((superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ) * timeOrderF (a * b)), term\nlet pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n  ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b));\n?_",
+                                                                "header_truncated": false,
+                                                                "raw": 554451,
+                                                                "tag": "Lean.Parser.Term.let"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "expected type: ι (timeOrderF (a * (superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ) * b)) =\n  ι ((superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ) * timeOrderF (a * b)), term\nno_implicit_lambda%\n  (let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b));\n  ?_)",
+                                                            "header_truncated": false,
+                                                            "raw": 554552,
+                                                            "tag": "Lean.Parser.Term.noImplicitLambda"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "refine\n  no_implicit_lambda%\n    (let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n      ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b));\n    ?_)",
+                                                        "header_truncated": false,
+                                                        "raw": 554987,
+                                                        "tag": "Lean.Parser.Tactic.refine"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "refine\n    no_implicit_lambda%\n      (let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n        ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b));\n      ?_);\n  rotate_right",
+                                                    "header_truncated": false,
+                                                    "raw": 555156,
+                                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "refine\n    no_implicit_lambda%\n      (let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n        ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b));\n      ?_);\n  rotate_right",
+                                                "header_truncated": false,
+                                                "raw": 555236,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "(refine\n    no_implicit_lambda%\n      (let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n        ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b));\n      ?_);\n  rotate_right)",
+                                            "header_truncated": false,
+                                            "raw": 555318,
+                                            "tag": "Lean.Parser.Tactic.paren"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "(refine\n      no_implicit_lambda%\n        (let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n          ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b));\n        ?_);\n    rotate_right)",
+                                        "header_truncated": false,
+                                        "raw": 555400,
+                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "(refine\n      no_implicit_lambda%\n        (let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n          ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b));\n        ?_);\n    rotate_right)",
+                                    "header_truncated": false,
+                                    "raw": 555480,
+                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "focus\n  (refine\n      no_implicit_lambda%\n        (let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n          ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b));\n        ?_);\n    rotate_right)",
+                                "header_truncated": false,
+                                "raw": 555597,
+                                "tag": "Lean.Parser.Tactic.focus"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "refine_lift\n  let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b));\n  ?_",
+                            "header_truncated": false,
+                            "raw": 555709,
+                            "tag": "Lean.Parser.Tactic.tacticRefine_lift_"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n  ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b))",
+                        "header_truncated": false,
+                        "raw": 555808,
+                        "tag": "Lean.Parser.Tactic.tacticLet__"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [],
+                                                                            "class": "Elab.step",
+                                                                            "header": "expected type: pb (ofCrAnListF φs) ⋯, term\nlet pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n  ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs));\n?_",
+                                                                            "header_truncated": false,
+                                                                            "raw": 555918,
+                                                                            "tag": "Lean.Parser.Term.let"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "expected type: pb (ofCrAnListF φs) ⋯, term\nno_implicit_lambda%\n  (let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs));\n  ?_)",
+                                                                        "header_truncated": false,
+                                                                        "raw": 556001,
+                                                                        "tag": "Lean.Parser.Term.noImplicitLambda"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "refine\n  no_implicit_lambda%\n    (let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n      ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs));\n    ?_)",
+                                                                    "header_truncated": false,
+                                                                    "raw": 556448,
+                                                                    "tag": "Lean.Parser.Tactic.refine"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "refine\n    no_implicit_lambda%\n      (let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n        ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) =\n          ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs));\n      ?_);\n  rotate_right",
+                                                                "header_truncated": false,
+                                                                "raw": 556617,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "refine\n    no_implicit_lambda%\n      (let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n        ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) =\n          ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs));\n      ?_);\n  rotate_right",
+                                                            "header_truncated": false,
+                                                            "raw": 556697,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "(refine\n    no_implicit_lambda%\n      (let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n        ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) =\n          ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs));\n      ?_);\n  rotate_right)",
+                                                        "header_truncated": false,
+                                                        "raw": 556779,
+                                                        "tag": "Lean.Parser.Tactic.paren"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "(refine\n      no_implicit_lambda%\n        (let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n          ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) =\n            ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs));\n        ?_);\n    rotate_right)",
+                                                    "header_truncated": false,
+                                                    "raw": 556861,
+                                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "(refine\n      no_implicit_lambda%\n        (let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n          ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) =\n            ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs));\n        ?_);\n    rotate_right)",
+                                                "header_truncated": false,
+                                                "raw": 556941,
+                                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "focus\n  (refine\n      no_implicit_lambda%\n        (let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n          ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) =\n            ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs));\n        ?_);\n    rotate_right)",
+                                            "header_truncated": false,
+                                            "raw": 557058,
+                                            "tag": "Lean.Parser.Tactic.focus"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "refine_lift\n  let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs));\n  ?_",
+                                        "header_truncated": false,
+                                        "raw": 557170,
+                                        "tag": "Lean.Parser.Tactic.tacticRefine_lift_"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n  ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs))",
+                                    "header_truncated": false,
+                                    "raw": 557269,
+                                    "tag": "Lean.Parser.Tactic.tacticLet__"
+                                  },
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [
+                                                                                                              {
+                                                                                                                "children": [
+                                                                                                                  {
+                                                                                                                    "children": [],
+                                                                                                                    "class": "Meta.isDefEq.delta",
+                                                                                                                    "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.372 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                                                                    "header_truncated": false,
+                                                                                                                    "raw": 449809,
+                                                                                                                    "tag": ""
+                                                                                                                  }
+                                                                                                                ],
+                                                                                                                "class": "Meta.isDefEq",
+                                                                                                                "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.372 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                                                                "header_truncated": false,
+                                                                                                                "raw": 450178,
+                                                                                                                "tag": ""
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "class": "Meta.isDefEq.assign.checkTypes",
+                                                                                                            "header": "(?m.382 : NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.372 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra) := (AlgHom.instNonUnitalAlgHomClassOfAlgHomClass : NonUnitalAlgHomClass\n  (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra)",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 450232,
+                                                                                                            "tag": ""
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Meta.isDefEq.assign",
+                                                                                                        "header": "?m.382 := AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 450394,
+                                                                                                        "tag": ""
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Meta.isDefEq",
+                                                                                                    "header": "?m.382 =?= AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 450439,
+                                                                                                    "tag": ""
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Meta.synthInstance",
+                                                                                                "header": "MulActionHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 936972,
+                                                                                                "tag": ""
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "simp only [decide_not, Bool.decide_and, ofCrAnListF_append, map_smul, map_mul, l1, l2, mul_assoc]",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 1611636,
+                                                                                            "tag": "Lean.Parser.Tactic.simp"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "  rw [timeOrderF_ofCrAnListF, crAnTimeOrderList, insertionSort_of_eq_list _ φ φs' l φs h]\n  simp only [decide_not, Bool.decide_and, ofCrAnListF_append, map_smul, map_mul, l1, l2, mul_assoc]",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 1690209,
+                                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "  rw [timeOrderF_ofCrAnListF, crAnTimeOrderList, insertionSort_of_eq_list _ φ φs' l φs h]\n  simp only [decide_not, Bool.decide_and, ofCrAnListF_append, map_smul, map_mul, l1, l2, mul_assoc]",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 1690288,
+                                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "( rw [timeOrderF_ofCrAnListF, crAnTimeOrderList, insertionSort_of_eq_list _ φ φs' l φs h]\n  simp only [decide_not, Bool.decide_and, ofCrAnListF_append, map_smul, map_mul, l1, l2, mul_assoc])",
+                                                                                "header_truncated": false,
+                                                                                "raw": 1690369,
+                                                                                "tag": "Lean.Parser.Tactic.paren"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "with_annotate_state\"by\"\n  ( rw [timeOrderF_ofCrAnListF, crAnTimeOrderList, insertionSort_of_eq_list _ φ φs' l φs h]\n    simp only [decide_not, Bool.decide_and, ofCrAnListF_append, map_smul, map_mul, l1, l2, mul_assoc])",
+                                                                            "header_truncated": false,
+                                                                            "raw": 1690459,
+                                                                            "tag": "Lean.Parser.Tactic.withAnnotateState"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "with_annotate_state\"by\"\n    ( rw [timeOrderF_ofCrAnListF, crAnTimeOrderList, insertionSort_of_eq_list _ φ φs' l φs h]\n      simp only [decide_not, Bool.decide_and, ofCrAnListF_append, map_smul, map_mul, l1, l2, mul_assoc])",
+                                                                        "header_truncated": false,
+                                                                        "raw": 1690540,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "with_annotate_state\"by\"\n    ( rw [timeOrderF_ofCrAnListF, crAnTimeOrderList, insertionSort_of_eq_list _ φ φs' l φs h]\n      simp only [decide_not, Bool.decide_and, ofCrAnListF_append, map_smul, map_mul, l1, l2, mul_assoc])",
+                                                                    "header_truncated": false,
+                                                                    "raw": 1690619,
+                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "case body✝ =>\n  with_annotate_state\"by\"\n    ( rw [timeOrderF_ofCrAnListF, crAnTimeOrderList, insertionSort_of_eq_list _ φ φs' l φs h]\n      simp only [decide_not, Bool.decide_and, ofCrAnListF_append, map_smul, map_mul, l1, l2, mul_assoc])",
+                                                                "header_truncated": false,
+                                                                "raw": 1690783,
+                                                                "tag": "Lean.Parser.Tactic.case"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "  refine\n    no_implicit_lambda%\n      (have ht (l : List 𝓕.CrAnFieldOp) (h : ∀ c ∈ l, crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) :\n        ι 𝓣ᶠ(ofCrAnListF (φs' ++ l ++ φs)) =\n          crAnTimeOrderSign (φs' ++ l ++ φs) • (ι (ofCrAnListF l1) * ι (ofCrAnListF l) * ι (ofCrAnListF l2)) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [timeOrderF_ofCrAnListF, crAnTimeOrderList, insertionSort_of_eq_list _ φ φs' l φs h]\n        simp only [decide_not, Bool.decide_",
+                                                            "header_truncated": true,
+                                                            "raw": 1947931,
+                                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "  refine\n    no_implicit_lambda%\n      (have ht (l : List 𝓕.CrAnFieldOp) (h : ∀ c ∈ l, crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) :\n        ι 𝓣ᶠ(ofCrAnListF (φs' ++ l ++ φs)) =\n          crAnTimeOrderSign (φs' ++ l ++ φs) • (ι (ofCrAnListF l1) * ι (ofCrAnListF l) * ι (ofCrAnListF l2)) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [timeOrderF_ofCrAnListF, crAnTimeOrderList, insertionSort_of_eq_list _ φ φs' l φs h]\n        simp only [decide_not, Bool.decide_",
+                                                        "header_truncated": true,
+                                                        "raw": 1948016,
+                                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "focus\n  refine\n    no_implicit_lambda%\n      (have ht (l : List 𝓕.CrAnFieldOp) (h : ∀ c ∈ l, crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) :\n        ι 𝓣ᶠ(ofCrAnListF (φs' ++ l ++ φs)) =\n          crAnTimeOrderSign (φs' ++ l ++ φs) • (ι (ofCrAnListF l1) * ι (ofCrAnListF l) * ι (ofCrAnListF l2)) :=\n        ?body✝;\n      ?_)\n  case body✝ =>\n    with_annotate_state\"by\"\n      ( rw [timeOrderF_ofCrAnListF, crAnTimeOrderList, insertionSort_of_eq_list _ φ φs' l φs h]\n        simp only [decide_not, Bool.d",
+                                                    "header_truncated": true,
+                                                    "raw": 1948138,
+                                                    "tag": "Lean.Parser.Tactic.focus"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "have ht (l : List 𝓕.CrAnFieldOp) (h : ∀ c ∈ l, crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) :\n  ι 𝓣ᶠ(ofCrAnListF (φs' ++ l ++ φs)) =\n    crAnTimeOrderSign (φs' ++ l ++ φs) • (ι (ofCrAnListF l1) * ι (ofCrAnListF l) * ι (ofCrAnListF l2)) :=\n  by\n  rw [timeOrderF_ofCrAnListF, crAnTimeOrderList, insertionSort_of_eq_list _ φ φs' l φs h]\n  simp only [decide_not, Bool.decide_and, ofCrAnListF_append, map_smul, map_mul, l1, l2, mul_assoc]",
+                                                "header_truncated": false,
+                                                "raw": 1948319,
+                                                "tag": "Lean.Parser.Tactic.tacticHave__"
+                                              },
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [
+                                                                                                  {
+                                                                                                    "children": [
+                                                                                                      {
+                                                                                                        "children": [
+                                                                                                          {
+                                                                                                            "children": [
+                                                                                                              {
+                                                                                                                "children": [],
+                                                                                                                "class": "Meta.isDefEq.delta",
+                                                                                                                "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.425 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                                                                "header_truncated": false,
+                                                                                                                "raw": 445407,
+                                                                                                                "tag": ""
+                                                                                                              }
+                                                                                                            ],
+                                                                                                            "class": "Meta.isDefEq",
+                                                                                                            "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.425 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                                                            "header_truncated": false,
+                                                                                                            "raw": 445776,
+                                                                                                            "tag": ""
+                                                                                                          }
+                                                                                                        ],
+                                                                                                        "class": "Meta.isDefEq.assign.checkTypes",
+                                                                                                        "header": "(?m.435 : NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.425 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra) := (AlgHom.instNonUnitalAlgHomClassOfAlgHomClass : NonUnitalAlgHomClass\n  (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra)",
+                                                                                                        "header_truncated": false,
+                                                                                                        "raw": 445840,
+                                                                                                        "tag": ""
+                                                                                                      }
+                                                                                                    ],
+                                                                                                    "class": "Meta.isDefEq.assign",
+                                                                                                    "header": "?m.435 := AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                                                                    "header_truncated": false,
+                                                                                                    "raw": 446012,
+                                                                                                    "tag": ""
+                                                                                                  }
+                                                                                                ],
+                                                                                                "class": "Meta.isDefEq",
+                                                                                                "header": "?m.435 =?= AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 446057,
+                                                                                                "tag": ""
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Meta.synthInstance",
+                                                                                            "header": "MulActionHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 924920,
+                                                                                            "tag": ""
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n  ofList_singleton, List.singleton_append]",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 1837841,
+                                                                                        "tag": "Lean.Parser.Tactic.Conv.simp"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "  rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n  simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n    ofList_singleton, List.singleton_append]",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 1999997,
+                                                                                    "tag": "Lean.Parser.Tactic.Conv.convSeq1Indented"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "  rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n  simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n    ofList_singleton, List.singleton_append]",
+                                                                                "header_truncated": false,
+                                                                                "raw": 2000075,
+                                                                                "tag": "Lean.Parser.Tactic.Conv.convSeq"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "( rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n  simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n    ofList_singleton, List.singleton_append])",
+                                                                            "header_truncated": false,
+                                                                            "raw": 2000155,
+                                                                            "tag": "Lean.Parser.Tactic.Conv.paren"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "lhs;\n  ( rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n      ofList_singleton, List.singleton_append])",
+                                                                        "header_truncated": false,
+                                                                        "raw": 2003321,
+                                                                        "tag": "Lean.Parser.Tactic.Conv.convSeq1Indented"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "lhs;\n  ( rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n      ofList_singleton, List.singleton_append])",
+                                                                    "header_truncated": false,
+                                                                    "raw": 2003398,
+                                                                    "tag": "Lean.Parser.Tactic.Conv.convSeq"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "conv => lhs;\n  ( rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n      ofList_singleton, List.singleton_append])",
+                                                                "header_truncated": false,
+                                                                "raw": 2013840,
+                                                                "tag": "Lean.Parser.Tactic.Conv.conv"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "conv_lhs =>\n  rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n  simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n    ofList_singleton, List.singleton_append]",
+                                                            "header_truncated": false,
+                                                            "raw": 2014343,
+                                                            "tag": "Mathlib.Tactic.Conv.convLHS"
+                                                          },
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [],
+                                                                            "class": "Elab.step",
+                                                                            "header": "rewrite [ht [φ, ψ] (by simp [hφψ, hψφ]), ht [ψ, φ] (by simp [hφψ, hψφ])]",
+                                                                            "header_truncated": false,
+                                                                            "raw": 890504,
+                                                                            "tag": "Lean.Parser.Tactic.rewriteSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "rewrite [ht [φ, ψ] (by simp [hφψ, hψφ]), ht [ψ, φ] (by simp [hφψ, hψφ])];\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                        "header_truncated": false,
+                                                                        "raw": 900181,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "rewrite [ht [φ, ψ] (by simp [hφψ, hψφ]), ht [ψ, φ] (by simp [hφψ, hψφ])];\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                    "header_truncated": false,
+                                                                    "raw": 900262,
+                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "(rewrite [ht [φ, ψ] (by simp [hφψ, hψφ]), ht [ψ, φ] (by simp [hφψ, hψφ])];\n  with_annotate_state\"]\" (try (with_reducible rfl)))",
+                                                                "header_truncated": false,
+                                                                "raw": 900345,
+                                                                "tag": "Lean.Parser.Tactic.paren"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "rw [ht [φ, ψ] (by simp [hφψ, hψφ]), ht [ψ, φ] (by simp [hφψ, hψφ])]",
+                                                            "header_truncated": false,
+                                                            "raw": 900470,
+                                                            "tag": "Lean.Parser.Tactic.rwSeq"
+                                                          },
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [],
+                                                                                    "class": "Meta.isDefEq.delta",
+                                                                                    "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.454 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 445746,
+                                                                                    "tag": ""
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Meta.isDefEq",
+                                                                                "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.454 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                                "header_truncated": false,
+                                                                                "raw": 446115,
+                                                                                "tag": ""
+                                                                              }
+                                                                            ],
+                                                                            "class": "Meta.isDefEq.assign.checkTypes",
+                                                                            "header": "(?m.464 : NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.454 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra) := (AlgHom.instNonUnitalAlgHomClassOfAlgHomClass : NonUnitalAlgHomClass\n  (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra)",
+                                                                            "header_truncated": false,
+                                                                            "raw": 446179,
+                                                                            "tag": ""
+                                                                          }
+                                                                        ],
+                                                                        "class": "Meta.isDefEq.assign",
+                                                                        "header": "?m.464 := AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                                        "header_truncated": false,
+                                                                        "raw": 446351,
+                                                                        "tag": ""
+                                                                      }
+                                                                    ],
+                                                                    "class": "Meta.isDefEq",
+                                                                    "header": "?m.464 =?= AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                                    "header_truncated": false,
+                                                                    "raw": 446396,
+                                                                    "tag": ""
+                                                                  }
+                                                                ],
+                                                                "class": "Meta.synthInstance",
+                                                                "header": "MulActionHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                "header_truncated": false,
+                                                                "raw": 929530,
+                                                                "tag": ""
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "simp only [← ofCrAnListF_append, List.cons_append, List.nil_append, map_sub, map_smul, mul_sub, sub_mul,\n  Algebra.mul_smul_comm, Algebra.smul_mul_assoc, smul_sub]",
+                                                            "header_truncated": false,
+                                                            "raw": 1525575,
+                                                            "tag": "Lean.Parser.Tactic.simp"
+                                                          },
+                                                          {
+                                                            "children": [],
+                                                            "class": "Elab.step",
+                                                            "header": "module",
+                                                            "header_truncated": false,
+                                                            "raw": 955607,
+                                                            "tag": "Mathlib.Tactic.Module.tacticModule"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "  conv_lhs =>\n    rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n      ofList_singleton, List.singleton_append]\n  rw [ht [φ, ψ] (by simp [hφψ, hψφ]), ht [ψ, φ] (by simp [hφψ, hψφ])]\n  simp only [List.append_assoc, List.cons_append, List.nil_append]\n  rw [crAnTimeOrderSign_swap_eq_time hφψ hψφ]\n  rw [superCommuteF_ofCrAnOpF_ofCrAnOp",
+                                                        "header_truncated": true,
+                                                        "raw": 5773530,
+                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "  conv_lhs =>\n    rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n      ofList_singleton, List.singleton_append]\n  rw [ht [φ, ψ] (by simp [hφψ, hψφ]), ht [ψ, φ] (by simp [hφψ, hψφ])]\n  simp only [List.append_assoc, List.cons_append, List.nil_append]\n  rw [crAnTimeOrderSign_swap_eq_time hφψ hψφ]\n  rw [superCommuteF_ofCrAnOpF_ofCrAnOp",
+                                                    "header_truncated": true,
+                                                    "raw": 5773608,
+                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "· conv_lhs =>\n    rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n      ofList_singleton, List.singleton_append]\n  rw [ht [φ, ψ] (by simp [hφψ, hψφ]), ht [ψ, φ] (by simp [hφψ, hψφ])]\n  simp only [List.append_assoc, List.cons_append, List.nil_append]\n  rw [crAnTimeOrderSign_swap_eq_time hφψ hψφ]\n  rw [superCommuteF_ofCrAnOpF_ofCrAnOp",
+                                                "header_truncated": true,
+                                                "raw": 5773744,
+                                                "tag": "Lean.cdot"
+                                              },
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [],
+                                                                            "class": "Elab.step",
+                                                                            "header": "rewrite [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ), mul_assoc, ← map_mul, ←\n  ofCrAnListF_append]",
+                                                                            "header_truncated": false,
+                                                                            "raw": 572213,
+                                                                            "tag": "Lean.Parser.Tactic.rewriteSeq"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "rewrite [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ), mul_assoc, ← map_mul, ←\n    ofCrAnListF_append];\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                        "header_truncated": false,
+                                                                        "raw": 581883,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "rewrite [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ), mul_assoc, ← map_mul, ←\n    ofCrAnListF_append];\n  with_annotate_state\"]\" (try (with_reducible rfl))",
+                                                                    "header_truncated": false,
+                                                                    "raw": 581964,
+                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "(rewrite [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ), mul_assoc, ← map_mul, ←\n    ofCrAnListF_append];\n  with_annotate_state\"]\" (try (with_reducible rfl)))",
+                                                                "header_truncated": false,
+                                                                "raw": 582047,
+                                                                "tag": "Lean.Parser.Tactic.paren"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "rw [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ), mul_assoc, ← map_mul, ←\n  ofCrAnListF_append]",
+                                                            "header_truncated": false,
+                                                            "raw": 582172,
+                                                            "tag": "Lean.Parser.Tactic.rwSeq"
+                                                          },
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "expected type: <not-available>, term\n𝓕|>ₛφ",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 414305,
+                                                                                                "tag": "choice"
+                                                                                              },
+                                                                                              {
+                                                                                                "children": [],
+                                                                                                "class": "Elab.step",
+                                                                                                "header": "expected type: <not-available>, term\n𝓕|>ₛψ",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 411300,
+                                                                                                "tag": "choice"
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Elab.step",
+                                                                                            "header": "expected type: <not-available>, term\nbinrel% Ne✝ (𝓕|>ₛφ) (𝓕|>ₛψ)",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 827162,
+                                                                                            "tag": "Lean.Parser.Term.binrel"
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Elab.step",
+                                                                                        "header": "expected type: <not-available>, term\n(𝓕|>ₛφ) ≠ (𝓕|>ₛψ)",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 827296,
+                                                                                        "tag": "«term_≠_»"
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Elab.step",
+                                                                                    "header": "expected type: crAnTimeOrderSign (φs' ++ [φ, ψ] ++ φs) •\n    (ι ((superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ)) * ι (ofCrAnListF (crAnTimeOrderList (φs' ++ φs)))) =\n  ι ((superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ)) * ι (timeOrderF (ofCrAnListF φs' * ofCrAnListF φs)), term\nlet_mvar% ?m✝ := (𝓕|>ₛφ) ≠ (𝓕|>ₛψ); wait_if_type_mvar% ?m✝; dite✝ ?m✝ (fun hq => ?pos✝) (fun hq => ?neg✝)",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 837615,
+                                                                                    "tag": "Lean.Parser.Term.letMVar"
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Elab.step",
+                                                                                "header": "expected type: crAnTimeOrderSign (φs' ++ [φ, ψ] ++ φs) •\n    (ι ((superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ)) * ι (ofCrAnListF (crAnTimeOrderList (φs' ++ φs)))) =\n  ι ((superCommuteF (ofCrAnOpF φ)) (ofCrAnOpF ψ)) * ι (timeOrderF (ofCrAnListF φs' * ofCrAnListF φs)), term\nif hq : (𝓕|>ₛφ) ≠ (𝓕|>ₛψ) then ?pos✝ else ?neg✝",
+                                                                                "header_truncated": false,
+                                                                                "raw": 837779,
+                                                                                "tag": "termDepIfThenElse"
+                                                                              }
+                                                                            ],
+                                                                            "class": "Elab.step",
+                                                                            "header": "refine if hq : (𝓕|>ₛφ) ≠ (𝓕|>ₛψ) then ?pos✝ else ?neg✝",
+                                                                            "header_truncated": false,
+                                                                            "raw": 838093,
+                                                                            "tag": "Lean.Parser.Tactic.refine"
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "refine if hq : (𝓕|>ₛφ) ≠ (𝓕|>ₛψ) then ?pos✝ else ?neg✝",
+                                                                        "header_truncated": false,
+                                                                        "raw": 838179,
+                                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "refine if hq : (𝓕|>ₛφ) ≠ (𝓕|>ₛψ) then ?pos✝ else ?neg✝",
+                                                                    "header_truncated": false,
+                                                                    "raw": 838263,
+                                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "open Classical✝ in refine if hq : (𝓕|>ₛφ) ≠ (𝓕|>ₛψ) then ?pos✝ else ?neg✝",
+                                                                "header_truncated": false,
+                                                                "raw": 841882,
+                                                                "tag": "Lean.Parser.Tactic.open"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "by_cases hq : (𝓕|>ₛφ) ≠ (𝓕|>ₛψ)",
+                                                            "header_truncated": false,
+                                                            "raw": 842019,
+                                                            "tag": "«tacticBy_cases_:_»"
+                                                          },
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [
+                                                                          {
+                                                                            "children": [
+                                                                              {
+                                                                                "children": [
+                                                                                  {
+                                                                                    "children": [
+                                                                                      {
+                                                                                        "children": [
+                                                                                          {
+                                                                                            "children": [
+                                                                                              {
+                                                                                                "children": [],
+                                                                                                "class": "Meta.isDefEq.delta",
+                                                                                                "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.578 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                                                "header_truncated": false,
+                                                                                                "raw": 449852,
+                                                                                                "tag": ""
+                                                                                              }
+                                                                                            ],
+                                                                                            "class": "Meta.isDefEq",
+                                                                                            "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.578 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                                            "header_truncated": false,
+                                                                                            "raw": 450221,
+                                                                                            "tag": ""
+                                                                                          }
+                                                                                        ],
+                                                                                        "class": "Meta.isDefEq.assign.checkTypes",
+                                                                                        "header": "(?m.588 : NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.578 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra) := (AlgHom.instNonUnitalAlgHomClassOfAlgHomClass : NonUnitalAlgHomClass\n  (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra)",
+                                                                                        "header_truncated": false,
+                                                                                        "raw": 450276,
+                                                                                        "tag": ""
+                                                                                      }
+                                                                                    ],
+                                                                                    "class": "Meta.isDefEq.assign",
+                                                                                    "header": "?m.588 := AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                                                    "header_truncated": false,
+                                                                                    "raw": 450439,
+                                                                                    "tag": ""
+                                                                                  }
+                                                                                ],
+                                                                                "class": "Meta.isDefEq",
+                                                                                "header": "?m.588 =?= AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                                                "header_truncated": false,
+                                                                                "raw": 450484,
+                                                                                "tag": ""
+                                                                              }
+                                                                            ],
+                                                                            "class": "Meta.synthInstance",
+                                                                            "header": "MulActionHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                            "header_truncated": false,
+                                                                            "raw": 938573,
+                                                                            "tag": ""
+                                                                          }
+                                                                        ],
+                                                                        "class": "Elab.step",
+                                                                        "header": "simp only [map_smul, Algebra.mul_smul_comm]",
+                                                                        "header_truncated": false,
+                                                                        "raw": 1044649,
+                                                                        "tag": "Lean.Parser.Tactic.simp"
+                                                                      }
+                                                                    ],
+                                                                    "class": "Elab.step",
+                                                                    "header": "  simp only [List.append_assoc, List.cons_append, List.nil_append]\n  rw [crAnTimeOrderSign, Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ (not_ne_iff.mp hq).symm, ← crAnTimeOrderSign, ←\n    ofCrAnListF_append, timeOrderF_ofCrAnListF]\n  simp only [map_smul, Algebra.mul_smul_comm]",
+                                                                    "header_truncated": false,
+                                                                    "raw": 1530773,
+                                                                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                                  }
+                                                                ],
+                                                                "class": "Elab.step",
+                                                                "header": "  simp only [List.append_assoc, List.cons_append, List.nil_append]\n  rw [crAnTimeOrderSign, Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ (not_ne_iff.mp hq).symm, ← crAnTimeOrderSign, ←\n    ofCrAnListF_append, timeOrderF_ofCrAnListF]\n  simp only [map_smul, Algebra.mul_smul_comm]",
+                                                                "header_truncated": false,
+                                                                "raw": 1530852,
+                                                                "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                              }
+                                                            ],
+                                                            "class": "Elab.step",
+                                                            "header": "· simp only [List.append_assoc, List.cons_append, List.nil_append]\n  rw [crAnTimeOrderSign, Wick.koszulSign_eq_rel_eq_stat _ _ hφψ hψφ (not_ne_iff.mp hq).symm, ← crAnTimeOrderSign, ←\n    ofCrAnListF_append, timeOrderF_ofCrAnListF]\n  simp only [map_smul, Algebra.mul_smul_comm]",
+                                                            "header_truncated": false,
+                                                            "raw": 1530979,
+                                                            "tag": "Lean.cdot"
+                                                          }
+                                                        ],
+                                                        "class": "Elab.step",
+                                                        "header": "  rw [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ), mul_assoc, ← map_mul, ←\n    ofCrAnListF_append]\n  have h1 := insertionSort_of_takeWhile_filter 𝓕.crAnTimeOrderRel φ φs' φs\n  have hl : l1 ++ l2 = crAnTimeOrderList (φs' ++ φs) := by\n    simpa only [l1, l2, List.append_assoc, crAnTimeOrderList] using h1.symm\n  rw [hl, map_mul]\n  by_cases hq : (𝓕|>ₛφ) ≠ (𝓕|>ₛψ)\n  · simp only [ι_superCommuteF_of_diff_statistic hq, zero_mul, smul_zero]\n  · simp only [List.append",
+                                                        "header_truncated": true,
+                                                        "raw": 3739688,
+                                                        "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                                      }
+                                                    ],
+                                                    "class": "Elab.step",
+                                                    "header": "  rw [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ), mul_assoc, ← map_mul, ←\n    ofCrAnListF_append]\n  have h1 := insertionSort_of_takeWhile_filter 𝓕.crAnTimeOrderRel φ φs' φs\n  have hl : l1 ++ l2 = crAnTimeOrderList (φs' ++ φs) := by\n    simpa only [l1, l2, List.append_assoc, crAnTimeOrderList] using h1.symm\n  rw [hl, map_mul]\n  by_cases hq : (𝓕|>ₛφ) ≠ (𝓕|>ₛψ)\n  · simp only [ι_superCommuteF_of_diff_statistic hq, zero_mul, smul_zero]\n  · simp only [List.append",
+                                                    "header_truncated": true,
+                                                    "raw": 3739771,
+                                                    "tag": "Lean.Parser.Tactic.tacticSeq"
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "· rw [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ), mul_assoc, ← map_mul, ←\n    ofCrAnListF_append]\n  have h1 := insertionSort_of_takeWhile_filter 𝓕.crAnTimeOrderRel φ φs' φs\n  have hl : l1 ++ l2 = crAnTimeOrderList (φs' ++ φs) := by\n    simpa only [l1, l2, List.append_assoc, crAnTimeOrderList] using h1.symm\n  rw [hl, map_mul]\n  by_cases hq : (𝓕|>ₛφ) ≠ (𝓕|>ₛψ)\n  · simp only [ι_superCommuteF_of_diff_statistic hq, zero_mul, smul_zero]\n  · simp only [List.append",
+                                                "header_truncated": true,
+                                                "raw": 3739902,
+                                                "tag": "Lean.cdot"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "  rintro x ⟨φs', rfl⟩\n  simp only [ofListBasis_eq_ofList, pa]\n  let l1 :=\n    List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((φs' ++ φs).insertionSort crAnTimeOrderRel) ++\n      List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) φs'\n  let l2 :=\n    List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) φs ++\n      List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬crAnTimeOrderRel c φ) ((φs' ++ φs).insertionSort crAnTimeOrderRel)\n  have ht (l : List 𝓕.CrAnFieldOp) (h : ∀",
+                                            "header_truncated": true,
+                                            "raw": 12030263,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "  rintro x ⟨φs', rfl⟩\n  simp only [ofListBasis_eq_ofList, pa]\n  let l1 :=\n    List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((φs' ++ φs).insertionSort crAnTimeOrderRel) ++\n      List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) φs'\n  let l2 :=\n    List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) φs ++\n      List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬crAnTimeOrderRel c φ) ((φs' ++ φs).insertionSort crAnTimeOrderRel)\n  have ht (l : List 𝓕.CrAnFieldOp) (h : ∀",
+                                        "header_truncated": true,
+                                        "raw": 12030350,
+                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "· rintro x ⟨φs', rfl⟩\n  simp only [ofListBasis_eq_ofList, pa]\n  let l1 :=\n    List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((φs' ++ φs).insertionSort crAnTimeOrderRel) ++\n      List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) φs'\n  let l2 :=\n    List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) φs ++\n      List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬crAnTimeOrderRel c φ) ((φs' ++ φs).insertionSort crAnTimeOrderRel)\n  have ht (l : List 𝓕.CrAnFieldOp) (h : ∀",
+                                    "header_truncated": true,
+                                    "raw": 12030515,
+                                    "tag": "Lean.cdot"
+                                  },
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 403243,
+                                                    "tag": ""
+                                                  },
+                                                  {
+                                                    "children": [],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "ZeroHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 437934,
+                                                    "tag": ""
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "simp only [map_mul, zero_mul, map_zero, mul_zero, pa]",
+                                                "header_truncated": false,
+                                                "raw": 1383330,
+                                                "tag": "Lean.Parser.Tactic.simp"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "simp only [map_mul, zero_mul, map_zero, mul_zero, pa]",
+                                            "header_truncated": false,
+                                            "raw": 1383411,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "simp only [map_mul, zero_mul, map_zero, mul_zero, pa]",
+                                        "header_truncated": false,
+                                        "raw": 1383490,
+                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "· simp only [map_mul, zero_mul, map_zero, mul_zero, pa]",
+                                    "header_truncated": false,
+                                    "raw": 1383637,
+                                    "tag": "Lean.cdot"
+                                  },
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 403144,
+                                                    "tag": ""
+                                                  },
+                                                  {
+                                                    "children": [],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 403227,
+                                                    "tag": ""
+                                                  },
+                                                  {
+                                                    "children": [],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 403333,
+                                                    "tag": ""
+                                                  },
+                                                  {
+                                                    "children": [],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 403107,
+                                                    "tag": ""
+                                                  },
+                                                  {
+                                                    "children": [],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 403347,
+                                                    "tag": ""
+                                                  },
+                                                  {
+                                                    "children": [],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 403288,
+                                                    "tag": ""
+                                                  },
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [],
+                                                                        "class": "Meta.isDefEq.delta",
+                                                                        "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.614 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                        "header_truncated": false,
+                                                                        "raw": 449196,
+                                                                        "tag": ""
+                                                                      }
+                                                                    ],
+                                                                    "class": "Meta.isDefEq",
+                                                                    "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.614 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                    "header_truncated": false,
+                                                                    "raw": 449565,
+                                                                    "tag": ""
+                                                                  }
+                                                                ],
+                                                                "class": "Meta.isDefEq.assign.checkTypes",
+                                                                "header": "(?m.624 : NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.614 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra) := (AlgHom.instNonUnitalAlgHomClassOfAlgHomClass : NonUnitalAlgHomClass\n  (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra)",
+                                                                "header_truncated": false,
+                                                                "raw": 449620,
+                                                                "tag": ""
+                                                              }
+                                                            ],
+                                                            "class": "Meta.isDefEq.assign",
+                                                            "header": "?m.624 := AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                            "header_truncated": false,
+                                                            "raw": 449783,
+                                                            "tag": ""
+                                                          }
+                                                        ],
+                                                        "class": "Meta.isDefEq",
+                                                        "header": "?m.624 =?= AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                        "header_truncated": false,
+                                                        "raw": 449828,
+                                                        "tag": ""
+                                                      }
+                                                    ],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "AddHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 928786,
+                                                    "tag": ""
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "simp_all only [map_mul, add_mul, map_add, mul_add, pa]",
+                                                "header_truncated": false,
+                                                "raw": 5112602,
+                                                "tag": "Lean.Parser.Tactic.simpAll"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "  intro x y hx hy hpx hpy\n  simp_all only [map_mul, add_mul, map_add, mul_add, pa]",
+                                            "header_truncated": false,
+                                            "raw": 5115536,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "  intro x y hx hy hpx hpy\n  simp_all only [map_mul, add_mul, map_add, mul_add, pa]",
+                                        "header_truncated": false,
+                                        "raw": 5115615,
+                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "· intro x y hx hy hpx hpy\n  simp_all only [map_mul, add_mul, map_add, mul_add, pa]",
+                                    "header_truncated": false,
+                                    "raw": 5115752,
+                                    "tag": "Lean.cdot"
+                                  },
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 403210,
+                                                    "tag": ""
+                                                  },
+                                                  {
+                                                    "children": [],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 403184,
+                                                    "tag": ""
+                                                  },
+                                                  {
+                                                    "children": [],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 403369,
+                                                    "tag": ""
+                                                  },
+                                                  {
+                                                    "children": [],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 403108,
+                                                    "tag": ""
+                                                  },
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [
+                                                                  {
+                                                                    "children": [
+                                                                      {
+                                                                        "children": [],
+                                                                        "class": "Meta.isDefEq.delta",
+                                                                        "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.631 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                        "header_truncated": false,
+                                                                        "raw": 445663,
+                                                                        "tag": ""
+                                                                      }
+                                                                    ],
+                                                                    "class": "Meta.isDefEq",
+                                                                    "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.631 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                                    "header_truncated": false,
+                                                                    "raw": 446032,
+                                                                    "tag": ""
+                                                                  }
+                                                                ],
+                                                                "class": "Meta.isDefEq.assign.checkTypes",
+                                                                "header": "(?m.641 : NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.631 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra) := (AlgHom.instNonUnitalAlgHomClassOfAlgHomClass : NonUnitalAlgHomClass\n  (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra)",
+                                                                "header_truncated": false,
+                                                                "raw": 446086,
+                                                                "tag": ""
+                                                              }
+                                                            ],
+                                                            "class": "Meta.isDefEq.assign",
+                                                            "header": "?m.641 := AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                            "header_truncated": false,
+                                                            "raw": 446248,
+                                                            "tag": ""
+                                                          }
+                                                        ],
+                                                        "class": "Meta.isDefEq",
+                                                        "header": "?m.641 =?= AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                        "header_truncated": false,
+                                                        "raw": 446293,
+                                                        "tag": ""
+                                                      }
+                                                    ],
+                                                    "class": "Meta.synthInstance",
+                                                    "header": "MulActionHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                    "header_truncated": false,
+                                                    "raw": 926360,
+                                                    "tag": ""
+                                                  }
+                                                ],
+                                                "class": "Elab.step",
+                                                "header": "simp_all only [map_mul, Algebra.smul_mul_assoc, map_smul, Algebra.mul_smul_comm, implies_true, pa]",
+                                                "header_truncated": false,
+                                                "raw": 4153462,
+                                                "tag": "Lean.Parser.Tactic.simpAll"
+                                              }
+                                            ],
+                                            "class": "Elab.step",
+                                            "header": "  intro x hx hpx\n  simp_all only [map_mul, Algebra.smul_mul_assoc, map_smul, Algebra.mul_smul_comm, implies_true, pa]",
+                                            "header_truncated": false,
+                                            "raw": 4155202,
+                                            "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                                          }
+                                        ],
+                                        "class": "Elab.step",
+                                        "header": "  intro x hx hpx\n  simp_all only [map_mul, Algebra.smul_mul_assoc, map_smul, Algebra.mul_smul_comm, implies_true, pa]",
+                                        "header_truncated": false,
+                                        "raw": 4155281,
+                                        "tag": "Lean.Parser.Tactic.tacticSeq"
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "· intro x hx hpx\n  simp_all only [map_mul, Algebra.smul_mul_assoc, map_smul, Algebra.mul_smul_comm, implies_true, pa]",
+                                    "header_truncated": false,
+                                    "raw": 4155408,
+                                    "tag": "Lean.cdot"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "  rintro x ⟨φs, rfl⟩\n  simp only [ofListBasis_eq_ofList]\n  let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs))\n  change pa a (Basis.mem_span _ a)\n  apply Submodule.span_induction\n  · rintro x ⟨φs', rfl⟩\n    simp only [ofListBasis_eq_ofList, pa]\n    let l1 :=\n      List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((φs' ++ φs).inserti",
+                                "header_truncated": true,
+                                "raw": 23407473,
+                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "  rintro x ⟨φs, rfl⟩\n  simp only [ofListBasis_eq_ofList]\n  let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs))\n  change pa a (Basis.mem_span _ a)\n  apply Submodule.span_induction\n  · rintro x ⟨φs', rfl⟩\n    simp only [ofListBasis_eq_ofList, pa]\n    let l1 :=\n      List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((φs' ++ φs).inserti",
+                            "header_truncated": true,
+                            "raw": 23407556,
+                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "· rintro x ⟨φs, rfl⟩\n  simp only [ofListBasis_eq_ofList]\n  let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs))\n  change pa a (Basis.mem_span _ a)\n  apply Submodule.span_induction\n  · rintro x ⟨φs', rfl⟩\n    simp only [ofListBasis_eq_ofList, pa]\n    let l1 :=\n      List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((φs' ++ φs).inserti",
+                        "header_truncated": true,
+                        "raw": 23407717,
+                        "tag": "Lean.cdot"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [],
+                                        "class": "Meta.synthInstance",
+                                        "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 403396,
+                                        "tag": ""
+                                      },
+                                      {
+                                        "children": [],
+                                        "class": "Meta.synthInstance",
+                                        "header": "ZeroHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 438343,
+                                        "tag": ""
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "simp only [map_mul, mul_zero, map_zero, pb]",
+                                    "header_truncated": false,
+                                    "raw": 1372999,
+                                    "tag": "Lean.Parser.Tactic.simp"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "simp only [map_mul, mul_zero, map_zero, pb]",
+                                "header_truncated": false,
+                                "raw": 1373080,
+                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "simp only [map_mul, mul_zero, map_zero, pb]",
+                            "header_truncated": false,
+                            "raw": 1373159,
+                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "· simp only [map_mul, mul_zero, map_zero, pb]",
+                        "header_truncated": false,
+                        "raw": 1373306,
+                        "tag": "Lean.cdot"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [],
+                                        "class": "Meta.synthInstance",
+                                        "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 403423,
+                                        "tag": ""
+                                      },
+                                      {
+                                        "children": [],
+                                        "class": "Meta.synthInstance",
+                                        "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 403298,
+                                        "tag": ""
+                                      },
+                                      {
+                                        "children": [],
+                                        "class": "Meta.synthInstance",
+                                        "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 403342,
+                                        "tag": ""
+                                      },
+                                      {
+                                        "children": [],
+                                        "class": "Meta.synthInstance",
+                                        "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 403395,
+                                        "tag": ""
+                                      },
+                                      {
+                                        "children": [],
+                                        "class": "Meta.synthInstance",
+                                        "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 403367,
+                                        "tag": ""
+                                      },
+                                      {
+                                        "children": [],
+                                        "class": "Meta.synthInstance",
+                                        "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 403233,
+                                        "tag": ""
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [],
+                                                            "class": "Meta.isDefEq.delta",
+                                                            "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.667 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                            "header_truncated": false,
+                                                            "raw": 449314,
+                                                            "tag": ""
+                                                          }
+                                                        ],
+                                                        "class": "Meta.isDefEq",
+                                                        "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.667 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                        "header_truncated": false,
+                                                        "raw": 449683,
+                                                        "tag": ""
+                                                      }
+                                                    ],
+                                                    "class": "Meta.isDefEq.assign.checkTypes",
+                                                    "header": "(?m.677 : NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.667 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra) := (AlgHom.instNonUnitalAlgHomClassOfAlgHomClass : NonUnitalAlgHomClass\n  (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra)",
+                                                    "header_truncated": false,
+                                                    "raw": 449737,
+                                                    "tag": ""
+                                                  }
+                                                ],
+                                                "class": "Meta.isDefEq.assign",
+                                                "header": "?m.677 := AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                "header_truncated": false,
+                                                "raw": 449899,
+                                                "tag": ""
+                                              }
+                                            ],
+                                            "class": "Meta.isDefEq",
+                                            "header": "?m.677 =?= AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                            "header_truncated": false,
+                                            "raw": 449944,
+                                            "tag": ""
+                                          }
+                                        ],
+                                        "class": "Meta.synthInstance",
+                                        "header": "AddHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 929156,
+                                        "tag": ""
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "simp_all only [map_mul, mul_add, map_add, pb]",
+                                    "header_truncated": false,
+                                    "raw": 5083024,
+                                    "tag": "Lean.Parser.Tactic.simpAll"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "  intro x y hx hy hpx hpy\n  simp_all only [map_mul, mul_add, map_add, pb]",
+                                "header_truncated": false,
+                                "raw": 5085956,
+                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "  intro x y hx hy hpx hpy\n  simp_all only [map_mul, mul_add, map_add, pb]",
+                            "header_truncated": false,
+                            "raw": 5086035,
+                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "· intro x y hx hy hpx hpy\n  simp_all only [map_mul, mul_add, map_add, pb]",
+                        "header_truncated": false,
+                        "raw": 5086172,
+                        "tag": "Lean.cdot"
+                      },
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [],
+                                        "class": "Meta.synthInstance",
+                                        "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 403385,
+                                        "tag": ""
+                                      },
+                                      {
+                                        "children": [],
+                                        "class": "Meta.synthInstance",
+                                        "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 403430,
+                                        "tag": ""
+                                      },
+                                      {
+                                        "children": [],
+                                        "class": "Meta.synthInstance",
+                                        "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 403531,
+                                        "tag": ""
+                                      },
+                                      {
+                                        "children": [],
+                                        "class": "Meta.synthInstance",
+                                        "header": "MulHomClass (𝓕.FieldOpFreeAlgebra →ₗ[ℂ] 𝓕.FieldOpFreeAlgebra) 𝓕.FieldOpFreeAlgebra 𝓕.FieldOpFreeAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 403406,
+                                        "tag": ""
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [],
+                                                            "class": "Meta.isDefEq.delta",
+                                                            "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.684 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                            "header_truncated": false,
+                                                            "raw": 445734,
+                                                            "tag": ""
+                                                          }
+                                                        ],
+                                                        "class": "Meta.isDefEq",
+                                                        "header": "NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.684 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra =?= NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                                        "header_truncated": false,
+                                                        "raw": 446103,
+                                                        "tag": ""
+                                                      }
+                                                    ],
+                                                    "class": "Meta.isDefEq.assign.checkTypes",
+                                                    "header": "(?m.694 : NonUnitalAlgHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ?m.684 𝓕.FieldOpFreeAlgebra\n  𝓕.WickAlgebra) := (AlgHom.instNonUnitalAlgHomClassOfAlgHomClass : NonUnitalAlgHomClass\n  (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra)",
+                                                    "header_truncated": false,
+                                                    "raw": 446158,
+                                                    "tag": ""
+                                                  }
+                                                ],
+                                                "class": "Meta.isDefEq.assign",
+                                                "header": "?m.694 := AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                                "header_truncated": false,
+                                                "raw": 446321,
+                                                "tag": ""
+                                              }
+                                            ],
+                                            "class": "Meta.isDefEq",
+                                            "header": "?m.694 =?= AlgHom.instNonUnitalAlgHomClassOfAlgHomClass",
+                                            "header_truncated": false,
+                                            "raw": 446366,
+                                            "tag": ""
+                                          }
+                                        ],
+                                        "class": "Meta.synthInstance",
+                                        "header": "MulActionHomClass (𝓕.FieldOpFreeAlgebra →ₐ[ℂ] 𝓕.WickAlgebra) ℂ 𝓕.FieldOpFreeAlgebra 𝓕.WickAlgebra",
+                                        "header_truncated": false,
+                                        "raw": 926731,
+                                        "tag": ""
+                                      }
+                                    ],
+                                    "class": "Elab.step",
+                                    "header": "simp_all only [map_mul, Algebra.mul_smul_comm, map_smul, implies_true, pb]",
+                                    "header_truncated": false,
+                                    "raw": 4128135,
+                                    "tag": "Lean.Parser.Tactic.simpAll"
+                                  }
+                                ],
+                                "class": "Elab.step",
+                                "header": "  intro x hx hpx\n  simp_all only [map_mul, Algebra.mul_smul_comm, map_smul, implies_true, pb]",
+                                "header_truncated": false,
+                                "raw": 4129874,
+                                "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                              }
+                            ],
+                            "class": "Elab.step",
+                            "header": "  intro x hx hpx\n  simp_all only [map_mul, Algebra.mul_smul_comm, map_smul, implies_true, pb]",
+                            "header_truncated": false,
+                            "raw": 4129953,
+                            "tag": "Lean.Parser.Tactic.tacticSeq"
+                          }
+                        ],
+                        "class": "Elab.step",
+                        "header": "· intro x hx hpx\n  simp_all only [map_mul, Algebra.mul_smul_comm, map_smul, implies_true, pb]",
+                        "header_truncated": false,
+                        "raw": 4130080,
+                        "tag": "Lean.cdot"
+                      }
+                    ],
+                    "class": "Elab.step",
+                    "header": "  let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b))\n  change pb b (Basis.mem_span _ b)\n  apply Submodule.span_induction\n  · rintro x ⟨φs, rfl⟩\n    simp only [ofListBasis_eq_ofList]\n    let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n      ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) = ι ([ofCr",
+                    "header_truncated": true,
+                    "raw": 34679166,
+                    "tag": "Lean.Parser.Tactic.tacticSeq1Indented"
+                  }
+                ],
+                "class": "Elab.step",
+                "header": "  let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b))\n  change pb b (Basis.mem_span _ b)\n  apply Submodule.span_induction\n  · rintro x ⟨φs, rfl⟩\n    simp only [ofListBasis_eq_ofList]\n    let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n      ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) = ι ([ofCr",
+                "header_truncated": true,
+                "raw": 34679249,
+                "tag": "Lean.Parser.Tactic.tacticSeq"
+              }
+            ],
+            "class": "Elab.definition.value",
+            "header": "FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time",
+            "header_truncated": false,
+            "raw": 34702918,
+            "tag": ""
+          }
+        ],
+        "class": "Elab.command",
+        "header": "theorem ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ)\n    (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) :=\n  by\n  let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b))\n  change pb b (Basis.mem_span _ b)\n  apply Subm",
+        "header_truncated": true,
+        "raw": 35509896,
+        "tag": "Lean.Parser.Command.theorem"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ)\n    (a b : 𝓕.FieldOpFreeAlgebra) :\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) :=\n  by\n  let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b))\n  change pb b (Basis.mem_span _ b)\n  apply Submod",
+        "header_truncated": true,
+        "raw": 35510129,
+        "tag": "lemma"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option maxHeartbeats✝ 0 in\nlemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ)\n    (a b : 𝓕.FieldOpFreeAlgebra) :\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) :=\n  by\n  let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b))\n  change pb b (Bas",
+        "header_truncated": true,
+        "raw": 35513551,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option Elab.async✝ false in\nset_option maxHeartbeats✝ 0 in\nlemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ) (hψφ : crAnTimeOrderRel ψ φ)\n    (a b : 𝓕.FieldOpFreeAlgebra) :\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) :=\n  by\n  let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF",
+        "header_truncated": true,
+        "raw": 35516973,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "#proof_eval_measure \"PROOF_EVAL_670ad2825d1f4e9e922cbedda8f71df7\" target\n  \"FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time\" end 16589 in\n  lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ)\n      (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :\n      ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) :=\n    by\n    let pb (b : 𝓕.FieldOpFreeAlgebra) (hc : b ∈ Submodule.span ℂ (Set.range ofCr",
+        "header_truncated": true,
+        "raw": 35544309,
+        "tag": "«command#proof_eval_measure_Target_End_In_»"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option trace.profiler.threshold✝ 400000 in\n#proof_eval_measure \"PROOF_EVAL_670ad2825d1f4e9e922cbedda8f71df7\" target\n  \"FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time\" end 16589 in\n  lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ)\n      (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :\n      ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * b)) :=\n    by\n    let pb (b : 𝓕.FieldOpFreeAlge",
+        "header_truncated": true,
+        "raw": 35547826,
+        "tag": "Lean.Parser.Command.in"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "end",
+        "header_truncated": false,
+        "raw": 841,
+        "tag": "Lean.Parser.Command.end"
+      },
+      {
+        "children": [],
+        "class": "Elab.command",
+        "header": "set_option trace.profiler.useHeartbeats✝ true in\nset_option trace.profiler.threshold✝ 400000 in\n#proof_eval_measure \"PROOF_EVAL_670ad2825d1f4e9e922cbedda8f71df7\" target\n  \"FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time\" end 16589 in\n  lemma ι_timeOrderF_superCommuteF_eq_time {φ ψ : 𝓕.CrAnFieldOp} (hφψ : crAnTimeOrderRel φ ψ)\n      (hψφ : crAnTimeOrderRel ψ φ) (a b : 𝓕.FieldOpFreeAlgebra) :\n      ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * b) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a ",
+        "header_truncated": true,
+        "raw": 2,
+        "tag": "Lean.Parser.Command.in"
+      }
+    ],
+    "hotspots": [
+      {
+        "node_id": 4,
+        "parent_id": null,
+        "depth": 1,
+        "kind": "phase",
+        "class": "Elab.definition.value",
+        "syntax_kind": "",
+        "snippet": "FieldSpecification.WickAlgebra.ι_timeOrderF_superCommuteF_eq_time",
+        "snippet_truncated": false,
+        "heartbeats_raw": 34702918,
+        "heartbeats": 34702.918,
+        "inclusive": true
+      },
+      {
+        "node_id": 18,
+        "parent_id": 4,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.cdot",
+        "snippet": "· rintro x ⟨φs, rfl⟩\n  simp only [ofListBasis_eq_ofList]\n  let pa (a : 𝓕.FieldOpFreeAlgebra) (hc : a ∈ Submodule.span ℂ (Set.range ofCrAnListFBasis)) : Prop :=\n    ι 𝓣ᶠ(a * [ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * ofCrAnListF φs) = ι ([ofCrAnOpF φ,ofCrAnOpF ψ]ₛF * 𝓣ᶠ(a * ofCrAnListF φs))\n  change pa a (Basis.mem_span _ a)\n  apply Submodule.span_induction\n  · rintro x ⟨φs', rfl⟩\n    simp only [ofListBasis_eq_ofList, pa]\n    let l1 :=\n      List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((φs' ++ φs).inserti",
+        "snippet_truncated": true,
+        "heartbeats_raw": 23407717,
+        "heartbeats": 23407.717,
+        "inclusive": true
+      },
+      {
+        "node_id": 32,
+        "parent_id": 18,
+        "depth": 7,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.cdot",
+        "snippet": "· rintro x ⟨φs', rfl⟩\n  simp only [ofListBasis_eq_ofList, pa]\n  let l1 :=\n    List.takeWhile (fun c => ¬crAnTimeOrderRel φ c) ((φs' ++ φs).insertionSort crAnTimeOrderRel) ++\n      List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) φs'\n  let l2 :=\n    List.filter (fun c => crAnTimeOrderRel φ c ∧ crAnTimeOrderRel c φ) φs ++\n      List.filter (fun c => crAnTimeOrderRel φ c ∧ ¬crAnTimeOrderRel c φ) ((φs' ++ φs).insertionSort crAnTimeOrderRel)\n  have ht (l : List 𝓕.CrAnFieldOp) (h : ∀",
+        "snippet_truncated": true,
+        "heartbeats_raw": 12030515,
+        "heartbeats": 12030.515,
+        "inclusive": true
+      },
+      {
+        "node_id": 53,
+        "parent_id": 32,
+        "depth": 10,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.cdot",
+        "snippet": "· conv_lhs =>\n    rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n      ofList_singleton, List.singleton_append]\n  rw [ht [φ, ψ] (by simp [hφψ, hψφ]), ht [ψ, φ] (by simp [hφψ, hψφ])]\n  simp only [List.append_assoc, List.cons_append, List.nil_append]\n  rw [crAnTimeOrderSign_swap_eq_time hφψ hψφ]\n  rw [superCommuteF_ofCrAnOpF_ofCrAnOp",
+        "snippet_truncated": true,
+        "heartbeats_raw": 5773744,
+        "heartbeats": 5773.744,
+        "inclusive": true
+      },
+      {
+        "node_id": 118,
+        "parent_id": 18,
+        "depth": 7,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.cdot",
+        "snippet": "· intro x y hx hy hpx hpy\n  simp_all only [map_mul, add_mul, map_add, mul_add, pa]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 5115752,
+        "heartbeats": 5115.752,
+        "inclusive": true
+      },
+      {
+        "node_id": 121,
+        "parent_id": 118,
+        "depth": 10,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simpAll",
+        "snippet": "simp_all only [map_mul, add_mul, map_add, mul_add, pa]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 5112602,
+        "heartbeats": 5112.602,
+        "inclusive": true
+      },
+      {
+        "node_id": 154,
+        "parent_id": 4,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.cdot",
+        "snippet": "· intro x y hx hy hpx hpy\n  simp_all only [map_mul, mul_add, map_add, pb]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 5086172,
+        "heartbeats": 5086.172,
+        "inclusive": true
+      },
+      {
+        "node_id": 157,
+        "parent_id": 154,
+        "depth": 7,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simpAll",
+        "snippet": "simp_all only [map_mul, mul_add, map_add, pb]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 5083024,
+        "heartbeats": 5083.024,
+        "inclusive": true
+      },
+      {
+        "node_id": 134,
+        "parent_id": 18,
+        "depth": 7,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.cdot",
+        "snippet": "· intro x hx hpx\n  simp_all only [map_mul, Algebra.smul_mul_assoc, map_smul, Algebra.mul_smul_comm, implies_true, pa]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 4155408,
+        "heartbeats": 4155.408,
+        "inclusive": true
+      },
+      {
+        "node_id": 137,
+        "parent_id": 134,
+        "depth": 10,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simpAll",
+        "snippet": "simp_all only [map_mul, Algebra.smul_mul_assoc, map_smul, Algebra.mul_smul_comm, implies_true, pa]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 4153462,
+        "heartbeats": 4153.462,
+        "inclusive": true
+      },
+      {
+        "node_id": 170,
+        "parent_id": 4,
+        "depth": 4,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.cdot",
+        "snippet": "· intro x hx hpx\n  simp_all only [map_mul, Algebra.mul_smul_comm, map_smul, implies_true, pb]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 4130080,
+        "heartbeats": 4130.08,
+        "inclusive": true
+      },
+      {
+        "node_id": 173,
+        "parent_id": 170,
+        "depth": 7,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.simpAll",
+        "snippet": "simp_all only [map_mul, Algebra.mul_smul_comm, map_smul, implies_true, pb]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 4128135,
+        "heartbeats": 4128.135,
+        "inclusive": true
+      },
+      {
+        "node_id": 83,
+        "parent_id": 32,
+        "depth": 10,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.cdot",
+        "snippet": "· rw [Subalgebra.mem_center_iff.mp (ι_superCommuteF_ofCrAnOpF_ofCrAnOpF_mem_center φ ψ), mul_assoc, ← map_mul, ←\n    ofCrAnListF_append]\n  have h1 := insertionSort_of_takeWhile_filter 𝓕.crAnTimeOrderRel φ φs' φs\n  have hl : l1 ++ l2 = crAnTimeOrderList (φs' ++ φs) := by\n    simpa only [l1, l2, List.append_assoc, crAnTimeOrderList] using h1.symm\n  rw [hl, map_mul]\n  by_cases hq : (𝓕|>ₛφ) ≠ (𝓕|>ₛψ)\n  · simp only [ι_superCommuteF_of_diff_statistic hq, zero_mul, smul_zero]\n  · simp only [List.append",
+        "snippet_truncated": true,
+        "heartbeats_raw": 3739902,
+        "heartbeats": 3739.902,
+        "inclusive": true
+      },
+      {
+        "node_id": 56,
+        "parent_id": 53,
+        "depth": 13,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Mathlib.Tactic.Conv.convLHS",
+        "snippet": "conv_lhs =>\n  rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n  simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n    ofList_singleton, List.singleton_append]",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2014343,
+        "heartbeats": 2014.343,
+        "inclusive": true
+      },
+      {
+        "node_id": 57,
+        "parent_id": 56,
+        "depth": 14,
+        "kind": "tactic",
+        "class": "Elab.step",
+        "syntax_kind": "Lean.Parser.Tactic.Conv.conv",
+        "snippet": "conv => lhs;\n  ( rw [← ofCrAnListF_singleton, ← ofCrAnListF_singleton, superCommuteF_ofCrAnListF_ofCrAnListF]\n    simp only [mul_sub, sub_mul, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, ← ofCrAnListF_append, map_sub, map_smul,\n      ofList_singleton, List.singleton_append])",
+        "snippet_truncated": false,
+        "heartbeats_raw": 2013840,
+        "heartbeats": 2013.84,
+        "inclusive": true
+      }
+    ],
+    "marks": [],
+    "profile_heartbeats_raw": 35517309,
+    "profile_heartbeats": 35517.309,
+    "environment_fingerprint": "d46a1e6832070b3b6c92022aeede325dbf81713cb59c418635243009404ec8db",
+    "cache_key": "c642f3c44f4e0f36d3da6ebbe0e5ffd4d87686beb20ea82114474f5c47e068cb",
+    "status": "ok",
+    "available_hotspots": 46,
+    "hotspots_truncated": true,
+    "mark_count": 0,
+    "marks_truncated": false,
+    "partial": false,
+    "diagnostics": [],
+    "context_mode": "full_file_replacement",
+    "returncode": 0,
+    "elapsed_seconds": 5.078157987445593
+  }
+}

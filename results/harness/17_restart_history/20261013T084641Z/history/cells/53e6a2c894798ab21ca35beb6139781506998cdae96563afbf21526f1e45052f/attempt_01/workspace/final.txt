@@ -1,0 +1,22 @@
+```lean
+theorem putnam_1964_a4
+(u : ℕ → ℤ)
+(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)
+(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)
+: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n)    := by
+  obtain ⟨B, T, hB⟩ := boundedu
+  let v n : Set.Icc B T := ⟨u n, hB n⟩
+  let f n := (v n, v (n + 1), v (n + 2), v (n + 3))
+  obtain ⟨i, j, hij, h⟩ := Finite.wellQuasiOrdered Eq f
+  let c := j - i
+  have he : ∀ n ≥ i, f (n + c) = f n := by
+    apply Nat.le_induction
+    · simpa only [c, Nat.add_sub_of_le hij.le] using h.symm
+    · intro n hn ih
+      rw [Nat.add_right_comm]
+      simp [f, v] at ih ⊢
+      simp [ih]
+      apply Int.cast_injective (α := ℝ)
+      simp only [hu, ge_iff_le, Nat.reduceLeDiff, Nat.reduceSubDiff, ih]
+  exact ⟨i, c, Nat.sub_pos_of_lt hij, fun n hn => congr($(he n hn).1.val)⟩
+```

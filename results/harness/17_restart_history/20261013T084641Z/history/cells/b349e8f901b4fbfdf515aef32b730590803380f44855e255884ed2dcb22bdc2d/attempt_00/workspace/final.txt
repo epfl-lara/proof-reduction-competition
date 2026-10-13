@@ -1,0 +1,42 @@
+```lean
+theorem fiberwise_dist_lt_imp_dist_lt_unique_decoding_radius (i : Fin ℓ) (steps : ℕ)
+    [NeZero steps] (h_i_add_steps : i.val + steps ≤ ℓ)
+    (f : OracleFunction 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩)
+  (h_fw_dist_lt : fiberwiseClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)
+    (i := i) (steps := steps) (h_i_add_steps := h_i_add_steps) (f := f)) :
+  hammingClose 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, by omega⟩ f := by
+  have hp (a : ℕ) (h : i.val + steps ≤ a) :
+      2 ^ (a - (i.val + steps)) * 2 ^ steps = 2 ^ (a - i.val) := by
+    rw [←Nat.pow_add,
+      Nat.sub_add_eq_sub_sub_rev (h1 := Nat.le_add_left steps i.val) (h2 := h),
+      Nat.add_sub_cancel]
+  let C := BBF_Code 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate) ⟨i, fin_ℓ_lt_ℓ_add_one i⟩
+  let S := (fun g : C => (fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g.val).ncard) '' Set.univ
+  obtain ⟨g, _, hg⟩ := Nat.sInf_mem (Set.image_nonempty.mpr Set.univ_nonempty : S.Nonempty)
+  let Y := fiberwiseDisagreementSet 𝔽q β i steps h_i_add_steps f g.val
+  change Y.ncard = fiberwiseDistance 𝔽q β i steps h_i_add_steps f at hg
+  let D : Set _ := {x | f x ≠ g.val x}
+  let q := iteratedQuotientMap 𝔽q β h_ℓ_add_R_rate i steps h_i_add_steps
+  let k := pointToIterateQuotientIndex 𝔽q β (h_ℓ_add_R_rate := h_ℓ_add_R_rate)
+    ⟨i, fin_ℓ_lt_ℓ_add_one i⟩ steps h_i_add_steps
+  have hr x :=
+    (is_fiber_iff_generates_quotient_point 𝔽q β i steps h_i_add_steps x (q x)).mp rfl
+  have hd := Set.ncard_le_ncard_of_injOn (fun x => (q x, k x))
+    (s := D) (t := Y ×ˢ (Set.univ : Set (Fin (2 ^ steps))))
+    (fun x hx => ⟨⟨x, rfl, hx⟩, Set.mem_univ _⟩)
+    (by
+      intro x hx z hz h
+      obtain ⟨hq, hk⟩ := Prod.mk.inj h
+      dsimp only [k] at hk
+      rw [←hr x, ←hr z, hq, hk])
+  rw [Set.ncard_prod, Set.ncard_univ, Nat.card_fin] at hd
+  rw [Set.ncard_eq_toFinset_card', Set.toFinset_setOf] at hd
+  have hb := Nat.mul_le_mul_right (2 ^ steps)
+    (Nat.le_of_lt_succ (WithTop.coe_lt_coe.1 h_fw_dist_lt))
+  rw [←hg, mul_assoc, Nat.sub_mul,
+    hp (ℓ + 𝓡) (h_i_add_steps.trans (Nat.le_add_right ℓ 𝓡)), hp ℓ h_i_add_steps] at hb
+  have hn := Nat.lt_succ_of_le ((Nat.mul_le_mul_left 2 hd).trans hb)
+  unfold hammingClose
+  apply (mul_le_mul_left' (Code.distFromCode_le_dist_to_mem f g.val g.property) 2).trans_lt
+  exact_mod_cast hn
+```

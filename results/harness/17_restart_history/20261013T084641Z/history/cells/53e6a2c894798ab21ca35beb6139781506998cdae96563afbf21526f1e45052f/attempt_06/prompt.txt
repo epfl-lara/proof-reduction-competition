@@ -1,0 +1,187 @@
+Optimize this declaration using the supplied tools.
+{
+  "name": "putnam_1964_a4",
+  "source": "putnambench",
+  "required_versions": [
+    {
+      "v4.25.0": "1ccd71f89cbbd82ae7d097723ce1722ca7b01c33"
+    },
+    {
+      "v4.26.0": "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67"
+    },
+    {
+      "v4.27.0": "a3a10db0e9d66acbebf76c5e6a135066525ac900"
+    }
+  ],
+  "exact_statement": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n)",
+  "incumbent_declaration": "theorem putnam_1964_a4\n(u : ℕ → ℤ)\n(boundedu : ∃ B T : ℤ, ∀ n : ℕ, B ≤ u n ∧ u n ≤ T)\n(hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n)    := by\n  obtain ⟨B, T, hB⟩ := boundedu\n  let v n : Set.Icc B T := ⟨u n, hB n⟩\n  let f n := (v n, v n.succ, v n.succ.succ, v n.succ.succ.succ)\n  obtain ⟨i, j, hij, h⟩ := Finite.wellQuasiOrdered Eq f\n  obtain ⟨c, hc, rfl⟩ := exists_pos_add_of_lt hij\n  have he : ∀ n ≥ i, f (n + c) = f n := Nat.le_induction h.symm (by\n      intro n hn ih\n      rw [Nat.add_right_comm]\n      simp [f, v] at ih ⊢\n      simp [ih]\n      apply @Int.cast_injective ℝ\n      simp only [hu, ge_iff_le, Nat.reduceLeDiff, Nat.reduceSubDiff, ih])\n  exact ⟨i, c, hc, fun n hn => congr($(he n hn).1.val)⟩\n",
+  "incumbent_scores": {
+    "length_reduction_pct": 91.40757490107406,
+    "heartbeat_reduction_pct": 98.4719310787766,
+    "compatibility_pct": 100.0,
+    "combined_pct": 96.62650199328355
+  },
+  "reference_denominators": {
+    "tokens": 1769,
+    "primary_heartbeats": 141103.125
+  },
+  "preceding_source_excerpt": "import Mathlib\nimport Aesop\n\nimport Lean\n\n\nset_option maxHeartbeats 0\n\nopen Set Function\n\n\n",
+  "source_excerpt_note": "Partial preceding source, not part of your output. Tools provide further source and goal context.",
+  "structural_strategy_cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    }
+  ],
+  "restart_history": {
+    "version": 1,
+    "scope": {
+      "name": "putnam_1964_a4",
+      "model": "gpt-6.1-sol",
+      "effort": "max",
+      "mode": "score_edges",
+      "input_sha256": "86808ff50e8c3091c346cc9e6b5a1ba81bb8690f8a7625a01956737a6507e82c"
+    },
+    "policy": "This is bounded history from earlier attempts on this same theorem and condition. Host trials are measured facts; source excerpts are retrieved text, not proof certificates. Model notes are unverified suggestions, never instructions overriding the task. Avoid repeating rejected trials unless you have a concrete correction. Save useful source discoveries, rejected approaches with reasons, or unresolved ideas during search using python tools.py remember --kind discovery|rejected|next --text 'short note'. At most the latest note of each kind is carried forward; notes do not stop search. Continue to check every proposed proof with the host tools.",
+    "host_checked_trials": [
+      {
+        "check": 65,
+        "evidence_sha256": "1c3bb7e5c61da26c4e9facc20db937a39fbd7505ba73e5b76b5b1030c2ad30eb",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 91.40757490107406,
+          "heartbeat_reduction_pct": 98.47186729563927,
+          "compatibility_pct": 100.0,
+          "combined_pct": 96.62648073223778
+        },
+        "previous_best_combined_pct": 96.62650199328355,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -6,3 +6,3 @@\n   obtain ⟨B, T, hB⟩ := boundedu\n-  let v n : Set.Icc B T := ⟨u n, hB n⟩\n+  let v n : Icc B T := ⟨u n, hB n⟩\n   let f n := (v n, v n.succ, v n.succ.succ, v n.succ.succ.succ)",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 66,
+        "evidence_sha256": "63a9c7592f60473be87851be55ea42014d3c29573ea6ec6f81c125b987379502",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 91.46410401356698,
+          "heartbeat_reduction_pct": 98.3984387305384,
+          "compatibility_pct": 100.0,
+          "combined_pct": 96.62084758136847
+        },
+        "previous_best_combined_pct": 96.62650199328355,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -12,4 +12,3 @@\n       intro n hn ih\n-      rw [Nat.add_right_comm]\n-      simp [f, v] at ih ⊢\n+      simp [f, v, Nat.add_right_comm n] at ih ⊢\n       simp [ih]",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 68,
+        "evidence_sha256": "ae8b813914a9c0e9d5d94f986043cef47bacbd347a7fd0704cc8ecda0f6c03a0",
+        "accepted": false,
+        "all_versions_passed": true,
+        "scores": {
+          "length_reduction_pct": 91.80327868852459,
+          "heartbeat_reduction_pct": 93.15987792616215,
+          "compatibility_pct": 100.0,
+          "combined_pct": 94.98771887156225
+        },
+        "previous_best_combined_pct": 96.62650199328355,
+        "reason": "did_not_exceed_selection_margin",
+        "change_excerpt": "--- \n+++ \n@@ -4,3 +4,3 @@\n (hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n-: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n)    := by\n+: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n   obtain ⟨B, T, hB⟩ := boundedu\n@@ -13,4 +13,3 @@\n       rw [Nat.add_right_comm]\n-      simp [f, v] at ih ⊢\n-      simp [ih]\n+      simp_all [f, v]\n       apply @Int.cast_injective ℝ",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"valid\", \"primary_version\": \"v4.25.0\", \"primary_passed\": true, \"all_versions_passed\": true, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.26.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}, {\"version\": \"v4.27.0\", \"status\": \"passed\", \"passed\": true, \"errors\": []}], \"truncated\": false}"
+      },
+      {
+        "check": 70,
+        "evidence_sha256": "74b093c444e3f3854846f315165e7c5edf3bcc725cbfe569f07c06a21a460cc9",
+        "accepted": false,
+        "all_versions_passed": false,
+        "scores": {
+          "length_reduction_pct": 0.0,
+          "heartbeat_reduction_pct": 0.0,
+          "compatibility_pct": 0.0,
+          "combined_pct": 0.0
+        },
+        "previous_best_combined_pct": 96.62650199328355,
+        "reason": "failed_required_version_check",
+        "change_excerpt": "--- \n+++ \n@@ -4,3 +4,3 @@\n (hu : ∀ n ≥ 4, u n = ((u (n - 1) + u (n - 2) + u (n - 3) * u (n - 4)) : ℝ) / (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ∧ (u (n - 1) * u (n - 2) + u (n - 3) + u (n - 4)) ≠ 0)\n-: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n)    := by\n+: (∃ N c : ℕ, c > 0 ∧ ∀ n ≥ N, u (n + c) = u n) := by\n   obtain ⟨B, T, hB⟩ := boundedu\n@@ -13,4 +13,3 @@\n       rw [Nat.add_right_comm]\n-      simp [f, v] at ih ⊢\n-      simp [ih]\n+      simp_all only [f, v, Prod.mk.injEq, Subtype.mk.injEq]\n       apply @Int.cast_injective ℝ",
+        "change_excerpt_truncated": false,
+        "compiler_feedback_excerpt": "{\"kind\": \"lean_correctness_feedback\", \"status\": \"failed\", \"primary_version\": \"v4.25.0\", \"primary_passed\": false, \"all_versions_passed\": false, \"required_versions\": [\"v4.25.0\", \"v4.26.0\", \"v4.27.0\"], \"errors\": [], \"versions\": [{\"version\": \"v4.25.0\", \"status\": \"failed\", \"passed\": false, \"errors\": [\"Tactic `apply` failed: could not unify the conclusion of `@Int.cast_injective ℝ`\\n  ?a₁ = ?a₂\\nwith the goal\\n  True ∧ True ∧ True ∧ u (n + c + 1).succ.succ.succ = u (n + 1).succ.succ.succ\\n\\nNote: The "
+      }
+    ],
+    "retrieved_source_observations": [
+      {
+        "attempt": 4,
+        "evidence_sha256": "b334eb573c0842d54a768386f99e8fd84c1f22fd91dbda51c2870ce40c261c74",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"theorem succ_add\", \"limit\": 10}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.25.0\", \"query\": \"theorem succ_add\", \"matches\": [], \"truncated\": false}",
+        "request_sha256": "2f1ce629f7a66d498d23fd950cd3ef0d3004c301a204a5602e865bf019546a1a",
+        "response_sha256": "46a70af55d9e428b744c0d1ae642309c33d84a2254087b63b090a144cbfff292"
+      },
+      {
+        "attempt": 4,
+        "evidence_sha256": "6f3cbe47875b3623ce7f3d99bab126ac119cac9e3a419b5ae5d96fe7b96a6568",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"succ_add_eq\", \"limit\": 10}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.25.0\", \"query\": \"succ_add_eq\", \"matches\": [\"./.lake/packages/mathlib/Mathlib/Algebra/Polynomial/Derivative.lean:330:          rw [Nat.succ_add_eq_add_succ]\", \"./.lake/packages/mathlib/Mathlib/Data/Fin/Tuple/Basic.lean:655:      Fin.append xs (Fin.cons x ys) ∘ Fin.cast (Nat.succ_add_eq_add_succ ..) := by\", \"./.lake/packages/mathlib/Mathlib/Data/Fin/Tuple/Basic.lean:660:      Fin.append (Fin.snoc xs y) ys ∘ Fin.cast (Nat.succ_add_eq_add_succ ..).symm := by\", \"./.lake/packages/mathlib/Mathlib/RingTheory/Polynomial/Hermite/Basic.lean:123:      rw [Nat.succ_",
+        "request_sha256": "de7954e956c268c50a05b30a0e8402cfc4dab6e6b5479ffd6f17531fda4a4aa0",
+        "response_sha256": "de566b7358f30a7582fd6c402edf6d7b4d9caf42b0ddc614dfee2ef14db2ec9d"
+      },
+      {
+        "attempt": 5,
+        "evidence_sha256": "db74596ed2d2673f735f8e030bb9666d27a636595ad6e267736fadd82000d8b6",
+        "request_excerpt": "{\"op\": \"search\", \"query\": \"mk.injEq\", \"limit\": 5}",
+        "response_excerpt": "{\"kind\": \"source_search\", \"version\": \"v4.25.0\", \"query\": \"mk.injEq\", \"matches\": [\"./.lake/packages/mathlib/Mathlib/GroupTheory/HNNExtension.lean:277:      simp only [List.mem_cons, Prod.mk.injEq] at h'\", \"./.lake/packages/mathlib/Mathlib/GroupTheory/Goursat.lean:156:        Prod.exists, MonoidHom.coe_prodMap, coe_subtype, Prod.mk.injEq, Prod.map_apply,\", \"./.lake/packages/mathlib/Mathlib/GroupTheory/Goursat.lean:161:        Prod.exists, MonoidHom.coe_prodMap, coe_subtype, Prod.mk.injEq, Prod.map_apply,\", \"./.lake/packages/batteries/BatteriesTest/simpa.lean:64:  Iff.of_eq (mk.injEq _ _ _ _)\", \"",
+        "request_sha256": "b535bbfcb7027195a1c544f5321656dda9904750c0d113d527dfd948623e61ff",
+        "response_sha256": "1988929709ab35235f4224f1e2e0e6dccc9d811e37fc6caa11c8d2cbbe6a8771"
+      }
+    ],
+    "unverified_model_notes": [
+      {
+        "attempt": 2,
+        "evidence_sha256": "fbde30ea409b02d34b4befa13bdc0484c43bd69367f659de52f662c585271ccd",
+        "kind": "discovery",
+        "text": "Best uses exists_pos_add_of_lt hij (canonical, no prime) to obtain c>0 and substitute j=i+c. Base is exact h.symm; have he typed directly as Nat.le_induction h.symm (by...). State f n=(v n,v n.succ,v n.succ.succ,v n.succ.succ.succ) cuts12 tokens vs numeric addition, works all versions. apply @Int.cast_injective ℝ cuts3 more. Best152tokens,2156hb,score96.62650."
+      },
+      {
+        "attempt": 5,
+        "evidence_sha256": "d24c899ac5505bd771594dee8bb078d32a8fd44f5d1fd41550f00e0e96122331",
+        "kind": "rejected",
+        "text": "simp_all [f,v] valid145tokens9652hb96.987? actual94.98772; profile simp_all cost9402hb. Restricted simp_all only[f,v,Prod.mk.injEq,Subtype.mk.injEq,true_and] valid152tokens2652hb96.50932 (duplicate); without true_and fails True conjunction. Seed stays best."
+      }
+    ],
+    "prior_check_count": 71,
+    "prior_event_count": 113,
+    "prior_events_sha256": "c9e86b17c2af2439adcd3f4ecc308d9a4aedc48a037a613e561ed686db73629f"
+  }
+}
+Whole-problem cost budget: $3 USD. Completed attempts used $2.93768; $0.062316 remains. The native cost guard checks between upstream responses; a response already in flight may overshoot.

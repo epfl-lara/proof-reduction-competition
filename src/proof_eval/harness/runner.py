@@ -45,6 +45,7 @@ def run(args: RunConfig) -> dict:
             budget_tracking=args.budget_tracking,
             budget_usd_per_problem=args.budget_usd_per_problem,
             usage_policy=args.usage_policy,
+            restart_history=args.restart_history,
             max_budget_restarts=args.max_budget_restarts,
             max_transport_restarts=args.max_transport_restarts,
             incumbents_from=args.incumbents_from,
