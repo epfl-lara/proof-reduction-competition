@@ -95,16 +95,27 @@ def _mask_leading_by(body: str) -> str:
     return re.sub(r"^\s*by\b", lambda m: re.sub(r"\S", " ", m.group()), body, count=1)
 
 
-def _continues_term(parent: Step, stripped: str) -> bool:
+def _bullet_column(step: Step) -> int:
+    """Column of the first tactic after a focusing bullet."""
+    after = step.text.split("\n")[0].lstrip()[1:]
+    return step.indent + 1 + len(after) - len(after.lstrip())
+
+
+def _continues_term(parent: Step, stripped: str, indent: int) -> bool:
     if stripped.startswith("<;>"):
         return True
-    return not (
+    if (
         _OPENS_BLOCK.search(parent.text)
         or parent.head in _BLOCK_TACTICS
-        or parent.text.lstrip().startswith(("·", "."))
         or parent.children
         or stripped.startswith(_CHILD_PREFIXES)
-    )
+    ):
+        return False
+    if parent.text.lstrip().startswith(("·", ".")):
+        # Deeper than the bullet's first tactic: that tactic's term goes on.
+        # At the tactic's column: the next tactic of the bullet block.
+        return indent > _bullet_column(parent)
+    return True
 
 
 def parse(body: str) -> Step:
@@ -123,7 +134,7 @@ def parse(body: str) -> Step:
             stack.pop()
         parent = stack[-1]
         stripped = line.strip()
-        if parent is not root and _continues_term(parent, stripped):
+        if parent is not root and _continues_term(parent, stripped, indent):
             parent.text += "\n" + line
             parent.end = end
             continue
@@ -132,6 +143,24 @@ def parse(body: str) -> Step:
         parent.children.append(step)
         stack.append(step)
     return root
+
+
+def blocks(root: Step) -> Iterator[list[Step]]:
+    """Every tactic block: a run of sibling steps at the same column.
+
+    A bullet's first tactic can open a nested block at a deeper column; that
+    block and the bullet's later tactics (at the bullet's column) are children
+    of the same step. Splitting by column keeps them apart.
+    """
+    for parent in root.walk():
+        run: list[Step] = []
+        for child in parent.children:
+            if run and child.indent != run[-1].indent:
+                yield run
+                run = []
+            run.append(child)
+        if run:
+            yield run
 
 
 class TokenCounter:

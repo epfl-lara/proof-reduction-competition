@@ -28,7 +28,7 @@ from proof_eval.optimization.proof_theory.spans import (
     token_spans,
     wrapped,
 )
-from proof_eval.optimization.proof_theory.tree import Step
+from proof_eval.optimization.proof_theory.tree import Step, blocks
 from proof_eval.optimization.syntax import Edit
 
 _WITNESS = re.compile(r"(?:exists|use)\s+(.+)")
@@ -73,8 +73,7 @@ def _fuse_from(children: list[Step], start: int) -> tuple[int, str] | None:
 def synchronous_groups(root: Step) -> list[list[Edit]]:
     """Maximal fusions only: a run inside an earlier fused run is skipped."""
     groups = []
-    for parent in root.walk():
-        children = parent.children
+    for children in blocks(root):
         covered = -1
         for start in range(len(children)):
             fused = None if start <= covered else _fuse_from(children, start)
@@ -152,8 +151,8 @@ def _fuse_pair(first: Step, second: Step) -> tuple[str, str] | None:
 
 def asynchronous_groups(root: Step) -> list[list[Edit]]:
     groups = []
-    for parent in root.walk():
-        for first, second in zip(parent.children, parent.children[1:]):
+    for children in blocks(root):
+        for first, second in zip(children, children[1:]):
             fused = _fuse_pair(first, second)
             if fused:
                 text, reason = fused

@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 
 from proof_eval.optimization.proof_theory.spans import delete_step, is_bullet
-from proof_eval.optimization.proof_theory.tree import Step
+from proof_eval.optimization.proof_theory.tree import Step, blocks
 from proof_eval.optimization.syntax import Edit
 
 _CASE = re.compile(r"case\s+([^\s|=]+)((?:\s+[^\s|=]+)*)\s*=>")
@@ -27,9 +27,9 @@ def _branch_body(body: str, step: Step, header_end: int) -> str:
 
 def case_groups(root: Step, body: str) -> list[list[Edit]]:
     groups = []
-    for parent in root.walk():
+    for children in blocks(root):
         branches: dict[tuple[str, str], list[tuple[Step, re.Match]]] = {}
-        for step in parent.children:
+        for step in children:
             match = _CASE.match(body, step.start)
             if not match or is_bullet(step):
                 continue
@@ -54,9 +54,9 @@ def _bullet_content(body: str, step: Step) -> str:
 
 def all_goals_groups(root: Step, body: str) -> list[list[Edit]]:
     groups = []
-    for parent in root.walk():
+    for children in blocks(root):
         suffix = []
-        for step in reversed(parent.children):
+        for step in reversed(children):
             if not is_bullet(step):
                 break
             suffix.insert(0, step)

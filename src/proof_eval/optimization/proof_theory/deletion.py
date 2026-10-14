@@ -14,7 +14,12 @@ from __future__ import annotations
 import re
 
 from proof_eval.optimization.proof_theory.spans import delete_step, is_bullet
-from proof_eval.optimization.proof_theory.tree import CASE_HEADER, Step, find_top
+from proof_eval.optimization.proof_theory.tree import (
+    CASE_HEADER,
+    Step,
+    blocks,
+    find_top,
+)
 from proof_eval.optimization.syntax import Edit
 from proof_eval.verification.metrics import token_count
 
@@ -56,8 +61,7 @@ def _tail_edit(body: str, step: Step) -> Edit | None:
 
 def deletion_groups(root: Step, body: str) -> list[list[Edit]]:
     scored = []
-    for parent in root.walk():
-        children = parent.children
+    for children in blocks(root):
         for index, step in enumerate(children):
             last = index == len(children) - 1
             if not last and len(children) > 1 and _deletable(step):

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from proof_eval.optimization.proof_theory.records import Cut
-from proof_eval.optimization.proof_theory.tree import Step, find_top, names
+from proof_eval.optimization.proof_theory.tree import Step, blocks, find_top, names
 from proof_eval.verification.metrics import token_count
 
 CUT = re.compile(r"(have|haveI|let|letI|obtain|rcases|suffices)\b")
@@ -74,8 +74,8 @@ def _references(bound: tuple[str, ...], later: list[Step]) -> int:
 
 def find_cuts(root: Step) -> list[Cut]:
     out = []
-    for parent in root.walk():
-        for k, step in enumerate(parent.children):
+    for children in blocks(root):
+        for k, step in enumerate(children):
             match = CUT.match(step.tactic)
             if not match:
                 continue
@@ -84,7 +84,7 @@ def find_cuts(root: Step) -> list[Cut]:
                 [step.tactic[match.end() :]] + [c.subtree() for c in step.children]
             )
             bound, statement, proof = binding(kind, rest)
-            later = parent.children[k + 1 :]
+            later = children[k + 1 :]
             scope = "\n".join(s.subtree() for s in later)
             out.append(
                 Cut(

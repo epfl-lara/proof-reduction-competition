@@ -15,13 +15,15 @@ import re
 from collections import Counter
 
 from proof_eval.optimization.proof_theory.spans import is_bullet
-from proof_eval.optimization.proof_theory.tree import CASE_HEADER, Step, names
+from proof_eval.optimization.proof_theory.tree import CASE_HEADER, Step, blocks, names
 from proof_eval.optimization.syntax import Edit
 from proof_eval.verification.metrics import token_count
 
+# `match` is absent on purpose: as a tactic it needs its alternatives, so
+# `match x <;> tac` is not valid syntax.
 SPLITTER = re.compile(
     r"(?:induction|fun_induction|cases|rcases|obtain|split|split_ifs|by_cases|"
-    r"constructor|refine'?|interval_cases|fin_cases|match|rintro)\b"
+    r"constructor|refine'?|interval_cases|fin_cases|rintro)\b"
 )
 FALLBACK_CLOSERS = (
     "simp_all",
@@ -46,14 +48,14 @@ def _is_branch(step: Step) -> bool:
     return bool(_BRANCH.match(step.text))
 
 
-def _branches(parent: Step, index: int) -> list[Step] | None:
+def _branches(children: list[Step], index: int) -> list[Step] | None:
     """Branches of the splitter at `index`: its own alternatives or the rest."""
-    step = parent.children[index]
+    step = children[index]
     if step.children:
         if all(_is_branch(child) for child in step.children):
             return step.children
         return None
-    tail = parent.children[index + 1 :]
+    tail = children[index + 1 :]
     return tail if tail and all(_is_branch(child) for child in tail) else None
 
 
@@ -83,13 +85,13 @@ def _head(step: Step) -> str | None:
 
 def collapse_groups(root: Step, body: str) -> list[list[Edit]]:
     groups = []
-    for parent in root.walk():
-        for index, step in enumerate(parent.children):
+    for children in blocks(root):
+        for index, step in enumerate(children):
             if _is_branch(step) and not is_bullet(step):
                 continue
             if not SPLITTER.match(step.tactic):
                 continue
-            branches = _branches(parent, index)
+            branches = _branches(children, index)
             head = _head(step)
             if not branches or len(branches) < 2 or head is None:
                 continue

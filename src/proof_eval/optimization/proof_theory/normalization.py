@@ -22,7 +22,7 @@ from proof_eval.optimization.proof_theory.spans import (
     single_line,
     token_spans,
 )
-from proof_eval.optimization.proof_theory.tree import Step
+from proof_eval.optimization.proof_theory.tree import Step, blocks
 from proof_eval.optimization.syntax import Edit
 
 _BY_EXACT = re.compile(r"(?:\(|:=)[ \t]*(by[ \t]+exact[ \t]+)(?=\S)")
@@ -84,8 +84,7 @@ def _adjacent(first: Step, second: Step, last: bool) -> Edit | None:
 
 def adjacent_groups(root: Step) -> list[list[Edit]]:
     groups = []
-    for parent in root.walk():
-        children = parent.children
+    for children in blocks(root):
         for first, second in zip(children, children[1:]):
             edit = _adjacent(first, second, second is children[-1])
             if edit:
@@ -93,16 +92,16 @@ def adjacent_groups(root: Step) -> list[list[Edit]]:
     return groups
 
 
-def _inline(parent: Step, index: int, body: str) -> list[Edit] | None:
-    step = parent.children[index]
+def _inline(children: list[Step], index: int, body: str) -> list[Edit] | None:
+    step = children[index]
     match = CUT.match(step.tactic)
     if not match or match.group(1) != "have" or not single_line(step):
         return None
-    names, _, proof = binding("have", step.tactic[match.end() :])
+    names, statement, proof = binding("have", step.tactic[match.end() :])
     proof = proof.strip()
     if len(names) != 1 or not proof or re.match(r"by\b", proof):
         return None
-    later = parent.children[index + 1 :]
+    later = children[index + 1 :]
     if not later:
         return None
     start, stop = later[0].start, later[-1].stop()
@@ -110,17 +109,56 @@ def _inline(parent: Step, index: int, body: str) -> list[Edit] | None:
     if len(uses) != 1:
         return None
     a, b = uses[0]
+    if statement.strip() and _in_lemma_list(body, start + a):
+        # `simp only [h]` / `rw [h]` use the fact's statement; the bare proof
+        # term (often just `rfl`) does not carry it.
+        return None
     return [
         delete_step(body, step, "inline_linear_cut:" + names[0]),
-        Edit(start + a, start + b, parenthesize(proof), "inline_linear_cut"),
+        Edit(
+            start + a,
+            start + b,
+            proof if _slot(body, start + a, start + b) else parenthesize(proof),
+            "inline_linear_cut",
+        ),
     ]
+
+
+_LEMMA_LIST = re.compile(
+    r"\b(?:simp_all|simp_rw|simpa|simp|dsimp|rwa|rw|rewrite|nth_rewrite|norm_num|"
+    r"field_simp)(?:\s+only)?\s*$"
+)
+
+
+def _slot(body: str, start: int, stop: int) -> bool:
+    """A delimited position (`[t, …]`, `⟨…, t⟩`) where `t` needs no parentheses."""
+    before = body[:start].rstrip()[-1:]
+    after = body[stop:].lstrip()[:1]
+    return before in ("[", "⟨", "(", ",") and after in (",", "]", "⟩", ")")
+
+
+def _in_lemma_list(body: str, offset: int) -> bool:
+    """Whether `offset` sits inside the `[...]` lemma list of a rewriting tactic."""
+    depth = 0
+    for i in range(offset - 1, -1, -1):
+        char = body[i]
+        if char in ")]}⟩":
+            depth += 1
+        elif char in "([{⟨":
+            if depth:
+                depth -= 1
+            elif char == "[":
+                return bool(_LEMMA_LIST.search(body[:i]))
+            else:
+                return False
+    return False
 
 
 def inline_groups(root: Step, body: str) -> list[list[Edit]]:
     groups = []
-    for parent in root.walk():
-        for index in range(len(parent.children)):
-            edits = _inline(parent, index, body)
+    for children in blocks(root):
+        for index in range(len(children)):
+            edits = _inline(children, index, body)
             if edits:
                 groups.append(edits)
     return groups

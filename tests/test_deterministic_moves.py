@@ -52,6 +52,11 @@ class CollapseTests(unittest.TestCase):
         self.assertTrue(out)
         self.assertFalse(any("exact a" in o or "exact b" in o for o in out))
 
+    def test_match_alternatives_are_never_collapsed(self):
+        # `match x <;> rfl` is not valid Lean syntax.
+        proof = body("match rowIdx with\n| 0 => rfl\n| 1 => rfl")
+        self.assertEqual(proposals("collapse", proof), [])
+
     def test_a_split_followed_by_other_steps_is_left_alone(self):
         self.assertEqual(proposals("collapse", body("constructor\n· simp\nrfl")), [])
 

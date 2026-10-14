@@ -21,7 +21,7 @@ from proof_eval.optimization.proof_theory.spans import (
     replace_steps,
     single_line,
 )
-from proof_eval.optimization.proof_theory.tree import Step
+from proof_eval.optimization.proof_theory.tree import Step, blocks
 from proof_eval.optimization.syntax import Edit
 
 _REWRITE = re.compile(r"(rw|rewrite|simp_rw|simp only)\s*\[(.*)\]\s*(at\s+.+)?")
@@ -32,8 +32,7 @@ _RELAX = re.compile(
 
 def merge_groups(root: Step) -> list[list[Edit]]:
     groups = []
-    for parent in root.walk():
-        children = parent.children
+    for children in blocks(root):
         for first, second in zip(children, children[1:]):
             if is_bullet(first) or is_bullet(second):
                 continue

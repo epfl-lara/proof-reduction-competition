@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 from proof_eval.optimization.engine import Budget, discovery
+from proof_eval.optimization.proof_theory.methods import METHODS
 from proof_eval.optimization.proof_theory.rewrites import (
     body_groups,
     joint_group,
@@ -170,12 +171,26 @@ class NormalizationTests(unittest.TestCase):
         )
 
     def test_only_a_term_cut_used_once_is_inlined(self):
-        once = body("have h : A := f a\nexact g h.1")
-        twice = body("have h : A := f a\nexact g h h")
-        tactic = body("have h : A := by simp\nexact g h")
+        once = body("have h := f a\nexact g h.1")
+        typed = body("have h : A := f a\nexact g h.1")
+        self.assertEqual(
+            rewrites(typed, "inline_linear_cut"), [body("exact g (f a).1")]
+        )
+        twice = body("have h := f a\nexact g h h")
+        tactic = body("have h := by simp\nexact g h")
         self.assertEqual(rewrites(once, "inline_linear_cut"), [body("exact g (f a).1")])
         self.assertEqual(rewrites(twice, "inline_linear_cut"), [])
         self.assertEqual(rewrites(tactic, "inline_linear_cut"), [])
+
+    def test_a_typed_cut_used_as_a_rewrite_lemma_keeps_its_statement(self):
+        # `simp only [rfl]` would lose the fact `f 0 = 0`.
+        for use in ("simp only [h0]", "rw [h0] at h", "simp [foo, h0]"):
+            typed = body(f"have h0 : f 0 = 0 := rfl\n{use}")
+            self.assertEqual(rewrites(typed, "inline_linear_cut"), [], use)
+        untyped = body("have h0 := foo 0\nsimp only [h0]")
+        self.assertEqual(
+            rewrites(untyped, "inline_linear_cut"), [body("simp only [foo 0]")]
+        )
 
 
 class DeclarationTests(unittest.TestCase):
@@ -219,3 +234,24 @@ class DeclarationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BulletContinuationTests(unittest.TestCase):
+    def test_a_multi_line_statement_after_a_bullet_is_one_step(self):
+        # The statement continues past the bullet's tactic column; the closing
+        # `exact` of the nested block must never be offered for deletion.
+        proof = body("""
+            constructor
+            · have hs : a ⊆
+                  b := by
+                intro x hx
+                simp at hx
+                exact hx
+              exact hs
+            · rfl
+            """)
+        finder, _ = METHODS["delete"]
+        outs = [apply_edits(proof, group) for group in finder(proof)]
+        self.assertEqual(len(outs), 1)  # only the redundant `simp at hx`
+        self.assertNotIn("simp at hx", outs[0])
+        self.assertIn("exact hx", outs[0])

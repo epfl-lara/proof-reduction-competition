@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 
 from proof_eval.optimization.proof_theory.records import AnalysisConfig, Phase
-from proof_eval.optimization.proof_theory.tree import Step, TokenCounter
+from proof_eval.optimization.proof_theory.tree import Step, TokenCounter, blocks
 
 _ASYNC = re.compile(
     r"(?:intros?|rintro|ext|funext|by_contra|split_ands|and_intros)\b"
@@ -62,9 +62,9 @@ def find_phases(
 ) -> list[Phase]:
     """Maximal runs of one phase; a large subproof step ends the run."""
     out = []
-    for parent in root.walk():
+    for children in blocks(root):
         run: list[tuple[Step, str]] = []
-        for step in parent.children + [None]:
+        for step in children + [None]:
             kind = "other" if step is None else _step_kind(step)
             if step is not None and tokens(step) > config.max_phase_step_tokens:
                 kind = "other"

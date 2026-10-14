@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from proof_eval.optimization.proof_theory.records import Detour
-from proof_eval.optimization.proof_theory.tree import Step
+from proof_eval.optimization.proof_theory.tree import Step, blocks
 
 _PATTERNS = (
     ("by_exact", r"\bby\s+exact\b"),
@@ -35,8 +35,7 @@ def _adjacent(first: Step, second: Step, last: bool) -> list[Detour]:
 
 def find_detours(root: Step, body: str) -> list[Detour]:
     found = []
-    for parent in root.walk():
-        children = parent.children
+    for children in blocks(root):
         for a, b in zip(children, children[1:]):
             found.extend(_adjacent(a, b, b is children[-1]))
     for kind, pattern in _PATTERNS:
