@@ -8,6 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import proof_eval.harness.session as toolmod
+from proof_eval.harness.final_rewrites import METHODS as FINAL_METHODS
 from proof_eval.harness.final_rewrites import final_rewrites
 from proof_eval.harness.session import ProofSession
 from proof_eval.optimization.engine import Budget, discovery
@@ -154,9 +155,7 @@ class FinalRewriteTests(unittest.TestCase):
         self.assertEqual(session.best_code, golfed_code)
         self.assertEqual(session.checks[-1]["origin"], "final_rewrites")
         self.assertAlmostEqual(outcome["gain_pp"], 1.0)
-        self.assertEqual(
-            [m["method"] for m in outcome["methods"]], ["proof_theory", "golf"]
-        )
+        self.assertEqual([m["method"] for m in outcome["methods"]], list(FINAL_METHODS))
 
 
 if __name__ == "__main__":

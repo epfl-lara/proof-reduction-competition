@@ -31,9 +31,18 @@ METHOD_MODULES = {
     "rw_min": "lemma_minimization",
     "proof_theory": "proof_theory",
     "golf": "token_golf",
+    "collapse": "proof_theory",
+    "delete": "proof_theory",
+    "consolidate": "proof_theory",
+    "relax": "proof_theory",
     "lint": "optimizer",
     "simp": "optimizer",
 }
+
+
+LEAN_FREE_METHODS = frozenset(
+    {"proof_theory", "golf", "collapse", "delete", "consolidate", "relax"}
+)
 
 
 @dataclass(frozen=True)
@@ -104,19 +113,12 @@ def discovery(evaluator, row, code, method, budget, *, site_offset=0):
             "joint_then_first",
             {"analysis_requests": calls, "diagnostics": []},
         )
-    if method in {"proof_theory", "golf"}:
+    if method in LEAN_FREE_METHODS:
         # Lean-free proposals; every candidate is still compiled and scored.
-        from proof_eval.optimization.proof_theory.rewrites import (
-            joint_group,
-            proof_theory_groups,
-        )
-        from proof_eval.optimization.token_golf import golf_groups
+        from proof_eval.optimization.proof_theory.methods import discover
 
-        finder = proof_theory_groups if method == "proof_theory" else golf_groups
-        groups = finder(row, code)
-        if len(groups) > 1:
-            groups.insert(0, joint_group(groups))
-        return groups, "joint_then_first", {"analysis_requests": 0, "diagnostics": []}
+        groups, policy = discover(method, row, code)
+        return groups, policy, {"analysis_requests": 0, "diagnostics": []}
     if method not in METHOD_MODULES:
         raise ValueError(f"Unknown optimization method: {method}")
     analysis = analyze(evaluator, row, code)

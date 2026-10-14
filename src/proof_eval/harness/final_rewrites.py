@@ -1,10 +1,14 @@
-"""Opt-in host pass after final cleanup: proof-theoretic and tokenizer rewrites.
+"""Opt-in host pass after final cleanup: Lean-free deterministic rewrites.
 
-The pass runs the deterministic engine's `proof_theory` and `golf` methods, in
-that order, on the session's best proof. Each engine run keeps its own resumable
-state and event log beside the session ledger. The final proof then goes through
-`ProofSession.check`, so it replaces the best proof only under the session's
-usual all-version rule and 0.05-point margin.
+The pass runs the deterministic engine's Lean-free methods in `METHODS` order
+on the session's best proof: structural deletions and branch collapses first,
+then consolidation, proof-theoretic rewrites, simp relaxation, and tokenizer
+rewrites last. Each engine run keeps its own resumable
+state and event log beside the session ledger. The engine sees an all-version
+eligibility adapter, so it never accepts a candidate that fails any required
+Lean version. The final proof then goes through `ProofSession.check`, so it
+replaces the best proof only under the session's all-version rule and 0.05-point
+margin.
 """
 
 from __future__ import annotations
@@ -14,11 +18,13 @@ from dataclasses import asdict
 from pathlib import Path
 
 from proof_eval.evidence.io import read, write_json
+from proof_eval.optimization.cleanup import AllVersionsEvaluator
 from proof_eval.optimization.engine import Budget, optimize
+from proof_eval.verification.references import required_versions
 
 from .session import ProofSession
 
-METHODS = ("proof_theory", "golf")
+METHODS = ("delete", "collapse", "consolidate", "proof_theory", "relax", "golf")
 BUDGET = Budget(rounds=3, trials=24, sites=6, min_gain=0.05)
 
 
@@ -30,6 +36,13 @@ def frozen_record() -> dict:
 def final_rewrites(folder: Path, pack: dict, evaluator, session: ProofSession) -> dict:
     """Run every method on the best proof; return per-method outcomes."""
     folder = Path(folder)
+    eligibility = folder / "final_rewrites_eligibility.jsonl"
+
+    def record(event):
+        with eligibility.open("a") as stream:
+            stream.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+    checker = AllVersionsEvaluator(evaluator, required_versions(pack), record)
     code = session.best_code
     before = session.best_evaluation["scores"]["combined_pct"]
     outcomes = []
@@ -46,7 +59,7 @@ def final_rewrites(folder: Path, pack: dict, evaluator, session: ProofSession) -
 
         state = read(state_path) if state_path.exists() else None
         outcome = optimize(
-            evaluator, pack["row"], code, method, BUDGET, emit, save, state=state
+            checker, pack["row"], code, method, BUDGET, emit, save, state=state
         )
         outcomes.append(
             {

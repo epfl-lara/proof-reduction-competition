@@ -23,6 +23,7 @@ from pathlib import Path
 
 from proof_eval import Evaluator
 from proof_eval.evidence.io import digest, write_json
+from proof_eval.optimization.cleanup import AllVersionsEvaluator
 from proof_eval.optimization.engine import METHOD_MODULES, Budget, optimize
 from proof_eval.paths import PACKAGE, ROOT
 
@@ -56,6 +57,18 @@ def initial_proofs(evaluator, path=None):
             raise ValueError("Each input proof must be a nonempty string")
         initial.update({r["name"]: r["proof"] for r in supplied})
     return initial
+
+
+def eligibility_checker(evaluator, row, emit, require_all_versions):
+    """The evaluator the engine sees: raw, or gated on every required version.
+
+    Without the gate, the combined score may trade a failed secondary version
+    for length or heartbeat gains. With it, such candidates are never accepted.
+    """
+    if not require_all_versions:
+        return evaluator
+    required = [version for item in row["version_info"] for version in item]
+    return AllVersionsEvaluator(evaluator, required, emit)
 
 
 def persist_summary(output, records, proofs, names):
@@ -142,6 +155,9 @@ def run(args):
             "environment_config_sha256": digest(args.environments),
             "code_sha256": {p: digest(p) for p in sorted(set(source_paths))},
         }
+        if getattr(args, "require_all_versions", False):
+            # Opt-in, so historical configurations stay byte-identical.
+            config["require_all_versions"] = True
         config_path = args.output / "config.json"
         if config_path.exists() and json.loads(config_path.read_text()) != config:
             raise ValueError(
@@ -179,8 +195,11 @@ def run(args):
                     )
                     log.flush()
 
+                checker = eligibility_checker(
+                    evaluator, row, emit, getattr(args, "require_all_versions", False)
+                )
                 result = optimize(
-                    evaluator,
+                    checker,
                     row,
                     initial[name],
                     args.method,
@@ -254,6 +273,11 @@ def main():
     parser.add_argument("--max-trials", type=int, default=64)
     parser.add_argument("--max-sites", type=int, default=6)
     parser.add_argument("--min-gain", type=float, default=0.05)
+    parser.add_argument(
+        "--require-all-versions",
+        action="store_true",
+        help="Accept only candidates that pass every required Lean version",
+    )
     args = parser.parse_args()
     if (
         min(args.workers, args.max_rounds, args.max_trials, args.max_sites) < 1

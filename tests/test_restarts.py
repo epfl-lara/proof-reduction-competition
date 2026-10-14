@@ -251,7 +251,7 @@ def test_frozen_config_gains_keys_only_when_opted_in(tmp_path, monkeypatch):
         final_rewrites=True,
     )
     assert opted["restart"]["sessions"] == 2 and opted["restart"]["below_pct"] == 85.0
-    assert opted["final_rewrites"]["methods"] == ["proof_theory", "golf"]
+    assert opted["final_rewrites"]["methods"][-2:] == ["relax", "golf"]
     assert {
         k: v for k, v in opted.items() if k not in ("restart", "final_rewrites")
     } == {k: v for k, v in plain.items()} | {

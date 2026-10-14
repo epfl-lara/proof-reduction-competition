@@ -7,7 +7,7 @@ APIs; no library imports an experiment driver. Historical studies stay in
 | Package | Responsibility | Main API |
 | --- | --- | --- |
 | `verification` | Pinned Lean compilation, token counts, cached references, goal observations | `Evaluator`, `check_references` |
-| `optimization` | Parsed proof edits, tactic discovery, minimization, bounded cleanup, generic deterministic batches, Lean-free proof-theoretic signals, opt-in `proof_theory` and `golf` rewrite methods (not in the default cleanup portfolio) | `Budget`, `optimize`, `cleanup_proof`, `BatchConfig`, `run_batch`, `analyze_proof`, `proof_theory_groups` |
+| `optimization` | Parsed proof edits, tactic discovery, minimization, bounded cleanup, generic deterministic batches, Lean-free proof-theoretic signals, opt-in Lean-free proposal methods `proof_theory`, `golf`, `collapse`, `delete`, `consolidate` and `relax` (not in the default cleanup portfolio) | `Budget`, `optimize`, `cleanup_proof`, `BatchConfig`, `run_batch`, `analyze_proof`, `proof_theory_groups`, `proof_theory.methods.discover` |
 | `providers` | Native agent CLIs, durable execution/isolation, terminal usage, price estimates | `codex.generate`, `lemex.generate`, `claude.generate`, `CostConfig` |
 | `harness` | Prompt/context policy, tool sessions, one-theorem search, opt-in restarts, tree search with policy replay, and final rewrites, batch coordination and reports | `ProofSession`, `ProofToolService`, `RunConfig`, `RestartPolicy`, `TreeSearch`, `dream`, `run` |
 | `benchmark` | Explicit project setup and one-time reference processing | `process_benchmark` |
@@ -135,13 +135,31 @@ indeterminate request. Decisions and restart prompts are saved in
 sessions use `attempt_01`, `attempt_02`, ...; the first session is unbounded as
 before, so the cap is a projection, not a hard limit.
 
-`harness/final_rewrites.py` runs the engine's `proof_theory` and `golf`
-methods on the best proof after final cleanup and submits the result through
-`ProofSession.check` (origin `final_rewrites`), under the usual all-version
-rule and margin. `optimization/token_golf.py` proposes tokenizer-aware edits:
-`;` to aligned newlines, a final `f a (g x)` argument to `f a $ g x`, and
-redundant outer parentheses in term positions. Results record `restarts` and
-`final_rewrites` only when enabled.
+`harness/final_rewrites.py` runs the engine's Lean-free methods on the best
+proof after final cleanup, in this order: `delete`, `collapse`, `consolidate`,
+`proof_theory`, `relax`, `golf`. The result goes through `ProofSession.check`
+(origin `final_rewrites`), under the usual all-version rule and margin. Results
+record `restarts` and `final_rewrites` only when enabled.
+
+The Lean-free methods are registered in `optimization/proof_theory/methods.py`
+and can also run alone, for example `proof-transform --method collapse`:
+
+| Method | Proposes | Engine policy |
+| --- | --- | --- |
+| `proof_theory` | step fusion, `rintro` folding, identical-branch merges, detour removal, single-use lemma inlining | joint, then first improvement |
+| `golf` | `;` to aligned newlines, final `f a (g x)` to `f a $ g x`, redundant term-position parentheses | joint, then first improvement |
+| `collapse` | a split (`induction`, `cases`, `constructor`, ...) and its branches to `split <;> closer`, closers from the branches first | first improvement |
+| `delete` | each non-final, non-binding step, a `<;>` tail, or a `try` wrapper | first improvement |
+| `consolidate` | consecutive `rw` or `simp only` lists at the same location merged | joint, then first improvement |
+| `relax` | `simp only [...]`, `norm_num [...]`, `simpa only [...]` without the list | first improvement |
+
+Proposals whose result fails declaration validation are dropped before they
+reach the engine. Every remaining candidate is still compiled and scored on
+every required version before it can be accepted. The final pass gates the
+engine with `AllVersionsEvaluator`, so it never accepts a candidate that fails
+any required version. `proof-transform` keeps its historical behavior, where
+the combined score may trade a failed secondary version for other gains,
+unless `--require-all-versions` is passed.
 
 ## Opt-in tree search and policy replay
 
