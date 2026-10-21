@@ -102,6 +102,44 @@ def _report(output, config):
             "agent_tool_checks": sum(r["agent_tool_checks"] for r in group),
             "improvements": sum(r["improvements"] for r in group),
         }
+        if config.get("initial_pipeline_version"):
+            summary.update(
+                mean_initial_cleanup_gain_pp=(
+                    sum(r["initial_cleanup_gain_pp"] for r in group) / n
+                    if complete
+                    else None
+                ),
+                mean_pipeline_elapsed_seconds=(
+                    sum(r["pipeline_elapsed_seconds"] for r in group) / n
+                    if complete
+                    else None
+                ),
+                initial_measurement_failures=sum(
+                    r["initial_measurement_status"] != "complete" for r in group
+                ),
+            )
+        if config.get("deterministic_checkpoint"):
+            summary["checkpoint_source_mean_score"] = (
+                sum(
+                    c["source_score"]
+                    for c in config["deterministic_checkpoint"]["cells"].values()
+                )
+                / n
+            )
+            for field in ("model_start_score", "model_gain_pp"):
+                summary["mean_" + field] = (
+                    sum(r[field] for r in group) / n if complete else None
+                )
+        if config.get("model_phase_version"):
+            summary["phase_accounting"] = "model_only_external_cleanup_excluded"
+            for field in (
+                "model_start_score",
+                "model_gain_pp",
+                "model_phase_elapsed_seconds",
+            ):
+                summary["mean_" + field] = (
+                    sum(r[field] for r in group) / n if complete else None
+                )
         if config.get("deterministic_cleanup"):
             proposal_count = sum(r["valid_changed_proposals"] for r in group)
             summary.update(
@@ -219,7 +257,38 @@ def _report(output, config):
         lines.append(
             f"| {c['model']} | {c['effort']} | {c['terminal']}/{n} | {f'{s:.6f}%' if s is not None else 'pending'} | {display(c['historical_mean_score'])} | {f'{structural:.6f}%' if structural is not None else '—'} |"
         )
-    if config.get("deterministic_cleanup"):
+    if config.get("model_phase_version"):
+        lines += [
+            "",
+            "Model phase only: fresh original and selected-state verification, admission and model search share this clock. External before/after cleanup times are reported separately in the cohort pipeline. Original scoring denominators stay fixed.",
+            "",
+            "| Model / effort | Verified starting score | Model gain | Mean model-phase seconds |",
+            "| --- | ---: | ---: | ---: |",
+        ]
+        for c in result["conditions"]:
+            lines.append(
+                f"| {c['model']} / {c['effort']} | {display(c['mean_model_start_score'])} | {display(c['mean_model_gain_pp'], ' pp', signed=True)} | {display(c['mean_model_phase_elapsed_seconds'], ' s')} |"
+            )
+    elif config.get("initial_pipeline_version"):
+        lines += [
+            "",
+            "Original-start pipeline: fresh all-version original measurement inside the clock; private per-cell evaluation and analysis caches; fixed original scoring denominators.",
+            "Initial methods: "
+            + (", ".join(config["initial_deterministic_methods"]) or "disabled")
+            + f". Hard phase cap: {config['initial_deterministic_seconds']:g} seconds. No final deterministic cleanup.",
+            "",
+            "| Model / effort | Mean initial gain | Mean total pipeline seconds |",
+            "| --- | ---: | ---: |",
+        ]
+        for c in result["conditions"]:
+            gain, elapsed = (
+                c["mean_initial_cleanup_gain_pp"],
+                c["mean_pipeline_elapsed_seconds"],
+            )
+            lines.append(
+                f"| {c['model']} / {c['effort']} | {display(gain, ' pp', signed=True)} | {display(elapsed, ' s')} |"
+            )
+    elif config.get("deterministic_cleanup"):
         lines += [
             "",
             f"Deterministic placement: `{config['mode']}`. Fixed reference denominators and saved original/D0 seeds.",

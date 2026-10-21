@@ -53,6 +53,18 @@ def audit_attempts(
             "Attempt count exceeds the configured restart policy",
         )
     previous_end = 0
+    if config.get("initial_pipeline_version") and records:
+        previous_end = read(folder / "initial_phase.json")["check_end"]
+    if config.get("proof_theory_cleanup_version") and records:
+        beginning = [
+            json.loads(line)
+            for line in (folder / "evidence/deterministic.jsonl")
+            .read_text()
+            .splitlines()
+            if json.loads(line)["origin"] == "initial_harness"
+        ]
+        _require(len(beginning) == 1, "Missing unique beginning cleanup boundary")
+        previous_end = beginning[0]["output_check"]
     history_enabled = config.get("restart_history_version") is not None
     history_events = read_history_events(folder / "evidence")
     _require(
@@ -208,7 +220,8 @@ def audit_attempts(
             if record["deadline_epoch"] is not None:
                 _require(
                     record["admitted_epoch"]
-                    < record["deadline_epoch"] - CLEANUP_RESERVE_SECONDS,
+                    < record["deadline_epoch"]
+                    - config.get("cleanup_reserve_seconds", CLEANUP_RESERVE_SECONDS),
                     "A request restarted inside the cleanup reserve",
                 )
         before = attempt_cost(

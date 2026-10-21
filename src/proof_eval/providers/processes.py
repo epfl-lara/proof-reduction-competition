@@ -9,6 +9,23 @@ import signal
 from pathlib import Path
 
 
+def process_identity(pid: int) -> dict | None:
+    """Identify a live process without confusing PID reuse or zombies for life."""
+    try:
+        fields = (
+            (Path("/proc") / str(pid) / "stat").read_text().rsplit(")", 1)[1].split()
+        )
+        if fields[0] == "Z":
+            return None
+        return {
+            "pid": pid,
+            "start_ticks": fields[19],
+            "boot_id": Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
+        }
+    except (OSError, ValueError, IndexError):
+        return None
+
+
 def enable_subreaper() -> None:
     """Keep orphaned agent/Lean descendants attached to their theorem worker."""
     libc = ctypes.CDLL(None, use_errno=True)

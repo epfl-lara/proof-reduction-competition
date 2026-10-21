@@ -67,7 +67,15 @@ def environment(env_path: Path = ROOT / ".env") -> dict[str, str]:
 
 def cli_identity() -> dict:
     env = environment()
-    catalog = Path.home() / ".lemex/models.json"
+    catalog = (
+        Path(
+            os.environ.get(
+                "PROOF_EVAL_LEMEX_CATALOG", Path.home() / ".lemex/models.json"
+            )
+        )
+        .expanduser()
+        .resolve(strict=True)
+    )
     return {
         **executable_identity("lemex"),
         "base_url": env["LEMEX_BASE_URL"],

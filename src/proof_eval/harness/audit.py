@@ -229,6 +229,24 @@ def audit(output: Path) -> dict:
             .splitlines(),
         )
     }
+    if config.get("starting_proofs"):
+        from proof_eval.evidence.proof_states import guard_proof_states
+
+        from .configuration import BASE, load_inputs
+
+        packs = load_inputs(Path(config.get("base_directory", BASE)))
+        _require(
+            {name: fingerprint(pack) for name, pack in packs.items()}
+            == config["input_sha256"],
+            "Frozen starting-state input preparation changed",
+        )
+        for condition in config["conditions"]:
+            guard_proof_states(
+                config["starting_proofs"],
+                packs,
+                Path(config["references_path"]),
+                condition=tuple(condition),
+            )
     outcomes, trials, requests, cells, seen = 0, 0, 0, 0, set()
     cleanup_jobs = set()
     web_counts = {"requests": 0, "retrieved": 0, "errors": 0, "interrupted": 0}
@@ -258,6 +276,12 @@ def audit(output: Path) -> dict:
             str("Saved harness evidence is inconsistent at audit line 70"),
         )
         inp = read(path.parent / "input.json")
+        if config.get("initial_pipeline_version"):
+            from .initial_audit import audit_initial
+
+            outcomes += audit_initial(
+                config, result, path.parent, rows[name], refs[name]
+            )
         audit_deadline(config, result, path.parent)
         counts = audit_web(
             path.parent / "evidence",
@@ -426,7 +450,9 @@ def audit(output: Path) -> dict:
             (result["improvements"] == sum(c["accepted"] for c in checks)),
             str("Saved harness evidence is inconsistent at audit line 138"),
         )
-        if config.get("deterministic_cleanup"):
+        if config.get("deterministic_cleanup") and not config.get(
+            "initial_pipeline_version"
+        ):
             cleanup_calls = (
                 [
                     json.loads(line)
@@ -441,6 +467,57 @@ def audit(output: Path) -> dict:
                 (result["deterministic_calls"] == len(cleanup_calls)),
                 str("Saved harness evidence is inconsistent at audit line 146"),
             )
+            initial_calls = [
+                c for c in cleanup_calls if c["origin"] == "initial_harness"
+            ]
+            if config.get("proof_theory_cleanup_version"):
+                from proof_eval.optimization.cleanup import (
+                    METHODS,
+                    PROOF_THEORY_METHODS,
+                )
+
+                _require(
+                    config["proof_theory_cleanup_version"] == 1
+                    and config["initial_deterministic_methods"]
+                    == list(PROOF_THEORY_METHODS)
+                    and config["deterministic_methods"]
+                    == list(METHODS + PROOF_THEORY_METHODS)
+                    and (
+                        len(initial_calls) == 1
+                        or (
+                            not initial_calls
+                            and result.get("time_budget", {}).get("exhausted") is True
+                            and not result["generations"]
+                            and result.get("initial_cleanup_status")
+                            in ("skipped_time_limit", "interrupted_time_limit")
+                        )
+                    ),
+                    "Extended cleanup has no unique pinned beginning pass",
+                )
+                if initial_calls:
+                    initial_call = initial_calls[0]
+                    _require(
+                        initial_call["number"] == 1
+                        and checks[initial_call["input_check"] - 1]["code"]
+                        == inp["seed_proof"]
+                        and result["initial_cleanup_status"] == initial_call["status"],
+                        "Beginning cleanup did not start from the frozen seed",
+                    )
+                first_attempt_path = path.parent / "attempt_00/attempt.json"
+                if first_attempt_path.exists():
+                    first_attempt = read(first_attempt_path)
+                    _require(
+                        initial_call["output_check"] is not None
+                        and initial_call["output_check"]
+                        == first_attempt["check_start"],
+                        "Beginning cleanup occurred after model search started",
+                    )
+                else:
+                    _require(
+                        not result["generations"], "Missing first attempt boundary"
+                    )
+            else:
+                _require(not initial_calls, "Unconfigured beginning cleanup")
             _require(
                 (
                     result["deterministic_tool_calls"]
@@ -592,7 +669,14 @@ def audit(output: Path) -> dict:
                     )
                     _require(
                         (
-                            spec["methods"] == config["deterministic_methods"]
+                            spec["methods"]
+                            == config[
+                                (
+                                    "initial_deterministic_methods"
+                                    if c["origin"] == "initial_harness"
+                                    else "deterministic_methods"
+                                )
+                            ]
                             and spec["budget"] == config["deterministic_budget"]
                         ),
                         str("Saved harness evidence is inconsistent at audit line 221"),

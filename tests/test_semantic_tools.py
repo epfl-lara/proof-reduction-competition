@@ -24,7 +24,9 @@ def test_full_discovery_defaults_are_lazy_and_cli_can_disable_each(
     assert config.semantic_search is True and config.web_search is True
     captured = []
     monkeypatch.setattr(
-        cli, "run", lambda cfg: captured.append(cfg) or {"status": "partial"}
+        cli,
+        "run_pipeline",
+        lambda cfg: captured.append(cfg.model) or {"status": "prepared"},
     )
     for flags, expected in (
         ([], (True, True)),

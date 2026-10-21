@@ -93,6 +93,10 @@ def tracking_run(tmp_path, monkeypatch):
         provider="codex",
         incumbents_from=None,
         restart_history=False,
+        proof_theory_cleanup=False,
+        initial_pipeline=False,
+        initial_methods=(),
+        initial_seconds=300.0,
     ):
         output = tmp_path / "run"
         model, effort = (agy.MODEL, "high") if provider == "agy" else (MODEL, EFFORT)
@@ -109,7 +113,11 @@ def tracking_run(tmp_path, monkeypatch):
             max_budget_restarts=restarts,
             max_transport_restarts=transport_restarts,
             incumbents_from=incumbents_from,
-            restart_history=restart_history,
+            **({} if restart_history is None else {"restart_history": restart_history}),
+            proof_theory_cleanup=proof_theory_cleanup,
+            initial_pipeline=initial_pipeline,
+            initial_methods=initial_methods,
+            initial_seconds=initial_seconds,
             problem_timeout_seconds=timeout,
             paths={
                 "dataset_path": str(ROOT / "data/benchmark_data_warmup.jsonl"),
@@ -379,6 +387,7 @@ def _continue_with_carried_budget(run):
         load_inputs(),
         provider="agy",
         conditions=[(run.model, run.effort)],
+        restart_history=False,
         semantic_search=False,
         web_search=False,
         budget_tracking="cost",
@@ -480,6 +489,7 @@ def test_restart_history_native_tools_audit_resume_and_tamper(
         ),
     )
     run = tracking_run(restart_history=True)
+    assert run.config["restart_history_version"] == 1
     result = search.run_cell(
         run.output, run.config, run.pack, MODEL, EFFORT, run.evaluator, fake_native(run)
     )
@@ -911,7 +921,9 @@ def test_tracking_cli_flags_are_exclusive_and_restart_limit_is_forwarded(
         assert error.value.code == 2
     captured = []
     monkeypatch.setattr(
-        cli, "run", lambda config: captured.append(config) or {"status": "prepared"}
+        cli,
+        "run_pipeline",
+        lambda config: captured.append(config.model) or {"status": "prepared"},
     )
     assert (
         cli.main(
@@ -1137,7 +1149,9 @@ def test_default_track_selects_one_limit_in_python_and_cli(provider, monkeypatch
 
     config = RunConfig(provider=provider)
     captured = []
-    monkeypatch.setattr(cli, "run", lambda cfg: captured.append(cfg) or {})
+    monkeypatch.setattr(
+        cli, "run_pipeline", lambda cfg: captured.append(cfg.model) or {}
+    )
     assert cli.main(["run", "--provider", provider]) == 0
     for cfg in (config, captured[0]):
         if provider == "lemex":
@@ -1234,3 +1248,101 @@ def test_cost_only_carryover_keeps_spending_without_adding_a_deadline(tracking_r
     write_json(continued.folder / "budget_started.json", {"deadline_epoch": 1})
     with pytest.raises(ValueError, match="acquired a deadline"):
         audit(continued.output)
+
+
+def test_proof_theory_cleanup_runs_before_first_prompt_and_after_search(
+    tracking_run, monkeypatch
+):
+    from proof_eval.optimization import cleanup, jobs
+
+    run = tracking_run(proof_theory_cleanup=True, cleanup=False, timeout=None)
+    default_seed = search.starting_point(run.pack, "score_edges")
+    values = {
+        code_identity(run.pack["row"], default_seed[0]): default_seed[1],
+        code_identity(run.pack["row"], run.saved["selected_proof"]): run.saved[
+            "selected_evaluation"
+        ],
+    }
+    run.evaluator.evaluate = lambda name, code, **kwargs: deepcopy(
+        values[code_identity(run.pack["row"], code)]
+    )
+
+    def optimize(checker, row, code, method, budget, emit, save, state=None):
+        before = checker.evaluate(row["name"], code)
+        target = run.saved["selected_proof"]
+        after = checker.evaluate(row["name"], target)
+        return dict(
+            name=row["name"],
+            source=row["source"],
+            method=method,
+            proof=target,
+            initial=before,
+            final=after,
+            stop_reason="no_new_proposals",
+            accepted_transitions=int(code != target),
+        )
+
+    monkeypatch.setattr(
+        jobs, "cleanup_proof", partial(cleanup.cleanup_proof, optimize_fn=optimize)
+    )
+    monkeypatch.setattr(search, "DeterministicCleanup", jobs.DeterministicCleanup)
+    result = search.run_cell(
+        run.output, run.config, run.pack, MODEL, EFFORT, run.evaluator, fake_native(run)
+    )
+    assert result["status"] == "complete"
+    assert result["seed_proof"] == default_seed[0]
+    assert result["attempts"][0]["incumbent_proof"] == run.saved["selected_proof"]
+    calls = [
+        json.loads(line)
+        for line in (run.folder / "evidence/deterministic.jsonl")
+        .read_text()
+        .splitlines()
+    ]
+    assert [call["origin"] for call in calls] == ["initial_harness", "final_harness"]
+    assert read(Path(calls[0]["job_path"]) / "job_config.json")["methods"] == list(
+        cleanup.PROOF_THEORY_METHODS
+    )
+    assert read(Path(calls[1]["job_path"]) / "job_config.json")["methods"] == list(
+        cleanup.METHODS + cleanup.PROOF_THEORY_METHODS
+    )
+    assert audit(run.output)["requests"] == 2
+
+    def forbidden(**kwargs):
+        raise AssertionError("Completed runs must not request another model")
+
+    assert (
+        search.run_cell(
+            run.output, run.config, run.pack, MODEL, EFFORT, run.evaluator, forbidden
+        )
+        == result
+    )
+    calls[0]["origin"] = "final_harness"
+    from proof_eval.evidence.io import write_jsonl
+
+    write_jsonl(run.folder / "evidence/deterministic.jsonl", calls)
+    with pytest.raises(ValueError, match="unique pinned beginning pass"):
+        audit(run.output)
+
+
+def test_deadline_during_beginning_cleanup_dispatches_no_model_and_audits(
+    tracking_run, monkeypatch
+):
+    run = tracking_run(proof_theory_cleanup=True, cleanup=False, timeout=0.5)
+    monkeypatch.setattr(
+        search, "DeterministicCleanup", lambda *a, **k: lambda code: time.sleep(10)
+    )
+
+    def forbidden(**kwargs):
+        raise AssertionError("A deadline during preprocessing must not call the model")
+
+    result = search.run_cell(
+        run.output, run.config, run.pack, MODEL, EFFORT, run.evaluator, forbidden
+    )
+    assert result["status"] == "complete"
+    assert result["generations"] == []
+    assert result["initial_cleanup_status"] in (
+        "skipped_time_limit",
+        "interrupted_time_limit",
+    )
+    assert result["final_cleanup_status"] == "skipped_time_limit"
+    assert audit(run.output)["status"] == "passed"

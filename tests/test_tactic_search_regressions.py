@@ -91,8 +91,25 @@ class NestedLayoutTests(unittest.TestCase):
                     "Lean.Parser.Term.byTactic",
                 )
             )
-        source = "import Lean\n" + PROBE_TEMPLATE.replace(
-            "__MENU__", '#["rfl", "assumption"]'
+        self.assert_probes_compile(code, sites)
+
+    def test_leaf_after_optional_config_tactic_does_not_become_its_argument(self):
+        extra = r"""
+syntax "test_optional_config" ("(" "config" ")")? : tactic
+macro_rules
+  | `(tactic| test_optional_config) => `(tactic| trivial)
+"""
+        code = "example : True := by\n  have h : True := by\n    test_optional_config\n  exact h"
+        start = code.index("exact h")
+        self.assert_probes_compile(
+            code, [Site(start, len(code), "tactic", start, "exact")], extra
+        )
+
+    def assert_probes_compile(self, code, sites, extra=""):
+        source = (
+            "import Lean\n"
+            + extra
+            + PROBE_TEMPLATE.replace("__MENU__", '#["rfl", "assumption"]')
         )
         source = (
             source.replace("__HEARTBEATS__", "1000")
@@ -136,7 +153,9 @@ class NestedLayoutTests(unittest.TestCase):
                 for m in messages
                 if m.startswith("PROOF_SEARCH:")
             ]
-            self.assertEqual(sorted(r["site"] for r in records), [0, 1, 2])
+            self.assertEqual(
+                sorted(r["site"] for r in records), list(range(len(sites)))
+            )
 
 
 if __name__ == "__main__":

@@ -17,6 +17,7 @@ from proof_eval.providers.retries import RECOVERY_BACKOFF_SECONDS
 from proof_eval.providers.spending import native_cost_guard
 from proof_eval.verification.api import Evaluator
 from proof_eval.verification.feedback import build_validity_feedback
+from proof_eval.verification.initial import measure_original, private_evaluator
 from proof_eval.verification.references import required_versions
 
 from .agent import generate
@@ -28,6 +29,7 @@ from .configuration import (
     starting_point,
 )
 from .incumbents import select_seed
+from .initial import initial_optimization
 from .limits import time_budget_summary
 from .outcomes import finalize_cell
 from .prompts import budget_suffix, messages
@@ -88,16 +90,31 @@ def _run_cell(
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if (folder / "result.json").exists():
             return read(folder / "result.json")
+        if config.get("initial_pipeline_version"):
+            if not (folder / "problem_started.json").exists():
+                raise ValueError(
+                    "Original measurement requires the supervisor-owned problem clock"
+                )
+            evaluator = private_evaluator(evaluator, folder, pack)
 
         def checked_guard():
             return guard(config, pack, evaluator)
 
         checked_guard()
-        seed = starting_point(pack, mode) if mode in DETERMINISTIC_MODES else None
-        if seed is not None:
+        seed = (
+            measure_original(
+                evaluator,
+                folder,
+                pack,
+                timeout_retries=config.get("initial_measurement_timeout_retries", 0),
+            )
+            if config.get("initial_pipeline_version")
+            else (starting_point(pack, mode) if mode in DETERMINISTIC_MODES else None)
+        )
+        if seed is not None and not config.get("initial_pipeline_version"):
             seed = select_seed(config, pack, model, effort, seed)
         cleanup = None
-        if seed is not None:
+        if seed is not None and not config.get("initial_pipeline_version"):
             base = read(Path(config.get("base_directory", BASE)) / "config.json")
             provenance = {
                 "input_sha256": config["input_sha256"][pack["name"]],
@@ -111,7 +128,16 @@ def _run_cell(
                 "code_sha256": config["code_sha256"],
             }
             cleanup = DeterministicCleanup(
-                config["deterministic_jobs"], pack, evaluator, provenance, checked_guard
+                config["deterministic_jobs"],
+                pack,
+                evaluator,
+                provenance,
+                checked_guard,
+                **(
+                    {"methods": tuple(config["deterministic_methods"])}
+                    if config.get("proof_theory_cleanup_version")
+                    else {}
+                ),
             )
         budget = (
             read(folder / "budget_started.json")
@@ -139,7 +165,26 @@ def _run_cell(
                 if config.get("restart_history_version")
                 else None
             ),
+            original_measurement=(
+                seed[1] if config.get("initial_pipeline_version") else None
+            ),
         )
+        if config.get("initial_pipeline_version"):
+            initial_optimization(session, folder, config, budget)
+        if config.get("proof_theory_cleanup_version") and not any(
+            call["origin"] == "initial_harness" for call in session.cleanup_calls
+        ):
+            initial_cleanup = DeterministicCleanup(
+                config["deterministic_jobs"],
+                pack,
+                evaluator,
+                provenance,
+                checked_guard,
+                methods=tuple(config["initial_deterministic_methods"]),
+            )
+            session.deterministic(
+                seed[0], origin="initial_harness", cleanup=initial_cleanup
+            )
         context = {
             "name": pack["name"],
             "source_file": pack["row"]["file_path"],
@@ -152,8 +197,20 @@ def _run_cell(
         if config.get("web_search") is not None:
             context["web_search"] = config["web_search"]
         initial = messages(
-            pack, seed=seed, web_search=config.get("web_search") is not None
+            pack,
+            seed=(
+                (session.best_code, session.best_evaluation)
+                if config.get("proof_theory_cleanup_version")
+                or config.get("initial_pipeline_version")
+                else seed
+            ),
+            web_search=config.get("web_search") is not None,
         )
+        if (
+            config.get("proof_theory_cleanup_version")
+            or config.get("initial_pipeline_version")
+        ) and (folder / "input.json").exists():
+            initial = read(folder / "input.json")["messages"]
         budget_tracking = config.get("budget_tracking")
         budget_usd = config.get("budget_usd_per_problem", 3.0)
         max_restarts = config.get("max_budget_restarts", 20)
@@ -196,7 +253,8 @@ def _run_cell(
             if (
                 round_number
                 and remaining is not None
-                and remaining <= CLEANUP_RESERVE_SECONDS
+                and remaining
+                <= config.get("cleanup_reserve_seconds", CLEANUP_RESERVE_SECONDS)
             ):
                 record_stop(
                     folder,
@@ -411,7 +469,7 @@ def _run_cell(
             "evaluation": deepcopy(session.best_evaluation),
         }
         write_json(folder / "before_final_cleanup.json", before_final_cleanup)
-        if mode in DETERMINISTIC_MODES:
+        if mode in DETERMINISTIC_MODES and not config.get("initial_pipeline_version"):
             session.deterministic(session.best_code, origin="final_harness")
         return finalize_cell(
             folder,

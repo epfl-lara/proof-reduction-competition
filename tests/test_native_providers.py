@@ -334,7 +334,9 @@ def test_provider_routing_and_cli_defaults(provider, monkeypatch, tmp_path):
     )
     captured = []
     monkeypatch.setattr(
-        cli, "run", lambda cfg: captured.append(cfg) or {"status": "partial"}
+        cli,
+        "run_pipeline",
+        lambda cfg: captured.append(cfg.model) or {"status": "prepared"},
     )
     assert cli.main(["prepare", "--provider", provider, "--output", str(tmp_path)]) == 0
     assert captured[0].provider == provider
@@ -596,7 +598,7 @@ def test_only_one_prompt_policy_and_production_mode_remain():
         with pytest.raises(ValueError):
             RunConfig(mode=mode)
     with pytest.raises(ValueError):
-        RunConfig(provider="lemex", workers=6)
+        RunConfig(provider="lemex", workers=0)
 
 
 def test_unknown_price_still_validates_scope_and_budget():

@@ -223,12 +223,15 @@ def instrument(code, sites):
     continuation indentation must use that new column. Original offsets remain
     the event coordinates; rendered columns are computed from the output only.
     """
+    # A leading parenthesis can be consumed as optional configuration by the
+    # preceding aesop tactic, even across a dedent. A single first branch keeps
+    # the same goal behavior while starting with an unambiguous tactic keyword.
     insertions = defaultdict(list)
     for index, site in enumerate(sites):
         if site.kind == "by_block":
             insertions[site.probe_at].append((0, index))
         else:
-            insertions[site.start].append((1, f"(proof_search_probe {index}; "))
+            insertions[site.start].append((1, f"first | (proof_search_probe {index}; "))
             insertions[site.end].append((-1, ")"))
     out, cursor, column = [], 0, 0
 

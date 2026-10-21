@@ -15,21 +15,25 @@ from .configuration import (
     BASE,
     DEFAULT_OUTPUT,
 )
+from .pipeline import PipelineConfig, run_pipeline
+from .pipeline_reporting import audit_pipeline, report_pipeline
 from .reporting import report
 from .runner import run
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     commands = parser.add_subparsers(dest="command", required=True)
-    replay_command = commands.add_parser("replay", help="Replay saved evidence offline")
+    replay_command = commands.add_parser(
+        "replay", help="Replay saved evidence offline", allow_abbrev=False
+    )
     replay_command.add_argument("--run", type=Path, action="append", required=True)
     replay_command.add_argument("--protocol", type=Path, required=True)
     replay_command.add_argument("--output", type=Path, required=True)
     replay_command.add_argument("--pilot", action="store_true")
     replay_command.add_argument("--descriptive-only", action="store_true")
     for action in ("run", "prepare", "estimate", "report", "audit"):
-        sub = commands.add_parser(action)
+        sub = commands.add_parser(action, allow_abbrev=False)
         sub.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
         if action in ("report", "audit"):
             continue
@@ -46,15 +50,53 @@ def main(argv=None) -> int:
             continue
         sub.add_argument("--name", action="append")
         sub.add_argument(
-            "--restart-history",
+            "--starting-proofs",
+            type=Path,
+            help="Explicit starting state.json, cleanup output directory or name/proof JSONL; default: original dataset proofs",
+        )
+        sub.add_argument(
+            "--deterministic-checkpoint",
+            type=Path,
+            help="Explicit audited exploration condition for untimed closed-track starts; requires --no-deterministic",
+        )
+        sub.add_argument(
+            "--deterministic",
+            action=argparse.BooleanOptionalAction,
+            default=True,
+            help="Separate cohort-wide one-sweep cleanup before and after model search; --no-deterministic disables both",
+        )
+        sub.add_argument(
+            "--cleanup-before",
+            action=argparse.BooleanOptionalAction,
+            default=True,
+            help="Run a complete one-sweep cleanup cohort before any model calls (default: enabled)",
+        )
+        sub.add_argument(
+            "--cleanup-after",
+            action=argparse.BooleanOptionalAction,
+            default=True,
+            help="Run one-sweep cleanup of each condition after the model batch (default: enabled)",
+        )
+        sub.add_argument("--cleanup-workers", type=int, default=8)
+        sub.add_argument("--before-workers", type=int)
+        sub.add_argument("--after-workers", type=int)
+        sub.add_argument(
+            "--proof-theory-cleanup",
             action="store_true",
-            help="Experimental bounded same-theorem restart history",
+            help="Compatibility flag: the one-sweep portfolio already includes PR #1 methods",
+        )
+        sub.add_argument(
+            "--restart-history",
+            action=argparse.BooleanOptionalAction,
+            default=RunConfig.restart_history,
+            help="Bounded same-theorem restart history (default: disabled; --restart-history enables it)",
         )
         sub.add_argument(
             "--workers",
+            "--model-workers",
             type=int,
             default=None,
-            help="Fixed concurrency: 5 for closed providers, 3 for Lemex; only the matching value is accepted",
+            help="Independent model-phase concurrency (default: 5 for Sol/Qwen); cleanup has its own workers",
         )
         sub.add_argument(
             "--semantic-search",
@@ -72,7 +114,7 @@ def main(argv=None) -> int:
             "--problem-timeout-seconds",
             type=float,
             default=RunConfig.problem_timeout_seconds,
-            help="Explicit whole-problem wall time; default: 3420 seconds for time tracking, no deadline for cost tracking",
+            help="Model-phase wall time per theorem; default: Qwen 14400 seconds, other open models 3420, closed models no wall deadline",
         )
         tracking = sub.add_mutually_exclusive_group()
         tracking.add_argument(
@@ -165,7 +207,10 @@ def main(argv=None) -> int:
                 if (output / "report.json").exists()
                 else {}
             )
-            if "protocol_sha256" in saved_report:
+            saved_config = read(output / "config.json")
+            if saved_config.get("cohort_pipeline_version"):
+                result = audit_pipeline(output)
+            elif "protocol_sha256" in saved_report:
                 from .replay_reporting import audit_replay
 
                 result = audit_replay(output)
@@ -173,7 +218,13 @@ def main(argv=None) -> int:
                 result = audit(output)
             write_json(output / "audit.json", result)
         elif args.command == "report":
-            result = report(output, read(output / "config.json"))
+            saved_config = read(output / "config.json")
+            result = (
+                report_pipeline(output)
+                if saved_config.get("cohort_pipeline_version")
+                else report(output, saved_config)
+            )
+            write_json(output / "report.json", result)
         else:
             conditions = (
                 tuple(tuple(c.split(":")) for c in args.condition)
@@ -190,6 +241,9 @@ def main(argv=None) -> int:
                     "budget_usd_per_problem",
                     "usage_policy",
                     "restart_history",
+                    "proof_theory_cleanup",
+                    "starting_proofs",
+                    "deterministic_checkpoint",
                     "max_budget_restarts",
                     "max_transport_restarts",
                     "incumbents_from",
@@ -202,19 +256,40 @@ def main(argv=None) -> int:
                 )
                 if hasattr(args, key)
             }
-            result = run(
-                RunConfig(
-                    output=output,
-                    conditions=conditions,
-                    names=tuple(getattr(args, "name", None) or ()),
-                    action=args.command,
-                    semantic_search=getattr(
-                        args, "semantic_search", RunConfig.semantic_search
-                    ),
-                    web_search=getattr(args, "web_search", RunConfig.web_search),
-                    **fields,
-                )
+            model_args = RunConfig(
+                output=output,
+                conditions=conditions,
+                names=tuple(getattr(args, "name", None) or ()),
+                action=args.command,
+                semantic_search=getattr(
+                    args, "semantic_search", RunConfig.semantic_search
+                ),
+                web_search=getattr(args, "web_search", RunConfig.web_search),
+                **fields,
             )
+            if (
+                args.command == "estimate"
+                or model_args.deterministic_checkpoint is not None
+            ):
+                if (
+                    model_args.deterministic_checkpoint is not None
+                    and args.deterministic
+                ):
+                    raise ValueError(
+                        "Legacy deterministic checkpoints require --no-deterministic; use --starting-proofs for phase workflows"
+                    )
+                result = run(model_args)
+            else:
+                result = run_pipeline(
+                    PipelineConfig(
+                        model=model_args,
+                        cleanup_before=args.deterministic and args.cleanup_before,
+                        cleanup_after=args.deterministic and args.cleanup_after,
+                        cleanup_workers=args.cleanup_workers,
+                        before_workers=args.before_workers,
+                        after_workers=args.after_workers,
+                    )
+                )
         if args.command == "estimate":
             brief = [
                 {
@@ -236,7 +311,7 @@ def main(argv=None) -> int:
                 if key in result
             }
         print(json.dumps(brief))
-        return 0
+        return 2 if result.get("status") in {"incomplete", "partial", "failed"} else 0
     except (ValueError, OSError, RuntimeError) as error:
         print(json.dumps({"status": "failed", "error": str(error)}))
         return 2

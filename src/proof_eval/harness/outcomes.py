@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from proof_eval.evidence.io import digest, now, read, write_json
@@ -245,10 +246,14 @@ def finalize_cell(
         result["time_budget"] = time_budget
         result["final_cleanup_status"] = (
             "complete"
-            if session.cleanup_calls
+            if any(c["origin"] == "final_harness" for c in session.cleanup_calls)
             else (
                 "interrupted_time_limit"
                 if (session.folder / "cleanup_started.json").exists()
+                and read(session.folder / "cleanup_started.json").get(
+                    "origin", "final_harness"
+                )
+                == "final_harness"
                 else (
                     "skipped_time_limit"
                     if time_budget["exhausted"]
@@ -260,6 +265,79 @@ def finalize_cell(
             "received",
             "budget_exhausted",
         ):
+            result["status"] = "incomplete"
+    if config.get("proof_theory_cleanup_version"):
+        initial_call = next(
+            (c for c in session.cleanup_calls if c["origin"] == "initial_harness"), None
+        )
+        result["initial_cleanup_status"] = (
+            initial_call["status"]
+            if initial_call
+            else (
+                "interrupted_time_limit"
+                if (session.folder / "cleanup_started.json").exists()
+                and read(session.folder / "cleanup_started.json").get("origin")
+                == "initial_harness"
+                else "skipped_time_limit"
+            )
+        )
+    if config.get("initial_pipeline_version"):
+        initial_path = folder / "initial_measurement.json"
+        phase_path = folder / "initial_optimization/result.json"
+        result["final_cleanup_status"] = "disabled"
+        result["initial_measurement_status"] = (
+            "complete" if initial_path.exists() else "interrupted"
+        )
+        result["initial_cleanup_status"] = (
+            read(phase_path)["status"] if phase_path.exists() else "interrupted"
+        )
+        result["initial_cleanup_gain_pp"] = (
+            read(phase_path)["gain_pp"] if phase_path.exists() else 0.0
+        )
+        result["pipeline_elapsed_seconds"] = (
+            time.time() - read(folder / "problem_started.json")["started_epoch"]
+        )
+        if not initial_path.exists():
+            result["status"] = "incomplete"
+    if config.get("deterministic_checkpoint"):
+        checkpoint_path = folder / "checkpoint.json"
+        start = (
+            read(checkpoint_path)["model_start_score"]
+            if checkpoint_path.exists()
+            else None
+        )
+        result["model_start_score"] = start
+        result["model_gain_pp"] = (
+            result["selected_evaluation"]["scores"]["combined_pct"] - start
+            if start is not None
+            else None
+        )
+    if config.get("model_phase_version"):
+        if config.get("starting_proofs"):
+            selected_path = folder / "starting_proof.json"
+            start = (
+                read(selected_path)["model_start_score"]
+                if selected_path.exists()
+                else None
+            )
+        elif config.get("deterministic_checkpoint"):
+            start = result["model_start_score"]
+        else:
+            measured = folder / "initial_measurement.json"
+            start = (
+                read(measured)["evaluation"]["scores"]["combined_pct"]
+                if measured.exists()
+                else None
+            )
+        result["model_start_score"] = start
+        result["model_gain_pp"] = (
+            result["selected_evaluation"]["scores"]["combined_pct"] - start
+            if start is not None
+            else None
+        )
+        result["model_phase_elapsed_seconds"] = result["pipeline_elapsed_seconds"]
+        result["phase_accounting"] = "model_only_external_cleanup_excluded"
+        if start is None:
             result["status"] = "incomplete"
     write_json(folder / "result.json", result)
     return result

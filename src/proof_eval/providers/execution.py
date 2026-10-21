@@ -22,8 +22,9 @@ from proof_eval.paths import PACKAGE
 from .contracts import ToolSession
 from .isolation import launch_command
 from .monitoring import UsageReader, communicate_with_budget, read_events
-from .processes import stop_tree
+from .processes import process_identity, stop_tree
 from .spending import native_cost_stop
+from .termination import record_exit
 
 
 @dataclass(frozen=True)
@@ -117,15 +118,6 @@ def generate(
             check=True,
             capture_output=True,
         )
-        argv = launch_command(launch.argv, workspace, protected, **isolation)
-        write_json(
-            folder / "command.json",
-            {
-                "argv": argv,
-                "cwd": str(launch.cwd),
-                "policy": "host_ledger_readonly_sources",
-            },
-        )
         started = time.monotonic()
         # Holding one slot until the native session exits conservatively bounds
         # the sequential requests made by that session across all host batches.
@@ -135,6 +127,17 @@ def generate(
             (folder / "events.jsonl").open("w") as out,
             (folder / "stderr.log").open("w") as err,
         ):
+            argv = launch_command(
+                launch.argv, workspace, protected, lifetime_fd=capacity_fd, **isolation
+            )
+            write_json(
+                folder / "command.json",
+                {
+                    "argv": argv,
+                    "cwd": str(launch.cwd),
+                    "policy": "private_pid_namespace_landlock_host_ledger",
+                },
+            )
             write_json(folder / "request_started.json", {"started_at": now()})
             child = subprocess.Popen(
                 argv,
@@ -147,7 +150,14 @@ def generate(
                 start_new_session=True,
                 pass_fds=() if capacity_fd is None else (capacity_fd,),
             )
-            write_json(folder / "process.json", {"pid": child.pid, "started_at": now()})
+            write_json(
+                folder / "process.json",
+                {
+                    "pid": child.pid,
+                    "started_at": now(),
+                    "identity": process_identity(child.pid),
+                },
+            )
             cost_stop = None
             monitor_error = None
             try:
@@ -174,6 +184,25 @@ def generate(
                 child.wait(timeout=5)
                 monitor_error = str(error)
                 timed_out = False
+            # Commit this before draining outstanding host tools or decoding a
+            # possibly truncated event stream, so abnormal exits cannot hide.
+            native_limit = False
+            if cost_budget is not None and child.returncode:
+                try:
+                    native_limit = native_cost_stop(
+                        provider,
+                        read_events(folder / "events.jsonl", allow_partial=True),
+                        cost_budget,
+                    )
+                except (OSError, ValueError, KeyError):
+                    pass  # Still preserve the raw exit when events are unreadable.
+            exit_record = record_exit(
+                folder,
+                child.returncode,
+                timed_out=timed_out,
+                cost_stopped=cost_stop is not None or native_limit,
+                monitor_error=monitor_error,
+            )
         try:
             events = read_events(
                 folder / "events.jsonl",
@@ -218,6 +247,8 @@ def generate(
             }
         result.update(
             provider=provider,
+            returncode=child.returncode,
+            process_exit=exit_record,
             elapsed_seconds=time.monotonic() - started,
             finished_at=now(),
         )

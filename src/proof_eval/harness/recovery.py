@@ -126,6 +126,17 @@ def recover_cell(
         raise ValueError("Deadline recovery requires a supervised deadline stop")
     seed = starting_point(pack, config["mode"])
     seed = select_seed(config, pack, model, effort, seed)
+    original = None
+    if config.get("initial_pipeline_version"):
+        from proof_eval.verification.references import original_evaluation
+
+        measurement = folder / "initial_measurement.json"
+        original = (
+            read(measurement)["evaluation"]
+            if measurement.exists()
+            else original_evaluation(pack)
+        )
+        seed = (pack["row"]["src"], original)
     session = ProofSession(
         folder / "evidence",
         pack,
@@ -137,7 +148,31 @@ def recover_cell(
             if config.get("restart_history_version")
             else None
         ),
+        original_measurement=original,
     )
+    if config.get("initial_pipeline_version"):
+        phase_folder = folder / "initial_optimization"
+        if (phase_folder / "certificates.json").exists() and not any(
+            c["origin"] == "initial_harness" for c in session.checks
+        ):
+            from proof_eval.optimization.bounded import finish_bounded
+            from proof_eval.protocol import code_identity
+
+            phase = (
+                read(phase_folder / "result.json")
+                if (phase_folder / "result.json").exists()
+                else finish_bounded(
+                    phase_folder,
+                    pack["row"],
+                    status="problem_deadline",
+                    stopped=end["work_stopped_epoch"],
+                )
+            )
+            if phase["accepted_improvements"]:
+                session.cache[code_identity(session.row, phase["proof"])] = phase[
+                    "evaluation"
+                ]
+                session.check(phase["proof"], origin="initial_harness")
     if not (folder / "input.json").exists():
         write_json(
             folder / "input.json",
@@ -173,15 +208,19 @@ def recover_cell(
                     ),
                 )
     pending = session.folder / "cleanup_started.json"
-    if pending.exists() and not session.cleanup_calls:
+    if pending.exists():
         partial = read(pending)
-        if "job" in partial:
+        origin = partial.get("origin", "final_harness")
+        already_recorded = any(
+            c["input_check"] == partial["input_check"] for c in session.cleanup_calls
+        )
+        if "job" in partial and not already_recorded:
             job = partial["job"]
             after = next(
                 (
                     c
                     for c in session.checks
-                    if c["origin"] == "deterministic_final_harness"
+                    if c["origin"] == "deterministic_" + origin
                     and c["code"] == job["proof"]
                     and c["evaluation"] == job["evaluation"]
                 ),
@@ -189,9 +228,9 @@ def recover_cell(
             )
             if after is not None:
                 record = {
-                    "number": 1,
+                    "number": len(session.cleanup_calls) + 1,
                     "at": now(),
-                    "origin": "final_harness",
+                    "origin": origin,
                     "input_code_sha256": partial["input_code_sha256"],
                     "input_check": partial["input_check"],
                     "output_check": after["number"],
@@ -201,7 +240,10 @@ def recover_cell(
                     "counters": job["counters"],
                     "reused": job.get("reused", False),
                 }
-                write_jsonl(session.folder / "deterministic.jsonl", [record])
+                write_jsonl(
+                    session.folder / "deterministic.jsonl",
+                    session.cleanup_calls + [record],
+                )
                 session.cleanup_calls.append(record)
     before = (
         read(folder / "before_final_cleanup.json")

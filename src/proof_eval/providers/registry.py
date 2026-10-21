@@ -14,6 +14,8 @@ DEFAULT_CONDITIONS = {
     "agy": ((agy.MODEL, "high"),),
 }
 PROVIDER_WORKERS = {"codex": 5, "lemex": 3, "claude": 5, "agy": 5}
+MODEL_WORKERS = {"Qwen/Qwen3.8-Flash-Next": 5}
+MODEL_TIMEOUT_SECONDS = {"Qwen/Qwen3.8-Flash-Next": 4 * 60 * 60}
 # Experiment contract: routing additions must declare their track separately.
 # Preparation pins this source along with the runtime; changes require a new run.
 MODEL_TRACKS: dict[str, Literal["open", "closed"]] = {

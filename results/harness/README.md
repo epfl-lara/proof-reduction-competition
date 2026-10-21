@@ -1,8 +1,12 @@
 # Staged harness experiments
 
-The maintained configurations are **Sol 6.1/max** and **Astra/max**. Both use the
-revised prompt, source and goal tools, score feedback, and deterministic cleanup
-at the beginning and end. Historical conditions below remain separate evidence.
+The maintained closed configurations are **Sol 6.1/max** and **Astra/max**;
+Qwen3.8-Flash-Next/xhigh uses the open track. New runs use separate whole-cohort
+cleanup, model and cleanup phases. Both cleanup phases use one sweep with eight
+workers by default; Sol and Qwen use five model workers. History defaults off.
+Starting proofs default to originals; explicit reuse retains fresh verification
+and private cell caches. Qwen has a four-hour model-phase timer. Historical
+prepared-seed and five-minute-cap conditions below remain separate evidence.
 
 | Stage | Models | Feedback and stopping | Cells |
 | --- | --- | --- | ---: |
@@ -23,6 +27,8 @@ at the beginning and end. Historical conditions below remain separate evidence.
 | [16: prompt, feedback and strategy bundle](16_prompt_feedback_strategy/README.md) | Sol 6.1/max | Complete and audited: revised 89.448630%, recovered control 89.265062%; see recovery qualifications | 15 per arm |
 | [17: bounded restart history](17_restart_history/README.md) | Sol 6.1/max | Complete and audited: 89.904622%, +0.455991 pp over revised control; remains opt-in | 15 |
 | [18: Qwen prompt and history follow-up](18_qwen_prompt_history/README.md) | Qwen3.8-Flash-Next/xhigh via Lemex | Complete and audited: 81.769564%; historical comparison is not matched, cost unknown | 15 |
+| [23: isolated baseline replacements](../summary/20261021_deterministic_workflows/model_conditions.csv) | Sol 6.1/max history on; Qwen3.8-Flash-Next/xhigh history off | Fresh original-start, model-only cohorts replacing interrupted conditions; private process namespaces and failure monitoring | 15 per arm |
+| [25: Sol deterministic checkpoint](../summary/20261021_deterministic_workflows/model_conditions.csv) | Sol 6.1/max, history on/off | User-confirmed repeat_gain_order start (48.922160%); fresh verification, no extra transforms, $3 per theorem without a wall deadline | 15 per arm |
 
 The [Qwen submission](09_qwen_flash_next/submission.jsonl) reaches
 **78.219958% locally**, with 100% compatibility and **36/36** passing version
@@ -54,6 +60,12 @@ problems before the account quota interrupted subsequent requests; it remains
 paused. DeepSeek's first pilot ended with a transport error after preserving an
 improved proof. See the [native provider findings](07_native_agents/README.md).
 
+## Original-start studies
+
+- [Transform-free model baselines](../summary/20261021_deterministic_workflows/model_conditions.csv): Sol 6.1 and Qwen3.8, each with history off/on, 15 problems per condition. Interrupted cohorts are replaced by their recorded isolated/recovered selections.
+- [Five-minute transform screen](../summary/20261021_deterministic_workflows/deterministic_conditions.csv): 16 individual methods, six fixed combinations, and two selected combinations; no model calls. Full protocols and raw dependencies are retained in the private archive.
+- Stage 21's selected initial-transform follow-up was planned but never started; it contributes no model result. Its protocol is retained in the private archive.
+
 ## Completed comparisons
 
 | Model | Score search (02) | Beginning/end cleanup (03) | In-loop cleanup (04) |
@@ -80,14 +92,15 @@ and [Sol submission](05_model_config/conditions/gpt-6.1-sol__max/README.md).
 conda activate af
 proof-harness estimate --condition gpt-6.1-sol:max \
   --output results/harness/my_sol_run
-proof-harness run --condition gpt-6.1-sol:max --pilot --workers 10 \
+proof-harness run --condition gpt-6.1-sol:max --no-deterministic --workers 5 \
   --output results/harness/my_sol_run
 proof-harness report --output results/harness/my_sol_run
 proof-harness audit --output results/harness/my_sol_run
 ```
 
 Use `gpt-6-astra:max` for the SOTA condition; omitting `--condition` selects both.
-The pilot is audited before the rest of the batch and reused in the full cohort.
+The full selected cohort starts directly: five model workers for closed providers
+and Qwen, three for DeepSeek, with independent configurable cleanup workers.
 A report refreshes every 30 seconds. Repeating a command reuses completed cells;
 started requests without terminal evidence are never silently resampled.
 Source or configuration changes require a new output directory.
@@ -97,17 +110,19 @@ better all-version-valid original or saved D0 declaration. D0 comes from the
 completed deterministic experiments; references are never remeasured. The same
 bounded ten-method pass runs at the end. Every replacement must pass all required
 versions and improve the combined score by more than 0.05 percentage points.
-Historical searches had no imposed wall-time budget. New runs default to a
-57-minute whole-problem deadline, retaining the best fully verified proof when
-time expires. A native final normally ends the search; bounded transport recovery
-shares the same deadline. Optional budget tracking admits fresh optimization
-attempts under an explicit restart limit. Costs are reported per problem under
-explicit API-equivalent assumptions, rather than as invoices.
+The earliest searches had no imposed wall-time budget. The current contract uses
+four model-phase hours for Qwen and a $3 API-equivalent target without an implicit
+wall limit for closed models. Both cohort cleanup phases are timed separately;
+DeepSeek retains its 57-minute model allocation. Original proofs are the default
+starting point; explicit saved states are freshly verified. Bounded transport
+recovery and optimization restarts share the same per-problem model budget.
+Costs are reported under explicit API-equivalent assumptions, rather than as invoices.
 
 Each run pins code, prompts, source projects, inputs, denominators, CLI identity
 and cost assumptions. The host owns the best-proof ledger and evaluation evidence;
 model-process writes are restricted to the workspace and runtime directories.
-Shared cleanup jobs in `deterministic_jobs/` are keyed by proof and provenance.
+Historical shared cleanup jobs in `deterministic_jobs/` retain their recorded
+proof/provenance keys; new cleanup phases have private per-cell caches.
 Reports keep conditions separate and export one submission JSONL per complete
 condition, without pooling the best outputs across models.
 
@@ -124,3 +139,5 @@ Historical controller records, per-problem tables and trajectories remain saved.
 The per-study scripts were retired; their source is preserved in checkpoint
 `bfb2ade6` and content-addressed audit snapshots. The current auditor validates
 saved evidence without importing or executing historical code.
+
+The [October 21 consolidated bundle](../summary/20261021_deterministic_workflows/manifest.json) preserves the completed PR comparisons, clean original-start baselines and checkpoint runs with all selected proofs, evaluations, hashes and usage qualifications. Raw session stages 19–25 are privately archived. The new default uses separate one-sweep before/model/after phases, history off, eight cleanup workers, five Sol/Qwen workers and four model-phase hours per Qwen theorem. These settings are a new experiment contract, not a reinterpretation of the older results.

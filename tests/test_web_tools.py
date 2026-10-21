@@ -166,7 +166,9 @@ def test_web_policy_only_changes_enabled_condition(monkeypatch, tmp_path):
     )
     configs = []
     monkeypatch.setattr(
-        cli, "run", lambda cfg: configs.append(cfg) or {"status": "partial"}
+        cli,
+        "run_pipeline",
+        lambda cfg: configs.append(cfg.model) or {"status": "prepared"},
     )
     assert (
         cli.main(

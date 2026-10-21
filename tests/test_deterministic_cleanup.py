@@ -227,3 +227,32 @@ def test_unavailable_discovery_is_explicitly_incomplete(tmp_path):
 def test_immutable_budget_is_exact():
     assert asdict(BUDGET) == {"rounds": 3, "trials": 32, "sites": 6, "min_gain": 0.05}
     assert len(METHODS) == 10
+
+
+@pytest.mark.parametrize("secondary_passes", [False, True])
+def test_new_golf_method_preserves_all_version_gate_and_completed_job(
+    tmp_path, secondary_passes
+):
+    initial = "theorem p : True := by exact (True.intro)"
+    shorter = "theorem p : True := by exact True.intro"
+    fake = FakeEvaluator(
+        values={
+            initial: evaluation(initial, 50),
+            shorter: evaluation(shorter, 60, secondary_passes),
+        }
+    )
+    args = dict(
+        evaluator=fake,
+        row=ROW,
+        proof=initial,
+        folder=tmp_path,
+        provenance={"test": "new_method"},
+        methods=("golf",),
+    )
+    result = cleanup_proof(**args)
+    assert result["proof"] == (shorter if secondary_passes else initial)
+    before = len(fake.calls)
+    assert cleanup_proof(**args) == result
+    assert len(fake.calls) == before
+    with pytest.raises(ValueError, match="configuration changed"):
+        cleanup_proof(**{**args, "methods": ("proof_theory",)})

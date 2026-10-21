@@ -19,18 +19,86 @@ APIs; no library imports an experiment driver. Historical studies stay in
 | Package | Responsibility | Main API |
 | --- | --- | --- |
 | `verification` | Pinned Lean compilation, token counts, cached references, goal observations, heartbeat diagnostics | `Evaluator`, `check_references`, `profile` |
-| `optimization` | Parsed proof edits, tactic discovery, minimization, bounded cleanup, generic deterministic batches | `Budget`, `optimize`, `cleanup_proof`, `BatchConfig`, `run_batch` |
+| `optimization` | Parsed proof edits, tactic discovery, verified search and cohort cleanup | `Budget`, `optimize`, `explore`, `run_cleanup` |
 | `providers` | Native agent CLIs, durable execution/isolation, terminal usage, price estimates | `codex.generate`, `lemex.generate`, `claude.generate`, `agy.generate`, `CostConfig` |
-| `harness` | Prompt/context policy, tool sessions, one-theorem search, batch coordination and reports | `ProofSession`, `ProofToolService`, `RunConfig`, `run` |
+| `harness` | Cohort phase barriers, model batches, per-theorem search and reports | `PipelineConfig`, `run_pipeline`, `RunConfig`, `run`, `ProofSession` |
 | `benchmark` | Explicit project setup, source task harvesting, and one-time reference processing | `process_benchmark`, `CorpusConfig`, `build_corpus` |
 | `evidence` | Atomic artifacts, stable hashes and saved-evidence audits | `write_json`, `fingerprint`, `audit` |
 | `interfaces` | Thin CLI and localhost HTTP evaluation interfaces | `proof-eval` |
 
-`harness/budget.py` supervises one isolated theorem worker with a durable wall
-deadline when time is limited, or no timeout for cost-only search.
-`harness/search.py` owns its model request and final cleanup;
-`harness/outcomes.py` selects the result from verified evidence.
-`harness/runner.py` owns concurrency and the complete declared cohort.
+`harness/pipeline.py` is the standard workflow: cohort cleanup before, a model-only
+batch, then cleanup of each model condition's own selected outputs. Whole-cohort
+barriers prevent model requests before initial cleanup completes and prevent
+postprocessing before the model batch terminates. `PipelineConfig` defaults both
+cleanup phases on with eight workers. Model pools are independent and configurable;
+Sol and Qwen default to five. `pipeline_reporting.py` reports phase times, total
+wall time, score gains and audited source links. Failed cells do not cancel other
+queued cells, but full-cohort means require complete evidence.
+
+`optimization/cohort.py` owns independent cleanup worker processes and private
+caches. It invokes the exact `plans()["one_sweep"]`: sixteen methods in gain order,
+one traversal, rounds=3/trials=32/sites=6 per method, no overall five-minute cap.
+Each phase freshly measures the original and its explicitly chosen proof, checks
+all versions and retains only >0.05-point improvements. `state.json` is exported
+only for a complete audited cohort. Durable starts without terminal evidence are
+never automatically replayed. `proof-deterministic` calls this cohort interface.
+`optimization/supervision.py` gives each cleanup worker a separate subreaper and
+coordinator-liveness pipe. It records process identities, retains the cohort lock
+until its owned descendants are drained, and handles ordinary cancellation or
+coordinator death without targeting other jobs. Interrupted batches cancel queued
+admission and remain incomplete. Saved audits verify runtime bytes against the
+current source or an exact preserved snapshot without executing snapshot code.
+The old `optimization.batch` implementation remains a historical library API,
+not the default CLI schedule.
+
+`evidence/proof_states.py` freezes original proofs, a portable manifest, or explicit
+name/proof JSONL. It pins exact cohort, row/proof identities, denominators and
+source bytes. Model/effort lineage survives subsequent cleanup; importing another
+condition's labelled model solutions is rejected. Raw JSONL is explicitly external
+provenance and never treated as an audited deterministic source. `--starting-proofs`
+does not implicitly skip another initial sweep; choose `--no-cleanup-before`.
+
+`harness/runner.py` is the lower-level model-only batch. `RunConfig` defaults
+`deterministic=False` and `restart_history=False`; in-cell transforms are rejected
+for new configurations. `harness/budget.py` supervises each isolated theorem worker.
+`harness/initial.py` freshly measures the original inside the model-phase timer;
+`harness/starting.py` then freshly verifies an explicit starting state, preserving
+the better original when the imported proof does not improve it. Candidate and
+analysis caches are private. Canonical denominators are unchanged. The source
+state, model starting score and subsequent gains are separate report fields.
+
+New configurations permit one original-measurement retry only after a terminal
+wall timeout with every other required version passing. Both attempts are saved,
+use fresh private caches, and share the original model-phase clock. An interrupted
+measurement or semantic failure is never replayed automatically.
+
+Historical initial-only capped runs retain `optimization/bounded.py` and
+`harness/initial_audit.py` semantics. Their 300-second cap, original/D0 edge cleanup,
+checkpoint schemas and archived request/config bytes are unchanged. New phase
+workflows carry `cohort_pipeline_version=1`; model-only cells carry
+`model_phase_version=1` and `budget_scope="model_phase"`.
+
+Extended deterministic research remains separate from the default one-sweep.
+`optimization/search_graph.py` defines fixed ordered/repeated and beam schedules;
+`optimization/exploration.py` executes them with durable per-expansion evidence,
+all-version certificates, a monotone best-proof trace and no overall wall limit.
+Beam layers finish all methods before deterministic score/hash selection. Lower
+scoring branches may survive, but every edge must improve its own parent by more
+than 0.05 points. This searches improving paths only; it does not cross score
+valleys or prove optimality. Repeated sweeps stop after a no-change sweep or eight
+sweeps; their operators still have explicit trial/round/site bounds.
+`optimization/exploration_study.py` queues full original-start cohorts in fresh
+worker processes with private caches. `exploration_reporting.py` audits branch
+lineage, canonical arithmetic, watchdog evidence and manifests before admitting
+a full-cohort mean. Completed expansions can be reused within one condition;
+indeterminate expansions are never automatically replayed. Active studies use
+isolated runtime copies. No model request is dispatched by this interface.
+Explicit `--reuse-completed-from SOURCE` recovery audits and pins complete
+source cells without copying their caches or modifying their evidence. Failed
+or missing cells start afresh from original proofs in the new study directory.
+Recovery reports identify reused cells and combine source/recovery timings;
+the frozen source configuration records the original implementation separately.
+
 `harness/agent.py` supplies prompt policy and the tool service to the general
 native agent executor. Provider code does not import the harness or decide which proof
 wins. The host-owned `ProofSession` makes that decision from evaluator results.
@@ -42,6 +110,19 @@ Prepared calls through this API use the same deadline supervisor as batch runs.
 A supplied Python generator runs in an isolated Linux fork worker so its host
 tools and cleanup can also be stopped; return results and durable artifacts
 rather than relying on mutations of objects in the caller's process.
+
+`providers/isolation.py` requires bubblewrap user/PID/mount namespaces and a
+private `/proc`, then installs the existing Landlock write rules. Native tools
+retain host tool sockets and networking; signals cannot target ancestor or
+sibling PID namespaces. The admission lock is retained by bubblewrap's
+supervisor with `--sync-fd`. Host supervisors remain outside the namespace and
+own deadline cleanup. Isolation preflight has no unrestricted fallback.
+`providers/termination.py` commits exit evidence before native event parsing or
+host-tool draining. Negative return codes prove signal termination; 128+signal
+codes are labelled as an exit convention only. `evidence/watch.py` independently
+scans selected result roots and user services, emits durable deduplicated local
+alerts, correlates exits within five seconds, and excludes controlled budget
+stops. It does not modify watched evidence or resample interrupted requests.
 
 ## Verification and training rewards
 
@@ -66,7 +147,9 @@ references stay incomplete and raise `EvaluationNotReady` for rewards. Negative
 reductions are preserved. Combined rewards require all listed versions.
 
 Reference preparation is explicit: `prepare_reference()` or `proof-benchmark`.
-It must not be called from the search/reward path. The measurement backend moved
+General search/reward scoring must not replace these denominators. The new
+harness separately calls candidate evaluation on the original as an explicit
+measured preparation phase inside its clock. The measurement backend moved
 byte-for-byte to `verification/backend.py`, retaining the source hash used by all
 36 warm-up reference fingerprints. Black excludes only this frozen source;
 Ruff correctness checks and backend integration tests still cover it.
@@ -95,10 +178,13 @@ from pathlib import Path
 from proof_eval.harness.config import RunConfig
 from proof_eval.harness.runner import run
 
-report = run(RunConfig(
-    output=Path("results/harness/my_sol_run"),
+# Lower-level MODEL-ONLY API. Standard before/model/after workflow:
+from proof_eval.harness.pipeline import PipelineConfig, run_pipeline
+
+report = run_pipeline(PipelineConfig(model=RunConfig(
+    output=Path("results/my_sol_run"),
     conditions=(("gpt-6.1-sol", "max"),),
-))
+), cleanup_workers=8))
 ```
 
 `RunConfig` also accepts explicit dataset, environment, cache, reference-export
@@ -111,13 +197,12 @@ and `incumbent` evaluation including references, and `source_context`. The defau
 uses the already frozen warm-up packs. Pass another directory with `base=...` or
 `--base` for another prepared batch; references are still required in the cache.
 
-Model batches have no pilot option or gate. After cached-reference and runtime
-preflight, the runner queues every selected theorem with exactly five parallel
-workers for Codex and the other closed providers, or three for Lemex. The
-Python configuration resolves this fixed provider policy; an explicit workers
-value is accepted only when it matches. An incomplete theorem or worker
-exception records a cell failure without cancelling other queued theorems.
-The batch reports every outcome and remains incomplete if any cell is incomplete.
+Model batches queue the full cohort after cached-reference/runtime preflight.
+Provider defaults are five workers for closed models, five for Qwen and three
+for DeepSeek. Positive explicit worker overrides are accepted; Lemex's shared
+five-session admission limit still applies independently. Model-only queue time
+precedes a cell's model timer, while the pipeline records whole-workflow time.
+Individual incomplete outcomes do not cancel other queued cells.
 
 Set `provider="lemex"`, `provider="claude"` or `provider="agy"` to select a
 native CLI. Omitted conditions default to DeepSeek V4.1 Flash/high, Opus
@@ -145,15 +230,15 @@ the tool API used by the host. `dispatch()` accepts these exact JSON operations:
 | `read` | `path`, optional `version`, `start`, `end` | Bounded source excerpt |
 | `outline` | `path`, optional `version` | Declaration locations |
 | `finish` | `reason` | Durable stopping decision and current best proof |
-| `remember` | `kind`, `text` | Opt-in restart history only: an unverified discovery/rejection/next-step note, at most 600 characters |
+| `remember` | `kind`, `text` | When restart history is explicitly enabled: an unverified discovery/rejection/next-step note, at most 600 characters |
 
 Every request includes `op`. Check feedback returns
 `score_tuple = [length_reduction_pct, heartbeat_reduction_pct, compatibility_pct]`
 and `total_score`; `passing_rate_pct` separately reports actual passing checks.
 Only a proof passing every version and improving the combined score by more than
 0.05 percentage points replaces the best proof. Invalid, regressive and duplicate
-attempts preserve the ledger. The original seed is reconstructed from cached
-reference evidence, without compiling it again.
+attempts preserve the ledger. New harness runs use their freshly measured original seed. Historical runs
+reconstructed the original from cached reference evidence.
 
 `harness/score_feedback.py` explains saved measurements without changing scoring
 or selection. `component_delta_from_previous_best_pp` reports the length,
@@ -197,8 +282,8 @@ stay unchanged; changed settings require a new output directory.
 
 `RunConfig.budget_tracking="auto"` selects `"time"` for the explicitly listed
 open models (Qwen and DeepSeek) and `"cost"` for closed models. Resolved
-`RunConfig.problem_timeout_seconds` is 3420 (57 minutes) for time tracking and
-`None` for cost tracking. A numeric timeout explicitly adds a watchdog to cost
+`RunConfig.problem_timeout_seconds` defaults to 14400 (four hours) for Qwen,
+3420 (57 minutes) for other open models, and `None` for cost tracking. A numeric timeout explicitly adds a watchdog to cost
 tracking; there is no implicit provider or whole-problem timeout in cost-only
 search. Open-model runs receive no spending guard. New configurations use schema 8;
 historical configuration and result bytes retain their original budgets.
@@ -215,19 +300,22 @@ batches and clients even when wall time does not bound a run.
 
 The time budget starts when a worker receives a problem; batch queue time
 and batch reference preflight are separate. Admission, model reasoning, all
-host tools and final cleanup share that one deadline. Status feedback includes
+original/selected-proof measurement and all host tools share that model-phase deadline. Cohort cleanup has separate timers. Status feedback includes
 the remaining seconds. At expiry the supervisor stops only that worker and its
 descendants, including detached agent/Lean processes, then reconstructs the
 best fully checked proof from atomic ledger records. Recovery performs no model
-or Lean calls. Final cleanup may be skipped or interrupted; this is explicit in
-the result and audited. Deadline stops are complete bounded search outcomes,
+or Lean calls. The before/after cleanup phases do not consume this model budget. A deadline
+during original measurement is an incomplete measurement outcome. Deadline stops are complete bounded search outcomes,
 with `generation_status="budget_exhausted"` if no native final arrived; transport
 failures and unknown interruptions remain incomplete. Missing usage stays
 unknown. Those stopping conditions apply to the affected theorem; other queued
 theorems continue independently.
 
-The 57-minute allocation is our chosen conservative budget derived from the
-saved open-track 48-hour/50-problem total, not an organizer per-problem rule.
+Qwen's four-hour/five-worker policy is the user's new allocation; the prior
+57-minute total-problem runs retain their historical meaning. The user-reported
+48-hour resource allowance is for one 64-core node with four A100 80GB GPUs.
+Pipeline reports include all phases, but there is no automatic 48-hour workflow
+watchdog. Confirm the overall resource plan before starting an experiment.
 
 Each condition keeps one model and effort throughout its search. There is no
 first-attempt model override. Retired mixed-model runs remain read-only:
@@ -245,7 +333,8 @@ counters. The fresh prompt has exactly one
 system message and one user message; its incumbent declaration/scores and
 `candidate.lean` come from the best proof in the shared verified ledger.
 `reset_for_attempt()` clears both the finish marker and saved session state.
-No conversation history or previous workspace is passed to the new session.
+No full conversation history or previous workspace is passed to the new session.
+An explicitly enabled restart-history condition receives the bounded evidence summary.
 
 `budget_usd_per_problem` / `--budget-usd` defaults to $3.00. Cumulative estimates
 include every attempt. Each native Codex session receives the remaining dollars
@@ -328,13 +417,11 @@ usage that the selected policy cannot price, active batches and started cells
 without a terminal result block continuation. Audit checks both the carried
 spending and the unchanged deadline.
 
-Time tracking uses the single persisted whole-problem deadline. If none exists,
+Time tracking uses the single persisted model-phase deadline. If none exists,
 the supervisor creates it before dispatch; resume always reuses it.
-Time-limited runs decline another attempt once at most 30 seconds remain for
-final cleanup. `cleanup_reserve_seconds=30` remains recorded in every config,
-but is inert when `problem_timeout_seconds=None`; it applies to time tracking
-and explicit cost-track watchdogs. Final cleanup uses deterministic
-transformations and Lean, makes no model requests and spends no model dollars.
+New runs use `cleanup_reserve_seconds=0`: deterministic work runs in separate
+before/after cohort phases. Historical edge-cleanup runs retain their saved
+30-second reserve for auditing. Cleanup makes no model requests or model spend.
 Both modes allow at most `max_budget_restarts + max_transport_restarts + 1`
 admitted attempts (default 23: 20 optimization restarts, two terminal transport
 recoveries and one initial attempt). Native retries remain within their session.
@@ -342,7 +429,7 @@ Exhausted cumulative cost, insufficient money for one conservatively priced
 output token, cleanup reserve,
 usage that the selected policy cannot price, and the restart safety limit have
 separate host stopping reasons.
-Final deterministic cleanup receives the best proof found across all attempts.
+The final output is the best fully verified proof across initial work and model attempts.
 
 `ProofToolService` exposes the session over a Unix socket. A standalone
 `harness/client.py` is copied to the model workspace as `tools.py`. Landlock limits
@@ -353,8 +440,8 @@ a native cost stop disconnects the model during a Lean check. This keeps the
 attempt's check boundary and the next incumbent consistent with the host ledger.
 The process supervisor still enforces any configured whole-problem deadline. The model gets
 source and goal tools and ordinary shell tools. Deterministic cleanup is a host
-operation at the end, not an agent tool. The initial seed is the better validated
-original or saved deterministic proof.
+operation before model search, not an agent tool. New runs always begin with
+a fresh measurement of the original proof.
 
 `verification/profiling.py` runs explicit diagnostic compilations using native
 heartbeat traces and optional `profile_tactic "label" in tac` annotations.
@@ -464,9 +551,10 @@ usage and cache storage remain unknown, so this is not a hard invoice ceiling.
 
 A run freezes code, prompts, dataset, environment map, inputs, controls, CLI
 identity and cost assumptions. Each cell saves input, model events, a host proof
-ledger, selected evaluation and usage. Deterministic jobs are proof/provenance
-keyed and share completed results across cells. Final cleanup cannot replace a
-better raw proposal. Output locks and atomic JSON writes prevent overlapping
+ledger, selected evaluation and usage. New deterministic phases have private per-cell caches and only reuse their own
+completed, audited cells on identical resume. Historical shared cleanup jobs remain
+auditable. Postprocessing preserves the model-selected incumbent unless a freshly
+checked candidate improves it. Output locks and atomic JSON writes prevent overlapping
 writers and torn checkpoints.
 
 Repeat the same command to reuse completed cells. Changes to frozen inputs or
@@ -488,15 +576,16 @@ it does not invent a native request or resample it. Historical schemas and
 artifact bytes remain unchanged.
 
 `harness/restart_history.py` implements the opt-in version-1 restart-history
-policy. It saves source-tool observations and model notes in the host-owned
+policy (off by default). It saves source-tool observations and model notes in the host-owned
 `evidence/restart_events.jsonl`; at most 64 events are admitted per attempt.
 Checks remain in the existing validated proof ledger. Each fresh attempt gets
 up to two accepted and four rejected nonduplicate trial summaries, three source
 observations, and the latest note of each kind, bounded to 12,000 serialized
 characters. Notes and retrieved text remain explicitly separate from measured
 proof facts. Canonical system-prompt and strategy-card bytes are unchanged.
-The optional `restart_history_version` pins this behavior in the configuration;
-default and historical configurations omit it. Attempt records freeze event
+`restart_history_version` pins this behavior when enabled. Opt in
+with `--restart-history` or `restart_history=True`; historical
+configurations that omit the field retain their original behavior. Attempt records freeze event
 prefix counts and hashes. `restart_history_audit.py` validates scope, attempt
 boundaries, event hashes, and exact deterministic reconstruction of each prompt
 summary. Future evidence, another condition's notes and arbitrary prompt history
@@ -531,3 +620,14 @@ pytest suite. GitHub Actions runs the same checks. Lean/Codex local integration
 tests skip explicitly when dependencies are absent; tests using the installed
 Codex route requests to a localhost fake server. Remote paid tests are marked
 `live` and excluded by default. Run them only explicitly with `pytest -m live`.
+
+Legacy closed-track checkpoint experiments may use `--deterministic-checkpoint`
+with a complete audited deterministic exploration condition and
+`--no-deterministic`. Confirm the starting point with the user for each new
+experiment. This opt-in requires cost tracking without a wall deadline; the
+default remains original-start. Original proofs are still freshly measured,
+canonical denominators stay fixed, and each checkpoint is freshly checked in
+a private cell cache before any model call. No model-produced seed is accepted
+through this interface. Reports separate the checkpoint score from subsequent
+model gains. Keep the source condition and runtime frozen; incomplete checkpoint
+verification is never automatically replayed.

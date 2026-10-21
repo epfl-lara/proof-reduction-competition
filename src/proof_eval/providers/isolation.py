@@ -1,4 +1,4 @@
-"""Run a tool process with filesystem writes limited by Linux Landlock.
+"""Run native tools in private PID namespaces with Landlock write restrictions.
 
 Reads, execution and networking remain available. The trusted Lean evaluator
 runs outside this process. Require ABI 3 so truncation is also restricted.
@@ -11,6 +11,7 @@ import argparse
 import ctypes
 import os
 import platform
+import shutil
 import sys
 from pathlib import Path
 
@@ -74,18 +75,39 @@ def main():
     parser.add_argument("--writable", type=Path, action="append", required=True)
     parser.add_argument("--protected", type=Path, action="append", required=True)
     parser.add_argument("--temporary-directory", type=Path)
+    parser.add_argument("--parent-pid-namespace", required=True)
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     if not command:
         parser.error("A command after -- is required")
+    if os.readlink("/proc/self/ns/pid") == args.parent_pid_namespace:
+        raise RuntimeError("Private PID namespace is required; refusing host execution")
+    if int(os.readlink("/proc/self")) != os.getpid():
+        raise RuntimeError("Private /proc mount is required")
     restrict_writes(args.writable, args.protected)
     if args.temporary_directory:
         os.environ["TMPDIR"] = str(args.temporary_directory.resolve())
     os.execvp(command[0], command)
 
 
-def launch_command(command, folder, protected, *, runtime_paths=None):
+def launch_command(
+    command: list[str],
+    folder: Path,
+    protected: list[Path],
+    *,
+    runtime_paths: tuple[Path, ...] | list[Path] | None = None,
+    lifetime_fd: int | None = None,
+) -> list[str]:
+    """Fail closed without bubblewrap; retain admission locks in its supervisor.
+
+    A private /proc makes tools such as pkill see only their own job. The kernel
+    PID namespace also rejects direct signals to sibling jobs and host workers.
+    Keep networking and host tool sockets, and apply Landlock after mount setup.
+    """
+    binary = shutil.which("bwrap")
+    if binary is None:
+        raise RuntimeError("bubblewrap is required for process isolation")
     folder = Path(folder).resolve()
     temporary = folder / "runtime_tmp"
     temporary.mkdir(exist_ok=True)
@@ -97,7 +119,32 @@ def launch_command(command, folder, protected, *, runtime_paths=None):
         else runtime_paths
     )
     writable = [folder, *runtime_paths, Path.home() / ".cache", Path("/dev/null")]
-    arguments = [sys.executable, str(Path(__file__).resolve())]
+    arguments = [
+        str(Path(binary).resolve()),
+        "--unshare-user",
+        "--unshare-pid",
+        "--unshare-ipc",
+        "--die-with-parent",
+        "--new-session",
+        "--cap-drop",
+        "ALL",
+        "--bind",
+        "/",
+        "/",
+        "--proc",
+        "/proc",
+        "--dev",
+        "/dev",
+    ]
+    if lifetime_fd is not None:
+        arguments += ["--sync-fd", str(lifetime_fd)]
+    arguments += [
+        "--",
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "--parent-pid-namespace",
+        os.readlink("/proc/self/ns/pid"),
+    ]
     for path in writable:
         if path.exists():
             arguments += ["--writable", str(path.resolve())]

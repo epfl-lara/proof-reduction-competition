@@ -1,116 +1,94 @@
-# Deterministic batch interface
+# Deterministic cohort cleanup
 
-Use `proof-deterministic` or `proof_eval.optimization.batch.run_batch` for a new competition batch. The input follows the competition row schema; names, sources, size and versions come from that file. See [architecture](ARCHITECTURE.md) for package boundaries.
+`proof-deterministic` runs the measured one-sweep schedule independently of model
+jobs. It visits all sixteen methods once in the gain-based order, with per-method
+rounds=3, trials=32 and sites=6. There is no five-minute phase cap. Every retained
+change must pass every required version and improve combined score by >0.05 points.
 
-## Prepare once
+## Inputs and setup
 
-Run these from the repository root in the `af` environment. Replace `full.jsonl`
-with the downloaded competition dataset; it is a placeholder path. Setup requires
-the source URLs, exact commits and file context supplied by the competition.
+The defaults select the frozen 15-theorem warm-up input packs. For another cohort
+(for example 50 theorems), supply its dataset, pinned environment map, cached
+reference export and prepared input directory. A prepared directory contains
+`config.json` with the exact names/input/source identities and `inputs/*.json`
+containing each original dataset row, references and source context. This is the
+same input contract used by the model harness; see [architecture](ARCHITECTURE.md).
+
+Setup/reference preparation are separate:
 
 ```bash
-proof-setup \
-  --dataset data/full.jsonl \
-  --environments environments.full.local.json \
+proof-setup --dataset data/full.jsonl --environments environments.full.local.json \
   --root .proof-eval-projects/full --workers 1
-
-proof-benchmark \
-  --dataset data/full.jsonl \
-  --environments environments.full.local.json \
-  --cache .proof-eval/full \
-  --output .proof-eval/full/reference_values.jsonl
+proof-benchmark --dataset data/full.jsonl --environments environments.full.local.json \
+  --cache .proof-eval/full --output .proof-eval/full/reference_values.jsonl
 ```
 
-The processor reuses matching local measurements. Do not pass `--refresh` during
-optimization. Cached references and their export must cover every listed version.
-New versions or dependency revisions require their matching Lean environments.
-The current environment map identifies a project by `(source, version)`; rows with
-that pair must agree on its source commit. A changed upstream dataset schema or
-conflicting pins require an adapter before running.
+Use the unmodified dataset and matching source versions. General candidate checks
+never refresh reference denominators implicitly. The initial proof is measured
+separately for each cleanup cell.
 
-## Run or resume
+## Run or prepare
 
 ```bash
-proof-deterministic \
-  --dataset data/full.jsonl \
-  --environments environments.full.local.json \
-  --cache .proof-eval/full \
-  --references .proof-eval/full/reference_values.jsonl \
-  --output results/deterministic/full_batch_v1 \
-  --workers 8 --max-rounds 6 --max-trials 64 --max-sites 6 --max-sweeps 2
+# Warm-up cohort, originals, eight independent theorem workers.
+proof-deterministic --output results/cleanup_warmup --workers 8
+
+# Another prepared cohort; paths are explicit and work from any directory.
+proof-deterministic --base /path/to/prepared_inputs \
+  --dataset /path/to/full.jsonl --environments /path/to/environments.local.json \
+  --cache /path/to/reference_cache --references /path/to/reference_values.jsonl \
+  --output /path/to/new_cleanup --workers 16
+
+# No compiler/model calls: cached-reference and runtime preflight only.
+proof-deterministic --output results/cleanup_warmup --workers 8 --prepare
 ```
 
-The batch CLI can also run from another working directory: use the installed command
-and absolute input/output paths. Relative arguments resolve against the
-caller's directory; child runners execute in the repository. All ten methods run
-from the dataset originals, followed by bounded repeat sweeps. A changed proof is
-retained only when its fully evaluated combined score improves by more than
-`--min-gain` (default 0.05 percentage points). Every required version is requested
-before accepting a candidate. Compatibility remains part of the competition
-objective, rather than an additional hard 100% acceptance constraint.
+Workers are a positive integer, default eight. Parallelism is across theorems;
+each theorem's ordered sweep remains sequential. Finite method limits and
+individual verifier/discovery watchdogs remain explicit. Discovery timeouts keep
+valid incumbents and are labelled limited outcomes; other failures keep the cohort
+incomplete. A failure does not cancel other queued theorems.
 
-`--methods wrappers facts` selects a smaller explicit method set for a pilot;
-`--max-sweeps 0` runs just its first pass. Budgets are per problem and method.
-These bounds are not a total wall-time/resource cap: measure throughput on the
-new batch before selecting the final resource budget. This runner uses the newer
-resumable stage engine for all methods; it does not promise byte-identical
-reproduction of the older warm-up linter/simplifier search policy.
+## Explicit proof reuse
 
-Repeat the identical command to resume. A batch lock prevents simultaneous
-writers. Inputs, environments, source hashes and budgets must still match; use a
-new output folder when they change. Completed stages reuse their recorded
-results; unfinished stages resume candidate checkpoints. A recorded unavailable
-discovery stops the batch and requires investigation, then a fresh output folder
-for a retry of that failed discovery.
+```bash
+proof-deterministic --starting-proofs results/earlier_cleanup/state.json \
+  --output results/another_sweep --workers 8
 
-The runner checks references read-only before optimization and audits their
-unchanged values at completion. It does not install environments, prepare
-references, call models, train models or submit to the arena.
-
-## Harness contract
-
-Standard output contains one JSON manifest. Child progress goes to standard
-error. Exit code **0** means the configured portfolio finished, all selected
-results were fully scored, and the final audit passed. Exit code **2** means an
-input/preparation problem, unavailable stage, or caught execution/audit error;
-signals and uncaught process failures may use other nonzero codes. Always check
-the exit code and `status`, not just whether a file exists.
-
-The output directory contains:
-
-- `submission.jsonl`: one `{ "name": ..., "proof": ... }` record per dataset row,
-  published atomically after the complete evidence audit.
-- `batch.json`: configuration, stage scores, stop reason, submission hash,
-  problem/version counts and final component scores.
-- `audit.json`: proof hashes, accepted transitions, score arithmetic, source
-  checks and cache checks.
-- Numbered stage folders with selected proofs, per-problem outcomes, rejected
-  trials and checkpoints; `deterministic_comparison.json` and `.csv`.
-
-On interruption, `batch.json` identifies the active stage and last completed
-stage's candidates. A nonzero result is not a completed submission. Even a zero
-result can stop at a configured search limit; it does not certify exhaustion.
-
-Python callers with this repository's `src` on `PYTHONPATH` can use the same API:
-
-```python
-from proof_eval.optimization.batch import BatchConfig, run_batch
-
-result = run_batch(BatchConfig(
-    dataset="data/full.jsonl",
-    environments="environments.full.local.json",
-    cache=".proof-eval/full",
-    references=".proof-eval/full/reference_values.jsonl",
-    output="results/deterministic/full_batch_v1",
-    workers=8,
-))
-if result["status"] == "finished":
-    submission = result["submission"]
+# Model output manifests carry their model/effort lineage.
+proof-deterministic --starting-proofs /path/to/model_state.json \
+  --condition gpt-6.1-sol:max --output results/post_model_cleanup --workers 8
 ```
 
-The API returns `unavailable` when a child stage cannot finish, and raises for
-configuration, process or audit errors. It leaves durable evidence for diagnosis.
-The general-batch integration test uses a separately created Lean project and a
-new one-problem dataset, exercises all ten methods and resume from outside the
-repository, and checks that cached reference bytes remain unchanged. The full
-competition batch itself has not been tested before its release.
+An input may be a portable `state.json`, a directory containing it, or a complete
+name/proof JSONL. It must cover the exact cohort and retain theorem statements.
+Raw JSONL has external provenance; imported scores are informational only.
+Original and selected proofs are freshly checked in a private cache. Denominators
+stay fixed, and a labelled model-produced input cannot cross model conditions.
+
+Identical resumes audit completed cells and make no new calls for them. Changed
+inputs, settings or runtime require a new output. An interrupted started cell is
+not automatically replayed; inspect its evidence and explicitly configure recovery.
+
+## Outputs and audit
+
+A complete audited cleanup produces `state.json` with selected declarations,
+identities, source scores and lineage. `cells/` retains measurements, trials,
+verified search nodes, results and audits. `report.json` distinguishes mean input
+score, output score, gain, actual batch elapsed time and summed per-cell durations.
+Incomplete cohorts have no full-cohort mean or reusable selected-state export.
+
+```bash
+proof-deterministic --output results/cleanup_warmup --report
+proof-deterministic --output results/cleanup_warmup --audit
+```
+
+These reads dispatch no Lean or model work. Exit zero means the requested action
+completed/prepared/passed; incomplete or failed actions exit nonzero. A complete
+one-sweep is a finite search outcome, not an optimality claim.
+
+For automatic before/model/after orchestration use `proof-harness run`. Its
+`--cleanup-workers`, `--before-workers`, `--after-workers` and `--model-workers`
+select independent pools; `--no-cleanup-before` avoids rerunning a prepared state.
+The older multi-sweep `optimization.batch` API remains available for historical
+reproduction, but is no longer the `proof-deterministic` CLI default.

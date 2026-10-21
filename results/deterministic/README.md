@@ -1,5 +1,17 @@
 # Model-free warm-up experiments
 
+The completed [October 21 publication bundle](../summary/20261021_deterministic_workflows/manifest.json)
+contains all 360 capped-study cells and 75 extended-search cells, with final
+proofs/evaluations and source hashes. [One sweep](../summary/20261021_deterministic_workflows/conditions/extended_search_one_sweep.json)
+gained 12.184 points in 5.87 summed worker-hours; deeper repetition gained 16.864
+points in 27.96 hours. The selected default is one sweep, before and after a
+separate model phase, with eight cleanup workers and no five-minute cap.
+
+These are development-cohort measurements. The new combined model workflow has
+not been benchmarked. Raw stages 13–15 and their complete audit dependencies are
+preserved in a private external archive; the publication bundle explicitly
+distinguishes compact selected results from those full historical traces.
+
 **Arena follow-up:** the user-provided October 2 leaderboard screenshot reports
 **46.34% combined**, **12.19% length reduction**, **26.83% heartbeat reduction**
 and **100.0% compatibility**. See [the recorded arena evidence](arena/README.md).
@@ -171,3 +183,9 @@ compiler outcomes, including failures. These are search-policy-dependent records
 not yet a balanced SFT/GRPO dataset. The experiment runner used no models, paid
 APIs or training runs. The user subsequently tested the exported proofs with the
 arena grader; the screenshot-based result is recorded separately above.
+
+The completed [extended exploration](../summary/20261021_deterministic_workflows/deterministic_conditions.csv)
+retains 74 audited complete search cells and one fresh rerun of the incomplete
+deeper search after correcting discovery probe syntax. All 75 outcomes are
+included with per-cell provenance. The full recovery protocol and search traces
+remain in the private archive.

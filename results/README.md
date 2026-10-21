@@ -1,5 +1,15 @@
 # Experiment results
 
+- [October 21 consolidated results](summary/20261021_deterministic_workflows/manifest.json):
+  8 Sol and 5 Qwen conditions, 24 capped and 5 extended deterministic policies,
+  with 630 selected proofs/evaluations, source hashes and saved audits. The
+  [model table](summary/20261021_deterministic_workflows/model_conditions.csv) and
+  [deterministic table](summary/20261021_deterministic_workflows/deterministic_conditions.csv)
+  distinguish complete scores, timing, incomplete usage and scheduling estimates.
+  The selected default is one sweep before and after a separate model batch,
+  history off; this new combined default has not yet been benchmarked. Full raw
+  session traces are preserved in a private external archive, not included in
+  the compact publication bundle or represented as locally rerunnable audits.
 - [One-shot model/context experiments](one_shot/): fixed incumbents, strategy-card
   and goal/cost-context ablations through RCP, one output per experimental cell.
 - [Codex agent baselines](one_shot/09_codex_tools_baselines/README.md): Astra and

@@ -13,6 +13,24 @@ from proof_eval.harness.restart_history import (
 )
 
 
+@pytest.mark.parametrize(
+    "flags,enabled",
+    [([], False), (["--no-restart-history"], False), (["--restart-history"], True)],
+)
+def test_history_defaults_off_and_can_be_enabled_in_cli(monkeypatch, flags, enabled):
+    from proof_eval.harness import cli
+    from proof_eval.harness.config import RunConfig
+
+    captured = []
+    monkeypatch.setattr(
+        cli, "run_pipeline", lambda config: captured.append(config.model) or {}
+    )
+    assert cli.main(["run", *flags]) == 0
+    assert captured[0].restart_history is enabled
+    assert RunConfig().restart_history is False
+    assert RunConfig(restart_history=False).restart_history is False
+
+
 def test_history_bounds_and_latest_notes_survive_reload(tmp_path):
     scope = {
         "name": "theorem",

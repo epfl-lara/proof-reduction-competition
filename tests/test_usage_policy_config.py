@@ -27,7 +27,9 @@ def test_other_provider_defaults_retain_strict_accounting(provider):
 
 def test_cli_can_select_strict_accounting(monkeypatch):
     captured = []
-    monkeypatch.setattr(cli, "run", lambda config: captured.append(config) or {})
+    monkeypatch.setattr(
+        cli, "run_pipeline", lambda config: captured.append(config.model) or {}
+    )
     assert cli.main(["run", "--usage-policy", "strict"]) == 0
     assert captured[0].usage_policy == "strict"
     assert cli.main(["run"]) == 0

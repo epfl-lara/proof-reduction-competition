@@ -108,7 +108,13 @@ changes to the tool client remain outside the task.
 
 
 def tool_instructions(
-    mode, *, budget_tracking=None, semantic_search=False, web_search=False
+    mode,
+    *,
+    budget_tracking=None,
+    semantic_search=False,
+    web_search=False,
+    initial_only=False,
+    deterministic_enabled=True,
 ):
     if mode not in (*MODE_TOOLS, "score_edges"):
         raise ValueError("Unsupported or retired search mode: " + mode)
@@ -125,12 +131,27 @@ seed before your call and will apply the fixed deterministic portfolio to your
 best checked proof after your call. Reference denominators remain the original.
 """
         placement += "Deterministic cleanup is performed only before and after model search; no in-loop deterministic tool is available.\n"
+        if initial_only:
+            placement = (
+                "The harness freshly measured the original proof inside this run. "
+                + (
+                    "It then ran initial deterministic optimization for at most five minutes. "
+                    if deterministic_enabled
+                    else "All deterministic transformations are disabled for this condition. "
+                )
+                + "All deterministic work precedes model search; there is no final cleanup. "
+                "Reference denominators remain pinned to the original benchmark.\n"
+            )
         policy = MODE_TOOLS["score"]
         if budget_tracking is not None:
             budget_policy = (
                 "Your supplied whole-problem cost budget covers all model attempts.\nThere is no whole-problem wall-time limit unless explicitly supplied."
                 if budget_tracking == "cost"
-                else "Your supplied whole-problem deadline includes host checks and final cleanup."
+                else (
+                    "Your supplied whole-problem deadline includes original measurement, initial optimization and all host checks."
+                    if initial_only
+                    else "Your supplied whole-problem deadline includes host checks and final cleanup."
+                )
             )
             policy = policy.replace(
                 "You\nhave no fixed total attempt, token or wall-time budget.",
@@ -202,6 +223,13 @@ def budget_suffix(
             f"\nWhole-problem time limit: {budget['timeout_seconds']:g} seconds{remaining_note}, including host checks and final cleanup. "
             "Use status to see remaining seconds. Leave time for final cleanup; the host keeps the best proof already verified across every required version when the deadline arrives."
         )
+        if config.get("initial_pipeline_version"):
+            suffix = (
+                f"\nWhole-problem time limit: {budget['timeout_seconds']:g} seconds ({remaining:g} seconds remaining), "
+                "including original measurement, initial optimization and host checks. "
+                "There is no final deterministic cleanup. Use status for remaining time; "
+                "the host retains the best proof verified on every required version."
+            )
     if config.get("budget_tracking") == "cost":
         limit, total = config["budget_usd_per_problem"], cost["total_usd"]
         suffix += (

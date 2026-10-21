@@ -14,7 +14,7 @@ from proof_eval.providers.costs import (
     generations_cost,
     normalize_token_usage,
 )
-from proof_eval.providers.registry import MODEL_TRACKS
+from proof_eval.providers.registry import MODEL_TIMEOUT_SECONDS, MODEL_TRACKS
 from proof_eval.providers.retries import retryable_transport_failure
 from proof_eval.providers.spending import native_cost_guard
 
@@ -41,7 +41,14 @@ def resolve_budgets(
             raise ValueError("Automatic budgets require conditions from one track")
         tracking = "time" if all(open_models) else "cost"
     if timeout is None and tracking != "cost":
-        timeout = 57 * 60
+        defaults = {
+            MODEL_TIMEOUT_SECONDS.get(model, 57 * 60) for model, _ in conditions
+        }
+        if len(defaults) != 1:
+            raise ValueError(
+                "Conditions with different model time defaults require an explicit timeout"
+            )
+        timeout = defaults.pop()
     return tracking, timeout
 
 
@@ -318,7 +325,9 @@ def stop_decision(
                 "kind": "cost_reserve",
                 "reason": "Remaining estimated budget cannot fund one conservatively priced output token",
             }
-    if time_remaining is not None and time_remaining <= CLEANUP_RESERVE_SECONDS:
+    if time_remaining is not None and time_remaining <= config.get(
+        "cleanup_reserve_seconds", CLEANUP_RESERVE_SECONDS
+    ):
         return {
             "kind": "cleanup_reserve",
             "reason": "Remaining whole-problem time is reserved for final cleanup",

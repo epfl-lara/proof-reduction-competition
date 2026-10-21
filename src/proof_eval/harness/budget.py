@@ -104,6 +104,22 @@ def run_cell(
         write_json(manifest, request)
         seconds = config["problem_timeout_seconds"]
         budget = start_budget(folder, seconds) if seconds is not None else None
+        if (
+            config.get("initial_pipeline_version")
+            and not (folder / "problem_started.json").exists()
+        ):
+            write_json(
+                folder / "problem_started.json",
+                {
+                    "at": now(),
+                    "started_epoch": budget["started_epoch"] if budget else time.time(),
+                    "scope": (
+                        "model_phase_original_and_selected_measurement_admission_search"
+                        if config.get("model_phase_version")
+                        else "original_measurement_initial_optimization_model_search"
+                    ),
+                },
+            )
         with (
             (folder / "worker.stdout.log").open("w") as out,
             (folder / "worker.stderr.log").open("w") as err,

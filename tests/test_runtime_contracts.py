@@ -132,7 +132,7 @@ def test_harness_config_rejects_invalid_or_retired_conditions(fields):
     "provider,workers,condition",
     [
         ("codex", 5, ("gpt-6.1-sol", "max")),
-        ("lemex", 3, ("Qwen/Qwen3.8-Flash-Next", "xhigh")),
+        ("lemex", 5, ("Qwen/Qwen3.8-Flash-Next", "xhigh")),
     ],
 )
 @pytest.mark.parametrize("failure", [None, "unknown_usage", "exception"])
@@ -224,25 +224,26 @@ def test_full_cohort_uses_fixed_parallel_slots_and_isolates_cell_failures(
 @pytest.mark.parametrize(
     "provider,workers", [("codex", 5), ("lemex", 3), ("claude", 5), ("agy", 5)]
 )
-def test_provider_parallelism_is_fixed_in_python_and_cli(
+def test_provider_parallelism_defaults_and_overrides_in_python_and_cli(
     provider, workers, monkeypatch
 ):
     captured = []
-    monkeypatch.setattr(cli, "run", lambda args: captured.append(args) or {})
+    monkeypatch.setattr(
+        cli, "run_pipeline", lambda args: captured.append(args.model) or {}
+    )
     assert RunConfig(provider=provider).workers == workers
     assert cli.main(["run", "--provider", provider]) == 0
     assert captured[0].workers == workers
     assert RunConfig(provider=provider, workers=workers).workers == workers
-    with pytest.raises(ValueError, match=f"exactly {workers} workers"):
-        RunConfig(provider=provider, workers=workers + 1)
-    assert cli.main(["run", "--provider", provider, "--workers", str(workers + 1)]) == 2
+    assert RunConfig(provider=provider, workers=workers + 1).workers == workers + 1
+    assert cli.main(["run", "--provider", provider, "--workers", str(workers + 1)]) == 0
 
 
 def test_model_run_rejects_removed_pilot_option(monkeypatch):
     def forbidden(*args):
         raise AssertionError("Invalid pilot flags must not dispatch model work")
 
-    monkeypatch.setattr(cli, "run", forbidden)
+    monkeypatch.setattr(cli, "run_pipeline", forbidden)
     with pytest.raises(SystemExit) as error:
         cli.main(["run", "--pilot"])
     assert error.value.code == 2
@@ -256,7 +257,7 @@ def test_model_handoff_cannot_be_launched_or_resumed(tmp_path, monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError("Retired handoffs must not dispatch requests")
 
-    monkeypatch.setattr(cli, "run", forbidden)
+    monkeypatch.setattr(cli, "run_pipeline", forbidden)
     with pytest.raises(SystemExit) as error:
         cli.main(["run", "--first-attempt-condition", "gpt-6-luna:max"])
     assert error.value.code == 2

@@ -109,6 +109,7 @@ def test_hard_deadline_retains_best_and_kills_detached_tools(
         "score_edges",
         packs,
         conditions=[(model, effort)],
+        restart_history=False,
         semantic_search=False,
         web_search=False,
         provider=provider,
@@ -208,7 +209,7 @@ def test_qwen_native_configuration_and_unknown_price():
     config = RunConfig(
         provider="lemex", conditions=(("Qwen/Qwen3.8-Flash-Next", "xhigh"),)
     )
-    assert config.problem_timeout_seconds == 3420
+    assert config.problem_timeout_seconds == 14400
     cost = estimate_token_cost(
         CostConfig(*config.conditions[0]),
         {
@@ -270,6 +271,7 @@ def test_budget_tracking_cost_restarts_from_best_declaration(tmp_path, monkeypat
         "score_edges",
         packs,
         conditions=[(model, effort)],
+        restart_history=False,
         semantic_search=False,
         web_search=False,
         provider="codex",
@@ -359,6 +361,7 @@ def test_budget_tracking_can_be_explicitly_disabled(tmp_path, monkeypatch):
         "score_edges",
         packs,
         conditions=[(model, effort)],
+        restart_history=False,
         semantic_search=False,
         web_search=False,
         provider="codex",
@@ -428,6 +431,7 @@ def test_budget_tracking_time_restarts_while_time_remains(tmp_path, monkeypatch)
         "score_edges",
         packs,
         conditions=[(model, effort)],
+        restart_history=False,
         semantic_search=False,
         web_search=False,
         provider="codex",
@@ -522,7 +526,9 @@ def test_budget_tracking_cli_and_validation(monkeypatch):
 
     captured = []
     monkeypatch.setattr(
-        cli, "run", lambda run_cfg: captured.append(run_cfg) or {"status": "complete"}
+        cli,
+        "run_pipeline",
+        lambda run_cfg: captured.append(run_cfg.model) or {"status": "complete"},
     )
     cli.main(["run", "--budget-tracking", "cost", "--budget-usd", "2.0"])
     assert captured[-1].budget_tracking == "cost"

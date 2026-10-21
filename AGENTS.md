@@ -3,7 +3,15 @@
 This repository optimizes Lean proofs for Lean Refactor Arena. Read `README.md`
 and `docs/ARCHITECTURE.md` before changing the runtime. The active model conditions
 are **gpt-6.1-sol/max** and **gpt-6-astra/max**. The default search uses the revised
-prompt, score feedback, and deterministic cleanup at the beginning and end.
+prompt and score feedback, with three separate cohort phases: one-sweep cleanup
+of every theorem, model search, then one-sweep cleanup of each model condition's
+outputs. Both cleanup phases default on, with eight workers and no five-minute
+cap. Model jobs contain no deterministic transforms. Sol and Qwen default to
+five model workers; phase worker counts are independently configurable.
+Restart history is off by default; enable it explicitly with `--restart-history`.
+The default starting state is the original dataset. Reuse cleaned/optimized proofs
+only through an explicit `--starting-proofs` path, retaining source provenance,
+fresh all-version checks and private per-cell candidate/analysis caches.
 There is one canonical prompt in `prompts/refactor_system.md`, with the experimental
 priority and five-card revision in `prompts/strategy_bank.json`; historical V2
 runs retain their frozen bytes. Provider probes use native
@@ -30,8 +38,25 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
 
 ## Preserve measurement and experiment contracts
 
-- Never remeasure original proofs implicitly. Preparation is a separate, explicit
-  action; search and reward functions only read cached reference measurements.
+- Before launching each new experiment, ask the user to confirm one concrete
+  configuration: dataset/cohort, model and effort, starting proof state/path,
+  before/after cleanup, worker counts for each phase, history setting, model
+  time/cost limits, output directory and overall resource allowance. Previously
+  confirmed settings authorize that exact experiment; do not ask again for its
+  unchanged resume. Preparation, offline tests and read-only analysis need no
+  experiment approval. Do not launch a model or Lean search experiment merely
+  to test a code change.
+- New harness runs explicitly measure the original proof on every required version
+  inside the model-phase clock before any model call. Keep canonical scoring denominators
+  pinned; save the fresh measurement separately. General evaluator/reward calls must
+  still never remeasure reference denominators implicitly. An explicitly selected
+  starting proof is freshly verified; never import another run's candidate/analysis
+  cache. Raw JSONL inputs have declared external provenance, not an implied audit.
+  Labelled model-produced inputs must match the receiving model and effort.
+  New runs allow one recorded original-measurement retry only after a terminal
+  wall timeout; keep both attempts, the same pinned verifier, private caches,
+  and the original problem clock. Never replay an interrupted measurement or
+  retry a semantic failure.
 - Keep the dataset's original token denominator. Measure candidates using fresh
   pinned `lake env lean`, synchronous `Elab.async=false`, and the existing
   `IO.getNumHeartbeats` wrapper. Timing and `--profile` are not heartbeats.
@@ -40,8 +65,15 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
   still checks correctness rules. A backend change needs an explicit measurement
   version and a separately prepared cache, never silent cache substitution.
 - Keep the best proof passing **every required version**, with the configured
-  0.05 percentage-point improvement margin. Preserve a better raw proof if final
-  deterministic cleanup regresses. In-loop deterministic cleanup is retired.
+  0.05 percentage-point improvement margin. Deterministic work defaults to the
+  measured `one_sweep` plan: all sixteen methods in gain order, one traversal,
+  per-method rounds=3, trials=32, sites=6; no overall five-minute cap. Keep finite
+  work bounds and verifier/discovery watchdogs. Cleanup must finish across the
+  cohort before model search begins; postprocessing starts after the model batch
+  and uses each condition's own outputs. Use --no-deterministic for model-only.
+  A recorded deterministic discovery timeout retains its valid incumbent and is
+  a limited search outcome, not a claim that discovery completed. Other discovery
+  failures remain incomplete. Preserve and audit the terminal timeout evidence.
 - Keep prompts, model settings, model-to-track classification in
   `providers/registry.py`, source projects, denominators, and cohort size fixed
   for matched experiments. Routing additions must declare their track separately
@@ -66,8 +98,11 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
   recoveries: at most 23 admitted attempts per problem, including the initial
   attempt. Configure them separately with `max_budget_restarts` and
   `max_transport_restarts`; native HTTP/stream retries stay inside their session.
-- New runs automatically select one track budget: open models use a 3420-second
-  (57-minute) whole-problem deadline including host tools and final cleanup;
+- New runs automatically select one track budget: Qwen uses a 14400-second
+  (four-hour) model-phase deadline per theorem; other open models retain their
+  explicit/default allocation (currently 3420 seconds for DeepSeek). Model-phase
+  measurement, admission and tools count inside that timer; cohort cleanup is
+  measured separately and contributes to whole-workflow wall time;
   closed models use a $3 per-problem API-equivalent cost budget with no implicit
   wall-time limit. A numeric timeout explicitly adds a watchdog to cost tracking.
   Preserve the best fully checked proof when the selected budget is exhausted;
@@ -77,10 +112,13 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
   files remain frozen until every cell is terminal, which can take hours or days
   without a wall-time limit. Use an isolated copy for other runs whenever
   development must continue.
-  The 30-second cleanup reserve applies only when a wall deadline is configured,
-  including an explicit cost-track watchdog. It is inert for cost-only runs.
-  Final cleanup uses deterministic transformations and Lean, makes no model
-  requests and spends no model dollars; it starts after model search stops.
+  New runs have no model-budget cleanup reserve. Cleanup spends no model dollars.
+  Report before/model/after times and total elapsed time; never present model-only
+  time as the full workflow. The user-reported competition allocation is a 48-hour
+  node with 64 physical CPU cores and four A100 80GB GPUs; this is a whole-workflow
+  resource allowance, not a GPU-hour conversion or an automatic harness watchdog.
+  Confirm the resource plan for the selected cohort. Historical 57-minute total
+  deadlines, five-minute initial caps and edge cleanup remain read-only evidence.
 - Do not edit pinned runtime or prompt files while an experiment is running.
   Use a new output directory when code, inputs, settings, or budgets change.
 - Keep historical result/config/request bytes unchanged. Auditors may verify
@@ -129,10 +167,28 @@ tool boundaries, and a small end-to-end batch. Do not add tests that merely repe
 the implementation or use a paid model call as a default unit test.
 
 Model batches start the full selected cohort directly, with no pilot gate.
-Use exactly five parallel workers for Codex and the other closed providers,
-and exactly three for Lemex. A 15-theorem condition uses five slots across
-three groups for Codex, or three slots across five groups for Lemex. Individual
+Default to eight workers independently in each cleanup phase, five for Sol and
+Qwen model search, and three for DeepSeek. Override with `--cleanup-workers`,
+`--before-workers`, `--after-workers` and `--model-workers`; positive counts are
+allowed while the shared provider admission limit still applies. Individual
 incomplete outcomes or worker failures must not cancel other queued theorems.
 Keep cached-reference and runtime preflight checks, and run `proof-harness audit`
 on saved evidence. State what actually completed, the validation performed,
 and any incomplete outcomes. Keep user-owned untracked files untouched.
+
+The standard interface accepts an explicit `--starting-proofs` manifest/directory
+or organizer-style JSONL on either track. Confirm it in the experiment plan.
+Reusing prepared proofs saves local work but does not erase their provenance or
+prior compute cost. Separate imported-state, pre-cleanup, model and post-cleanup
+scores. Use a new output for changed inputs or settings.
+
+Legacy closed-track checkpoint experiments may use `--deterministic-checkpoint`
+with a complete audited deterministic exploration condition and
+`--no-deterministic`. Confirm the starting point with the user for each new
+experiment. This opt-in requires cost tracking without a wall deadline; the
+default remains original-start. Original proofs are still freshly measured,
+canonical denominators stay fixed, and each checkpoint is freshly checked in
+a private cell cache before any model call. No model-produced seed is accepted
+through this interface. Reports separate the checkpoint score from subsequent
+model gains. Keep the source condition and runtime frozen; incomplete checkpoint
+verification is never automatically replayed.

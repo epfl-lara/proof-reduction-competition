@@ -7,7 +7,7 @@ from pathlib import Path
 
 from proof_eval.evidence.audit import _implementation
 from proof_eval.evidence.io import digest, fingerprint, read, write_json
-from proof_eval.optimization.cleanup import BUDGET, METHODS
+from proof_eval.optimization.cleanup import BUDGET, METHODS, PROOF_THEORY_METHODS
 from proof_eval.paths import PACKAGE, ROOT, SNAPSHOTS
 from proof_eval.providers.costs import CostConfig, estimate_configuration, rate_card
 from proof_eval.providers.registry import DEFAULT_CONDITIONS, adapter, validate
@@ -197,10 +197,25 @@ def prepare(
     max_transport_restarts: int = 2,
     incumbents_from: Path | None = None,
     carry_budgets_from: Path | None = None,
+    deterministic_checkpoint: Path | None = None,
+    starting_proofs: Path | None = None,
     semantic_search: semantic.SemanticSearchConfig | bool | None = True,
     web_search: bool = True,
     restart_history: bool = False,
+    proof_theory_cleanup: bool = False,
+    initial_pipeline: bool = False,
+    initial_methods: tuple[str, ...] = (),
+    initial_seconds: float = 300.0,
 ) -> dict:
+    if starting_proofs is not None and (
+        deterministic_checkpoint is not None or not initial_pipeline or initial_methods
+    ):
+        raise ValueError(
+            "Explicit starting proofs require model-only fresh measurement; "
+            "choose one starting-point interface"
+        )
+    if type(proof_theory_cleanup) is not bool:
+        raise ValueError("proof_theory_cleanup must be a boolean")
     if type(restart_history) is not bool:
         raise ValueError("restart_history must be a boolean")
     if type(web_search) is not bool:
@@ -320,6 +335,12 @@ def prepare(
         "rate_card": rate_card(provider),
     }
     config.update(paths or {})
+    if initial_pipeline:
+        from proof_eval.optimization.bounded import validate_methods
+
+        validate_methods(initial_methods, initial_seconds)
+        if incumbents_from is not None or carry_budgets_from is not None:
+            raise ValueError("New runs start from original proofs")
     if restart_history:
         from .restart_history import VERSION
 
@@ -347,6 +368,69 @@ def prepare(
             deterministic_budget=asdict(BUDGET),
             deterministic_jobs=str((output.parent / "deterministic_jobs").resolve()),
             deterministic_placement="beginning_and_end",
+        )
+        if proof_theory_cleanup:
+            config["proof_theory_cleanup_version"] = 1
+            config["initial_deterministic_methods"] = list(PROOF_THEORY_METHODS)
+            config["deterministic_methods"] += list(PROOF_THEORY_METHODS)
+    if initial_pipeline:
+        config.pop("proof_theory_cleanup_version", None)
+        config.update(
+            initial_pipeline_version=1,
+            initial_measurement_timeout_retries=1,
+            seed="fresh_measured_original",
+            reference_policy="fresh_original_measurement_fixed_denominators",
+            candidate_cache_policy="private_per_cell",
+            initial_deterministic_methods=list(initial_methods),
+            initial_deterministic_seconds=float(initial_seconds),
+            deterministic_methods=list(initial_methods),
+            deterministic_cleanup=bool(initial_methods),
+            deterministic_placement="initial_only",
+            deterministic_jobs=str((output / "cells").resolve()),
+            cleanup_reserve_seconds=0.0,
+            time_budget_policy="Original measurement, initial optimization and model search share the problem clock; no final deterministic cleanup",
+            tool_instructions=tool_instructions(
+                mode,
+                budget_tracking=budget_tracking,
+                semantic_search=semantic_search is not None,
+                web_search=web_search,
+                initial_only=True,
+                deterministic_enabled=bool(initial_methods),
+            ),
+        )
+    if initial_pipeline and not initial_methods and deterministic_checkpoint is None:
+        config["model_phase_version"] = 1
+        config["budget_scope"] = "model_phase"
+        config["time_budget_policy"] = (
+            "Model phase only: fresh original and selected-state verification, "
+            "admission and model search share this clock; external cleanup phases "
+            "are recorded separately by the cohort pipeline"
+        )
+    if deterministic_checkpoint is not None:
+        from .checkpoint import freeze_checkpoint, validate_checkpoint_policy
+
+        validate_checkpoint_policy(config)
+        config["deterministic_checkpoint"] = freeze_checkpoint(
+            deterministic_checkpoint, packs, Path(config["references_path"])
+        )
+    if starting_proofs is not None:
+        from proof_eval.evidence.proof_states import (
+            freeze_proof_states,
+            validate_lineage,
+        )
+
+        config["starting_proofs"] = freeze_proof_states(
+            starting_proofs, packs, Path(config["references_path"])
+        )
+        for condition in conditions:
+            validate_lineage(config["starting_proofs"], tuple(condition))
+        config["seed"] = "fresh_original_then_explicit_state"
+        config["model_phase_version"] = 1
+        config["budget_scope"] = "model_phase"
+        config["time_budget_policy"] = (
+            "Model phase only: fresh original and selected-state verification, "
+            "admission and model search share this clock; external cleanup phases "
+            "are recorded separately by the cohort pipeline"
         )
     for name in config["names"]:
         for model, effort in conditions:
@@ -378,6 +462,20 @@ def prepare(
 
 
 def guard(config, pack, evaluator):
+    if config.get("starting_proofs"):
+        from proof_eval.evidence.proof_states import guard_proof_states
+
+        for condition in config["conditions"]:
+            guard_proof_states(
+                config["starting_proofs"],
+                load_inputs(Path(config.get("base_directory", BASE))),
+                Path(config["references_path"]),
+                condition=tuple(condition),
+            )
+    if config.get("deterministic_checkpoint"):
+        from .checkpoint import guard_checkpoint
+
+        guard_checkpoint(config, pack["row"])
     if config.get("web_search") is not None:
         web.guard(config["web_search"])
     if config.get("semantic_search") is not None:

@@ -1,10 +1,14 @@
 # Proof Reduction Competition
 
-Lean proof optimization for [Lean Refactor Arena](https://huggingface.co/spaces/delta-lab-ai/lean-refactor-arena). The active model configurations are **Sol 6.1/max** and **Astra/max**. The default harness uses the revised prompt, source/goal tools, measured score feedback, and deterministic cleanup at the beginning and end.
+Lean proof optimization for [Lean Refactor Arena](https://huggingface.co/spaces/delta-lab-ai/lean-refactor-arena). The default workflow is:
 
-The warm-up benchmark contains 15 declarations and 36 required version checks. We score candidates against the original dataset token counts and cached local heartbeat measurements. The combined objective is the mean of length reduction, heartbeat reduction and compatibility. Local measurements and organizer scores are reported separately.
+**One-sweep cleanup of the whole cohort → model search → one-sweep cleanup of each model condition's outputs.**
 
-## Start here
+The three phases have separate worker pools. Both cleanup phases default on, with **eight workers** and no five-minute cap. Sol 6.1/max and Qwen3.8-Flash-Next/xhigh default to **five model workers**. Restart history is **off**. The default starting state is the original dataset; reusing prepared proofs requires an explicit path.
+
+The warm-up cohort has 15 declarations and 36 required version checks. Scores use the original token denominators and pinned local heartbeat references. Combined score is the mean of length reduction, heartbeat reduction and compatibility; local scores and organizer results remain separate.
+
+## Setup and validation
 
 ```bash
 conda activate af
@@ -13,300 +17,116 @@ make check
 make test
 ```
 
-Core verification has no third-party runtime dependencies. Default semantic
-discovery requires the semantic extra and prepared local assets. Lean evaluation
-needs the pinned, prebuilt projects listed in the local environment map. The
-existing warm-up references are already prepared; search never remeasures them.
+Prepare the pinned Lean projects, environment map, reference export and full-cohort input packs before a run. Setup and reference preparation are explicit operations; the optimizer never silently changes reference denominators. See [architecture](docs/ARCHITECTURE.md) and [deterministic batches](docs/DETERMINISTIC_BATCH.md).
 
-Literal source search includes the project's installed Lake dependencies, with
-project-local matches first. Semantic discovery is enabled by default and uses
-LeanExplore's cached index and CPU embeddings:
+Native agents need Linux Landlock ABI 3+ and bubblewrap. Each attempt has a private PID namespace and protected source/evidence paths; missing isolation fails before inference. Semantic search uses an already cached LeanExplore index and CPU embeddings. Web and semantic discovery are enabled by default; disable them with `--no-web-search` and `--no-semantic-search` when explicitly configuring a condition.
 
-```bash
-python -m pip install -e '.[dev,semantic]'
-# Prepare the index and Qwen/Qwen3-Embedding-0.6B cache before running.
-lean-explore data fetch
-proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
-  --semantic-search --output results/harness/my_qwen_tools_run
-```
+## Run the three phases
 
-Semantic discovery only reads already cached assets and freezes their hashes
-and dependency versions. Web search is also enabled by default, through separate
-host tools. The index may use different source versions, so its declaration headers and docstrings are
-discovery hints; use pinned source lookup and all-version checks to validate
-them. Indexed proof bodies are omitted. Strata and Arklib currently have no
-project-specific index coverage; their pinned source and dependency searches
-remain available.
-
-All proof, source, profiling, semantic and web tools are available by default
-for new runs. Disable discovery features explicitly with `--no-semantic-search`
-or `--no-web-search`. Python callers can use `semantic_search=False` and
-`web_search=False`; `semantic_search=None` also disables semantic discovery.
-Default semantic assets are located only during explicit preparation, not when
-importing the package or constructing `RunConfig`. Missing assets fail preflight
-with setup guidance rather than silently reducing the tool set.
+Confirm the experiment parameters with the user before launching: cohort, model/effort, starting state, cleanup placement, each worker count, history, budgets, output directory and overall resource allocation. Offline tests and preparation do not launch an experiment.
 
 ```bash
-# Price scenarios from saved traces; no model or Lean calls.
-proof-harness estimate --condition gpt-6.1-sol:max \
-  --output results/harness/my_sol_run
+# Preparation only: pin inputs and check runtime/reference availability.
+proof-harness prepare --condition gpt-6.1-sol:max \
+  --cleanup-workers 8 --model-workers 5 --output results/my_sol
 
-# Run all 15 with five parallel workers. Repeating reuses completed cells.
+# Same frozen configuration: run all three phases.
 proof-harness run --condition gpt-6.1-sol:max \
-  --output results/harness/my_sol_run
+  --cleanup-workers 8 --model-workers 5 --output results/my_sol
+
+# Qwen: four hours per theorem in the MODEL phase, five model workers.
+proof-harness run --provider lemex \
+  --condition Qwen/Qwen3.8-Flash-Next:xhigh \
+  --cleanup-workers 8 --model-workers 5 --output results/my_qwen
+
+# Separate cleanup concurrency before and after; history is an explicit opt-in.
+proof-harness run --condition gpt-6.1-sol:max \
+  --before-workers 16 --after-workers 8 --model-workers 5 \
+  --restart-history --output results/my_sol_history
+
+# Model-only baseline from original proofs.
+proof-harness run --condition gpt-6.1-sol:max --no-deterministic \
+  --output results/my_sol_model_only
 
 # Saved evidence only.
-proof-harness report --output results/harness/my_sol_run
-proof-harness audit --output results/harness/my_sol_run
+proof-harness report --output results/my_sol
+proof-harness audit --output results/my_sol
 ```
 
-Omit `--condition` to run both active models, or specify `gpt-6-astra:max` for the SOTA condition. New runs automatically use one track budget per problem:
+`--cleanup-workers` sets both deterministic pools; `--before-workers` and `--after-workers` override them independently. `--workers` is an alias for `--model-workers`. Positive worker counts are configurable; the shared RCP admission cap of five simultaneous requests still applies across clients and batches. More cleanup workers do not authorize more gateway requests.
 
-- **Open models (Qwen and DeepSeek): 57 minutes**, including provider admission, Lean tools and final cleanup; no dollar guard.
-- **Closed models (Sol, Astra, Claude and Gemini): $3 API-equivalent estimated cost**, across all attempts; no wall-time limit by default.
+`--no-cleanup-before` and `--no-cleanup-after` disable an individual phase. `--no-deterministic` disables both. No deterministic transform runs inside a model job. A whole-cohort barrier separates the phases; queued theorems continue after individual worker failures, but incomplete cohorts do not acquire full-cohort scores or reusable cleanup states.
 
-The host retains the best proof verified across every required version. Resuming never replenishes the selected budget. Successful voluntary completion starts a fresh attempt from that proof while budget remains. Costs are reported from recorded usage and explicit pricing assumptions.
+## One-sweep policy
 
-Model-to-track classification is declared separately from provider routing in
-`MODEL_TRACKS` in `providers/registry.py` and pinned with each run's source.
-Adding provider support alone does not classify a model for automatic budgets.
-Default to an isolated current runtime copy for closed-track runs: without a
-wall deadline, the entire cohort can hold its pinned files for hours or days.
-RCP's shared five-request cap remains its throughput limiter across batches and
-clients.
+The default is the exact `one_sweep` schedule tested in the completed development study:
 
-Batches queue the full selected cohort directly. Codex and the other closed
-providers use exactly five parallel workers; Lemex uses exactly three. For 15
-theorems, these are five slots across three groups or three slots across five
-groups. There is no model-run pilot option or gate. An incomplete theorem or
-worker failure is recorded while the remaining queued theorems continue.
-The selected usage policy controls admission when usage counters are missing.
+```
+simp menu facts search proof_theory collapse wrappers arith_min
+lint delete golf reuse relax simp_min rw_min consolidate
+```
 
-`--budget-tracking auto` is the default. Choose `--track-cost` or `--track-time` explicitly to override the track policy, and use a new output directory when changing settings:
+Each method is visited once, with its bounded local search (`rounds=3`, `trials=32`, `sites=6`). An accepted proof must pass every required version and improve the combined score by more than 0.05 percentage points. There is no overall 300-second cleanup cap; individual Lean/discovery watchdogs and finite method work bounds still apply. Recorded discovery timeouts preserve valid incumbents as limited search outcomes, not exhaustive-search claims.
+
+The measured one-sweep development result was **+12.184 points**, **23.5 minutes per theorem on average**, and **5.87 summed worker-hours** over all 15 theorems. Replaying those measured durations estimates **53 minutes with eight workers** or **46 minutes with sixteen**; these are scheduling estimates, not measurements on the competition hardware. The same schedule is now enabled after the model phase, but its new end-to-end configuration has not yet been benchmarked.
+
+To run just a cleanup phase:
 
 ```bash
-proof-harness run --condition gpt-6.1-sol:max --track-cost --budget-usd 3 \
-  --output results/harness/my_sol_cost_run
-
-proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
-  --track-time --output results/harness/my_qwen_time_run
+proof-deterministic --output results/my_cleanup --workers 8
+proof-deterministic --output results/my_cleanup --audit
 ```
 
-`--budget-tracking cost` and `--budget-tracking time` are the long forms. Each
-successful voluntary completion starts another conversation and workspace from
-the best verified proof while budget remains. The default safety limits are 20
-optimization restarts (`--max-budget-restarts`) and two transport recoveries
-(`--max-transport-restarts`): at most 23 admitted attempts per problem, including
-the initial attempt. Native HTTP/stream retries stay inside their session.
-Time-limited restarts stop when at most 30 seconds remain for final cleanup;
-this reserve is inert in cost-only runs. Final cleanup uses deterministic
-transformations and Lean, makes no model requests and spends no model dollars.
-Indeterminate requests, permanent failures and unavailable verification never
-trigger a retry. Strict cost tracking stops when cumulative spending is unknown.
-Cost tracking requires a priced model; use time tracking for Lemex models.
+The output includes `state.json`, final proofs/evaluations, full search evidence, a report and an audit. See [batch inputs and reuse](docs/DETERMINISTIC_BATCH.md) for another dataset or cohort size.
 
-Transient gateway failures have separate recovery limits. Lemex allows four
-HTTP retries and five stream retries within its native conversation. After an
-observed terminal transient failure, the host permits up to two new sessions
-from the best verified proof, with bounded backoff and the same problem budget.
-Use `--max-transport-restarts 0` to disable host recovery. Transport recovery has
-its own restart count, separate from successful optimization attempts. Reconnect
-notifications remain in the evidence, and
-unreported usage from interrupted responses stays unknown.
+## Starting proofs and reuse
 
-New Codex cost runs default to `--usage-policy best_effort`. They retain native
-request traces and a host-owned `response_usage.json` for each attempt, including
-every reported response counter before and after context compaction. Missing
-counters remain explicitly unreported. For budget admission, the host adds
-separately recorded heuristics: compaction input uses the nearest preceding
-reported inference input plus output, and compaction output uses the nearest
-following reported inference input as a conservative proxy. Each estimate saves
-its source counters. Missing neighbors and partial responses without counters
-use canonical UTF-8 JSON bytes divided by four, rounded up. Unreported input is
-priced as uncached. A failed request with no partial output is estimated at zero, an
-assumption rather than evidence of zero charge. These estimates can overstate
-or understate actual usage, especially for encrypted compaction payloads.
-
-Best-effort accounting permits bounded recovery from an observed terminal
-transient failure, including missing usage, while deducting all reported and
-estimated spending from the same problem budget. Successful native retries keep
-their successful outcome. Explicit capacity/rate-limit refusals without partial
-output remain recorded as rejected requests under the existing refusal policy.
-When a conservative native token allowance stops a session before the cumulative
-estimate reaches the dollar target, best-effort tracking can start a fresh
-session from the verified incumbent using the remaining dollars.
-Estimates never replace reported counters or claim
-complete usage. Missing or inconsistent trace evidence that cannot support an
-estimate still stops cost tracking. Use `--usage-policy strict` to stop whenever
-cumulative usage is unknown. The policy is pinned with new configurations;
-historical configurations without it retain strict behavior and unchanged bytes.
-
-For an explicitly authorized new run after an old interruption, pass
-`--incumbents-from results/harness/prior_run` and a new `--output`. The harness
-pins and validates that condition's saved proofs, reference identities and
-theorem context without remeasurement. The new run receives a fresh track budget;
-all automatic recoveries inside it share that one budget. Other model conditions
-cannot supply its proofs.
-
-To continue a stopped cost-tracked run after a runtime fix without replenishing
-its budget, use `--carry-budgets-from results/harness/prior_run` with a new output.
-The harness audits and pins prior evidence, counts every prior attempt, preserves
-any explicitly configured original deadline, and reuses that condition's best
-verified proof. Unknown cumulative spending or an unfinished prior request
-blocks continuation. The source and destination must use the same usage policy;
-carrying a historical budget without that field requires `--usage-policy strict`.
-
-Cost tracking passes the remaining budget to the native CLI and sums observed
-costs across attempts. Codex uses a conservative weighted token allowance;
-Claude uses its dollar allowance. Both check between upstream responses, so a
-response already in flight may exceed the target. This is an API-equivalent
-estimate with explicit stop evidence, not a certified hard invoice cap. Native
-limit stops may omit usage; such counters remain unknown, with best-effort
-estimates separately identified where available. Cost-only calls through
-the Python search API also have no implicit deadline.
-An explicit `--problem-timeout-seconds` / `RunConfig.problem_timeout_seconds`
-adds a wall-time watchdog when requested; it overrides the 3420-second allocation
-for time tracking. Python callers can set `budget_tracking=None` for a single
-voluntary attempt under the time limit.
-
-Each condition keeps the same model and effort for every attempt. Mixed-model
-handoffs are retired. Their saved reports and evidence remain available for
-read-only inspection and audit; they cannot seed or resume a new search.
-
-There is one active task policy: [refactor_system.md](prompts/refactor_system.md)
-and its five-card [strategy bank](prompts/strategy_bank.json). The experimental
-revision prioritizes obvious local reductions, structural changes and measured
-score losses, with cards for induction aligned with recursion, logical
-reformulation and controlled inference. Check feedback separates length and
-heartbeat contributions to a valid candidate's score change and shows the best
-proof's remaining score loss. The exploratory [Sol comparison](results/harness/16_prompt_feedback_strategy/20261013T000952Z/COMPARISON.md)
-measured 89.448630% for this bundle versus 89.265062% for the recovered control;
-the report records recovery qualifications. Historical V2 runs retain their frozen prompts. There is no
-prompt-version or search-mode selector. All providers use score feedback and
-cleanup at the edges. By default, restarts carry only the best verified proof.
-
-The opt-in `--restart-history` / `RunConfig(restart_history=True)` experiment also
-carries bounded same-theorem history: up to two accepted and four rejected
-checked trials, three source observations, and the latest unverified model note
-of each kind (`discovery`, `rejected`, `next`). The host caps the serialized
-history at 12,000 characters and reconstructs it during audit from earlier
-same-condition evidence. Models can save notes with `python tools.py remember
---kind next --text 'short hypothesis'`; notes never count as proof certificates.
-This changes restart context only and requires a new output. It remains opt-in.
-The [Sol history trial](results/harness/17_restart_history/20261013T084641Z/FINAL_REPORT.md)
-completed at 89.904622% (+0.455991 percentage points over the revised control).
-The [Qwen follow-up](results/harness/18_qwen_prompt_history/20261013T130211Z/FINAL_REPORT.md)
-completed at 81.769564%; its historical comparison is not matched. All cohorts
-have 15 completed theorems and passing audits. These exploratory results do not
-isolate individual changes or establish held-out performance.
-
-Native Lemex, Claude Code and Google Antigravity run the same task with their own shell/edit tools:
+Original dataset proofs are the default. To explicitly reuse a prior cleanup or model state:
 
 ```bash
-# DeepSeek: existing .env gateway key is passed only to the Lemex child.
-proof-harness run --provider lemex \
-  --output results/harness/my_deepseek_run
-
-# Qwen with the same score, source, goal and tactic-profiling tools.
-proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
-  --output results/harness/my_qwen_run
-
-# A separate web-enabled condition, retaining the local semantic tools.
-proof-harness run --provider lemex --condition Qwen/Qwen3.8-Flash-Next:xhigh \
-  --semantic-search --web-search \
-  --output results/harness/my_qwen_web_run
-
-# Sign in with `claude auth login` first. Exact Opus 5.5/max, no fallback.
-proof-harness run --provider claude \
-  --output results/harness/my_opus_run
-
-# Antigravity `agy` with an existing Google login. Exact Gemini 3.8 Flash/high.
-proof-harness run --provider agy --track-cost --budget-usd 3 \
-  --output results/harness/my_antigravity_run
+proof-harness run --condition gpt-6.1-sol:max \
+  --starting-proofs results/my_cleanup/state.json \
+  --no-cleanup-before --output results/my_sol_from_cleanup
 ```
 
-`--web-search` enables `python tools.py web_search` and `web_open` for public
-HTTPS sources. The host uses DuckDuckGo Lite for discovery and saves each
-request, response and fetched source body. This works independently of native
-hosted search, which the RCP probe did not expose. External information is a
-discovery hint; the pinned Lean checks and scoring rules remain authoritative.
-Use a new output directory when changing tool availability. Web search defaults
-to enabled and requires no additional API key; `--no-web-search` disables it.
+`--starting-proofs` accepts a `state.json`, a cleanup directory containing that file, or explicit JSONL records with `name` and a full `proof` declaration (`code` is also accepted). The state must cover the exact declared cohort. Selecting a state does not implicitly disable cleanup; use `--no-cleanup-before` to avoid another sweep. Model-produced manifests retain model/effort lineage and cannot seed another condition. Raw JSONL has external, unverified provenance until the fresh compiler checks; it is not represented as an audited deterministic checkpoint.
 
-Lemex defaults to `deepseek-ai/DeepSeek-V4.1-Flash/high`. The direct RCP chat
-client and its temperature/output-cap settings are retired. Native Lemex sends
-no temperature override; the gateway's effective default is not exposed by the
-CLI. Claude uses `claude-opus-5-5/max`, with normal project configuration and
-authentication discovery. Each provider has separate output and usage evidence.
-Claude's reported API-equivalent cost includes its actual cache durations and
-any auxiliary models. Antigravity uses `gemini-3.8-flash/high` (the suffixed
-`--model` slug, no separate effort flag) and prints stream-json evidence from an
-existing `agy` login; its system policy, tool instructions and user message are
-merged into one prompt and therefore reach the model as user-level instructions.
-Complete usage from failed calls is also retained. The exact DeepSeek gateway
-price and the exact Antigravity price remain unknown. Antigravity cost tracking
-uses an explicit standard Gemini API-equivalent estimate: $0.75/M ordinary
-input, $0.075/M cached input, and $3.75/M output including thinking, effective
-through December 31, 2026. A host supervisor watches the streamed usage and
-stops the native process at its remaining per-problem budget. Repeated step
-snapshots are counted once; terminal usage replaces the step subtotal. An
-in-flight response can overshoot, and cache-storage/subscription charges are
-not inferred. Missing terminal usage remains unknown, with the observed
-subtotal retained. See [Google pricing](https://ai.google.dev/gemini-api/docs/pricing).
+Every model cell freshly measures its original proof and verifies any selected state against every required version in its own private cache. The original scoring denominators remain fixed. Invalid or interrupted input checks never trigger a silent replay, and a valid imported proof does not replace a better verified original. Reports separate the starting state, before-cleanup gain, model gain and after-cleanup gain. Reusing a state does not erase its earlier compute cost.
 
-Every completed condition exports `conditions/MODEL__EFFORT/selected_candidates.jsonl`, with one complete declaration per benchmark ID in the organizer's submission format. Invalid or regressive attempts preserve the best proof passing every required version. In-loop deterministic cleanup is retired.
+The older `--deterministic-checkpoint` interface remains a separate closed-track, cost-only compatibility path requiring `--no-deterministic`. It does not accept model-produced seeds. Use `--starting-proofs` for the new phase workflow.
 
-## APIs and code organization
+## Budget and time accounting
 
-All maintained code lives in [src/proof_eval](src/proof_eval). There are dedicated packages for verification, deterministic optimization, provider calls, the model harness, benchmark setup/processing, evidence, and CLI/HTTP interfaces. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for APIs, tool requests, artifacts, resume behavior and the command migration table. [AGENTS.md](AGENTS.md) records implementation and measurement practices. Black, Ruff and pytest run in GitHub Actions using the same `make` commands.
+| Condition | Default per-theorem model budget | Default model workers |
+| --- | --- | ---: |
+| Sol 6.1/max, Astra/max and other closed models | $3 API-equivalent estimate; no implicit wall deadline | 5 |
+| Qwen3.8-Flash-Next/xhigh | Four hours (14,400 seconds) | 5 |
+| DeepSeek V4.1 Flash/high | 57 minutes (3,420 seconds) | 3 |
 
-```python
-from pathlib import Path
-from proof_eval import Evaluator
-from proof_eval.harness.config import RunConfig
-from proof_eval.harness.runner import run
+`--problem-timeout-seconds` changes the model-phase time budget or adds an explicit watchdog to a closed cost run. `--budget-usd` changes the per-theorem cost target. `--track-time` and `--track-cost` explicitly select the budget policy. A mixed cohort with incompatible default time allocations needs an explicit timeout.
 
-# Candidate scoring / GRPO reward adapter; references are read from the cache.
-evaluator = Evaluator()
-result = evaluator.evaluate("putnam_1964_a4", candidate_code, versions="all")
-reward = evaluator.reward("putnam_1964_a4", candidate_code)
+Model-phase time includes its original/selected-proof measurements, provider admission, model inference and host tools. Both cleanup phases have separately measured wall time and do not consume that timer. The pipeline report also records total elapsed wall time, including phase transitions and resume gaps. With no overall workflow watchdog, the per-theorem timer alone does **not** enforce the user-reported 48-hour node allocation. Confirm scheduling against the full cohort and hardware before an experiment. For example, 50 Qwen problems at four hours and five workers allocate 40 hours to model waves alone, before both cleanup phases and overhead.
 
-# Model search uses the same host evaluator and tools.
-report = run(RunConfig(
-    output=Path("results/harness/my_sol_run"),
-    conditions=(("gpt-6.1-sol", "max"),),
-))
-```
+Resuming never replenishes a budget. Indeterminate native requests are not automatically resampled. Terminal transient failures have separately bounded recovery: defaults are 20 optimization restarts plus two transport recoveries, at most 23 admitted attempts per theorem. Every condition keeps one model and effort throughout.
 
-`proof-eval` also provides a JSON CLI and localhost HTTP API:
+New Codex cost runs use `--usage-policy best_effort`: native reported counters remain separate from heuristic estimates for missing usage. Strict mode stops when cumulative usage is unknown. API-equivalent estimates are not invoices or certified hard caps; response boundaries can overshoot. Qwen/DeepSeek gateway prices remain unknown. See [accounting details](docs/ARCHITECTURE.md).
 
-```bash
-proof-eval evaluate putnam_1964_a4 --code-file candidate.lean
-proof-eval profile putnam_1964_a4 --code-file candidate.lean --output profile.json
-proof-eval serve --port 8765 --workers 2
-```
+## Native providers, isolation and monitoring
 
-Models can use `python tools.py profile candidate.lean` to find tactic heartbeat
-hotspots, or add `profile_tactic "label" in tac` in a diagnostic copy to measure
-a chosen tactic or block. Costs are inclusive and include profiling overhead;
-`check` still owns scoring and proof selection. See [tactic profiling](docs/PROFILING.md).
+Use `--provider codex`, `lemex`, `claude` or `agy`. Codex defaults to Sol 6.1/max and Astra/max; Lemex defaults to DeepSeek V4.1 Flash/high, so specify Qwen explicitly. Claude uses exact Opus 5.5/max without fallback; Antigravity uses Gemini 3.8 Flash/high. Native sampling defaults are unchanged.
 
-The generic deterministic API accepts a new competition batch with explicit paths and prepared references. See [docs/DETERMINISTIC_BATCH.md](docs/DETERMINISTIC_BATCH.md). `proof-benchmark` processes references once; `proof-setup` builds the pinned source projects. These are explicit setup actions, separate from search.
+For isolated Lemex runs, pin a private catalog with `PROOF_EVAL_LEMEX_CATALOG` before preparation and execution. Missing explicit catalogs fail preflight. Credentials go only to the provider child environment and must never enter results or Git.
 
-## Data, rules and results
+Use an isolated runtime copy whenever code development may continue during an experiment. Source, prompts, model identity, settings and input hashes stay frozen until the run is terminal. Use a new output directory after changing them. Completed stages are audited and reused on identical resume; started cells without terminal evidence remain incomplete for investigation.
 
-- [RULES.md](RULES.md): saved competition rules and pinned upstream links.
-- [data/benchmark_data_warmup.jsonl](data/benchmark_data_warmup.jsonl): unmodified warm-up data; SHA-256 `6209680cf00cde0765b77b24834cd72c64dd585b2f7e3f2a58209980ab59a804`.
-- [data/benchmark_heartbeats.jsonl](data/benchmark_heartbeats.jsonl): organizer heartbeat references, preserved separately from local ratios.
-- [RSI/RL task corpus](data/training/arena_rsi/README.md): 2,057 training and 50 diverse validation tasks from a corpus covering all six sources, curated against Arena's proof-length distribution. Arena is the test set. Source fidelity and native parsing are audited; bulk compilation and heartbeat preparation remain pending.
-- [problems](problems/README.md): all 15 initial, deterministic and best proof examples with provenance.
-- [results](results/README.md): experiment index, including [deterministic](results/deterministic/README.md) and [model harness studies](results/harness/README.md).
-- [Sol configuration results and submission](results/harness/05_model_config/README.md): the pre-refactor Sol/max result was 87.342215% combined with 100% compatibility.
-- [Refactor validation and fresh Sol replicate](results/harness/06_refactor_regression/COMPARISON.md): 86.575834% combined, 100% compatibility, 36/36 passing versions; the earlier stronger submission is preserved.
-- [Native provider studies](results/harness/07_native_agents/README.md): Opus completed one problem; DeepSeek retained an improved proof after a transport failure. Both cohorts are incomplete.
-- [Sol tactic-profiling trial](results/harness/08_tactic_profiles/sol61_max/PROTOCOL.md): 15/15 complete and audited; 86.951351% combined, 100% compatibility. Profiling was used on every problem; one repeat does not establish a causal score gain.
-- [Qwen Flash Next results and submission](results/harness/09_qwen_flash_next/README.md): the combined original/recovery selection reaches 78.219958% locally over all 15 problems, with 100% compatibility and 36/36 passing version checks. The saved-evidence audits and submission provenance are included.
-- [related_work](related_work/README.md): literature, papers and research proposals.
-- [prompts](prompts): the one active revised task policy and strategy bank.
+`proof-watch --spec watch.json --output watch-results` monitors explicit result roots/services and records deduplicated local alerts for failures, missing terminal evidence, correlated exits and completion. It never retries, stops jobs or sends chat/email messages.
 
-Historical study drivers and their dedicated tests were retired during the package cleanup. Their result evidence remains unchanged, and their original sources are saved in Git checkpoint `bfb2ade6` and content-addressed audit snapshots. Current experiments use the maintained APIs and commands above.
+## Evidence and decisions
+
+The [October 21 summary manifest](results/summary/20261021_deterministic_workflows/manifest.json) covers all **8 Sol and 5 Qwen conditions**, **24 capped deterministic policies**, **5 extended policies**, and **630 selected theorem results**. It includes source hashes, final declarations/evaluations, saved reports/audits and [model](results/summary/20261021_deterministic_workflows/model_conditions.csv) / [deterministic](results/summary/20261021_deterministic_workflows/deterministic_conditions.csv) tables. Full raw session evidence is preserved in a private local archive; compact publication files do not replace the raw dependencies of historical audits.
+
+The best observed Sol result was **90.237%** in the legacy PR/history-off configuration. Clean original-start model-only scores were **89.645% / 89.453%** for Sol history on/off and **80.038% / 81.148%** for Qwen. These single development runs do not establish repeatability. The new one-sweep/before-and-after, history-off workflow is a user-selected trade-off based on measured preprocessing value and available hardware, not a claim of a measured new model winner.
+
+The six new transforms were adapted from [Gordan's PR #1](https://github.com/epfl-lara/proof-reduction-competition/pull/1). The existing ten methods remain in the selected sweep. We did not adopt the PR's alternative restart/tree orchestration; the maintained host harness owns restarts, budgets, verification and phase barriers.
+
+Other references: [rules snapshot](RULES.md), [warm-up data](data/benchmark_data_warmup.jsonl), [organizer heartbeats](data/benchmark_heartbeats.jsonl), [result index](results/README.md), [proof examples](problems/README.md), [canonical prompt](prompts/refactor_system.md), [strategy bank](prompts/strategy_bank.json), and [RSI/RL corpus](data/training/arena_rsi/README.md).

@@ -52,6 +52,7 @@ class ProofSession:
         semantic_config=None,
         web_config=None,
         restart_scope=None,
+        original_measurement=None,
     ):
         if mode not in ("correctness", "score", "score_edges"):
             raise ValueError("Unknown feedback mode")
@@ -71,7 +72,12 @@ class ProofSession:
         self.source_tools = SourceTools(
             evaluator, self.row, self.versions, semantic_config=semantic_config
         )
-        self.original = original_evaluation(pack)
+        self.original = (
+            original_measurement
+            if original_measurement is not None
+            else original_evaluation(pack)
+        )
+        require_valid(self.original, self.row, self.row["src"])
         self.seed_code, self.seed_evaluation = seed or (self.row["src"], self.original)
         if seed is not None:
             require_valid(self.seed_evaluation, self.row, self.seed_code)
@@ -262,14 +268,20 @@ class ProofSession:
             write_json(self.folder / "profiles" / f"{identity}.json", evidence)
             return {**profile_view(result), "evidence_id": identity}
 
-    def deterministic(self, code: str, *, origin: str = "agent_tool") -> dict:
-        """Host-only final cleanup, preserving raw and cleaned evidence."""
+    def deterministic(
+        self, code: str, *, origin: str = "agent_tool", cleanup=None
+    ) -> dict:
+        """Host cleanup at search boundaries, preserving raw and cleaned evidence."""
         with self.lock:
-            if origin != "final_harness" or self.mode != "score_edges":
+            if (
+                origin not in ("initial_harness", "final_harness")
+                or self.mode != "score_edges"
+            ):
                 raise ValueError(
-                    "Deterministic cleanup is available only to the host after search"
+                    "Deterministic cleanup is available only to the host at search boundaries"
                 )
-            if self.cleanup is None:
+            cleanup_fn = cleanup if cleanup is not None else self.cleanup
+            if cleanup_fn is None:
                 raise ValueError("No deterministic portfolio configured")
             self.guard()
             self.check(code, origin="deterministic_input")
@@ -279,6 +291,7 @@ class ProofSession:
             write_json(
                 pending,
                 {
+                    **({"origin": origin} if origin == "initial_harness" else {}),
                     "input_check": before["number"],
                     "input_code_sha256": before["code_sha256"],
                     "before": {
@@ -287,7 +300,7 @@ class ProofSession:
                     },
                 },
             )
-            job = self.cleanup(code) if valid else None
+            job = cleanup_fn(code) if valid else None
             if job is not None:
                 write_json(pending, {**read(pending), "job": job})
             after = None

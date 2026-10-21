@@ -43,7 +43,9 @@ class DiscoveryTextTests(unittest.TestCase):
         )
         self.assertIn("by\n  proof_search_probe 0\n  have α", result)
         self.assertIn(
-            "by proof_search_probe 1\n" + " " * 22 + "(proof_search_probe 2; trivial)",
+            "by proof_search_probe 1\n"
+            + " " * 22
+            + "first | (proof_search_probe 2; trivial)",
             result,
         )
         self.assertTrue(result.endswith("\n  exact α"))

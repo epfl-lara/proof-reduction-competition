@@ -6,9 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from proof_eval.optimization.bounded import ALL_METHODS, validate_methods
 from proof_eval.paths import ROOT
 from proof_eval.providers.registry import (
     DEFAULT_CONDITIONS,
+    MODEL_WORKERS,
     PROVIDER_WORKERS,
     validate,
 )
@@ -39,6 +41,8 @@ class RunConfig:
     max_transport_restarts: int = 2
     incumbents_from: Path | None = None
     carry_budgets_from: Path | None = None
+    deterministic_checkpoint: Path | None = None
+    starting_proofs: Path | None = None
     base: Path = BASE
     dataset: Path = ROOT / "data/benchmark_data_warmup.jsonl"
     environments: Path = ROOT / "environments.local.json"
@@ -51,8 +55,33 @@ class RunConfig:
     web_search: bool = True
     usage_policy: UsagePolicy | None = None
     restart_history: bool = False
+    proof_theory_cleanup: bool = False
+    deterministic: bool = False
+    deterministic_methods: tuple[str, ...] = ALL_METHODS
+    deterministic_seconds: float = 300.0
 
     def __post_init__(self) -> None:
+        if type(self.deterministic) is not bool:
+            raise ValueError("deterministic must be a boolean")
+        validate_methods(self.deterministic_methods, self.deterministic_seconds)
+        if self.deterministic:
+            raise ValueError(
+                "Model jobs do not run deterministic cleanup; use the cohort pipeline "
+                "before and after model search (including checkpoint experiments)"
+            )
+        if (
+            self.starting_proofs is not None
+            and self.deterministic_checkpoint is not None
+        ):
+            raise ValueError(
+                "Choose starting_proofs or deterministic_checkpoint, not both"
+            )
+        if self.incumbents_from is not None or self.carry_budgets_from is not None:
+            raise ValueError(
+                "New runs start from original proofs; resume the existing frozen run instead"
+            )
+        if type(self.proof_theory_cleanup) is not bool:
+            raise ValueError("proof_theory_cleanup must be a boolean")
         if type(self.restart_history) is not bool:
             raise ValueError("restart_history must be a boolean")
         if type(self.web_search) is not bool:
@@ -75,14 +104,17 @@ class RunConfig:
         if self.mode not in RUN_MODES:
             raise ValueError("Unsupported or retired search mode: " + self.mode)
         try:
-            workers = PROVIDER_WORKERS[self.provider]
+            workers = max(
+                MODEL_WORKERS.get(model, PROVIDER_WORKERS[self.provider])
+                for model, _ in self.conditions
+            )
         except KeyError:
             raise ValueError("Unknown agent provider: " + self.provider) from None
         if self.workers is not None and (
-            type(self.workers) is not int or self.workers != workers
+            type(self.workers) is not int or self.workers < 1
         ):
-            raise ValueError(f"{self.provider} batches use exactly {workers} workers")
-        object.__setattr__(self, "workers", workers)
+            raise ValueError("Model workers must be a positive integer")
+        object.__setattr__(self, "workers", self.workers or workers)
         if self.action not in ("run", "estimate", "prepare", "report"):
             raise ValueError("Unknown harness action")
         if not self.conditions or len(set(self.conditions)) != len(self.conditions):
@@ -98,6 +130,21 @@ class RunConfig:
             "usage_policy",
             resolve_usage_policy(self.usage_policy, self.provider, tracking),
         )
+        if self.deterministic_checkpoint is not None:
+            from .checkpoint import validate_checkpoint_policy
+
+            validate_checkpoint_policy(
+                {
+                    "initial_pipeline_version": 1,
+                    "budget_tracking": tracking,
+                    "problem_timeout_seconds": timeout,
+                    "initial_deterministic_methods": (
+                        self.deterministic_methods if self.deterministic else ()
+                    ),
+                    "mode": self.mode,
+                    "conditions": self.conditions,
+                }
+            )
         validate_budgets(
             self.budget_tracking,
             self.budget_usd_per_problem,

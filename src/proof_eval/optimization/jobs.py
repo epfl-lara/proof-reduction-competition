@@ -16,7 +16,8 @@ from .cleanup import BUDGET, METHODS, cleanup_proof
 class DeterministicCleanup:
     """Proof-keyed, shared cleanup jobs using the existing ten-method portfolio."""
 
-    def __init__(self, root, pack, evaluator, provenance, guard):
+    def __init__(self, root, pack, evaluator, provenance, guard, *, methods=METHODS):
+        self.methods = tuple(methods)
         self.root, self.pack, self.provenance, self.guard = (
             Path(root),
             pack,
@@ -47,7 +48,7 @@ class DeterministicCleanup:
                 "name": self.pack["name"],
                 "proof": code,
                 "provenance": self.provenance,
-                "methods": METHODS,
+                "methods": self.methods,
                 "budget": asdict(BUDGET),
             }
         )
@@ -63,6 +64,7 @@ class DeterministicCleanup:
                 folder=folder,
                 provenance=self.provenance,
                 guard=self.guard,
+                methods=self.methods,
             )
             return {
                 **result,

@@ -27,6 +27,14 @@ METHODS = (
     "rw_min",
 )
 BUDGET = Budget(rounds=3, trials=32, sites=6, min_gain=0.05)
+PROOF_THEORY_METHODS = (
+    "delete",
+    "collapse",
+    "consolidate",
+    "proof_theory",
+    "relax",
+    "golf",
+)
 COUNTERS = (
     "attempts",
     "analysis_requests",
@@ -90,7 +98,15 @@ class AllVersionsEvaluator:
 
 
 def cleanup_proof(
-    *, evaluator, row, proof, folder, provenance, optimize_fn=optimize, guard=None
+    *,
+    evaluator,
+    row,
+    proof,
+    folder,
+    provenance,
+    optimize_fn=optimize,
+    guard=None,
+    methods: tuple[str, ...] = METHODS,
 ):
     """Run/resume ten bounded methods once, retaining checkpoints and raw checks.
 
@@ -100,6 +116,12 @@ def cleanup_proof(
     that the full portfolio found no improvement. Reusing a completed job makes
     no evaluator calls. A crashed method resumes its exact saved optimizer state.
     """
+    if (
+        not methods
+        or len(set(methods)) != len(methods)
+        or set(methods) - set(METHODS + PROOF_THEORY_METHODS)
+    ):
+        raise ValueError("Select nonempty, unique cleanup methods")
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     spec = {
@@ -107,7 +129,7 @@ def cleanup_proof(
         "name": row["name"],
         "row_sha256": fingerprint(row),
         "input_proof_sha256": sha(proof),
-        "methods": list(METHODS),
+        "methods": list(methods),
         "budget": asdict(BUDGET),
         "required_versions": versions(row),
         "provenance": provenance,
@@ -147,7 +169,7 @@ def cleanup_proof(
             lambda event: append_event(folder / "policy_events.jsonl", event),
         )
         code, stages = proof, []
-        for index, method in enumerate(METHODS, 1):
+        for index, method in enumerate(methods, 1):
             if guard:
                 guard()
             stage = folder / "stages" / f"{index:02d}_{method}"
