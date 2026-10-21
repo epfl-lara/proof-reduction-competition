@@ -83,6 +83,8 @@ The output includes `state.json`, final proofs/evaluations, full search evidence
 
 Original dataset proofs are the default. To explicitly reuse a prior cleanup or model state:
 
+The 15-problem [original and one-sweep starting sets](problems/README.md#choose-the-models-starting-proofs) are saved side by side, each as `state.json` and `{name, proof}` JSONL. Use `--starting-proofs problems/starting_states/one_sweep --no-cleanup-before` to reuse the selected saved cleanup; omitting the starting-state flag runs the full pipeline from originals.
+
 ```bash
 proof-harness run --condition gpt-6.1-sol:max \
   --starting-proofs results/my_cleanup/state.json \
