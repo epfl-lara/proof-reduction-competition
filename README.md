@@ -68,7 +68,7 @@ lint delete golf reuse relax simp_min rw_min consolidate
 
 Each method is visited once, with its bounded local search (`rounds=3`, `trials=32`, `sites=6`). An accepted proof must pass every required version and improve the combined score by more than 0.05 percentage points. There is no overall 300-second cleanup cap; individual Lean/discovery watchdogs and finite method work bounds still apply. Recorded discovery timeouts preserve valid incumbents as limited search outcomes, not exhaustive-search claims.
 
-The measured one-sweep development result was **+12.184 points**, **23.5 minutes per theorem on average**, and **5.87 summed worker-hours** over all 15 theorems. Replaying those measured durations estimates **53 minutes with eight workers** or **46 minutes with sixteen**; these are scheduling estimates, not measurements on the competition hardware. The same schedule is now enabled after the model phase, but its new end-to-end configuration has not yet been benchmarked.
+The measured one-sweep development result was **+12.184 points**, **23.5 minutes per theorem on average**, and **5.87 summed worker-hours** over all 15 theorems. Replaying those measured durations estimates **53 minutes with eight workers** or **46 minutes with sixteen**; these are scheduling estimates, not measurements on the competition hardware. The [completed Sol workflow comparison](results/summary/20261022_sol_cleanup_placement/README.md) measured 89.3761% in 3h 59m with both cleanup phases, versus 89.6591% in 3h 17m with cleanup only at the end. These are single runs; the default still enables both phases.
 
 To run just a cleanup phase:
 
