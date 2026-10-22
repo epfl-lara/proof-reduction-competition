@@ -290,6 +290,7 @@ def audit_attempts(
                     scheduled_model, scheduled_effort, **config["cost_assumptions"]
                 ),
                 config["budget_usd_per_problem"] - total,
+                version=config.get("native_cost_guard_version", 1),
             )
         _require(
             record["cost_budget"] == guard and request.get("cost_budget") == guard,

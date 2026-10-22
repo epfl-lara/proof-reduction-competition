@@ -316,6 +316,7 @@ def _run_cell(
                     config.get("provider", "codex"),
                     CostConfig(model, effort, **config.get("cost_assumptions", {})),
                     budget_usd - total,
+                    version=config.get("native_cost_guard_version", 1),
                 )
                 if cost_guard.get("limit_tokens") == 0:
                     record_stop(

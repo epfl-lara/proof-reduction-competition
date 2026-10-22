@@ -288,6 +288,12 @@ tracking; there is no implicit provider or whole-problem timeout in cost-only
 search. Open-model runs receive no spending guard. New configurations use schema 8;
 historical configuration and result bytes retain their original budgets.
 
+New runs pin `native_cost_guard_version=2`. A one-token Codex remainder has no
+budget reminder: the native CLI requires every reminder to be strictly between
+zero and the token limit. The spending guard remains enabled, so exhaustion is a
+controlled stop that retains the verified incumbent. Historical configurations
+without the version field retain their original guard reconstruction for audits.
+
 The declarative `MODEL_TRACKS` table in `providers/registry.py` is independent
 of provider routing and pinned with the runtime source. Automatic budgets reject
 unclassified models rather than inferring a track from routing or pricing.

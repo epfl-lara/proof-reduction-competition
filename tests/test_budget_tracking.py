@@ -824,12 +824,13 @@ def test_exact_cost_cap_stops_without_marking_an_overspend(tracking_run):
     assert audit(run.output)["status"] == "passed"
 
 
+@pytest.mark.parametrize("usd", [1.0, 2.080000000015403e-05])
 @pytest.mark.parametrize("budget_failure", [True, False])
 @pytest.mark.parametrize("timeout", [3600.0, None])
 def test_only_explicit_native_budget_events_are_controlled(
-    tracking_run, budget_failure, timeout
+    tracking_run, budget_failure, timeout, usd
 ):
-    run = tracking_run(timeout=timeout)
+    run = tracking_run(timeout=timeout, usd=usd)
     message = (
         "shared rollout token budget exhausted" if budget_failure else "connection lost"
     )
@@ -845,6 +846,11 @@ def test_only_explicit_native_budget_events_are_controlled(
     )
     assert result["cost"]["total_usd"] is None
     assert result["selected_proof"] == run.saved["selected_proof"]
+    guard = result["attempts"][0]["cost_budget"]
+    assert all(
+        0 < reminder < guard["limit_tokens"]
+        for reminder in guard["reminder_at_remaining_tokens"]
+    )
     assert audit(run.output)["status"] == "passed"
 
 
@@ -981,8 +987,20 @@ def test_native_guards_preserve_sampling_and_apply_remaining_dollars(tmp_path):
     )
 
 
+def test_one_token_guard_preserves_historical_audit_version():
+    remaining = 2.080000000015403e-05
+    current = native_cost_guard("codex", CostConfig(MODEL, EFFORT), remaining)
+    legacy = native_cost_guard("codex", CostConfig(MODEL, EFFORT), remaining, version=1)
+    assert current["limit_tokens"] == legacy["limit_tokens"] == 1
+    assert current["reminder_at_remaining_tokens"] == []
+    assert legacy == {**current, "reminder_at_remaining_tokens": [1]}
+    with pytest.raises(ValueError, match="guard version"):
+        native_cost_guard("codex", CostConfig(MODEL, EFFORT), remaining, version=3)
+
+
 @pytest.mark.parametrize(
-    "token_limit,expected_requests,stopped", [(150, 2, True), (1000, 3, False)]
+    "token_limit,expected_requests,stopped",
+    [(1, 1, True), (2, 1, True), (150, 2, True), (1000, 3, False)],
 )
 def test_installed_codex_weighted_guard_stops_multiple_local_responses(
     tmp_path, token_limit, expected_requests, stopped
@@ -1074,13 +1092,11 @@ def test_installed_codex_weighted_guard_stops_multiple_local_responses(
     try:
         system = tmp_path / "system.txt"
         system.write_text("Use shell tools and return a Lean proof.")
-        guard = {
-            "kind": "native_weighted_tokens",
-            "limit_tokens": token_limit,
-            "prefill_token_weight": 0.2,
-            "sampling_token_weight": 1.0,
-            "reminder_at_remaining_tokens": [10],
-        }
+        guard = native_cost_guard(
+            "codex", CostConfig(MODEL, EFFORT), token_limit * 15 / 1_000_000
+        )
+        guard["prefill_token_weight"] = 0.2
+        assert guard["limit_tokens"] == token_limit
         settings = {
             "model_provider": "local_test",
             "model_providers.local_test.name": "Local test only",

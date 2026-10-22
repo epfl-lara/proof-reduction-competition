@@ -14,8 +14,19 @@ from math import isfinite
 from .costs import GEMINI_MODEL, RATES, TIERS, CostConfig, rate_card
 from .retries import reconnect_notice
 
+NATIVE_COST_GUARD_VERSION = 2
 
-def native_cost_guard(provider: str, config: CostConfig, remaining_usd: float) -> dict:
+
+def native_cost_guard(
+    provider: str,
+    config: CostConfig,
+    remaining_usd: float,
+    *,
+    version: int = NATIVE_COST_GUARD_VERSION,
+) -> dict:
+    """Build a spend guard; version 1 preserves historical audit arithmetic."""
+    if type(version) is not int or version not in (1, NATIVE_COST_GUARD_VERSION):
+        raise ValueError("Unsupported native cost guard version")
     if (
         type(remaining_usd) not in (float, int)
         or not isfinite(remaining_usd)
@@ -53,7 +64,11 @@ def native_cost_guard(provider: str, config: CostConfig, remaining_usd: float) -
         "limit_tokens": tokens,
         "prefill_token_weight": float(prefill / sampling),
         "sampling_token_weight": 1.0,
-        "reminder_at_remaining_tokens": [max(1, tokens // 10)],
+        # Native reminders must be positive and strictly below the limit.
+        # A one-token guard still enforces spending, without a reminder.
+        "reminder_at_remaining_tokens": (
+            [max(1, tokens // 10)] if version == 1 or tokens > 1 else []
+        ),
         "pricing": "conservative_cache_write_and_long_context",
     }
 

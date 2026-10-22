@@ -12,6 +12,7 @@ from proof_eval.paths import PACKAGE, ROOT, SNAPSHOTS
 from proof_eval.providers.costs import CostConfig, estimate_configuration, rate_card
 from proof_eval.providers.registry import DEFAULT_CONDITIONS, adapter, validate
 from proof_eval.providers.retries import REQUEST_MAX_RETRIES, STREAM_MAX_RETRIES
+from proof_eval.providers.spending import NATIVE_COST_GUARD_VERSION
 from proof_eval.verification.feedback import all_versions_passed
 from proof_eval.verification.references import (
     check_references,
@@ -250,6 +251,7 @@ def prepare(
     config = {
         "schema_version": 8,
         "attempt_evidence_version": ATTEMPT_EVIDENCE_VERSION,
+        "native_cost_guard_version": NATIVE_COST_GUARD_VERSION,
         "provider": provider,
         "mode": mode,
         "names": base["names"],
