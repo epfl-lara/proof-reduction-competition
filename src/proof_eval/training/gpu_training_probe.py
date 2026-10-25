@@ -141,7 +141,9 @@ def register() -> None:
             )
 
         async def on_turn_end(self, infer_request, response_choice, current_turn):
-            if current_turn != 1:
+            asymmetric = self.config.get("asymmetric_multi_turn_fixture", False)
+            finish_turn = 3 if asymmetric and self.rank in (0, 1, 4, 5) else 1
+            if current_turn not in range(1, finish_turn + 1):
                 raise ValueError("GPU training fixture has exactly one model turn")
             ids = list(response_choice.token_ids or [])
             logprobs = [
@@ -156,7 +158,7 @@ def register() -> None:
             # are not Arena rewards, performance measurements or reusable weights.
             info = {"purpose": PURPOSE, "fixture_reward": float(self.rank % 2)}
             self.put(
-                "response.json",
+                f"response-{current_turn}.json" if asymmetric else "response.json",
                 {
                     **info,
                     "at_epoch": time.time(),
@@ -167,7 +169,13 @@ def register() -> None:
                     "actual_input_messages": infer_request.messages,
                 },
             )
-            return {"done": True, "rollout_infos": info}
+            return {"done": current_turn >= finish_turn, "rollout_infos": info}
+
+        def step(self, infer_request, response_choice, current_turn):
+            infer_request.messages.append(
+                {"role": "user", "content": f"Return only code {70000 + self.rank}."}
+            )
+            return {"infer_request": infer_request}
 
     class Reward(ORM):
         def __call__(self, completions, rollout_infos, **kwargs):

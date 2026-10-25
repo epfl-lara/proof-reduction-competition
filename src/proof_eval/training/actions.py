@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 
 ALLOWED_OPS = frozenset(
     {
@@ -48,10 +47,23 @@ Finish with the finish action when further useful improvement seems unlikely.
 
 
 def parse_action(text: str) -> dict:
-    matches = re.findall(r"<arena_action>\s*(.*?)\s*</arena_action>", text, re.S)
-    if len(matches) != 1:
+    # Qwen may quote action examples in its reasoning. Dispatch only its final
+    # answer; the caller still saves the original text, tokens and logprobs.
+    answer = text.lstrip()
+    if answer.startswith("<think>"):
+        _, closed, answer = answer[len("<think>") :].partition("</think>")
+        if not closed:
+            raise ValueError("A tool action requires a completed final answer")
+    opening = "<arena_action>"
+    start = answer.find(opening)
+    if start < 0:
         raise ValueError("Return exactly one <arena_action>JSON object</arena_action>")
-    value = json.loads(matches[0])
+    payload = answer[start + len(opening) :].lstrip()
+    # Decode JSON before looking for the closing envelope: a Lean string may
+    # itself contain literal tags, which are data rather than another action.
+    value, end = json.JSONDecoder().raw_decode(payload)
+    if payload[end:].strip() != "</arena_action>":
+        raise ValueError("Return exactly one <arena_action>JSON object</arena_action>")
     if not isinstance(value, dict) or value.get("op") not in ALLOWED_OPS:
         raise ValueError("Unsupported Arena action")
     return value

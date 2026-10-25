@@ -95,6 +95,12 @@ receipts record successful updates, finite gradient norms and before/after hashe
 checkpoints retain file hashes. Save after every update. Allocation, downloads,
 preparation, unit tests and a zero-gradient step are not proof of learned weights.
 
+Tool dispatch reads the final answer after a completed leading Qwen reasoning
+block. Quoted action examples inside reasoning are not tool calls. JSON is decoded
+before checking the closing action tag, preserving literal tags inside Lean
+strings. The complete original reasoning, input messages, sampled token IDs and
+log probabilities remain unchanged in saved training evidence.
+
 Training reward means need their actual sample/problem denominator. Claim an
 improvement only after a matched held-out base-versus-adapter assessment using the
 same precision, harness and evaluation budget. SFT preprocessing and SFT-plus-RL
@@ -200,3 +206,12 @@ asleep cuMem pools; the upstream [allocator issue](https://github.com/vllm-proje
 documents that failure. Per-rank terminal receipts preserve shutdown errors rather
 than masking them. This terminal lifecycle hook changes no rollout, reward,
 gradient or checkpoint and never generates another model request.
+
+Colocated multi-turn inference must synchronize continuation across every rank
+sharing the inference engine. In the eight-rank configuration, native data slicing
+uses two four-rank model-parallel groups, while inference uses all eight ranks.
+`colocate_multi_turn_world_sync` selects the library's existing boolean-gather
+callback over the eight-rank world so early-finished workers keep participating
+with empty request lists. It changes no requests, outputs, masks, rewards or
+optimizer math. The explicit CPU distributed check and asymmetric GPU fixture
+exercise four workers finishing at turn one and four finishing at turn three.

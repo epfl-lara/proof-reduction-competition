@@ -17,6 +17,7 @@ from swift.rollout.multi_turn import MultiTurnScheduler, multi_turns
 from proof_eval.evidence.immutable import immutable, read, sha
 from proof_eval.training.remote_episode import RemoteEpisode as Episode
 from proof_eval.training.reward import UnscorableEpisode, validate_token_evidence
+from proof_eval.training.rollout_collectives import install_colocated_world_sync
 from proof_eval.training.shutdown import install_colocated_shutdown
 
 
@@ -436,6 +437,8 @@ def install_coordinated_rollout_failure():
 
 
 install_coordinated_rollout_failure()
+
+install_colocated_world_sync()
 
 if os.environ.get("ARENA_RL_RUN_PURPOSE") == "synthetic_gpu_training_check":
     from proof_eval.training.gpu_training_probe import register
