@@ -159,6 +159,21 @@ byte-for-byte to `verification/backend.py`, retaining the source hash used by al
 36 warm-up reference fingerprints. Black excludes only this frozen source;
 Ruff correctness checks and backend integration tests still cover it.
 
+Reference guards read each cached reference together with the fresh environment
+key used to find it (`Evaluator.reference_snapshot`). This avoids a second
+identical project scan just to recover that key. Every guard still checks every
+required version afresh; context keys are not cached across tool calls, and
+candidate compilation retains its before/after environment checks.
+
+Candidate checks run at most four required versions concurrently, each in the
+same fresh pinned Lean process as before. Results retain dataset order, all
+versions must finish, and cache locks and environment checks remain per version.
+`Evaluator(version_workers=1)` selects sequential execution for constrained
+hosts or comparisons. Injected backends default to sequential calls unless they
+explicitly opt in. Reference preparation remains sequential; the measurement
+wrapper, heartbeat accounting and canonical denominators are unchanged. Allow
+up to four Lean processes per active theorem when sizing model or cleanup pools.
+
 `proof-corpus` extracts Arena-style RSI/RL tasks from explicitly pinned source
 snapshots. `benchmark/harvest_commands.lean` supplies Lean parser byte ranges;
 `benchmark/harvest.py` preserves source text, counts proof tokens, assigns grouped
@@ -322,6 +337,16 @@ failures and unknown interruptions remain incomplete. Missing usage stays
 unknown. Those stopping conditions apply to the affected theorem; other queued
 theorems continue independently.
 
+Deadline finalization also reconciles a native timeout that finishes before the
+supervisor, or a worker result written while the supervisor drains descendants.
+The supervisor retains that result verbatim in `worker_result.json` and rebuilds
+the outcome from saved certificates. A native timeout needs matching terminal
+attempt and process-exit evidence covering the persisted problem deadline;
+elapsed time alone never converts an infrastructure failure into a complete
+search. Raw attempt, generation, stop and usage records remain unchanged.
+Recovered model-phase timing uses the recorded stop time, excluding a later
+offline reconstruction delay.
+
 Qwen's four-hour/five-worker policy is the user's new allocation; the prior
 57-minute total-problem runs retain their historical meaning. The user-reported
 48-hour resource allowance is for one 64-core node with four A100 80GB GPUs.
@@ -462,6 +487,13 @@ proof/environment/configuration identities. This operation neither reads nor
 writes reference measurements, and correctness-only sessions reject it. Costs
 include diagnostic overhead and nested work; candidate scores still come only
 from `check`. See [PROFILING.md](PROFILING.md) for units, examples and limitations.
+
+The profile cache excludes the display-only `limit` from its compilation key.
+Changing that limit rebuilds the bounded view from the full saved trace without
+another Lean process. Proof, version, environment, implementation and profiler
+threshold still distinguish compilations; failed or timed-out profiles are not
+reused. Cache ownership remains private to the cell. Tool arguments, response
+fields and canonical measurement behavior are unchanged.
 
 ## Providers and costs
 

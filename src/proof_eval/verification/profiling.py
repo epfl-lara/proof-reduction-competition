@@ -236,12 +236,25 @@ def profile(
     path = None
     try:
         project, environment, context = evaluator._context(row, version)
-        key = fingerprint({"context": context, **result})
+        # The display limit never reaches Lean. Keep it out of the compilation
+        # identity so a different-sized view can reuse this cell's full trace.
+        compile_options = asdict(config)
+        compile_options.pop("limit")
+        key = fingerprint({"context": context, **result, "options": compile_options})
         result.update(environment_fingerprint=environment, cache_key=key)
         with evaluator.store.locked("profiles", key):
             cached = evaluator.store.read("profiles", key)
             if cached is not None:
-                return {**cached, "cached": True}
+                hotspots, available = trace_hotspots(cached["trace"], config.limit)
+                return {
+                    **cached,
+                    "cached": True,
+                    "options": asdict(config),
+                    "hotspots": hotspots,
+                    "available_hotspots": available,
+                    "hotspots_truncated": available > config.limit,
+                    "marks_truncated": len(cached["marks"]) > config.limit,
+                }
             nonce = uuid.uuid4().hex
             source, offset, mode = _profile_source(row, code, project, nonce, config)
             path = project / f"_ProofEval_{nonce}.lean"

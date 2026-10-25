@@ -16,6 +16,7 @@ from .configuration import (
     score_control,
     structural_control,
 )
+from .limits import native_deadline_reached
 from .session import ProofSession
 from .tracking import attempt_cost
 
@@ -63,6 +64,22 @@ def finalize_cell(
         else None
     )
     controlled_cost_stop = final_generation.get("termination") == "cost_limit"
+    native_deadline_verified = (
+        time_budget is not None
+        and time_budget["exhausted"]
+        and final_generation["status"] == "budget_exhausted"
+        and native_deadline_reached(folder)
+    )
+    native_deadline_stop = (
+        time_budget is not None
+        and time_budget["exhausted"]
+        and host_stop is not None
+        and host_stop["kind"] == "infrastructure"
+        and host_stop.get("reason") == final_generation.get("error")
+        and host_stop.get("attempt") == len(generations) - 1
+        and host_stop.get("at_epoch", 0) >= time_budget["deadline_epoch"]
+        and native_deadline_verified
+    )
     structural_score = None
     if mode != "correctness":
         structural_path, structural = structural_control(pack["name"], model, effort)
@@ -181,12 +198,17 @@ def finalize_cell(
         result["attempts"] = [
             read(path / "attempt.json") for path in attempt_folders(folder)
         ]
-    if host_stop and host_stop["kind"] in (
-        "infrastructure",
-        "unknown_usage",
-        "unknown_cost",
-        "unknown_price",
-        "transport_recovery_limit",
+    if (
+        host_stop
+        and not native_deadline_stop
+        and host_stop["kind"]
+        in (
+            "infrastructure",
+            "unknown_usage",
+            "unknown_cost",
+            "unknown_price",
+            "transport_recovery_limit",
+        )
     ):
         result["status"] = "incomplete"
     if mode in DETERMINISTIC_MODES:
@@ -261,10 +283,18 @@ def finalize_cell(
                 )
             )
         )
-        if time_budget["exhausted"] and final_generation["status"] not in (
-            "received",
-            "budget_exhausted",
+        if time_budget["exhausted"] and (
+            final_generation["status"] not in ("received", "budget_exhausted")
+            or (
+                generations
+                and final_generation["status"] == "budget_exhausted"
+                and final_generation.get("termination")
+                not in ("cost_limit", "problem_deadline")
+                and not native_deadline_verified
+            )
         ):
+            # An elapsed outer deadline cannot certify an earlier session timeout
+            # or an interruption lacking the native host's terminal evidence.
             result["status"] = "incomplete"
     if config.get("proof_theory_cleanup_version"):
         initial_call = next(
@@ -295,8 +325,10 @@ def finalize_cell(
             read(phase_path)["gain_pp"] if phase_path.exists() else 0.0
         )
         result["pipeline_elapsed_seconds"] = (
-            time.time() - read(folder / "problem_started.json")["started_epoch"]
-        )
+            read(folder / "budget_end.json")["work_stopped_epoch"]
+            if time_budget and time_budget["exhausted"]
+            else time.time()
+        ) - read(folder / "problem_started.json")["started_epoch"]
         if not initial_path.exists():
             result["status"] = "incomplete"
     if config.get("deterministic_checkpoint"):

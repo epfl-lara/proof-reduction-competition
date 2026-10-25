@@ -9,6 +9,7 @@ import math
 import os
 import platform
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -92,7 +93,15 @@ class Evaluator:
         heartbeats_path=None,
         timeout=60.0,
         backend=None,
+        version_workers: int | None = None,
     ):
+        if version_workers is None:
+            # Fresh Lean processes share no elaboration state. An injected backend
+            # may carry mutable state, so retain its sequential calling contract.
+            version_workers = 4 if backend is None else 1
+        if type(version_workers) is not int or not 1 <= version_workers <= 4:
+            raise ValueError("version_workers must be an integer between 1 and 4")
+        self.version_workers = version_workers
         self.dataset = Dataset(dataset_path, heartbeats_path=heartbeats_path)
         self.backend = backend or LeanBackend(timeout=timeout)
         self.timeout = float(timeout)
@@ -188,8 +197,27 @@ class Evaluator:
 
     def get_reference(self, name, *, versions="all"):
         """Read reference values and local cache status without compiling proofs."""
+        return self.reference_snapshot(name, versions=versions)[0]
+
+    def reference_snapshot(
+        self,
+        name: str,
+        *,
+        versions: str | list[str] = "all",
+        expected_row: dict | None = None,
+    ) -> tuple[dict, dict[str, str]]:
+        """Read references with the fresh context keys used to locate them.
+
+        Keys and records come from the same environment scan. Callers checking
+        frozen inputs need not scan each project again merely to recover a key.
+        Nothing is memoized between calls; source/dependency validation remains
+        fresh on every guard, including before and after candidate compilation.
+        """
         row = self.dataset.get(name)
+        if expected_row is not None and row != expected_row:
+            raise ValueError("Prepared dataset row changed: " + name)
         all_versions, selected = self._versions(row, versions)
+        contexts = {}
         out = {
             "name": name,
             "length": row["proof_length"],
@@ -200,13 +228,14 @@ class Evaluator:
         for version in selected:
             try:
                 _, _, key = self._context(row, version)
+                contexts[version] = key
                 record = self.store.read("references", key)
                 out["versions"][version] = record or {
                     "status": "reference_not_prepared"
                 }
             except EvaluationNotReady as exc:
                 out["versions"][version] = self._unavailable(exc)
-        return out
+        return out, contexts
 
     def prepare_reference(self, name, *, versions="all", refresh=False):
         """Measure the reference once per fingerprint; reuse it thereafter.
@@ -329,7 +358,23 @@ class Evaluator:
             "length": length,
             "code_sha256": hashlib.sha256(full_code.encode()).hexdigest(),
         }
-        results = {v: self._candidate(row, full_code, v) for v in selected}
+        if self.version_workers == 1 or len(selected) == 1:
+            results = {v: self._candidate(row, full_code, v) for v in selected}
+        else:
+            # Preserve dataset order and finish every selected version, including
+            # after a rejection. Each job retains its own locks and fresh guards.
+            with ThreadPoolExecutor(
+                max_workers=min(self.version_workers, len(selected))
+            ) as pool:
+                results = dict(
+                    zip(
+                        selected,
+                        pool.map(
+                            lambda version: self._candidate(row, full_code, version),
+                            selected,
+                        ),
+                    )
+                )
         out["per_version"] = results
         primary = results.get(all_versions[0])
         if primary is not None and primary.get("status") in ("failed", "timeout"):

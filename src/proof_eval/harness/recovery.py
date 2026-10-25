@@ -202,6 +202,11 @@ def recover_cell(
     end = read(folder / "budget_end.json")
     if not end["exhausted"]:
         raise ValueError("Deadline recovery requires a supervised deadline stop")
+    result_path = folder / "result.json"
+    worker_result = folder / "worker_result.json"
+    if result_path.exists() and not worker_result.exists():
+        # Keep the worker's exact bytes when it finalized before the supervisor.
+        result_path.replace(worker_result)
     seed = starting_point(pack, config["mode"])
     seed = select_seed(config, pack, model, effort, seed)
     original = None

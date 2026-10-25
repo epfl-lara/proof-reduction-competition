@@ -16,6 +16,7 @@ from proof_eval.verification.context import (
     build_context,
 )
 from proof_eval.verification.metrics import token_count
+from proof_eval.verification.profile_trace import profile_view
 from proof_eval.verification.profiling import ProfileConfig, profile
 
 
@@ -251,7 +252,9 @@ def test_real_profile_and_labels_reuse_diagnostics_without_touching_scores(
     labelled = code.replace("by rfl", 'by profile_tactic "inner" in rfl').replace(
         "exact h", 'profile_tactic "finish proof" in exact h'
     )
-    marked = profile(evaluator, row["name"], labelled)
+    marked = profile(
+        evaluator, row["name"], labelled, config=ProfileConfig(threshold_raw=0)
+    )
     assert marked["status"] == "ok", marked["diagnostics"]
     assert [mark["label"] for mark in marked["marks"]] == ["inner", "finish proof"]
     assert all(
@@ -263,7 +266,29 @@ def test_real_profile_and_labels_reuse_diagnostics_without_touching_scores(
     assert not (evaluator.store.root / "candidates").exists()
     assert not list(next(iter(evaluator.projects.values())).glob("_ProofEval_*.lean"))
     monkeypatch.setattr("proof_eval.verification.profiling._run", forbidden)
-    assert profile(evaluator, row["name"], labelled)["cached"]
+    assert profile(
+        evaluator, row["name"], labelled, config=ProfileConfig(threshold_raw=0)
+    )["cached"]
+    # A display-only change must reuse the complete private trace, retaining
+    # diagnostics, mark coordinates and measured values without another Lean run.
+    smaller = profile(
+        evaluator, row["name"], labelled, config=ProfileConfig(threshold_raw=0, limit=1)
+    )
+    larger = profile(
+        evaluator,
+        row["name"],
+        labelled,
+        config=ProfileConfig(threshold_raw=0, limit=100),
+    )
+    assert smaller["cached"] and larger["cached"]
+    assert smaller["cache_key"] == larger["cache_key"] == marked["cache_key"]
+    assert smaller["options"]["limit"] == 1 and larger["options"]["limit"] == 100
+    assert len(smaller["hotspots"]) == 1 and smaller["hotspots_truncated"]
+    assert smaller["marks_truncated"] and not larger["marks_truncated"]
+    assert smaller["marks"] == larger["marks"] == marked["marks"]
+    assert larger["trace"] == smaller["trace"] == marked["trace"]
+    assert larger["profile_heartbeats_raw"] == marked["profile_heartbeats_raw"]
+    assert len(profile_view(smaller)["marks"]) == 1
 
 
 def test_real_profile_failure_is_partial_and_not_cached(context_fixture):

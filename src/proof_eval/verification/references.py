@@ -91,7 +91,8 @@ def original_evaluation(pack):
 def check_references(evaluator, pack, base_config):
     """Compare saved reference metadata; this function never compiles a proof."""
     name = pack["name"]
-    current = evaluator.get_reference(name)["versions"]
+    snapshot, contexts = evaluator.reference_snapshot(name, expected_row=pack["row"])
+    current = snapshot["versions"]
     saved_checks = pack["incumbent"]["per_version"]
     if set(current) != set(saved_checks) or set(current) != set(
         base_config["contexts"][name]
@@ -100,10 +101,7 @@ def check_references(evaluator, pack, base_config):
     for version, saved in saved_checks.items():
         if current[version].get("status") != "prepared":
             raise ValueError(f"Cached reference unavailable: {name}/{version}")
-        if (
-            evaluator._context(pack["row"], version)[2]
-            != base_config["contexts"][name][version]
-        ):
+        if contexts.get(version) != base_config["contexts"][name][version]:
             raise ValueError(f"Environment changed: {name}/{version}")
         for key in REFERENCE_FIELDS:
             if current[version].get(key) != saved["reference"].get(key):

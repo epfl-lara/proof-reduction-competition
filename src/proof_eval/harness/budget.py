@@ -16,7 +16,7 @@ from proof_eval.providers.contracts import AgentGenerator
 from proof_eval.providers.processes import stop_tree
 from proof_eval.verification.api import Evaluator
 
-from .limits import start_budget
+from .limits import native_deadline_reached, start_budget
 from .recovery import recover_cell
 
 
@@ -98,6 +98,7 @@ def run_cell(
                 ),
                 "cache_dir": str(evaluator.store.root),
                 "timeout": evaluator.timeout,
+                "version_workers": evaluator.version_workers,
             },
         }
         manifest = folder / "cell_request.json"
@@ -156,9 +157,28 @@ def run_cell(
                     )
                 )
             except subprocess.TimeoutExpired:
+                expired = True
+                worker_exited = False
+            else:
+                worker_exited = True
+                # The native timeout can finish the worker before wait() notices
+                # the problem deadline. Require its durable stop evidence.
+                expired = (
+                    budget is not None
+                    and child.returncode == 0
+                    and native_deadline_reached(folder)
+                )
+            if expired:
                 stopped = time.time()
-                owned = stop_tree(child.pid)
-                child.wait(timeout=5)
+                # A successfully waited process has been reaped; its PID must
+                # never be used for signalling after possible reuse.
+                owned = (
+                    {"terminated_pids": [], "temporary_sources": []}
+                    if worker_exited
+                    else stop_tree(child.pid)
+                )
+                if not worker_exited:
+                    child.wait(timeout=5)
                 write_json(
                     folder / "budget_end.json",
                     {
@@ -174,8 +194,8 @@ def run_cell(
                     path = Path(source)
                     if path.parent in projects:
                         path.unlink(missing_ok=True)
-                if (folder / "result.json").exists():
-                    return read(folder / "result.json")
+                # A worker can save its result while stop_tree drains descendants.
+                # Finalize only after the supervisor's deadline evidence is saved.
                 return recover_cell(folder, config, pack, model, effort, evaluator)
         if child.returncode:
             raise RuntimeError(

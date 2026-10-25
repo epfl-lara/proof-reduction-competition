@@ -82,6 +82,10 @@ class FakeEvaluator:
     def _context(self, row, version):
         return None, None, "context_" + version
 
+    def reference_snapshot(self, name, *, expected_row=None):
+        result = self.get_reference(name)
+        return result, {version: "context_" + version for version in result["versions"]}
+
 
 def test_adapter_gates_only_full_checks_and_keeps_authoritative_evidence():
     raw = evaluation(OTHER, 90, False)

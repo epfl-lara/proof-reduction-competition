@@ -1,9 +1,13 @@
 """Diagnostic profile boundaries, nested costs and bounded feedback."""
 
 import json
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from proof_eval.verification import profiling
+from proof_eval.verification.api import _Store
 from proof_eval.verification.profile_trace import profile_view, trace_hotspots
 from proof_eval.verification.profiling import ProfileConfig, _parse_output
 
@@ -113,3 +117,85 @@ def test_marked_positions_use_unicode_character_offsets_and_raw_units():
             code,
             offset,
         )
+
+
+def test_profile_cache_keeps_compilation_identity_and_private_scope(
+    tmp_path, monkeypatch
+):
+    code = "theorem toy : True := by trivial"
+    row = {
+        "name": "toy",
+        "statement": "theorem toy : True",
+        "src": code,
+        "version_info": [{"v1": "a"}, {"v2": "b"}],
+    }
+    project = tmp_path / "project"
+    project.mkdir()
+    revision, calls, failed = "original", [], False
+    evaluator = SimpleNamespace(
+        dataset=SimpleNamespace(get=lambda _: row),
+        backend=SimpleNamespace(lake="unused-lake"),
+        timeout=1,
+        store=_Store(tmp_path / "cell-one"),
+        _versions=lambda row, selected: (
+            ["v1", "v2"],
+            ["v1"] if selected == "primary" else selected,
+        ),
+        _context=lambda row, version: (project, revision + version, revision + version),
+    )
+    monkeypatch.setattr(
+        profiling,
+        "_profile_source",
+        lambda row, code, project, nonce, config: (nonce, 0, "test"),
+    )
+
+    def compile_profile(args, cwd, timeout):
+        nonce = (Path(cwd) / args[-1]).read_text()
+        calls.append(nonce)
+        trace = [node("trivial", 20_000), node("typechecking", 10_000, cls="Kernel")]
+        messages = [
+            {"data": f"PROOF_PROFILE_{nonce}_TRACE:" + json.dumps(trace)},
+            {"data": f"PROOF_EVAL_{nonce}:30000"},
+        ]
+        if failed:
+            messages.append({"severity": "error", "data": "fixture failure"})
+        return SimpleNamespace(
+            stdout="\n".join(json.dumps(message) for message in messages),
+            stderr="",
+            returncode=int(failed),
+        )
+
+    monkeypatch.setattr(profiling, "_run", compile_profile)
+    first = profiling.profile(evaluator, "toy", code, config=ProfileConfig(limit=1))
+    expanded = profiling.profile(
+        evaluator, "toy", code, config=ProfileConfig(limit=100)
+    )
+    assert first["status"] == expanded["status"] == "ok"
+    assert len(calls) == 1 and expanded["cached"]
+    assert first["hotspots_truncated"] and not expanded["hotspots_truncated"]
+    assert len(first["hotspots"]) == 1 and len(expanded["hotspots"]) == 2
+    assert (
+        first["profile_heartbeats_raw"] == expanded["profile_heartbeats_raw"] == 30_000
+    )
+    assert first["cache_key"] == expanded["cache_key"]
+
+    profiling.profile(evaluator, "toy", code, config=ProfileConfig(threshold_raw=0))
+    profiling.profile(evaluator, "toy", code, config=ProfileConfig(version="v2"))
+    profiling.profile(evaluator, "toy", code.replace("trivial", "exact True.intro"))
+    revision = "changed"
+    profiling.profile(evaluator, "toy", code)
+    assert len(calls) == 5
+    evaluator.store = _Store(tmp_path / "cell-two")
+    profiling.profile(evaluator, "toy", code)
+    assert len(calls) == 6
+    assert not (evaluator.store.root / "references").exists()
+    assert not (evaluator.store.root / "candidates").exists()
+
+    failed = True
+    revision = "failed"
+    for limit in (1, 100):
+        result = profiling.profile(
+            evaluator, "toy", code, config=ProfileConfig(limit=limit)
+        )
+        assert result["status"] == "failed" and not result["cached"]
+    assert len(calls) == 8

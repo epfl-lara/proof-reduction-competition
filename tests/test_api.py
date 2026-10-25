@@ -4,11 +4,14 @@ import concurrent.futures
 import copy
 import json
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from proof_eval.verification.api import EvaluationNotReady, Evaluator
+from proof_eval.verification.references import check_references
 
 
 class FakeBackend:
@@ -117,6 +120,74 @@ class EvaluatorTests(unittest.TestCase):
         self.assertEqual(len(self.backend.calls), 2)
         self.evaluator.prepare_reference("toy", versions="primary", refresh=True)
         self.assertEqual(len(self.backend.calls), 3)
+
+    def reference_guard_inputs(self):
+        prepared = self.prepare()
+        row = self.evaluator.dataset.get("toy")
+        pack = {
+            "name": "toy",
+            "row": row,
+            "incumbent": {
+                "per_version": {
+                    version: {"reference": reference}
+                    for version, reference in prepared["versions"].items()
+                }
+            },
+        }
+        contexts = {
+            version: self.evaluator._context(row, version)[2]
+            for version in ("v1", "v2")
+        }
+        return pack, {"contexts": {"toy": contexts}}
+
+    def test_reference_guard_scans_each_version_once_but_never_reuses_an_old_scan(self):
+        pack, base = self.reference_guard_inputs()
+        with patch.object(
+            self.backend, "fingerprint", wraps=self.backend.fingerprint
+        ) as scanned:
+            check_references(self.evaluator, pack, base)
+            check_references(self.evaluator, pack, base)
+        self.assertEqual(
+            [call.args[1] for call in scanned.call_args_list],
+            ["v1", "v2", "v1", "v2"],
+        )
+        self.assertEqual(len(self.backend.calls), 2)
+        self.backend.revision = "changed dependency"
+        with self.assertRaisesRegex(ValueError, "Cached reference unavailable"):
+            check_references(self.evaluator, pack, base)
+        self.assertEqual(len(self.backend.calls), 2)
+
+    def test_reference_guard_still_rejects_changed_reference_context_and_cohort(self):
+        pack, base = self.reference_guard_inputs()
+        wrong_pack = copy.deepcopy(pack)
+        wrong_pack["row"]["proof_length"] += 1
+        with self.assertRaisesRegex(ValueError, "Prepared dataset row changed"):
+            check_references(self.evaluator, wrong_pack, base)
+        wrong = copy.deepcopy(base)
+        wrong["contexts"]["toy"]["v2"] = "different context"
+        with self.assertRaisesRegex(ValueError, "Environment changed"):
+            check_references(self.evaluator, pack, wrong)
+        wrong["contexts"]["toy"].pop("v2")
+        with self.assertRaisesRegex(ValueError, "version cohort changed"):
+            check_references(self.evaluator, pack, wrong)
+        key = base["contexts"]["toy"]["v2"]
+        record = self.evaluator.store.read("references", key)
+        record["heartbeats"] += 1
+        self.evaluator.store.write("references", key, record)
+        with self.assertRaisesRegex(ValueError, "Cached reference changed"):
+            check_references(self.evaluator, pack, base)
+        self.assertEqual(len(self.backend.calls), 2)
+
+    def test_reference_snapshot_keeps_the_existing_reference_response(self):
+        self.prepare()
+        original = self.evaluator.get_reference("toy")
+        snapshot, contexts = self.evaluator.reference_snapshot("toy")
+        self.assertEqual(snapshot, original)
+        for version, key in contexts.items():
+            self.assertEqual(
+                snapshot["versions"][version],
+                self.evaluator.store.read("references", key),
+            )
 
     def test_component_scores_use_local_reference_and_primary_version(self):
         self.prepare()
@@ -296,6 +367,7 @@ class EvaluatorTests(unittest.TestCase):
 
     def test_parallel_candidates_compile_once_per_version(self):
         self.prepare()
+        self.evaluator = self.make_evaluator(version_workers=2)
         self.backend.delay = 0.01
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
             results = list(
@@ -303,6 +375,58 @@ class EvaluatorTests(unittest.TestCase):
             )
         self.assertTrue(all(result["status"] == "passed" for result in results))
         self.assertEqual(len(self.backend.calls), 4)
+
+    def test_concurrent_versions_keep_order_scores_and_all_version_results(self):
+        self.prepare()
+        serial = self.evaluator.evaluate("toy", self.code)
+        # A second spelling gives fresh candidate keys against the same references.
+        candidate = "theorem toy : True := by\n  trivial"
+        parallel = self.make_evaluator(version_workers=2)
+        rendezvous = threading.Barrier(2, timeout=5)
+        check = self.backend.check
+
+        def simultaneous(row, code, version, project):
+            rendezvous.wait()
+            return check(row, code, version, project)
+
+        with patch.object(self.backend, "check", side_effect=simultaneous):
+            result = parallel.evaluate("toy", candidate)
+        self.assertEqual(list(result["per_version"]), ["v1", "v2"])
+        self.assertEqual(result["scores"], serial["scores"])
+        self.assertTrue(all(not r["cached"] for r in result["per_version"].values()))
+        self.backend.statuses["v1"] = "timeout"
+        with patch.object(self.backend, "check", side_effect=simultaneous):
+            rejected = parallel.evaluate("toy", candidate + "\n-- new candidate")
+        self.assertEqual(rejected["status"], "failed")
+        self.assertEqual(rejected["scores"]["combined_pct"], 0)
+        self.assertEqual(rejected["per_version"]["v1"]["status"], "timeout")
+        self.assertTrue(rejected["per_version"]["v2"]["passed"])
+
+    def test_concurrent_versions_reject_environment_changes_without_caching(self):
+        self.prepare()
+        parallel = self.make_evaluator(version_workers=2)
+        rendezvous = threading.Barrier(2, timeout=5)
+        check = self.backend.check
+
+        def changed(row, code, version, project):
+            result = check(row, code, version, project)
+            rendezvous.wait()
+            self.backend.revision = "changed"
+            return result
+
+        with patch.object(self.backend, "check", side_effect=changed):
+            result = parallel.evaluate("toy", self.code)
+        self.assertTrue(
+            all(r["status"] == "unavailable" for r in result["per_version"].values())
+        )
+        self.assertFalse(list((self.root / "cache" / "candidates").glob("*.json")))
+
+    def test_version_worker_bounds_and_custom_backend_default(self):
+        self.assertEqual(self.make_evaluator().version_workers, 1)
+        self.assertEqual(self.make_evaluator(backend=None).version_workers, 4)
+        for invalid in (True, False, 0, -1, 5, 2.0, "2"):
+            with self.subTest(value=invalid), self.assertRaises(ValueError):
+                self.make_evaluator(version_workers=invalid)
 
     def test_batch_checks_lengths_and_propagates_missing_measurements(self):
         with self.assertRaises(ValueError):
