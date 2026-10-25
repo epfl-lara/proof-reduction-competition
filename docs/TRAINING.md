@@ -99,3 +99,23 @@ Training reward means need their actual sample/problem denominator. Claim an
 improvement only after a matched held-out base-versus-adapter assessment using the
 same precision, harness and evaluation budget. SFT preprocessing and SFT-plus-RL
 remain separate comparisons; never train a glob of unaudited raw collection files.
+
+## Full host tool readiness
+
+The training image also needs the optional LeanExplore dependencies and explicit
+cached corpus/embedding assets. `containers/training-tools` builds a derived
+image from the exact existing CUDA/Lean image and checks that previously installed
+packages retain their versions. No dependency is installed into a productive job.
+Both CPU preflight and runtime hash the declared assets and execute an actual CPU
+embedding/search query before preparing originals. This is one embedding call,
+zero policy-model calls and no optimizer step. Missing tools cannot be disabled
+silently or discovered only after original preparation.
+
+A declared, hash-bound `original_reference_seed` may transfer successful original
+reference denominators from a terminal pre-policy run. The importer checks every
+source pack, exact original code, version, environment fingerprint, positive
+measurement and raw cache hash, then creates receiving cache keys while retaining
+the original measurement's machine/time. Candidate and analysis caches are never
+imported. Preparation records cache reuse explicitly; source-invalid originals
+are rechecked rather than imported. Every actual rollout still measures the
+original afresh inside its own unchanged episode clock.

@@ -163,11 +163,14 @@ def mirror_trainer_exit(root: Path, home: Path, code: int, plan_path: Path) -> d
 
 
 def preflight_only(plan: dict, release: Path) -> dict:
-    """Exercise actual entrypoint wiring without GPU/model/Lean preparation work."""
+    """Exercise actual wiring without GPU, policy inference or Lean preparation."""
     verify_sources(plan, release)
     verify_authorization(plan, release)
     harness = configure_harness(plan, release)
     attention = verify_attention_dependencies(plan, release)
+    from proof_eval.training.tools import freeze_host_tools
+
+    tools = freeze_host_tools(plan)
     # Exercise imports and hook registration against the actual image packages.
     # Importing this plugin performs no sampling or optimizer step.
     from proof_eval.training.swift_plugin import ArenaReward, ArenaScheduler
@@ -191,6 +194,9 @@ def preflight_only(plan: dict, release: Path) -> dict:
         "harness_imports_verified": harness,
         "attention_dependencies": attention,
         "training_plugin_imported": True,
+        "host_tools": tools,
+        "policy_model_calls": 0,
+        "embedding_model_calls": tools["embedding_model_calls"],
         "source_manifest_sha256": sha(release / "source-manifest.json"),
         "model_calls": 0,
         "optimizer_steps": 0,
@@ -278,6 +284,13 @@ def run(plan_path: Path, release: Path) -> None:
         home / "attention-preflight.json", verify_attention_dependencies(plan, release)
     )
 
+    from proof_eval.training.tools import freeze_host_tools
+
+    stage(plan, "host_tool_preflight", policy_model_calls=0)
+    tools = freeze_host_tools(plan)
+    immutable(root / "host-tools.json", tools)
+    immutable(home / "host-tools.json", tools)
+
     inputs = root / "inputs"
     inputs.mkdir()
     for name in ("rl-reserved.jsonl", "sft.jsonl", "validation.jsonl"):
@@ -289,6 +302,14 @@ def run(plan_path: Path, release: Path) -> None:
     stage(plan, "restore_original_imports", model_calls=0)
     restore_imports(plan, root, home, inputs, environments)
     from proof_eval.training.prepare import prepare
+
+    if plan.get("original_reference_seed"):
+        from proof_eval.training.reference_seed import import_original_references
+
+        imported = import_original_references(
+            plan["original_reference_seed"], inputs, environments, root / "preparation"
+        )
+        immutable(home / "reference-import.json", imported)
 
     stage(plan, "prepare_originals", model_calls=0)
     result = prepare(
@@ -371,11 +392,8 @@ def run(plan_path: Path, release: Path) -> None:
             Path(plan["harness_home"]) / "runtime/prompts/refactor_system.md"
         ),
     }
-    from proof_eval.harness import semantic, web
-
-    stage(plan, "freeze_host_tools", model_calls=0)
-    config["semantic_config"] = semantic.freeze(semantic.discover())
-    config["web_config"] = web.freeze()
+    config["semantic_config"] = tools["semantic_config"]
+    config["web_config"] = tools["web_config"]
     immutable(root / "rl-config.json", config)
     env.update(
         {
