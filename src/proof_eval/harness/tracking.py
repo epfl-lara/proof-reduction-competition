@@ -289,6 +289,13 @@ def stop_decision(
             "kind": "infrastructure",
             "reason": "Host verification is unavailable; no further request was sampled",
         }
+    if (
+        generation.get("status") == "budget_exhausted"
+        and termination != "cost_limit"
+        and time_remaining is not None
+        and time_remaining <= 0
+    ):
+        return {"kind": "time_limit", "reason": "Whole-problem wall deadline reached"}
     tracking = config.get("budget_tracking")
     recoverable = retryable_transport_failure(generation)
     if (

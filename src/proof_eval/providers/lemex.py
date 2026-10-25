@@ -84,6 +84,24 @@ def cli_identity() -> dict:
     }
 
 
+def context_settings(config_path: Path | None = None) -> dict[str, int]:
+    """Record native context/compaction settings without overriding them."""
+    import tomllib
+
+    path = config_path or Path.home() / ".lemex/config.toml"
+    if not path.exists():
+        return {}
+    config = tomllib.loads(path.read_text())
+    settings = {}
+    for key in ("model_context_window", "model_auto_compact_token_limit"):
+        if key in config:
+            value = config[key]
+            if type(value) is not int or value <= 0:
+                raise ValueError("Invalid native Lemex context setting: " + key)
+            settings[key] = value
+    return settings
+
+
 def command(
     *, model: str, effort: str, mode: str, catalog: Path, base_url: str, **kwargs
 ) -> list[str]:
@@ -105,12 +123,13 @@ def command(
 
 
 @contextmanager
-def capacity():
+def capacity(*, directory: Path | None = None, slots: int | None = None):
     """At most five native sessions across concurrent host batches on this machine."""
-    directory = SLOT_DIRECTORY
+    directory = directory or SLOT_DIRECTORY
+    slots = SLOT_COUNT if slots is None else slots
     directory.mkdir(parents=True, exist_ok=True)
     while True:
-        for i in range(SLOT_COUNT):
+        for i in range(slots):
             lock = (directory / f"{i}.lock").open("a")
             try:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)

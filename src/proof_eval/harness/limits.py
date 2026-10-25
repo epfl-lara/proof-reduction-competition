@@ -46,7 +46,7 @@ def time_budget_summary(folder: Path, *, exhausted: bool) -> dict | None:
     )
     return {
         **budget,
-        "exhausted": exhausted,
+        "exhausted": exhausted or end.get("exhausted") is True,
         "elapsed_seconds": max(
             0.0, end.get("work_stopped_epoch", time.time()) - budget["started_epoch"]
         ),

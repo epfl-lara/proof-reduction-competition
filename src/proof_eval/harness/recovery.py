@@ -7,6 +7,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from proof_eval.evidence.io import fingerprint, now, read, write_json, write_jsonl
+from proof_eval.providers import deadline_cleanup, signal_scope
 from proof_eval.providers.monitoring import verified_stream_stop
 from proof_eval.providers.registry import adapter
 from proof_eval.providers.response_usage import reconcile_usage
@@ -49,6 +50,11 @@ def _generation(folder: Path, provider: str) -> dict:
             # A killed CLI can leave a partial last line; keep its raw bytes.
             break
     module = adapter(provider)
+    request = read(folder / "request.json")
+    process_path = folder / "process.json"
+    process = read(process_path) if process_path.exists() else {}
+    ownership_path = folder / "process_ownership.json"
+    ownership = read(ownership_path) if ownership_path.exists() else None
     final_path = folder / "workspace/final.txt"
     final = final_path.read_text() if final_path.exists() else ""
     if not final:
@@ -72,7 +78,12 @@ def _generation(folder: Path, provider: str) -> dict:
         kwargs["requested_slug"] = module.slug(
             request["model"], request["reasoning_effort"]
         )
-    parsed = module.parse_events(events, final, 0, **kwargs)
+    parsed = module.parse_events(
+        events,
+        final,
+        ownership["native_returncode"] if ownership is not None else 0,
+        **kwargs,
+    )
     if provider == "codex":
         request = read(folder / "request.json")
         if request["cli"].get("response_usage_schema_version") in (1, 2):
@@ -94,6 +105,73 @@ def _generation(folder: Path, provider: str) -> dict:
             error="Whole-problem wall deadline reached; not resampled",
         )
     parsed.update(provider=provider, finished_at=now(), termination="problem_deadline")
+    if provider == "lemex-local" and process.get("native_supervisor"):
+        if ownership is not None:
+            if ownership.get("supervisor") != {
+                k: process[k] for k in ("pid", "start_ticks")
+            }:
+                raise ValueError("Recovered native owner identity changed")
+            parsed.update(process_ownership=ownership, supervisor_returncode=0)
+            if ownership.get("cleanup", {}).get("complete") is not True:
+                parsed.update(
+                    status="transport_error",
+                    error="Native cleanup incomplete; not resampled",
+                )
+            if ownership.get("supervisor_signals"):
+                parsed.update(
+                    status="transport_error",
+                    external_supervisor_signal=True,
+                    error="Native supervisor received an external signal; not resampled",
+                )
+        elif process.get("ownership_schema_version") == 2:
+            stopped = read(folder.parent / "budget_end.json")
+            try:
+                native = deadline_cleanup.native_stop(folder, process)
+                if native is not None:
+                    stopped = native
+                marker = deadline_cleanup.record(
+                    folder,
+                    process,
+                    stopped,
+                    source=(
+                        "native_timeout"
+                        if native is not None
+                        else "whole_problem_deadline"
+                    ),
+                )
+            except deadline_cleanup.CleanupEvidenceError as error:
+                parsed.update(
+                    status="transport_error",
+                    error=str(error),
+                    host_deadline_cleanup_refusal=deadline_cleanup.refusal(
+                        folder, process, stopped, error
+                    ),
+                )
+                # The whole-problem deadline is real, but it cannot certify a
+                # native owner absent from its snapshot. Persist the incomplete
+                # generation so finalize_cell retains the saved best certificate.
+                write_json(path, parsed)
+                return parsed
+            parsed.update(
+                status="budget_exhausted",
+                host_deadline_cleanup=marker,
+                error="Whole-problem wall deadline reached; not resampled",
+            )
+        identity = request["cli"].get("signal_scope")
+        if identity is not None:
+            command = read(folder / "command.json")["isolated_argv"]
+            parsed["signal_scope"] = {
+                "status": "verified",
+                **signal_scope.evidence(
+                    folder,
+                    identity,
+                    command,
+                    process,
+                    ownership,
+                    allow_partial=parsed["status"] == "budget_exhausted",
+                ),
+            }
+            write_json(folder / "signal_scope.json", parsed["signal_scope"])
     if (
         provider == "agy"
         and verified_stream_stop(

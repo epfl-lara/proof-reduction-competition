@@ -5,22 +5,29 @@ from __future__ import annotations
 from types import ModuleType
 from typing import Literal
 
-from . import agy, claude, codex, lemex
+from . import agy, claude, codex, lemex, lemex_local
 
 DEFAULT_CONDITIONS = {
     "codex": (("gpt-6.1-sol", "max"), ("gpt-6-astra", "max")),
     "lemex": ((lemex.MODEL, "high"),),
+    "lemex-local": ((lemex_local.MODEL, "xhigh"),),
     "claude": ((claude.MODEL, "max"),),
     "agy": ((agy.MODEL, "high"),),
 }
-PROVIDER_WORKERS = {"codex": 5, "lemex": 3, "claude": 5, "agy": 5}
-MODEL_WORKERS = {"Qwen/Qwen3.8-Flash-Next": 5}
-MODEL_TIMEOUT_SECONDS = {"Qwen/Qwen3.8-Flash-Next": 4 * 60 * 60}
+PROVIDER_WORKERS = {"codex": 5, "lemex": 3, "lemex-local": 5, "claude": 5, "agy": 5}
+MODEL_WORKERS = {"Qwen/Qwen3.8-Flash-Next": 5, lemex_local.MODEL: 5}
+MODEL_TIMEOUT_SECONDS = {
+    "Qwen/Qwen3.8-Flash-Next": 4 * 60 * 60,
+    lemex_local.MODEL: 4 * 60 * 60,
+    lemex_local.THINKINGCAP_MODEL: 4 * 60 * 60,
+}
 # Experiment contract: routing additions must declare their track separately.
 # Preparation pins this source along with the runtime; changes require a new run.
 MODEL_TRACKS: dict[str, Literal["open", "closed"]] = {
     "deepseek-ai/DeepSeek-V4.1-Flash": "open",
     "Qwen/Qwen3.8-Flash-Next": "open",
+    lemex_local.MODEL: "open",
+    lemex_local.THINKINGCAP_MODEL: "open",
     "gpt-6.1-sol": "closed",
     "gpt-6-astra": "closed",
     "claude-opus-5-5": "closed",
@@ -34,13 +41,22 @@ ALLOWED_CONDITIONS = {
     "codex": set(DEFAULT_CONDITIONS["codex"]),
     "claude": set(DEFAULT_CONDITIONS["claude"]),
     "lemex": {(m, e) for m, efforts in lemex.MODELS.items() for e in efforts},
+    "lemex-local": {
+        (m, e) for m, efforts in lemex_local.MODELS.items() for e in efforts
+    },
     "agy": {(m, e) for m, efforts in agy.MODELS.items() for e in efforts},
 }
 
 
 def adapter(provider: str) -> ModuleType:
     try:
-        return {"codex": codex, "lemex": lemex, "claude": claude, "agy": agy}[provider]
+        return {
+            "codex": codex,
+            "lemex": lemex,
+            "lemex-local": lemex_local,
+            "claude": claude,
+            "agy": agy,
+        }[provider]
     except KeyError:
         raise ValueError("Unknown agent provider: " + provider) from None
 

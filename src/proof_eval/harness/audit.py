@@ -11,11 +11,13 @@ from proof_eval.evidence.io import digest, read, write_json
 from proof_eval.harness.session import code_identity
 from proof_eval.paths import ROOT
 from proof_eval.protocol import FIELDS, fingerprint
-from proof_eval.providers import agy, claude
+from proof_eval.providers import agy, claude, deadline_cleanup
 from proof_eval.providers.costs import rate_card
 from proof_eval.providers.events import parse_events
 from proof_eval.providers.monitoring import read_events, verified_stream_stop
 from proof_eval.providers.response_usage import audit_usage
+from proof_eval.providers.retries import owned_client_eof, retryable_transport_failure
+from proof_eval.providers.signal_scope import audit_generation as audit_signal_scope
 from proof_eval.providers.spending import native_cost_stop
 from proof_eval.verification.feedback import all_versions_passed
 
@@ -36,6 +38,112 @@ def _compatible_rate_card(saved: dict, current: dict) -> bool:
     } and set(saved.get("unpriced_models", [])) <= set(
         current.get("unpriced_models", [])
     )
+
+
+def _audit_native_ownership(folder: Path, generation: dict, events: list[dict]) -> None:
+    """Bind local EOF recovery to host-owned process and event evidence."""
+    marker = generation.get("owned_client_eof")
+    ownership = generation.get("process_ownership")
+    process = (
+        read(folder / "process.json") if (folder / "process.json").exists() else {}
+    )
+    receipt = folder / "process_ownership.json"
+    if not (
+        marker is not None
+        or ownership is not None
+        or process.get("native_supervisor")
+        or receipt.exists()
+    ):
+        audit_signal_scope(folder, generation)
+        return  # Historical and nonlocal executions keep their saved contract.
+    _require(
+        generation.get("provider") == "lemex-local"
+        and process.get("native_supervisor") is True,
+        "Native ownership evidence has no local supervised process",
+    )
+    if ownership is None:
+        _require(
+            marker is None
+            and not receipt.exists()
+            and generation.get("status") != "received",
+            "Native completion or recovery is missing its ownership receipt",
+        )
+        if process.get("ownership_schema_version") == 2:
+            _require(
+                generation.get("host_deadline_cleanup") is not None,
+                "Native deadline is missing complete host cleanup evidence",
+            )
+        deadline_cleanup.audit(folder, generation)
+        audit_signal_scope(folder, generation)
+        return  # An interrupted supervisor never authorizes a retry.
+    _require(
+        isinstance(ownership, dict) and receipt.exists() and read(receipt) == ownership,
+        "Native ownership receipt differs from saved generation",
+    )
+    if process.get("ownership_schema_version") == 2:
+        startup = ownership.get("startup", {})
+        _require(
+            (folder / "process_ownership_started.json").exists()
+            and read(folder / "process_ownership_started.json") == startup
+            and startup.get("supervisor") == ownership.get("supervisor")
+            and startup.get("native") == ownership.get("native")
+            and startup.get("native_exec_gated") is True,
+            "Native exec was not gated by durable process identities",
+        )
+    supervisor = ownership.get("supervisor", {})
+    native = ownership.get("native", {})
+    cleanup = ownership.get("cleanup", {})
+    _require(
+        all(isinstance(p, dict) for p in (supervisor, native, cleanup)),
+        "Native ownership receipt has malformed process evidence",
+    )
+    _require(
+        ownership.get("schema_version") == 1
+        and generation.get("supervisor_returncode") == 0
+        and supervisor == {k: process.get(k) for k in ("pid", "start_ticks")}
+        and all(
+            type(p.get("pid")) is int
+            and p["pid"] > 0
+            and isinstance(p.get("start_ticks"), str)
+            and p["start_ticks"].isdigit()
+            for p in (supervisor, native)
+        )
+        and supervisor["pid"] != native["pid"]
+        and ownership.get("native_exited") is True
+        and type(ownership.get("native_returncode")) is int
+        and ownership["native_returncode"] == generation.get("returncode", 0)
+        and cleanup.get("complete") is True
+        and cleanup.get("remaining_pids") == [],
+        "Native ownership receipt does not prove an exited and reaped client",
+    )
+    notices = ownership.get("supervisor_signals")
+    if notices is not None:
+        _require(
+            isinstance(notices, list)
+            and bool(notices)
+            and (folder / "process_signals.json").exists()
+            and read(folder / "process_signals.json") == notices
+            and all(
+                isinstance(n, dict)
+                and n.get("signal") in (1, 2, 15)
+                and isinstance(n.get("sender"), dict)
+                and type(n["sender"].get("pid")) is int
+                and type(n.get("sender_uid")) is int
+                and type(n.get("code")) is int
+                and type(n.get("at_epoch")) in (int, float)
+                for n in notices
+            ),
+            "Native supervisor signal evidence changed",
+        )
+    audit_signal_scope(folder, generation)
+    if marker is not None:
+        _require(
+            owned_client_eof(events)
+            and retryable_transport_failure(generation)
+            and generation.get("events_errors", [])
+            == [e for e in events if e.get("type") in {"error", "turn.failed"}],
+            "Owned native EOF has no matching active stream and stopped-process evidence",
+        )
 
 
 def _audit_claude_terminal(folder: Path, generation: dict, request: dict) -> None:
@@ -855,8 +963,12 @@ def audit(output: Path) -> dict:
                             "Native event stream was truncated without a deadline stop",
                         )
                         break
+                _audit_native_ownership(folder, gen, events)
                 parsed = parse_events(
-                    events, gen.get("content", ""), gen.get("returncode", 0)
+                    events,
+                    gen.get("content", ""),
+                    gen.get("returncode", 0),
+                    allow_empty_final=req["cli"].get("terminal_schema_version") == 2,
                 )
                 if (
                     req["cli"].get("response_usage_schema_version") in (1, 2)
