@@ -10,6 +10,11 @@ The warm-up cohort has 15 declarations and 36 required version checks. Scores us
 
 ## Setup and validation
 
+Direct policy training is maintained in `src/proof_eval/training`, with the
+`proof-train` CLI. See [training setup, rewards and evidence](docs/TRAINING.md).
+Its explicit preparation commands make no model calls; an allocated GPU job or
+passed unit suite is not evidence of a successful optimizer update.
+
 ```bash
 conda activate af
 python -m pip install -e '.[dev,semantic]'

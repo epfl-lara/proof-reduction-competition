@@ -25,6 +25,7 @@ APIs; no library imports an experiment driver. Historical studies stay in
 | `benchmark` | Explicit project setup, source task harvesting, and one-time reference processing | `process_benchmark`, `CorpusConfig`, `build_corpus` |
 | `evidence` | Atomic artifacts, stable hashes and saved-evidence audits | `write_json`, `fingerprint`, `audit` |
 | `interfaces` | Thin CLI and localhost HTTP evaluation interfaces | `proof-eval` |
+| `training` | Explicit original preparation, GRPO tool trajectories, reward/token fidelity and frozen training execution | `proof-train` |
 
 `harness/pipeline.py` is the standard workflow: cohort cleanup before, a model-only
 batch, then cleanup of each model condition's own selected outputs. Whole-cohort
