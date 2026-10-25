@@ -64,6 +64,11 @@ def run(args: RunConfig) -> dict:
                 "environments_path": str(Path(args.environments).resolve()),
                 "references_path": str(Path(args.references).resolve()),
                 "references_sha256": digest(args.references),
+                **(
+                    {"local_capacity_slots": args.workers}
+                    if args.provider == "lemex-local"
+                    else {}
+                ),
             },
         )
         evaluator = Evaluator(args.dataset, args.environments, args.cache)

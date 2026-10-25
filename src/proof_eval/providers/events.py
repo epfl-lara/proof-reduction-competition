@@ -38,20 +38,40 @@ def terminal(event: object) -> bool:
     return isinstance(event, dict) and event.get("type") == "turn.completed"
 
 
-def parse_events(events, final, returncode):
+def parse_events(events, final, returncode, *, allow_empty_final=False):
     turns = [e for e in events if e.get("type") == "turn.completed"]
     bad = [e for e in events if e.get("type") in {"error", "turn.failed"}]
     recovered = [e for e in bad if reconnect_notice(e)]
     items = [e["item"] for e in events if e.get("type") == "item.completed"]
     tools = [e for e in items if e.get("type") not in {"agent_message", "reasoning"}]
-    messages = [e.get("text", "") for e in items if e.get("type") == "agent_message"]
+    # Native streams can emit a whitespace-only message after the message
+    # written by --output-last-message. It is not a replacement final answer.
+    messages = [
+        e.get("text", "")
+        for e in items
+        if e.get("type") == "agent_message" and e.get("text", "").strip()
+    ]
+    empty_completion = bool(
+        allow_empty_final
+        and len(turns) == 1
+        and not final.strip()
+        and not messages
+        and isinstance(turns[0].get("usage"), dict)
+        and turns[0].get("usage", {}).get("output_tokens", 0) > 0
+        and any(i.get("type") in {"reasoning", "command_execution"} for i in items)
+    )
     if (
         returncode
         or len(bad) != len(recovered)
         or len(turns) != 1
-        or not final.strip()
-        or not messages
-        or messages[-1].strip() != final.strip()
+        or (
+            not empty_completion
+            and (
+                not final.strip()
+                or not messages
+                or messages[-1].strip() != final.strip()
+            )
+        )
     ):
         return {
             "status": "transport_error",
@@ -78,6 +98,8 @@ def parse_events(events, final, returncode):
         "tool_items": len(tools),
         "tool_item_types": [t.get("type") for t in tools],
     }
+    if allow_empty_final:
+        result.update(terminal_schema_version=2, empty_completion=empty_completion)
     if recovered:
         result.update(
             events_errors=bad,

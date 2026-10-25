@@ -75,15 +75,21 @@ def main():
     parser.add_argument("--writable", type=Path, action="append", required=True)
     parser.add_argument("--protected", type=Path, action="append", required=True)
     parser.add_argument("--temporary-directory", type=Path)
-    parser.add_argument("--parent-pid-namespace", required=True)
+    parser.add_argument("--parent-pid-namespace")
+    parser.add_argument("--signal-scope", action="store_true")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     if not command:
         parser.error("A command after -- is required")
-    if os.readlink("/proc/self/ns/pid") == args.parent_pid_namespace:
+    if not args.parent_pid_namespace and not args.signal_scope:
+        raise RuntimeError("An explicit process boundary is required")
+    if (
+        args.parent_pid_namespace
+        and os.readlink("/proc/self/ns/pid") == args.parent_pid_namespace
+    ):
         raise RuntimeError("Private PID namespace is required; refusing host execution")
-    if int(os.readlink("/proc/self")) != os.getpid():
+    if args.parent_pid_namespace and int(os.readlink("/proc/self")) != os.getpid():
         raise RuntimeError("Private /proc mount is required")
     restrict_writes(args.writable, args.protected)
     if args.temporary_directory:
@@ -98,6 +104,7 @@ def launch_command(
     *,
     runtime_paths: tuple[Path, ...] | list[Path] | None = None,
     lifetime_fd: int | None = None,
+    process_boundary: str = "pid_namespace",
 ) -> list[str]:
     """Fail closed without bubblewrap; retain admission locks in its supervisor.
 
@@ -105,8 +112,10 @@ def launch_command(
     PID namespace also rejects direct signals to sibling jobs and host workers.
     Keep networking and host tool sockets, and apply Landlock after mount setup.
     """
+    if process_boundary not in ("pid_namespace", "signal_scope"):
+        raise ValueError("Unknown process boundary")
     binary = shutil.which("bwrap")
-    if binary is None:
+    if process_boundary == "pid_namespace" and binary is None:
         raise RuntimeError("bubblewrap is required for process isolation")
     folder = Path(folder).resolve()
     temporary = folder / "runtime_tmp"
@@ -119,32 +128,35 @@ def launch_command(
         else runtime_paths
     )
     writable = [folder, *runtime_paths, Path.home() / ".cache", Path("/dev/null")]
-    arguments = [
-        str(Path(binary).resolve()),
-        "--unshare-user",
-        "--unshare-pid",
-        "--unshare-ipc",
-        "--die-with-parent",
-        "--new-session",
-        "--cap-drop",
-        "ALL",
-        "--bind",
-        "/",
-        "/",
-        "--proc",
-        "/proc",
-        "--dev",
-        "/dev",
-    ]
-    if lifetime_fd is not None:
-        arguments += ["--sync-fd", str(lifetime_fd)]
-    arguments += [
-        "--",
-        sys.executable,
-        str(Path(__file__).resolve()),
-        "--parent-pid-namespace",
-        os.readlink("/proc/self/ns/pid"),
-    ]
+    if process_boundary == "signal_scope":
+        arguments = [sys.executable, str(Path(__file__).resolve()), "--signal-scope"]
+    else:
+        arguments = [
+            str(Path(binary).resolve()),
+            "--unshare-user",
+            "--unshare-pid",
+            "--unshare-ipc",
+            "--die-with-parent",
+            "--new-session",
+            "--cap-drop",
+            "ALL",
+            "--bind",
+            "/",
+            "/",
+            "--proc",
+            "/proc",
+            "--dev",
+            "/dev",
+        ]
+        if lifetime_fd is not None:
+            arguments += ["--sync-fd", str(lifetime_fd)]
+        arguments += [
+            "--",
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "--parent-pid-namespace",
+            os.readlink("/proc/self/ns/pid"),
+        ]
     for path in writable:
         if path.exists():
             arguments += ["--writable", str(path.resolve())]

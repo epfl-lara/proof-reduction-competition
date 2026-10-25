@@ -376,6 +376,11 @@ def _run_cell(
                 **({"timeout": timeout} if "problem_timeout_seconds" in config else {}),
                 **({"cost_budget": cost_guard} if cost_guard else {}),
                 **(
+                    {"capacity_slots": config.get("local_capacity_slots", 5)}
+                    if config.get("provider") == "lemex-local"
+                    else {}
+                ),
+                **(
                     {"instructions": config["tool_instructions"]}
                     if "tool_instructions" in config
                     else {}

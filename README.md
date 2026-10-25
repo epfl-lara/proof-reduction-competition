@@ -115,6 +115,12 @@ New Codex cost runs use `--usage-policy best_effort`: native reported counters r
 
 ## Native providers, isolation and monitoring
 
+For open-weight models on local GPUs, see the [local vLLM/Lemex setup and run
+guide](docs/LOCAL_MODELS.md). The explicit `proof-local-vllm` recipe freezes MTP3,
+266,400 context, eight-hour model phases and history off, with complete raw HTTP
+and host-tool capture. It integrates through the current provider/workflow APIs;
+the general before/model/after cleanup defaults below remain unchanged.
+
 Use `--provider codex`, `lemex`, `claude` or `agy`. Codex defaults to Sol 6.1/max and Astra/max; Lemex defaults to DeepSeek V4.1 Flash/high, so specify Qwen explicitly. Claude uses exact Opus 5.5/max without fallback; Antigravity uses Gemini 3.8 Flash/high. Native sampling defaults are unchanged.
 
 For isolated Lemex runs, pin a private catalog with `PROOF_EVAL_LEMEX_CATALOG` before preparation and execution. Missing explicit catalogs fail preflight. Credentials go only to the provider child environment and must never enter results or Git.

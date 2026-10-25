@@ -30,7 +30,7 @@ from .usage_policy import UsagePolicy, resolve_usage_policy
 class RunConfig:
     output: Path = DEFAULT_OUTPUT
     conditions: tuple[tuple[str, str], ...] | None = None
-    provider: Literal["codex", "lemex", "claude", "agy"] = "codex"
+    provider: Literal["codex", "lemex", "lemex-local", "claude", "agy"] = "codex"
     names: tuple[str, ...] = ()
     mode: str = DEFAULT_MODE
     workers: int | None = None

@@ -35,6 +35,10 @@ UNPRICED_MODELS = {
     "deepseek-ai/DeepSeek-V4.1-Flash",
     "Qwen/Qwen3.8-Flash-Next",
 }
+LOCAL_MODELS = {
+    "Qwen/Qwen3.8-Flash-Next-FP8",
+    "bottlecapai/ThinkingCap-Qwen3.8-Flash-Next-FP8",
+}
 TIERS = {"standard": 1.0, "fast": 2.0, "flex": 0.5, "batch": 0.5}
 USAGE_FIELDS = (
     "input_tokens",
@@ -54,7 +58,13 @@ class CostConfig:
     regional_processing: bool = False
 
     def __post_init__(self):
-        if self.model not in {*RATES, CLAUDE_MODEL, GEMINI_MODEL, *UNPRICED_MODELS}:
+        if self.model not in {
+            *RATES,
+            CLAUDE_MODEL,
+            GEMINI_MODEL,
+            *UNPRICED_MODELS,
+            *LOCAL_MODELS,
+        }:
             raise ValueError("No verified price for exact model: " + self.model)
         if self.reasoning_effort not in ("low", "medium", "high", "xhigh", "max"):
             raise ValueError("Unsupported reasoning effort")
@@ -75,6 +85,15 @@ class CostConfig:
 
 
 def rate_card(provider: str = "codex") -> dict:
+    if provider == "lemex-local":
+        return {
+            "currency": "USD",
+            "unit": "per_million_tokens",
+            "rates": {},
+            "sources": {},
+            "unpriced_models": sorted(LOCAL_MODELS),
+            "reason": "Self-hosted token cost is unpriced; usage and GPU billing are separate.",
+        }
     # Preserve the existing Codex card byte-for-byte for historical audits.
     if provider == "claude":
         return {
@@ -224,7 +243,7 @@ def estimate_codex_cost(
         or budget_usd <= 0
     ):
         raise ValueError("Budget must be positive and finite")
-    if config.model in UNPRICED_MODELS:
+    if config.model in UNPRICED_MODELS | LOCAL_MODELS:
         return {
             "status": "unknown_price",
             "basis": "public_api_equivalent",

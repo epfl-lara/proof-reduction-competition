@@ -19,10 +19,12 @@ from typing import Callable
 from proof_eval.evidence.io import fingerprint, now, write_json
 from proof_eval.paths import PACKAGE
 
+from . import deadline_cleanup, signal_scope
 from .contracts import ToolSession
 from .isolation import launch_command
 from .monitoring import UsageReader, communicate_with_budget, read_events
-from .processes import process_identity, stop_tree
+from .processes import owned_command, owned_identity, process_identity, stop_tree
+from .retries import owned_client_eof
 from .spending import native_cost_stop
 from .termination import record_exit
 
@@ -65,6 +67,10 @@ def generate(
         raise ValueError("Expected system and user messages")
     if identity != expected_cli:
         raise ValueError(f"{provider} executable or configuration changed")
+    scoped = provider == "lemex-local"
+    scope_identity = identity.get("signal_scope")
+    if scoped:
+        signal_scope.validate_identity(scope_identity)
     request = {
         "provider": provider,
         "messages": messages,
@@ -111,13 +117,30 @@ def generate(
         launch = build(workspace, system_file, last_message, folder)
         protected = list(context["source_projects"].values())
         isolation = dict(runtime_paths=launch.runtime_paths)
-        subprocess.run(
-            launch_command(
-                [sys.executable, "-c", "pass"], workspace, protected, **isolation
-            ),
-            check=True,
-            capture_output=True,
+        if provider == "lemex-local":
+            isolation["process_boundary"] = "signal_scope"
+        probe_argv = launch_command(
+            [sys.executable, "-c", "pass"], workspace, protected, **isolation
         )
+        writable = (workspace, *launch.runtime_paths)
+        scope_preflight = None
+        if scoped:
+            scope_preflight = signal_scope.preflight(
+                probe_argv,
+                folder / "signal_scope_preflight",
+                scope_identity,
+                writable,
+                launch.environment,
+            )
+        else:
+            subprocess.run(probe_argv, check=True, capture_output=True)
+        isolated_argv = launch_command(launch.argv, workspace, protected, **isolation)
+        argv = (
+            signal_scope.wrap(isolated_argv, folder, scope_identity, writable)
+            if scoped
+            else isolated_argv
+        )
+        ownership_path = folder / "process_ownership.json"
         started = time.monotonic()
         # Holding one slot until the native session exits conservatively bounds
         # the sequential requests made by that session across all host batches.
@@ -127,20 +150,43 @@ def generate(
             (folder / "events.jsonl").open("w") as out,
             (folder / "stderr.log").open("w") as err,
         ):
-            argv = launch_command(
-                launch.argv, workspace, protected, lifetime_fd=capacity_fd, **isolation
-            )
+            if not scoped:
+                argv = launch_command(
+                    launch.argv,
+                    workspace,
+                    protected,
+                    lifetime_fd=capacity_fd,
+                    **isolation,
+                )
             write_json(
                 folder / "command.json",
                 {
                     "argv": argv,
                     "cwd": str(launch.cwd),
-                    "policy": "private_pid_namespace_landlock_host_ledger",
+                    "policy": (
+                        "host_ledger_readonly_sources_signal_scope_v1"
+                        if scoped
+                        else "private_pid_namespace_landlock_host_ledger"
+                    ),
+                    **(
+                        {
+                            "signal_scope": scope_identity,
+                            "signal_scope_preflight": scope_preflight,
+                            "isolated_argv": isolated_argv,
+                        }
+                        if scoped
+                        else {}
+                    ),
                 },
             )
             write_json(folder / "request_started.json", {"started_at": now()})
+            pass_fds = () if capacity_fd is None else (capacity_fd,)
             child = subprocess.Popen(
-                argv,
+                (
+                    owned_command(argv, ownership_path, pass_fds)
+                    if provider == "lemex-local"
+                    else argv
+                ),
                 stdin=subprocess.PIPE,
                 stdout=out,
                 stderr=err,
@@ -148,18 +194,24 @@ def generate(
                 env=launch.environment,
                 text=True,
                 start_new_session=True,
-                pass_fds=() if capacity_fd is None else (capacity_fd,),
+                pass_fds=pass_fds,
             )
-            write_json(
-                folder / "process.json",
-                {
-                    "pid": child.pid,
-                    "started_at": now(),
-                    "identity": process_identity(child.pid),
-                },
-            )
+            process = {
+                "pid": child.pid,
+                "started_at": now(),
+                "identity": process_identity(child.pid),
+            }
+            if provider == "lemex-local":
+                process.update(
+                    owned_identity(child.pid),
+                    native_supervisor=True,
+                    ownership_schema_version=2,
+                    signal_scope=scope_identity,
+                )
+            write_json(folder / "process.json", process)
             cost_stop = None
             monitor_error = None
+            stopped = None
             try:
                 if cost_budget is not None and cost_budget["kind"] == "host_stream_usd":
                     if launch.stream_usage is None:
@@ -176,8 +228,12 @@ def generate(
                     child.communicate(prompt_file.read_text(), timeout=timeout)
                 timed_out = False
             except subprocess.TimeoutExpired:
-                stop_tree(child.pid)
+                stopped = stop_tree(child.pid)
                 child.wait(timeout=5)
+                if provider == "lemex-local":
+                    deadline_cleanup.save_native_stop(
+                        folder, process, stopped, returncode=child.returncode
+                    )
                 timed_out = True
             except (OSError, ValueError, KeyError) as error:
                 stop_tree(child.pid)
@@ -196,9 +252,14 @@ def generate(
                     )
                 except (OSError, ValueError, KeyError):
                     pass  # Still preserve the raw exit when events are unreadable.
+            observed_exit = child.returncode
+            if provider == "lemex-local" and ownership_path.exists():
+                observed_exit = json.loads(ownership_path.read_text())[
+                    "native_returncode"
+                ]
             exit_record = record_exit(
                 folder,
-                child.returncode,
+                observed_exit,
                 timed_out=timed_out,
                 cost_stopped=cost_stop is not None or native_limit,
                 monitor_error=monitor_error,
@@ -209,7 +270,86 @@ def generate(
                 allow_partial=timed_out or cost_stop is not None,
             )
             final = last_message.read_text() if last_message.exists() else ""
-            result = launch.parse(events, final, child.returncode)
+            ownership = None
+            if provider == "lemex-local" and ownership_path.exists():
+                ownership = json.loads(ownership_path.read_text())
+                expected_owner = {k: process[k] for k in ("pid", "start_ticks")}
+                if ownership.get("supervisor") != expected_owner:
+                    raise ValueError(
+                        "Native ownership receipt changed process identity"
+                    )
+            result = launch.parse(
+                events,
+                final,
+                (
+                    ownership["native_returncode"]
+                    if ownership is not None
+                    else child.returncode
+                ),
+            )
+            scope_error = None
+            if scoped:
+                try:
+                    result["signal_scope"] = {
+                        "status": "verified",
+                        **signal_scope.evidence(
+                            folder,
+                            scope_identity,
+                            isolated_argv,
+                            process,
+                            ownership,
+                            allow_partial=timed_out,
+                        ),
+                    }
+                except (OSError, ValueError, KeyError) as error:
+                    scope_error = str(error)
+                    result["signal_scope"] = {
+                        "status": "unverified",
+                        "error": scope_error,
+                    }
+                write_json(folder / "signal_scope.json", result["signal_scope"])
+            if ownership is not None:
+                result.update(
+                    process_ownership=ownership,
+                    supervisor_returncode=child.returncode,
+                )
+                if not ownership.get("cleanup", {}).get("complete"):
+                    result.update(
+                        status="transport_error",
+                        error="Native descendants could not be fully reaped; not resampled",
+                    )
+                elif (
+                    child.returncode == 0
+                    and result["status"] == "transport_error"
+                    and not timed_out
+                    and cost_stop is None
+                    and monitor_error is None
+                    and scope_error is None
+                    and owned_client_eof(events)
+                ):
+                    # The service context has also exited: accepted host Lean
+                    # checks are drained before the next attempt can start.
+                    result.update(
+                        error="Owned native client exited during an active turn",
+                        owned_client_eof={
+                            "schema_version": 1,
+                            "reason": "active_native_event_stream_eof",
+                            "tool_service_drained": True,
+                            "ownership_sha256": fingerprint(ownership),
+                        },
+                    )
+                if ownership.get("supervisor_signals") and not timed_out:
+                    result.pop("owned_client_eof", None)
+                    result.update(
+                        status="transport_error",
+                        external_supervisor_signal=True,
+                        error="Native supervisor received an external signal; not resampled",
+                    )
+            elif provider == "lemex-local" and not timed_out:
+                result.update(
+                    status="transport_error",
+                    error="Native client has no complete ownership receipt; not resampled",
+                )
             if (
                 (
                     native_cost_stop(provider, events, cost_budget)
@@ -235,19 +375,26 @@ def generate(
                     status="budget_exhausted",
                     error="Native agent reached the problem time limit; not resampled",
                 )
+                if provider == "lemex-local":
+                    result["host_deadline_cleanup"] = deadline_cleanup.record(
+                        folder, process, stopped, source="native_timeout"
+                    )
             if monitor_error is not None:
                 result.update(status="transport_error", error=monitor_error)
+            if scope_error is not None:
+                result.pop("owned_client_eof", None)
+                result.update(status="transport_error", error=scope_error)
             if result["status"] == "received" and not last_message.exists():
                 last_message.write_text(result["content"])
         except (OSError, ValueError, KeyError) as error:
             result = {
-                "status": "budget_exhausted" if timed_out else "transport_error",
+                "status": "transport_error",
                 "error": str(error),
                 "usage": None,
             }
         result.update(
             provider=provider,
-            returncode=child.returncode,
+            returncode=result.get("returncode", observed_exit),
             process_exit=exit_record,
             elapsed_seconds=time.monotonic() - started,
             finished_at=now(),

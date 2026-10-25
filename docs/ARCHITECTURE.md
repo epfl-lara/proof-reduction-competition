@@ -16,6 +16,11 @@ The maintained runtime is one installable package. CLI commands call library
 APIs; no library imports an experiment driver. Historical studies stay in
 `results/`; their retired source can be recovered from checkpoint `bfb2ade6`.
 
+The explicit local open-weight route is `lemex-local`. Its
+[`proof-local-vllm` interface](LOCAL_MODELS.md) freezes a native profile and owns
+the vLLM server and attributed raw HTTP capture proxy around the ordinary model
+workflow. Gateway admission and existing provider defaults stay separate.
+
 | Package | Responsibility | Main API |
 | --- | --- | --- |
 | `verification` | Pinned Lean compilation, token counts, cached references, goal observations, heartbeat diagnostics | `Evaluator`, `check_references`, `profile` |

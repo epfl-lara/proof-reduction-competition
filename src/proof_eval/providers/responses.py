@@ -18,6 +18,7 @@ def command(
     effort: str,
     instructions: str,
     settings: dict | None = None,
+    load_user_config: bool = False,
 ) -> list[str]:
     """Retain native shell/edit tools with one explicit task policy.
 
@@ -47,7 +48,7 @@ def command(
     argv = [
         str(binary),
         "exec",
-        "--ignore-user-config",
+        *([] if load_user_config else ["--ignore-user-config"]),
         "--ignore-rules",
         "--strict-config",
         "--ephemeral",
