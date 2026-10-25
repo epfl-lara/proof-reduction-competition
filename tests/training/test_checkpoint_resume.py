@@ -60,8 +60,9 @@ def trainer(checkpoint):
             no_load_rng=False,
             mcore_adapter=checkpoint,
             consumed_train_samples=8,
+            train_iters=1,
         ),
-        state=SimpleNamespace(iteration=1, consumed_train_samples=8),
+        state=SimpleNamespace(iteration=1, consumed_train_samples=8, max_steps=1),
         opt_param_scheduler=SimpleNamespace(state_dict=lambda: dict(state)),
         optimizer=optimizer,
         unwrapped_models=[model],
@@ -244,6 +245,27 @@ def test_native_restore_preserves_optimizer_and_scheduler_and_only_moves_new_dat
     assert record["source_consumed_train_samples"] == 8
     assert record["optimizer_state_entries"] == 1
     assert record["optimizer_reset"] is False and record["new_model_calls"] == 0
+
+
+def test_restored_global_iteration_does_not_drop_one_remaining_update(resumed):
+    _, spec, loaded, _ = resumed
+    assert loaded.args.train_iters == 1
+    record = verify_restored_state(loaded, spec, 0)
+    assert loaded.args.train_iters == loaded.state.max_steps == 2
+    assert loaded.args.train_iters - loaded.state.iteration == 1
+    assert record["native_dataset_computed_iterations"] == 1
+    assert record["effective_native_loop_bound"] == 2
+
+
+def test_restore_only_stops_before_first_rollout_despite_epoch_recomputation(resumed):
+    _, spec, loaded, _ = resumed
+    record = verify_restored_state(loaded, spec, 0, restore_only=True)
+    assert (
+        loaded.state.iteration == loaded.args.train_iters == loaded.state.max_steps == 1
+    )
+    assert not loaded.state.iteration < loaded.args.train_iters
+    assert loaded.scheduled["num_steps"] == 8
+    assert record["restore_only"] is True and record["new_model_calls"] == 0
 
 
 @pytest.mark.parametrize(

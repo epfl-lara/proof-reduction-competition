@@ -190,7 +190,9 @@ def optimizer_state_entries(optimizer) -> int:
     return count
 
 
-def verify_restored_state(trainer, spec: dict, rank: int) -> dict:
+def verify_restored_state(
+    trainer, spec: dict, rank: int, *, restore_only: bool = False
+) -> dict:
     args, state, scheduler = trainer.args, trainer.state, trainer.opt_param_scheduler
     if args.finetune or args.no_load_optim or args.no_load_rng:
         raise ValueError("Native restore disabled optimizer or RNG loading")
@@ -216,6 +218,13 @@ def verify_restored_state(trainer, spec: dict, rank: int) -> dict:
     entries = optimizer_state_entries(trainer.optimizer)
     if not entries:
         raise ValueError("Native optimizer loaded no saved Adam state")
+    native_iters = args.train_iters
+    if native_iters not in {
+        spec["remaining_training_rows"] // 2,
+        spec["global_train_iters"],
+    }:
+        raise ValueError("Native remaining-data iteration count is unexpected")
+    target = spec["checkpoint_step"] if restore_only else spec["global_train_iters"]
     record = {
         "at_epoch": time.time(),
         "rank": rank,
@@ -230,7 +239,17 @@ def verify_restored_state(trainer, spec: dict, rank: int) -> dict:
         "new_remaining_data_sampler_start": spec["remaining_dataset_sampler_start"],
         "optimizer_reset": False,
         "new_model_calls": 0,
+        "native_dataset_computed_iterations": native_iters,
+        "declared_global_training_iterations": spec["global_train_iters"],
+        "effective_native_loop_bound": target,
+        "restore_only": restore_only,
     }
+    # ms-swift recomputes train_iters from num_train_epochs before constructing
+    # this trainer, overriding the CLI value. Its loop compares that bound with
+    # the restored GLOBAL iteration, so retain the declared completed+remaining
+    # total here. Scheduler state above has already been restored unchanged.
+    args.train_iters = target
+    state.max_steps = target
     # The input file is now a separately declared remaining-only stream. This
     # changes its cursor, never the optimizer, scheduler, RNG or global iteration.
     state.consumed_train_samples = spec["remaining_dataset_sampler_start"]
@@ -254,7 +273,12 @@ def install_native_optimizer_resume() -> None:
 
     def load_checkpoint(self):
         result = original(self)
-        record = verify_restored_state(self, spec, int(os.environ.get("RANK", "0")))
+        record = verify_restored_state(
+            self,
+            spec,
+            int(os.environ.get("RANK", "0")),
+            restore_only=bool(plan.get("checkpoint_restore_only", False)),
+        )
         for base in (plan["home"], plan["root"]):
             immutable(
                 Path(base) / "optimizer-resume" / f"rank-{record['rank']}.json", record

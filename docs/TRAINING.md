@@ -225,5 +225,10 @@ An explicitly declared remaining-only input stream excludes all earlier policy
 attempts, including interrupted ones. Only that new stream's data cursor starts
 at zero; optimizer, scheduler, RNG and global iteration remain restored. A
 restore-only preflight refuses every rollout and verifies a clean native exit.
+The pinned library recomputes `train_iters` from epoch length before constructing
+its trainer. The restore hook therefore binds the native loop's global limit and
+`max_steps` after loading state: completed plus remaining updates for training,
+or the already restored iteration for a zero-update restore-only preflight.
+It leaves the restored learning-rate schedule unchanged.
 Synthetic two-update fixtures are separate software checks and never seed Arena
 training or count as an Arena improvement.
