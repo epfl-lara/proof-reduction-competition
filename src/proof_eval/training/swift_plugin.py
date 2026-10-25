@@ -194,9 +194,12 @@ def install_exact_token_capture():
         record = {
             "request_id": request_id,
             "purpose": (
-                "synthetic_gpu_smoke_only"
-                if GPU_PROBE_ACTIVE
-                else "arena_training_rollout"
+                os.environ.get("ARENA_RL_RUN_PURPOSE")
+                or (
+                    "synthetic_gpu_smoke_only"
+                    if GPU_PROBE_ACTIVE
+                    else "arena_training_rollout"
+                )
             ),
             "at_epoch": time.time(),
             "prompt_token_ids": list(result.prompt_token_ids),
@@ -280,6 +283,7 @@ def install_optimizer_receipts():
             raise UnscorableEpisode("Optimizer returned a non-finite gradient norm")
         after = sample_hash(self)
         record = {
+            "purpose": os.environ.get("ARENA_RL_RUN_PURPOSE", "arena_direct_rl"),
             "optimizer_step": self.state.iteration + 1,
             "at_epoch": time.time(),
             "update_successful": bool(successful),
@@ -350,6 +354,9 @@ def install_early_checkpoint_receipts():
                 Path(os.environ["ARENA_RL_CHECKPOINT_HOME"])
                 / f"step-{self.state.iteration:06d}.json",
                 {
+                    "purpose": os.environ.get(
+                        "ARENA_RL_RUN_PURPOSE", "arena_direct_rl"
+                    ),
                     "step": self.state.iteration,
                     "at_epoch": time.time(),
                     "checkpoint": str(folder),
@@ -426,3 +433,8 @@ def install_coordinated_rollout_failure():
 
 
 install_coordinated_rollout_failure()
+
+if os.environ.get("ARENA_RL_RUN_PURPOSE") == "synthetic_gpu_training_check":
+    from proof_eval.training.gpu_training_probe import register
+
+    register()

@@ -173,3 +173,21 @@ stop without retry; successful probes leave model parameters and optimizer state
 unchanged. Every terminal pre-update policy lineage can be listed in
 `previous_policy_attempts`; their exact hash-bound consumed-task sets are combined
 so a later repair cannot silently sample an older interrupted task again.
+
+## Full training integration check
+
+Inference alone does not validate the training graph. The explicit
+`synthetic_gpu_training_check` fixture uses the actual GRPO trainer, full measured
+32K text inputs, sampled tokens/logprobs, reference log probabilities, backward
+pass, optimizer and checkpoint writer. It consumes zero Arena reserve tasks.
+Its contrived fixture advantages and resulting adapters test software only:
+they are labelled separately and never become Arena rewards, an improvement
+claim, or starting weights for the real run. The real run always selects its
+declared original base revision or an explicitly verified real checkpoint.
+
+The training command retains the original model's native RoPE/MRoPE configuration.
+An unnecessary manual YaRN override discards the Qwen model's MRoPE sections and
+makes the training bridge interpret three-axis positions as ordinary RoPE. The
+32K curriculum fits inside the native 262K window, so it needs no such override.
+The GPU fixture checks the actual native position type and preserves all position
+and input tensors. It makes no mathematical modification to the model.

@@ -103,14 +103,6 @@ def training_command(plan: dict, model_path: str) -> list[str]:
         ),
         "--max_model_len",
         str(plan["context_tokens"]),
-        "--rope_scaling",
-        json.dumps(
-            {
-                "rope_type": "yarn",
-                "factor": 4.0,
-                "original_max_position_embeddings": 262144,
-            }
-        ),
         "--sleep_level",
         "2",
         "--offload_model",
