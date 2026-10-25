@@ -176,6 +176,11 @@ def preflight_only(plan: dict, release: Path) -> dict:
     from proof_eval.training.swift_plugin import ArenaReward, ArenaScheduler
 
     assert callable(ArenaReward) and callable(ArenaScheduler)
+    post_import_tools = None
+    if plan.get("semantic_regression"):
+        from proof_eval.training.tools import verify_search_after_training_patch
+
+        post_import_tools = verify_search_after_training_patch(plan, release, tools)
     tested = subprocess.run(
         [sys.executable, "-m", "pytest", "-q", str(release / "tests")],
         cwd=release,
@@ -194,6 +199,7 @@ def preflight_only(plan: dict, release: Path) -> dict:
         "harness_imports_verified": harness,
         "attention_dependencies": attention,
         "training_plugin_imported": True,
+        "post_training_import_semantic_regression": post_import_tools,
         "host_tools": tools,
         "policy_model_calls": 0,
         "embedding_model_calls": tools["embedding_model_calls"],
@@ -375,12 +381,14 @@ def run(plan_path: Path, release: Path) -> None:
         },
     )
     from proof_eval.training.context import admit_prepared
+    from proof_eval.training.recovery import consumed_tasks
 
     admission = admit_prepared(
         root / "preparation",
         model_path,
         plan["context_tokens"],
         plan["per_turn_max_tokens"],
+        exclude_started=consumed_tasks(plan),
     )
     immutable(home / "context-admission.json", admission)
     config = {

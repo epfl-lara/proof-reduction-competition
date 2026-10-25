@@ -7,6 +7,7 @@ import hashlib
 import math
 import os
 import time
+import traceback
 import uuid
 from pathlib import Path
 
@@ -23,19 +24,76 @@ class ArenaScheduler(MultiTurnScheduler):
         super().__init__(*args, **kwargs)
         self.config = read(os.environ["ARENA_RL_CONFIG"])
         self.episodes = {}
+        self.trajectory_failures = []
+
+    def _record_failure(self, request, phase, error):
+        record = {
+            "task_id": request.data_dict["arena_task_id"],
+            "uuid": request.uuid,
+            "rank": int(os.environ.get("RANK", "0")),
+            "phase": phase,
+            "error_type": type(error).__name__,
+            "error": str(error),
+            "traceback": traceback.format_exc(),
+            "at_epoch": time.time(),
+            "reward_assigned": False,
+            "automatic_model_replay": False,
+        }
+        rank = "rank-" + str(record["rank"])
+        name = request.uuid + "-" + phase + ".json"
+        root = Path(self.config["rollout_root"]).parent
+        pin = immutable(root / "episode-failures" / rank / name, record)
+        if self.config.get("home"):
+            immutable(
+                Path(self.config["home"]) / "episode-failures" / rank / name, record
+            )
+        self.trajectory_failures.append(
+            {
+                k: record[k]
+                for k in ("task_id", "uuid", "rank", "phase", "error_type", "error")
+            }
+        )
+        return {
+            "done": True,
+            "rollout_infos": {
+                "arena_unscorable": True,
+                "error_receipt_sha256": pin,
+                "task_id": record["task_id"],
+                "num_turns": getattr(self.episodes.get(request.uuid), "turns", 0),
+            },
+        }
 
     async def on_trajectory_start(self, requests):
+        from proof_eval.training.coordinated_failure import gather_failures
+
         rank = int(os.environ.get("RANK", "0"))
+        self.trajectory_failures = []
         for req in requests:
-            if req.uuid in self.episodes:
-                raise UnscorableEpisode("Duplicate rollout UUID; do not replay")
-            episode = await asyncio.to_thread(
-                Episode, req.data_dict["arena_task_id"], req.uuid, rank, self.config
+            try:
+                if req.uuid in self.episodes:
+                    raise UnscorableEpisode("Duplicate rollout UUID; do not replay")
+                episode = await asyncio.to_thread(
+                    Episode, req.data_dict["arena_task_id"], req.uuid, rank, self.config
+                )
+                req.messages = episode.initial_messages()
+                self.episodes[req.uuid] = episode
+            except Exception as error:
+                self._record_failure(req, "original-start", error)
+        failed = gather_failures(self.trajectory_failures)
+        if failed:
+            raise UnscorableEpisode(
+                "Original setup failed on a rollout rank: " + str(failed)
             )
-            req.messages = episode.initial_messages()
-            self.episodes[req.uuid] = episode
 
     async def on_turn_end(self, infer_request, response_choice, current_turn):
+        try:
+            return await self._on_turn_end(infer_request, response_choice, current_turn)
+        except Exception as error:
+            return self._record_failure(
+                infer_request, "turn-" + str(current_turn), error
+            )
+
+    async def _on_turn_end(self, infer_request, response_choice, current_turn):
         ids = list(response_choice.token_ids or [])
         raw = response_choice.logprobs or {}
         logprobs = [r["logprob"] for r in raw.get("content", [])]
@@ -301,3 +359,28 @@ def install_early_checkpoint_receipts():
 
 install_loss_token_gate()
 install_early_checkpoint_receipts()
+
+
+def install_coordinated_rollout_failure():
+    from swift.megatron.trainers.rollout_mixin import MegatronRolloutMixin
+
+    from proof_eval.training.coordinated_failure import gather_failures
+
+    old = MegatronRolloutMixin._rollout_requests
+    if getattr(old, "arena_coordinated_failure", False):
+        return
+
+    def rollout_requests(self, requests, request_config):
+        scheduler = getattr(self, "multi_turn_scheduler", None)
+        failures = gather_failures(getattr(scheduler, "trajectory_failures", []))
+        if failures:
+            raise UnscorableEpisode(
+                "Rollout tool failure; no rewards or update: " + str(failures)
+            )
+        return old(self, requests, request_config)
+
+    rollout_requests.arena_coordinated_failure = True
+    MegatronRolloutMixin._rollout_requests = rollout_requests
+
+
+install_coordinated_rollout_failure()

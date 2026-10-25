@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from proof_eval.evidence.immutable import read, sha
+from proof_eval.evidence.immutable import canonical, read, sha
 
 
 def freeze_host_tools(plan: dict) -> dict:
@@ -47,4 +47,71 @@ def freeze_host_tools(plan: dict) -> dict:
         "policy_model_calls": 0,
         "embedding_model_calls": 1,
         "embedding_device": "cpu",
+    }
+
+
+def verify_search_after_training_patch(plan: dict, release: Path, tools: dict) -> dict:
+    """Replay a saved tool request after the real Megatron RoPE registration."""
+    import hashlib
+    from types import SimpleNamespace
+
+    from mcore_bridge.model.rope import get_rope_inv_freq
+    from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
+
+    from proof_eval.training.data import task_id, validate_reserve
+    from proof_eval.training.semantic_process import search_isolated
+    from proof_eval.verification.references import required_versions
+
+    get_rope_inv_freq(
+        SimpleNamespace(
+            multi_latent_attention=False,
+            partial_rotary_factor=1.0,
+            kv_channels=128,
+            rope_scaling=None,
+            rotary_base=10000.0,
+            max_position_embeddings=32768,
+            original_max_position_embeddings=None,
+            hidden_size=1024,
+            num_attention_heads=8,
+        )
+    )
+    bridge_function = ROPE_INIT_FUNCTIONS["default"]
+    if not bridge_function.__module__.startswith("mcore_bridge"):
+        raise RuntimeError("Actual Megatron RoPE registration was not exercised")
+    spec = plan["semantic_regression"]
+    row = next(
+        r
+        for r in validate_reserve(release / "dataset")
+        if task_id(r) == spec["task_id"]
+    )
+    version = spec["request"].get("version") or required_versions({"row": row})[0]
+    environment = read(Path(plan["source_environments"]))
+    project = next(
+        p["path"]
+        for p in environment["projects"]
+        if p["source"] == row["source"] and p["version"] == version
+    )
+    request_pin = hashlib.sha256(canonical(spec["request"])).hexdigest()
+    if request_pin != spec["request_sha256"]:
+        raise ValueError("Saved failing semantic request changed")
+    response = search_isolated(
+        tools["semantic_config"],
+        Path(project),
+        spec["request"],
+        version,
+        Path(plan["home"]) / "post-training-import-tool-regression",
+        timeout_seconds=180,
+    )
+    if ROPE_INIT_FUNCTIONS["default"] is not bridge_function:
+        raise RuntimeError("Tool regression changed the policy's RoPE registry")
+    return {
+        "status": "passed",
+        "request_sha256": request_pin,
+        "task_id": spec["task_id"],
+        "version": version,
+        "response": response,
+        "parent_rope_unchanged": True,
+        "parent_training_patch_present": True,
+        "policy_model_calls": 0,
+        "embedding_model_calls": 1,
     }

@@ -162,3 +162,29 @@ def test_episode_original_timeout_uses_one_fresh_retry_and_keeps_evidence(
         v["cached"] is False for v in episode.session.original["per_version"].values()
     )
     assert source.store.root != episode.evaluator.store.root
+
+
+def test_semantic_source_is_isolated_but_keeps_the_pinned_project_scope(
+    tmp_path, monkeypatch
+):
+    config, _, _ = setup_episode(tmp_path, monkeypatch)
+    episode = Episode("toy-id", "isolated", 0, config)
+    calls = []
+
+    def isolated(config, project, request, version, evidence):
+        calls.append((config, project, request, version, evidence))
+        return {"kind": "semantic_search", "query": request["query"], "count": 0}
+
+    monkeypatch.setattr(
+        "proof_eval.training.semantic_process.search_isolated", isolated
+    )
+    request = {"op": "semantic_search", "query": "natural numbers"}
+    result = episode.session.source(request)
+    assert result["query"] == "natural numbers"
+    assert calls[0][1] == tmp_path and calls[0][3] == "v1"
+    assert calls[0][4].is_relative_to(episode.folder)
+    with pytest.raises(ValueError, match="Version outside"):
+        episode.session.source({**request, "version": "other"})
+    with pytest.raises(ValueError, match="Unsupported source fields"):
+        episode.session.source({**request, "path": "/outside"})
+    assert len(calls) == 1

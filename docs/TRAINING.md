@@ -119,3 +119,26 @@ the original measurement's machine/time. Candidate and analysis caches are never
 imported. Preparation records cache reuse explicitly; source-invalid originals
 are rechecked rather than imported. Every actual rollout still measures the
 original afresh inside its own unchanged episode clock.
+
+## Training-library and tool-model isolation
+
+Megatron's bridge registers legacy rotary initialization globally in Transformers.
+Loading an auxiliary Qwen embedding model later in that same interpreter can fail
+even when the initial tool preflight passed. Training semantic queries therefore
+run in fresh, finite CPU processes using the unchanged host search implementation,
+explicit frozen assets and the same version/project scope. The child masks GPUs
+and removes distributed-rank variables; request, PID/start tick, source, result,
+exit and failure receipts remain under the owning trajectory. It never samples
+the policy or automatically repeats an unknown call.
+
+Preflight replays the saved failing search request after invoking the real bridge
+registration and confirms that the parent policy's registry remains unchanged.
+A CPU Gloo rendezvous communicates rollout infrastructure failures before the
+next model collective. A failed tool batch retains its raw evidence and aborts
+without a synthetic reward or optimizer update.
+
+After a known terminal, pre-update policy attempt, a hash-bound archive can declare
+which task IDs already consumed policy calls. Continuation admits the remaining
+cohort explicitly, preserving interrupted attempts and the full original reserve
+accounting. A learned checkpoint or optimizer receipt prohibits this fresh-base
+continuation and requires exact learned-state recovery instead.

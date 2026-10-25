@@ -9,13 +9,31 @@ from proof_eval.evidence.immutable import immutable, sha
 
 
 def admit_rows(
-    rows: list[dict], lengths: list[int], context: int, completion: int
+    rows: list[dict],
+    lengths: list[int],
+    context: int,
+    completion: int,
+    *,
+    exclude_started: tuple[str, ...] = (),
 ) -> tuple[list[dict], dict]:
     if len(rows) != len(lengths):
         raise ValueError("Prompt length inventory is incomplete")
-    admitted, excluded = [], []
+    if len(set(exclude_started)) != len(exclude_started) or not set(
+        exclude_started
+    ) <= {r["arena_task_id"] for r in rows}:
+        raise ValueError(
+            "Started-policy exclusion is duplicate or outside the prepared cohort"
+        )
+    admitted, excluded, previous_attempts = [], [], []
     for row, length in zip(rows, lengths):
-        if length + completion + 64 > context:
+        if row["arena_task_id"] in exclude_started:
+            previous_attempts.append(
+                {
+                    "task_id": row["arena_task_id"],
+                    "reason": "known_terminal_pre_update_policy_attempt_preserved_not_replayed",
+                }
+            )
+        elif length + completion + 64 > context:
             excluded.append(
                 {
                     "task_id": row["arena_task_id"],
@@ -38,6 +56,7 @@ def admit_rows(
         "distinct_eligible_tasks": distinct,
         "training_rows": len(admitted),
         "context_excluded": excluded,
+        "previous_policy_attempt_excluded": previous_attempts,
         "padding_task_groups": padding,
         "context_tokens": context,
         "max_completion_tokens": completion,
@@ -46,7 +65,12 @@ def admit_rows(
 
 
 def admit_prepared(
-    prepared: Path, model_path: Path, context: int, completion: int
+    prepared: Path,
+    model_path: Path,
+    context: int,
+    completion: int,
+    *,
+    exclude_started: tuple[str, ...] = (),
 ) -> dict:
     from swift.model import get_model_processor
     from swift.template import get_template
@@ -58,7 +82,9 @@ def admit_prepared(
         json.loads(line) for line in (prepared / "train.jsonl").read_text().splitlines()
     ]
     lengths = [len(template.encode(row)["input_ids"]) for row in rows]
-    admitted, result = admit_rows(rows, lengths, context, completion)
+    admitted, result = admit_rows(
+        rows, lengths, context, completion, exclude_started=exclude_started
+    )
     output = prepared / "train-admitted.jsonl"
     raw = b"".join(
         (json.dumps(row, ensure_ascii=False) + "\n").encode() for row in admitted

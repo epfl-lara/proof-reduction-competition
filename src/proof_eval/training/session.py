@@ -37,3 +37,23 @@ class TrainingProofSession(ProofSession):
             self.best_code, self.best_evaluation = self.row["src"], deepcopy(original)
             self._training_original = None
         return super()._save_state()
+
+    def source(self, request):
+        if request.get("op") != "semantic_search":
+            return super().source(request)
+        from proof_eval.training.semantic_process import search_isolated
+
+        tools = self.source_tools
+        if not set(request) <= {"op", "version", "query", "limit", "packages"}:
+            raise ValueError("Unsupported source fields")
+        version = request.get("version") or tools.versions[0]
+        if version not in tools.versions:
+            raise ValueError("Version outside this theorem")
+        project = tools.evaluator.projects[(tools.row["source"], version)].resolve()
+        return search_isolated(
+            tools.semantic_config,
+            project,
+            request,
+            version,
+            self.folder / "isolated-tool-evidence",
+        )
