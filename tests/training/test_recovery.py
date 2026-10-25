@@ -69,3 +69,29 @@ def test_learned_state_cannot_be_treated_as_a_fresh_base_policy(tmp_path):
     )
     with pytest.raises(ValueError, match="exact checkpoint"):
         consumed_tasks(plan)
+
+
+def test_every_interrupted_lineage_remains_excluded(tmp_path):
+    first = fixture_plan(tmp_path)["previous_policy_attempts"]
+    path = tmp_path / "second.json"
+    immutable(
+        path,
+        {
+            "learned_checkpoint_directories": [],
+            "home_optimizer_receipts": [],
+            "home_checkpoint_receipts": [],
+            "policy_rollouts": [
+                {"task_id": "second-used", "model_turns": [{"file": "second-turn"}]}
+            ],
+        },
+    )
+    second = {
+        "archive_result": str(path),
+        "archive_result_sha256": sha(path),
+        "excluded_task_ids": ["second-used"],
+    }
+    plan = {"previous_policy_attempts": [first, second]}
+    assert consumed_tasks(plan) == ("second-used", "used")
+    second["excluded_task_ids"] = []
+    with pytest.raises(ValueError, match="Consumed-task"):
+        consumed_tasks(plan)

@@ -90,8 +90,17 @@ def training_command(plan: dict, model_path: str) -> list[str]:
         "8",
         "--vllm_max_model_len",
         str(plan["context_tokens"]),
+        "--vllm_enforce_eager",
+        str(plan.get("vllm_enforce_eager", False)).lower(),
+        "--vllm_enable_prefix_caching",
+        str(plan.get("vllm_prefix_caching", True)).lower(),
         "--vllm_engine_kwargs",
-        json.dumps({"enable_expert_parallel": True, "moe_backend": "triton"}),
+        json.dumps(
+            {
+                "enable_expert_parallel": True,
+                "moe_backend": "triton",
+            }
+        ),
         "--max_model_len",
         str(plan["context_tokens"]),
         "--rope_scaling",

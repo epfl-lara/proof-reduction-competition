@@ -160,3 +160,16 @@ The service has no policy model, masks GPUs, rejects callers outside the origina
 driver's process tree and ends with that job. Its own finite lifetime and closure
 are recorded on HOME and Scratch. It is a productive host-tool component, not an
 additional cluster job or a permanent monitor.
+
+
+The rollout engine can explicitly select eager execution and disable prefix caching
+with `vllm_enforce_eager` and `vllm_prefix_caching`. These settings preserve complete
+inputs and the model/context budget while avoiding the cached GPU execution path
+that failed on a growing conversation. A configured `gpu_runtime_probe` exercises
+three synthetic growing conversations per rank in the actual loaded engine before
+Arena policy requests. Its independently seeded inputs/outputs are labelled as GPU
+preflight, never scored, optimized or added to the training dataset. Failed probes
+stop without retry; successful probes leave model parameters and optimizer state
+unchanged. Every terminal pre-update policy lineage can be listed in
+`previous_policy_attempts`; their exact hash-bound consumed-task sets are combined
+so a later repair cannot silently sample an older interrupted task again.

@@ -159,3 +159,12 @@ def test_command_uses_original_base_and_keeps_long_context():
     assert command[command.index("--num_generations") + 1] == "4"
     assert command[command.index("--truncation_strategy") + 1] == "delete"
     assert command[command.index("--split_dataset_ratio") + 1] == "0"
+    plan.update(vllm_enforce_eager=True, vllm_prefix_caching=False)
+    command = training_command(plan, "/cache/base-model")
+    import json
+
+    engine = json.loads(command[command.index("--vllm_engine_kwargs") + 1])
+    assert "enforce_eager" not in engine and "enable_prefix_caching" not in engine
+    assert command[command.index("--vllm_enforce_eager") + 1] == "true"
+    assert command[command.index("--vllm_enable_prefix_caching") + 1] == "false"
+    assert command[command.index("--max_length") + 1] == "266400"

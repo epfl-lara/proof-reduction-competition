@@ -193,6 +193,11 @@ def install_exact_token_capture():
         )
         record = {
             "request_id": request_id,
+            "purpose": (
+                "synthetic_gpu_smoke_only"
+                if GPU_PROBE_ACTIVE
+                else "arena_training_rollout"
+            ),
             "at_epoch": time.time(),
             "prompt_token_ids": list(result.prompt_token_ids),
             "choices": [],
@@ -218,6 +223,7 @@ def install_exact_token_capture():
 
 
 POLICY_STEP = None
+GPU_PROBE_ACTIVE = False
 
 
 def install_policy_version_capture():
@@ -371,12 +377,48 @@ def install_coordinated_rollout_failure():
         return
 
     def rollout_requests(self, requests, request_config):
+        global GPU_PROBE_ACTIVE
         scheduler = getattr(self, "multi_turn_scheduler", None)
         failures = gather_failures(getattr(scheduler, "trajectory_failures", []))
         if failures:
             raise UnscorableEpisode(
                 "Rollout tool failure; no rewards or update: " + str(failures)
             )
+        config = getattr(scheduler, "config", {})
+        if config.get("gpu_runtime_probe") and not getattr(
+            self, "arena_gpu_probed", False
+        ):
+            from swift.infer_engine.protocol import RolloutInferRequest
+
+            from proof_eval.training.gpu_probe import run_probe
+
+            active = self.engine.engine.vllm_config
+            observed = {
+                "enforce_eager": active.model_config.enforce_eager,
+                "enable_prefix_caching": active.cache_config.enable_prefix_caching,
+                "context_tokens": active.model_config.max_model_len,
+            }
+            if observed != {
+                "enforce_eager": config["vllm_enforce_eager"],
+                "enable_prefix_caching": config["vllm_prefix_caching"],
+                "context_tokens": config["context_tokens"],
+            }:
+                raise UnscorableEpisode(
+                    "Actual GPU engine differs from the declared plan"
+                )
+            GPU_PROBE_ACTIVE = True
+            try:
+                run_probe(
+                    lambda reqs, options: old(self, reqs, options),
+                    request_config,
+                    RolloutInferRequest,
+                    {**config, "observed_gpu_engine": observed},
+                    int(os.environ.get("RANK", "0")),
+                    gather_failures,
+                )
+            finally:
+                GPU_PROBE_ACTIVE = False
+            self.arena_gpu_probed = True
         return old(self, requests, request_config)
 
     rollout_requests.arena_coordinated_failure = True
