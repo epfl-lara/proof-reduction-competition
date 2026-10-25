@@ -129,3 +129,36 @@ def test_changed_reference_refuses_before_original_or_model_work(tmp_path, monke
     with pytest.raises(UnscorableEpisode, match="fingerprint"):
         Episode("toy-id", "changed", 0, config)
     assert len(backend.calls) == before
+
+
+def test_episode_original_timeout_uses_one_fresh_retry_and_keeps_evidence(
+    tmp_path, monkeypatch
+):
+    config, source, backend = setup_episode(tmp_path, monkeypatch)
+    config["original_timeout_retries"] = 1
+    original_check = backend.check
+    calls = []
+
+    def check(*args):
+        calls.append(args)
+        if len(calls) == 1:
+            return {
+                "status": "timeout",
+                "passed": False,
+                "heartbeats": None,
+                "diagnostics": [],
+            }
+        return original_check(*args)
+
+    monkeypatch.setattr(backend, "check", check)
+    episode = Episode("toy-id", "recovered", 0, config)
+    assert len(calls) == 2
+    saved = json.loads((episode.folder / "initial_measurement.json").read_text())
+    assert saved["selected_attempt"] == 1
+    assert saved["timeout_retries"] == 1
+    assert (episode.folder / "initial_measurements/00.json").exists()
+    assert (episode.folder / "initial_measurements/01.json").exists()
+    assert all(
+        v["cached"] is False for v in episode.session.original["per_version"].values()
+    )
+    assert source.store.root != episode.evaluator.store.root

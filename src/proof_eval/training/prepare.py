@@ -12,6 +12,7 @@ from proof_eval import Evaluator
 from proof_eval.evidence.immutable import immutable, read, sha
 from proof_eval.training.actions import initial_messages
 from proof_eval.training.data import task_id, validate_reserve
+from proof_eval.training.reference_attempts import prepare_reference_attempts
 from proof_eval.training.reward import verified_score
 from proof_eval.verification.references import original_evaluation, required_versions
 
@@ -73,7 +74,12 @@ def original_pack(row: dict, evaluator: Evaluator) -> dict:
 
 
 def _prepare_task(
-    row: dict, dataset_dir: Path, environments: Path, output: Path
+    row: dict,
+    dataset_dir: Path,
+    environments: Path,
+    output: Path,
+    *,
+    timeout_retries: int = 0,
 ) -> dict:
     from proof_eval.verification.metrics import token_count, validate_candidate
 
@@ -102,7 +108,9 @@ def _prepare_task(
         _, body = validate_candidate(row, row["src"])
         if token_count(body) != row["proof_length"]:
             raise ValueError("Original published token denominator mismatch")
-        refs = evaluator.prepare_reference(row["name"], versions="all")
+        refs = prepare_reference_attempts(
+            evaluator, row, output / "reference-attempts" / identity, timeout_retries
+        )
         immutable(output / "reference-observations" / (identity + ".json"), refs)
         pack = original_pack(row, evaluator)
         verified_score(pack["incumbent"], required_versions(pack))
@@ -143,13 +151,20 @@ def prepare(
     episode_seconds: int = 1800,
     *,
     workers: int = 4,
+    timeout_retries: int = 0,
 ) -> dict:
     if type(workers) is not int or not 1 <= workers <= 32:
         raise ValueError("Reference workers must be between 1 and 32")
+    if type(timeout_retries) is not int or timeout_retries not in (0, 1):
+        raise ValueError("Reference preparation permits at most one timeout retry")
     rows = validate_reserve(dataset_dir)
     output.mkdir(parents=True, exist_ok=True)
     task = partial(
-        _prepare_task, dataset_dir=dataset_dir, environments=environments, output=output
+        _prepare_task,
+        dataset_dir=dataset_dir,
+        environments=environments,
+        output=output,
+        timeout_retries=timeout_retries,
     )
     if workers == 1:
         records = [task(row) for row in rows]
@@ -203,6 +218,7 @@ def prepare(
         "optimizer_inputs_are_rl_reserve_only": True,
         "sft_or_heldout_outputs_consumed": False,
         "model_calls": 0,
+        "reference_timeout_retries": timeout_retries,
     }
     immutable(output / "prepared.json", manifest)
     return manifest

@@ -72,6 +72,13 @@ may be excluded; keep their failed preparation records and the full cohort count
 Timeouts and missing environments never qualify for that exclusion.
 Context-length exclusions stay explicit; contexts are never silently truncated.
 
+The explicit `--timeout-retries 1` preparation policy records one further attempt
+only after a completed wall timeout, selecting only the timed-out versions.
+Both attempts remain saved. Semantic failures, unavailable evidence and an
+interrupted/indeterminate attempt are never retried automatically. A frozen plan
+may select this separately for reference preparation and fresh episode originals;
+the latter uses a new private candidate cache and the existing episode clock.
+
 ## Objective and evidence
 
 Reward is `(host-verified final best Arena score - original score) / 100`.

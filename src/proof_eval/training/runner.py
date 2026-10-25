@@ -298,6 +298,7 @@ def run(plan_path: Path, release: Path) -> None:
         Path(plan["harness_home"]) / "runtime/prompts/refactor_system.md",
         plan["episode_seconds"],
         workers=plan.get("reference_preparation_workers", 4),
+        timeout_retries=plan.get("reference_timeout_retries", 0),
     )
     immutable(
         home / "prepared-summary.json",

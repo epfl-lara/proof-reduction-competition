@@ -21,7 +21,7 @@ def test_parallel_references_preserve_dataset_order_and_full_manifest(
     prompt.write_text("system")
     completed = []
 
-    def task(row, dataset_dir, environments, output):
+    def task(row, dataset_dir, environments, output, *, timeout_retries=0):
         if row["name"] == "0":
             time.sleep(0.05)
         key = row["name"]

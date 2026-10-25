@@ -28,4 +28,9 @@ class TrainingRelease:
             raise ValueError("Positive context and episode budgets are required")
         if not 1 <= value.get("reference_preparation_workers", 4) <= 32:
             raise ValueError("Reference preparation workers must be between 1 and 32")
+        for key in ("reference_timeout_retries", "original_timeout_retries"):
+            if type(value.get(key, 0)) is not int or value.get(key, 0) not in (0, 1):
+                raise ValueError(
+                    "At most one recorded timeout retry is allowed: " + key
+                )
         return value

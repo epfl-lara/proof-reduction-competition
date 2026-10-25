@@ -67,7 +67,12 @@ class Episode:
                     "Original environment/reference fingerprint changed"
                 )
         self.evaluator = private_evaluator(originals, self.folder, self.pack)
-        _, original = measure_original(self.evaluator, self.folder, self.pack)
+        _, original = measure_original(
+            self.evaluator,
+            self.folder,
+            self.pack,
+            timeout_retries=config.get("original_timeout_retries", 0),
+        )
         if time.monotonic() - self.started >= config["episode_seconds"]:
             raise UnscorableEpisode("Original measurement exhausted the episode budget")
         self.session = TrainingProofSession(

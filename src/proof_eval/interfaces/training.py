@@ -26,6 +26,7 @@ def main(argv: list[str] | None = None) -> int:
     prepare.add_argument("--system-prompt", type=Path, required=True)
     prepare.add_argument("--workers", type=int, default=4)
     prepare.add_argument("--episode-seconds", type=int, default=1800)
+    prepare.add_argument("--timeout-retries", type=int, choices=(0, 1), default=0)
     args = parser.parse_args(argv)
     if args.command == "prepare":
         from proof_eval.training.prepare import prepare as prepare_references
@@ -37,6 +38,7 @@ def main(argv: list[str] | None = None) -> int:
             args.system_prompt,
             args.episode_seconds,
             workers=args.workers,
+            timeout_retries=args.timeout_retries,
         )
         print(json.dumps({k: v for k, v in result.items() if k != "records"}, indent=2))
         return 0
