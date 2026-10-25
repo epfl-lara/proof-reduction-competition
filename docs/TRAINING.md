@@ -142,3 +142,21 @@ which task IDs already consumed policy calls. Continuation admits the remaining
 cohort explicitly, preserving interrupted attempts and the full original reserve
 accounting. A learned checkpoint or optimizer receipt prohibits this fresh-base
 continuation and requires exact learned-state recovery instead.
+
+## CPU host execution during training
+
+The productive job starts one small CPU host process before loading the GPU
+trainer. Rollout workers send it source-bound JSON requests over a private local
+socket. The process owns the original measurements, independent proof sessions,
+tool calls and score state. It uses the same frozen verifier and original
+denominators. Model inputs, outputs, sampled tokens and log probabilities survive
+the transport unchanged, with request/result hashes and both caller and server
+PID/start-tick receipts. An unknown call is never automatically repeated.
+
+This keeps Lean subprocess startup and tool-model imports outside the large CUDA
+interpreter. Each episode still starts its original clock before its fresh
+measurement, counts model-generation time and keeps private candidate caches.
+The service has no policy model, masks GPUs, rejects callers outside the original
+driver's process tree and ends with that job. Its own finite lifetime and closure
+are recorded on HOME and Scratch. It is a productive host-tool component, not an
+additional cluster job or a permanent monitor.

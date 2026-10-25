@@ -15,7 +15,7 @@ from swift.rewards import ORM, orms
 from swift.rollout.multi_turn import MultiTurnScheduler, multi_turns
 
 from proof_eval.evidence.immutable import immutable, read, sha
-from proof_eval.training.episode import Episode
+from proof_eval.training.remote_episode import RemoteEpisode as Episode
 from proof_eval.training.reward import UnscorableEpisode, validate_token_evidence
 
 
@@ -144,7 +144,7 @@ class ArenaScheduler(MultiTurnScheduler):
                     result["rollout_infos"],
                 )
         if result["done"]:
-            self.episodes.pop(infer_request.uuid)
+            self.episodes.pop(infer_request.uuid).close()
         return result
 
     def step(self, infer_request, response_choice, current_turn):

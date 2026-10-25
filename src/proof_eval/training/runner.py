@@ -402,7 +402,11 @@ def run(plan_path: Path, release: Path) -> None:
     }
     config["semantic_config"] = tools["semantic_config"]
     config["web_config"] = tools["web_config"]
+    from proof_eval.training import tool_broker
+
+    config["cpu_tool_broker"] = tool_broker.broker_spec(plan, root, home)
     immutable(root / "rl-config.json", config)
+    cpu_tools = tool_broker.start(root / "rl-config.json")
     env.update(
         {
             "PYTHONPATH": str(release / "src"),
@@ -450,6 +454,8 @@ def run(plan_path: Path, release: Path) -> None:
         code = child.wait()
     if code:
         mirror_trainer_exit(root, home, code, release / "plan.json")
+    tool_broker.stop(config, cpu_tools)
+    if code:
         raise RuntimeError(
             f"Trainer exited {code}; preserve its exact logs and checkpoints, no automatic replay"
         )
