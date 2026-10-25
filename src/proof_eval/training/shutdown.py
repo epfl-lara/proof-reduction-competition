@@ -52,7 +52,7 @@ def shutdown_colocated_engine(trainer) -> None:
         # The stock generation path offloads these same objects before waking
         # vLLM. At terminal shutdown they remain on CPU; no training follows.
         _offload_training_state(trainer)
-        engine = trainer.engine.engine.llm_engine
+        engine = trainer.engine.engine
         sleeping = engine.is_sleeping()
         if sleeping:
             # Freeing asleep cuMem pools double-unmaps them in this pinned

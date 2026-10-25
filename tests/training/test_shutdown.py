@@ -35,11 +35,9 @@ def runtime(tmp_path, monkeypatch):
 
     monkeypatch.setattr(shutdown, "_offload_training_state", offload)
     llm = SimpleNamespace(
-        llm_engine=SimpleNamespace(
-            is_sleeping=lambda: state["sleeping"],
-            wake_up=wake,
-            engine_core=SimpleNamespace(shutdown=close),
-        )
+        is_sleeping=lambda: state["sleeping"],
+        wake_up=wake,
+        engine_core=SimpleNamespace(shutdown=close),
     )
     trainer = SimpleNamespace(
         use_vllm=True, vllm_mode="colocate", engine=SimpleNamespace(engine=llm)
@@ -91,7 +89,7 @@ def test_shutdown_failure_is_saved_and_propagated(runtime):
     def failure():
         raise RuntimeError("real lifecycle failure")
 
-    trainer.engine.engine.llm_engine.wake_up = failure
+    trainer.engine.engine.wake_up = failure
     with pytest.raises(RuntimeError, match="real lifecycle failure"):
         shutdown.shutdown_colocated_engine(trainer)
     assert events == ["offload"]
@@ -149,3 +147,36 @@ def test_pinned_image_exposes_the_lifecycle_apis():
     assert callable(helpers.offload_megatron_optimizer)
     assert callable(llm.LLMEngine.is_sleeping) and callable(llm.LLMEngine.wake_up)
     assert callable(client.InprocClient.shutdown)
+
+
+def test_actual_swift_engine_factory_passes_its_llmengine_directly(
+    runtime, monkeypatch
+):
+    from contextlib import nullcontext
+
+    swift_engine = pytest.importorskip("swift.infer_engine.vllm_engine")
+    trainer, events, state, _ = runtime
+    core = SimpleNamespace(
+        is_sleeping=lambda: state["sleeping"],
+        wake_up=lambda tags=None: trainer.engine.engine.wake_up(),
+        shutdown=trainer.engine.engine.engine_core.shutdown,
+    )
+    wake = trainer.engine.engine.wake_up
+    core.wake_up = lambda tags=None: wake()
+    actual = object.__new__(swift_engine.LLMEngine)
+    actual.engine_core = core
+    actual.logger_manager = None
+    monkeypatch.setattr(swift_engine.LLMEngine, "from_engine_args", lambda args: actual)
+    monkeypatch.setattr(
+        swift_engine, "patch_auto_tokenizer", lambda tokenizer: nullcontext()
+    )
+    monkeypatch.setattr(swift_engine, "_patch_rope_validation_ignore_keys", nullcontext)
+    monkeypatch.setattr(swift_engine, "disable_deepspeed_zero3", nullcontext)
+    wrapper = SimpleNamespace(
+        tokenizer=object(), use_async_engine=False, engine_args=object()
+    )
+    swift_engine.VllmEngine._prepare_engine(wrapper)
+    assert wrapper.engine is actual
+    trainer.engine = wrapper
+    shutdown.shutdown_colocated_engine(trainer)
+    assert events == ["offload", "wake", "shutdown"]
