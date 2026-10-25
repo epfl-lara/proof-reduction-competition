@@ -2,7 +2,33 @@
 
 from __future__ import annotations
 
+import hashlib
+
 from proof_eval.training.reward import UnscorableEpisode
+
+
+def capture_purpose(run_purpose: str | None, *, gpu_probe: bool) -> str:
+    if gpu_probe:
+        return "synthetic_gpu_smoke_only"
+    return run_purpose or "arena_training_rollout"
+
+
+def trainable_sample_hash(trainer) -> str:
+    """Keep the existing A/B tensor sample identical across save and restore."""
+    digest = hashlib.sha256()
+    count = 0
+    for model in trainer.unwrapped_models:
+        for name, parameter in model.named_parameters():
+            if parameter.requires_grad:
+                values = parameter.detach().reshape(-1)[:256].float().cpu().numpy()
+                digest.update(name.encode())
+                digest.update(values.tobytes())
+                count += 1
+                if count >= 32:
+                    return digest.hexdigest()
+    if not count:
+        raise UnscorableEpisode("Trainer has no trainable parameters")
+    return digest.hexdigest()
 
 
 def check_loss_tokens(

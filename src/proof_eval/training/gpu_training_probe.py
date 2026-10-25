@@ -109,11 +109,22 @@ def register() -> None:
             require_fixture(self.config)
             self.rank = int(os.environ["RANK"])
             self.trajectory_failures = []
+            self.fixture_episode_index = 0
+            self.fixture_uuid = None
 
         def put(self, name, record):
+            episode = (
+                Path(self.fixture_uuid)
+                if self.config.get("multi_update_fixture")
+                else Path()
+            )
             for base in (self.config["root"], self.config["home"]):
                 immutable(
-                    Path(base) / "synthetic-rollouts" / f"rank-{self.rank}" / name,
+                    Path(base)
+                    / "synthetic-rollouts"
+                    / f"rank-{self.rank}"
+                    / episode
+                    / name,
                     record,
                 )
 
@@ -123,6 +134,8 @@ def register() -> None:
             request = requests[0]
             if not request.data_dict.get("fixture_case", "").startswith("gpu-fixture-"):
                 raise ValueError("A real task reached the synthetic GPU fixture")
+            self.fixture_episode_index += 1
+            self.fixture_uuid = request.uuid
             request.messages, measured = fit_synthetic_messages(
                 self._template, self.config["context_tokens"], self.rank
             )
@@ -134,6 +147,7 @@ def register() -> None:
                     "at_epoch": time.time(),
                     "uuid": request.uuid,
                     "rank": self.rank,
+                    "fixture_episode_index": self.fixture_episode_index,
                     "actual_prompt_tokens": measured,
                     "reserved_Arena_tasks": 0,
                     "messages": request.messages,
@@ -142,7 +156,13 @@ def register() -> None:
 
         async def on_turn_end(self, infer_request, response_choice, current_turn):
             asymmetric = self.config.get("asymmetric_multi_turn_fixture", False)
-            finish_turn = 3 if asymmetric and self.rank in (0, 1, 4, 5) else 1
+            longer = self.rank in (0, 1, 4, 5)
+            if (
+                self.config.get("multi_update_fixture")
+                and self.fixture_episode_index % 2 == 0
+            ):
+                longer = not longer
+            finish_turn = 3 if asymmetric and longer else 1
             if current_turn not in range(1, finish_turn + 1):
                 raise ValueError("GPU training fixture has exactly one model turn")
             ids = list(response_choice.token_ids or [])
@@ -163,6 +183,7 @@ def register() -> None:
                     **info,
                     "at_epoch": time.time(),
                     "uuid": infer_request.uuid,
+                    "fixture_episode_index": self.fixture_episode_index,
                     "completion": text,
                     "sampled_token_ids": ids,
                     "behavior_logprobs": logprobs,

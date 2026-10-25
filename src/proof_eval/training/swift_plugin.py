@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import math
 import os
 import time
@@ -15,6 +14,11 @@ from swift.rewards import ORM, orms
 from swift.rollout.multi_turn import MultiTurnScheduler, multi_turns
 
 from proof_eval.evidence.immutable import immutable, read, sha
+from proof_eval.training.checkpoint_resume import (
+    install_native_optimizer_resume,
+    resume_manifest,
+)
+from proof_eval.training.fidelity import capture_purpose, trainable_sample_hash
 from proof_eval.training.remote_episode import RemoteEpisode as Episode
 from proof_eval.training.reward import UnscorableEpisode, validate_token_evidence
 from proof_eval.training.rollout_collectives import install_colocated_world_sync
@@ -25,6 +29,7 @@ class ArenaScheduler(MultiTurnScheduler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.config = read(os.environ["ARENA_RL_CONFIG"])
+        self.resume_spec = resume_manifest(self.config)
         self.episodes = {}
         self.trajectory_failures = []
 
@@ -72,6 +77,17 @@ class ArenaScheduler(MultiTurnScheduler):
         self.trajectory_failures = []
         for req in requests:
             try:
+                if self.config.get("checkpoint_restore_only", False):
+                    raise UnscorableEpisode(
+                        "Restore-only preflight forbids policy episodes"
+                    )
+                if self.resume_spec and req.data_dict["arena_task_id"] in (
+                    self.resume_spec["completed_trained_task_ids"]
+                    + self.resume_spec["policy_used_not_updated_task_ids"]
+                ):
+                    raise UnscorableEpisode(
+                        "A prior policy task reached the remaining-only stream"
+                    )
                 if req.uuid in self.episodes:
                     raise UnscorableEpisode("Duplicate rollout UUID; do not replay")
                 episode = await asyncio.to_thread(
@@ -195,13 +211,8 @@ def install_exact_token_capture():
         )
         record = {
             "request_id": request_id,
-            "purpose": (
-                os.environ.get("ARENA_RL_RUN_PURPOSE")
-                or (
-                    "synthetic_gpu_smoke_only"
-                    if GPU_PROBE_ACTIVE
-                    else "arena_training_rollout"
-                )
+            "purpose": capture_purpose(
+                os.environ.get("ARENA_RL_RUN_PURPOSE"), gpu_probe=GPU_PROBE_ACTIVE
             ),
             "at_epoch": time.time(),
             "prompt_token_ids": list(result.prompt_token_ids),
@@ -241,7 +252,7 @@ def install_policy_version_capture():
     def move(self):
         global POLICY_STEP
         result = old(self)
-        POLICY_STEP = int(self._step)
+        POLICY_STEP = int(self.state.iteration)
         return result
 
     move.arena_policy_capture = True
@@ -259,31 +270,14 @@ def install_optimizer_receipts():
     if getattr(old, "arena_optimizer_capture", False):
         return
 
-    def sample_hash(trainer):
-        digest = hashlib.sha256()
-        count = 0
-        for model in trainer.unwrapped_models:
-            for name, parameter in model.named_parameters():
-                if parameter.requires_grad:
-                    # Include both A and B tensors; A can have zero gradient at initialization.
-                    values = parameter.detach().reshape(-1)[:256].float().cpu().numpy()
-                    digest.update(name.encode())
-                    digest.update(values.tobytes())
-                    count += 1
-                    if count >= 32:
-                        return digest.hexdigest()
-        if not count:
-            raise UnscorableEpisode("Trainer has no trainable parameters")
-        return digest.hexdigest()
-
     def train_step(self, train_data_iterator):
-        before = sample_hash(self)
+        before = trainable_sample_hash(self)
         result = old(self, train_data_iterator)
         _, norm, successful = result
         norm = float(norm)
         if not math.isfinite(norm):
             raise UnscorableEpisode("Optimizer returned a non-finite gradient norm")
-        after = sample_hash(self)
+        after = trainable_sample_hash(self)
         record = {
             "purpose": os.environ.get("ARENA_RL_RUN_PURPOSE", "arena_direct_rl"),
             "optimizer_step": self.state.iteration + 1,
@@ -439,6 +433,7 @@ def install_coordinated_rollout_failure():
 install_coordinated_rollout_failure()
 
 install_colocated_world_sync()
+install_native_optimizer_resume()
 
 if os.environ.get("ARENA_RL_RUN_PURPOSE") == "synthetic_gpu_training_check":
     from proof_eval.training.gpu_training_probe import register

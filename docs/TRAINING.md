@@ -215,3 +215,15 @@ callback over the eight-rank world so early-finished workers keep participating
 with empty request lists. It changes no requests, outputs, masks, rewards or
 optimizer math. The explicit CPU distributed check and asymmetric GPU fixture
 exercise four workers finishing at turn one and four finishing at turn three.
+
+Native checkpoint continuation uses `--mcore_adapter` with `--finetune false`,
+`--no_load_optim false` and `--no_load_rng false`. The resume manifest binds the
+original model, full checkpoint shards, source plan and terminal custody. Before
+any further rollout, every rank verifies its saved trainable-weight sample,
+nonempty Adam state, optimizer iteration and unchanged learning-rate schedule.
+An explicitly declared remaining-only input stream excludes all earlier policy
+attempts, including interrupted ones. Only that new stream's data cursor starts
+at zero; optimizer, scheduler, RNG and global iteration remain restored. A
+restore-only preflight refuses every rollout and verifies a clean native exit.
+Synthetic two-update fixtures are separate software checks and never seed Arena
+training or count as an Arena improvement.

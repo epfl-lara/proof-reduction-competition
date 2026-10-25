@@ -390,6 +390,24 @@ def run(plan_path: Path, release: Path) -> None:
         plan["per_turn_max_tokens"],
         exclude_started=consumed_tasks(plan),
     )
+    from proof_eval.training.checkpoint_resume import prepare_remaining_resume
+
+    resumed = prepare_remaining_resume(plan, admission)
+    if resumed:
+        immutable(home / "original-template-admission.json", admission)
+        admission = {
+            **admission,
+            "template_train_sha256": admission["train_sha256"],
+            "train_sha256": resumed["train_sha256"],
+            "training_rows": resumed["training_rows"],
+            "distinct_eligible_tasks": resumed["distinct_eligible_tasks"],
+            "resume_prior_trained_tasks": resumed["prior_trained_tasks"],
+            "resume_prior_unupdated_policy_tasks": resumed[
+                "prior_unupdated_policy_tasks"
+            ],
+            "resumed_optimizer_iteration": resumed["resumed_optimizer_iteration"],
+            "global_train_iters": resumed["global_train_iters"],
+        }
     immutable(home / "context-admission.json", admission)
     config = {
         **plan,
@@ -411,6 +429,7 @@ def run(plan_path: Path, release: Path) -> None:
         {
             "PYTHONPATH": str(release / "src"),
             "ARENA_RL_CONFIG": str(root / "rl-config.json"),
+            "ARENA_RL_RUN_PURPOSE": plan.get("purpose", "arena_direct_rl"),
             "ARENA_RL_TOKEN_ROOT": str(root / "exact-model-io"),
             "ARENA_RL_OPTIMIZER_ROOT": str(root / "optimizer-steps"),
             "ARENA_RL_OPTIMIZER_HOME": str(home / "optimizer-steps"),
@@ -434,6 +453,12 @@ def run(plan_path: Path, release: Path) -> None:
         expected_steps=admission["training_rows"] * 4 // 8,
         tuner_type="lora",
         full_parameter_training=False,
+        resumed_optimizer_iteration=(resumed or {}).get(
+            "resumed_optimizer_iteration", 0
+        ),
+        global_target_updates=(resumed or {}).get(
+            "global_train_iters", admission["training_rows"] * 4 // 8
+        ),
     )
     with (root / "training.log").open("x") as log:
         child = subprocess.Popen(
@@ -491,6 +516,10 @@ def run(plan_path: Path, release: Path) -> None:
         "model": plan["model"],
         "model_revision": plan["model_revision"],
         "eligible_tasks": admission["distinct_eligible_tasks"],
+        "prior_optimizer_trained_tasks": (resumed or {}).get("prior_trained_tasks", []),
+        "prior_unupdated_policy_tasks": (resumed or {}).get(
+            "prior_unupdated_policy_tasks", []
+        ),
         "training_mode": "GRPO LoRA",
         "heldout_performance": "not_yet_evaluated",
     }

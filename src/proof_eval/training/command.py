@@ -8,7 +8,7 @@ import sys
 
 def training_command(plan: dict, model_path: str) -> list[str]:
     root, home = plan["root"], plan["home"]
-    return [
+    command = [
         sys.executable,
         "-m",
         "swift.cli._megatron.main",
@@ -26,7 +26,12 @@ def training_command(plan: dict, model_path: str) -> list[str]:
         "--model_revision",
         plan["model_revision"],
         "--dataset",
-        root + "/preparation/train-admitted.jsonl",
+        root
+        + (
+            "/preparation/train-resume-remaining.jsonl"
+            if plan.get("optimizer_resume")
+            else "/preparation/train-admitted.jsonl"
+        ),
         "--split_dataset_ratio",
         "0",
         "--external_plugins",
@@ -168,3 +173,20 @@ def training_command(plan: dict, model_path: str) -> list[str]:
         "--seed",
         "20261024",
     ]
+    if plan.get("optimizer_resume"):
+        resume = plan["optimizer_resume"]
+        command.extend(
+            [
+                "--mcore_adapter",
+                resume["checkpoint"],
+                "--finetune",
+                "false",
+                "--no_load_optim",
+                "false",
+                "--no_load_rng",
+                "false",
+                "--train_iters",
+                str(resume["global_train_iters"]),
+            ]
+        )
+    return command
