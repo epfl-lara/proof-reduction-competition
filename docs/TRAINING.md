@@ -191,3 +191,12 @@ makes the training bridge interpret three-axis positions as ordinary RoPE. The
 32K curriculum fits inside the native 262K window, so it needs no such override.
 The GPU fixture checks the actual native position type and preserves all position
 and input tensors. It makes no mathematical modification to the model.
+
+After the library finishes training and checkpoint saves, colocated shutdown
+offloads the trainer with its existing library helpers, wakes a sleeping vLLM
+engine, and calls the engine-core client's explicit shutdown before Megatron
+destroys the shared process groups. The pinned allocator cannot safely free
+asleep cuMem pools; the upstream [allocator issue](https://github.com/vllm-project/vllm/issues/36651)
+documents that failure. Per-rank terminal receipts preserve shutdown errors rather
+than masking them. This terminal lifecycle hook changes no rollout, reward,
+gradient or checkpoint and never generates another model request.
