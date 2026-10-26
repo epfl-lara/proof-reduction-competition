@@ -41,6 +41,15 @@ python -m pip install -e '.[dev]'
 python -m pip install -e integrations/vllm_ampere
 ```
 
+The harness and vLLM may use separate Python environments. Serving metadata
+follows the vLLM executable's interpreter (the packaged serving environment for
+an RCP wrapper), rather than the harness interpreter. For a custom wrapper,
+freeze `--vllm-binary /path/to/vllm --vllm-python /serving/env/bin/python` when
+preparing the profile. The runtime records the actual launcher, Python, package
+versions and plugin source hashes. Validate this environment before GPU
+allocation. A plugin module copied onto `PYTHONPATH` still needs its installed
+entry-point metadata; install the package or include its built wheel contents.
+
 The plugin is specific to that vLLM kernel API. It copies FP8 embedding bytes
 without converting model weights. Other vLLM versions require their own
 compatibility validation. Use the same serving precision for a matched model

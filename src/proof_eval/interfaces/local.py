@@ -43,6 +43,7 @@ def main(argv=None) -> int:
     )
     parser.add_argument("--port", type=int, default=8128)
     parser.add_argument("--vllm-binary", default="vllm")
+    parser.add_argument("--vllm-python", default=None)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--plugin", type=Path)
     parser.add_argument("--capture-port", type=int, default=18128)
@@ -61,6 +62,7 @@ def main(argv=None) -> int:
             verification_timeout_seconds=args.verification_timeout_seconds,
             port=args.port,
             binary=args.vllm_binary,
+            server_python=args.vllm_python,
         )
         print(json.dumps(value, indent=2))
         return 0
@@ -75,6 +77,7 @@ def main(argv=None) -> int:
         "--verification-timeout-seconds",
         "--port",
         "--vllm-binary",
+        "--vllm-python",
     }
     if any(a.split("=", 1)[0] in setup_options for a in arguments):
         parser.error(
