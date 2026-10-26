@@ -128,6 +128,7 @@ def tracking_run(tmp_path, monkeypatch):
             ROOT / "data/benchmark_data_warmup.jsonl",
             ROOT / "environments.local.json",
             ROOT / ".proof-eval",
+            timeout=60,  # Fixed historical reference fixture, not the fresh-run default.
         )
         evaluator.evaluate = lambda *a, **k: deepcopy(saved["selected_evaluation"])
         cleanup_inputs = []

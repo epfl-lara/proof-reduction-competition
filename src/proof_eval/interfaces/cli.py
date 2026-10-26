@@ -14,7 +14,9 @@ def main(argv=None):
     parser.add_argument("--heartbeats", default=None)
     parser.add_argument("--environments", default="environments.local.json")
     parser.add_argument("--cache", default=".proof-eval")
-    parser.add_argument("--timeout", type=float, default=60.0)
+    from proof_eval.defaults import VERIFICATION_TIMEOUT_SECONDS
+
+    parser.add_argument("--timeout", type=float, default=VERIFICATION_TIMEOUT_SECONDS)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("environments", help="List required pinned projects")
     for command in ("reference", "prepare", "evaluate", "reward"):

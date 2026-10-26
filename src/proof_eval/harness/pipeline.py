@@ -18,6 +18,7 @@ from proof_eval.evidence.proof_states import (
 from proof_eval.optimization.cohort import run_cleanup
 from proof_eval.optimization.search_graph import plans
 from proof_eval.paths import ROOT
+from proof_eval.providers.registry import QWEN_MODELS
 
 from .audit import audit as audit_model
 from .config import RunConfig
@@ -35,14 +36,20 @@ class PipelineConfig:
     """Independent worker pools; model budgets exclude the two cleanup phases."""
 
     model: RunConfig
-    cleanup_before: bool = True
-    cleanup_after: bool = True
+    cleanup_before: bool | None = None
+    cleanup_after: bool | None = None
     cleanup_workers: int = 8
     before_workers: int | None = None
     after_workers: int | None = None
 
     def __post_init__(self) -> None:
         for key in ("cleanup_before", "cleanup_after"):
+            if getattr(self, key) is None:
+                object.__setattr__(
+                    self,
+                    key,
+                    not all(model in QWEN_MODELS for model, _ in self.model.conditions),
+                )
             if type(getattr(self, key)) is not bool:
                 raise ValueError(key + " must be a boolean")
         for key in ("cleanup_workers", "before_workers", "after_workers"):

@@ -5,9 +5,12 @@ and `docs/ARCHITECTURE.md` before changing the runtime. The active model conditi
 are **gpt-6.1-sol/max** and **gpt-6-astra/max**. The default search uses the revised
 prompt and score feedback, with three separate cohort phases: one-sweep cleanup
 of every theorem, model search, then one-sweep cleanup of each model condition's
-outputs. Both cleanup phases default on, with eight workers and no five-minute
-cap. Model jobs contain no deterministic transforms. Sol and Qwen default to
-five model workers; phase worker counts are independently configurable.
+outputs for non-Qwen conditions. Qwen defaults to model-only with both cleanup
+phases off. Enabled cleanup phases use eight workers with no five-minute cap.
+Local Qwen defaults to ten model workers and eight hours per theorem; Sol and
+gateway Qwen keep five workers. Local serving defaults are 266400 context,
+222400 compaction, xhigh and MTP3. Public Lean verification defaults to 300 seconds
+per check. Model jobs contain no deterministic transforms.
 Restart history is off by default; enable it explicitly with `--restart-history`.
 The default starting state is the original dataset. Reuse cleaned/optimized proofs
 only through an explicit `--starting-proofs` path, retaining source provenance,
@@ -94,12 +97,13 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
   without a usage policy retain strict behavior; changing policy needs a new output.
   Codex may use tools; the host checks proofs and owns the ledger. Do not let model
   processes write the pinned source projects or host evidence.
-  Default host bounds are 20 optimization restarts and two terminal transport
-  recoveries: at most 23 admitted attempts per problem, including the initial
-  attempt. Configure them separately with `max_budget_restarts` and
+  Qwen defaults to 10000 optimization restarts under its original eight-hour clock
+  and two terminal transport recoveries; other models retain 20 optimization
+  restarts and two transport recoveries (at most 23 admitted attempts). Configure
+  them separately with `max_budget_restarts` and
   `max_transport_restarts`; native HTTP/stream retries stay inside their session.
-- New runs automatically select one track budget: Qwen uses a 14400-second
-  (four-hour) model-phase deadline per theorem; other open models retain their
+- New runs automatically select one track budget: Qwen uses a 28800-second
+  (eight-hour) model-phase deadline per theorem; other open models retain their
   explicit/default allocation (currently 3420 seconds for DeepSeek). Model-phase
   measurement, admission and tools count inside that timer; cohort cleanup is
   measured separately and contributes to whole-workflow wall time;
@@ -167,8 +171,9 @@ tool boundaries, and a small end-to-end batch. Do not add tests that merely repe
 the implementation or use a paid model call as a default unit test.
 
 Model batches start the full selected cohort directly, with no pilot gate.
-Default to eight workers independently in each cleanup phase, five for Sol and
-Qwen model search, and three for DeepSeek. Override with `--cleanup-workers`,
+Default to ten local Qwen model workers, five for Sol/gateway Qwen, and three for
+DeepSeek. Qwen cleanup defaults off; enabled cleanup phases use eight workers
+independently. Override with `--cleanup-workers`,
 `--before-workers`, `--after-workers` and `--model-workers`; positive counts are
 allowed while the shared provider admission limit still applies. Individual
 incomplete outcomes or worker failures must not cancel other queued theorems.

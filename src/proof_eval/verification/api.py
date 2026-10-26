@@ -14,6 +14,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
+from proof_eval.defaults import VERIFICATION_TIMEOUT_SECONDS
 from proof_eval.verification.backend import LeanBackend
 from proof_eval.verification.dataset import Dataset
 from proof_eval.verification.metrics import (
@@ -91,7 +92,7 @@ class Evaluator:
         cache_dir=".proof-eval",
         *,
         heartbeats_path=None,
-        timeout=60.0,
+        timeout=VERIFICATION_TIMEOUT_SECONDS,
         backend=None,
         version_workers: int | None = None,
     ):

@@ -6,6 +6,13 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
+from proof_eval.defaults import (
+    LOCAL_QWEN_WORKERS,
+    QWEN_COMPACTION_TOKENS,
+    QWEN_CONTEXT_TOKENS,
+    QWEN_TIMEOUT_SECONDS,
+    VERIFICATION_TIMEOUT_SECONDS,
+)
 from proof_eval.evidence.io import digest, read, write_json
 
 from .lemex_local import MODEL, MODELS, THINKINGCAP_MODEL
@@ -23,10 +30,11 @@ def prepare(
     model: str = MODEL,
     revision: str | None = None,
     model_cache: Path | None = None,
-    workers: int = 10,
-    seconds: int = 28800,
-    context: int = 266400,
-    compaction: int = 222400,
+    workers: int = LOCAL_QWEN_WORKERS,
+    seconds: int = QWEN_TIMEOUT_SECONDS,
+    context: int = QWEN_CONTEXT_TOKENS,
+    compaction: int = QWEN_COMPACTION_TOKENS,
+    verification_timeout_seconds: float = VERIFICATION_TIMEOUT_SECONDS,
     port: int = 8128,
     binary: str = "vllm",
 ) -> dict:
@@ -38,6 +46,8 @@ def prepare(
         or type(seconds) is not int
         or seconds <= 0
         or not 0 < compaction < context
+        or type(verification_timeout_seconds) not in (int, float)
+        or not 0 < verification_timeout_seconds < float("inf")
     ):
         raise ValueError("Invalid local model, capacity, deadline or context")
     revision = revision or REVISIONS[model]
@@ -91,6 +101,7 @@ def prepare(
         "revision": revision,
         "workers": workers,
         "seconds": seconds,
+        "verification_timeout_seconds": verification_timeout_seconds,
         "context": context,
         "compaction": compaction,
         "effort": "xhigh",
@@ -115,6 +126,11 @@ def load(folder: Path) -> tuple[dict, ServerConfig]:
     ):
         raise ValueError("Frozen local profile changed; prepare another directory")
     server = ServerConfig(**value["server"])
+    verification = value.get(
+        "verification_timeout_seconds", VERIFICATION_TIMEOUT_SECONDS
+    )
+    if type(verification) not in (int, float) or not 0 < verification < float("inf"):
+        raise ValueError("Invalid frozen verification timeout")
     if (
         server.model != value["model"]
         or server.revision != value["revision"]

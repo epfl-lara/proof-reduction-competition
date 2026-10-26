@@ -145,7 +145,13 @@ def test_full_cohort_uses_fixed_parallel_slots_and_isolates_cell_failures(
     config = {"names": list(packs), "conditions": conditions, "mode": "score_edges"}
     monkeypatch.setattr(runner, "load_inputs", lambda _: packs)
     monkeypatch.setattr(runner, "prepare", lambda *a, **kw: config)
-    monkeypatch.setattr(runner, "Evaluator", lambda *a: object())
+    evaluator_limits = []
+
+    def evaluator(*args, timeout):
+        evaluator_limits.append(timeout)
+        return object()
+
+    monkeypatch.setattr(runner, "Evaluator", evaluator)
     monkeypatch.setattr(runner, "guard", lambda *a: None)
     first_group = threading.Barrier(workers)
     failure_observed = threading.Event()
@@ -209,6 +215,7 @@ def test_full_cohort_uses_fixed_parallel_slots_and_isolates_cell_failures(
             runner.run(arguments)
     else:
         runner.run(arguments)
+    assert evaluator_limits == [300]
     assert set(started) == ended == set(names) and len(started) == 15
     assert maximum == workers and len(first_starts) == workers
     assert not (tmp_path / "pilot_audit.json").exists()

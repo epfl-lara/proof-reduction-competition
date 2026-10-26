@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
 
+from proof_eval.defaults import LOCAL_QWEN_WORKERS, QWEN_CONTEXT_TOKENS
 from proof_eval.evidence.io import digest, now, write_json
 
 from .lemex_local import MODEL
@@ -38,7 +39,7 @@ RCP_API_HF_OVERRIDES = {
 
 @dataclass(frozen=True)
 class ServerConfig:
-    mode: str
+    mode: str = "mtp3"
     port: int = 8128
     binary: str = "vllm"
     python: str = sys.executable
@@ -46,11 +47,11 @@ class ServerConfig:
     model: str = MODEL
     revision: str = REVISION
     startup_seconds: float = 1200
-    execution_mode: str = "eager"
-    profile: str = "historical"
-    max_model_len: int = 262144
-    max_num_seqs: int = 32
-    gpu_memory_utilization: float = 0.90
+    execution_mode: str = "compiled"
+    profile: str = "rcp-api-flags"
+    max_model_len: int = QWEN_CONTEXT_TOKENS
+    max_num_seqs: int = LOCAL_QWEN_WORKERS
+    gpu_memory_utilization: float = 0.95
 
     def __post_init__(self):
         if self.model != MODEL and self.revision == REVISION:

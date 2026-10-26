@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 from pathlib import Path
 from typing import Literal
 
+from proof_eval.defaults import QWEN_TIME_RESTARTS, VERIFICATION_TIMEOUT_SECONDS
 from proof_eval.optimization.bounded import ALL_METHODS, validate_methods
 from proof_eval.paths import ROOT
 from proof_eval.providers.registry import (
     DEFAULT_CONDITIONS,
     MODEL_WORKERS,
     PROVIDER_WORKERS,
+    QWEN_MODELS,
     validate,
 )
 
@@ -35,9 +38,10 @@ class RunConfig:
     mode: str = DEFAULT_MODE
     workers: int | None = None
     problem_timeout_seconds: float | None = None
+    verification_timeout_seconds: float = VERIFICATION_TIMEOUT_SECONDS
     budget_tracking: BudgetTracking = "auto"
     budget_usd_per_problem: float = 3.0
-    max_budget_restarts: int = 20
+    max_budget_restarts: int | None = None
     max_transport_restarts: int = 2
     incumbents_from: Path | None = None
     carry_budgets_from: Path | None = None
@@ -61,6 +65,12 @@ class RunConfig:
     deterministic_seconds: float = 300.0
 
     def __post_init__(self) -> None:
+        if (
+            type(self.verification_timeout_seconds) not in (int, float)
+            or not isfinite(self.verification_timeout_seconds)
+            or self.verification_timeout_seconds <= 0
+        ):
+            raise ValueError("verification_timeout_seconds must be positive and finite")
         if type(self.deterministic) is not bool:
             raise ValueError("deterministic must be a boolean")
         validate_methods(self.deterministic_methods, self.deterministic_seconds)
@@ -120,6 +130,16 @@ class RunConfig:
         if not self.conditions or len(set(self.conditions)) != len(self.conditions):
             raise ValueError("Specify nonempty, unique model conditions")
         validate(self.provider, self.conditions)
+        if self.max_budget_restarts is None:
+            object.__setattr__(
+                self,
+                "max_budget_restarts",
+                (
+                    QWEN_TIME_RESTARTS
+                    if all(model in QWEN_MODELS for model, _ in self.conditions)
+                    else 20
+                ),
+            )
         tracking, timeout = resolve_budgets(
             self.budget_tracking, self.problem_timeout_seconds, self.conditions
         )

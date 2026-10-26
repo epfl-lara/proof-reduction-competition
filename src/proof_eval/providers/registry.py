@@ -5,6 +5,8 @@ from __future__ import annotations
 from types import ModuleType
 from typing import Literal
 
+from proof_eval.defaults import LOCAL_QWEN_WORKERS, QWEN_TIMEOUT_SECONDS
+
 from . import agy, claude, codex, lemex, lemex_local
 
 DEFAULT_CONDITIONS = {
@@ -14,13 +16,24 @@ DEFAULT_CONDITIONS = {
     "claude": ((claude.MODEL, "max"),),
     "agy": ((agy.MODEL, "high"),),
 }
-PROVIDER_WORKERS = {"codex": 5, "lemex": 3, "lemex-local": 5, "claude": 5, "agy": 5}
-MODEL_WORKERS = {"Qwen/Qwen3.8-Flash-Next": 5, lemex_local.MODEL: 5}
-MODEL_TIMEOUT_SECONDS = {
-    "Qwen/Qwen3.8-Flash-Next": 4 * 60 * 60,
-    lemex_local.MODEL: 4 * 60 * 60,
-    lemex_local.THINKINGCAP_MODEL: 4 * 60 * 60,
+PROVIDER_WORKERS = {
+    "codex": 5,
+    "lemex": 3,
+    "lemex-local": LOCAL_QWEN_WORKERS,
+    "claude": 5,
+    "agy": 5,
 }
+MODEL_WORKERS = {
+    "Qwen/Qwen3.8-Flash-Next": 5,
+    lemex_local.MODEL: LOCAL_QWEN_WORKERS,
+    lemex_local.THINKINGCAP_MODEL: LOCAL_QWEN_WORKERS,
+}
+MODEL_TIMEOUT_SECONDS = {
+    "Qwen/Qwen3.8-Flash-Next": QWEN_TIMEOUT_SECONDS,
+    lemex_local.MODEL: QWEN_TIMEOUT_SECONDS,
+    lemex_local.THINKINGCAP_MODEL: QWEN_TIMEOUT_SECONDS,
+}
+QWEN_MODELS = frozenset(MODEL_TIMEOUT_SECONDS)
 # Experiment contract: routing additions must declare their track separately.
 # Preparation pins this source along with the runtime; changes require a new run.
 MODEL_TRACKS: dict[str, Literal["open", "closed"]] = {
