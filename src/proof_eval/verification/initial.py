@@ -6,10 +6,54 @@ import time
 from copy import copy
 from pathlib import Path
 
-from proof_eval.evidence.io import digest, now, read, write_json
+from proof_eval.evidence.io import digest, fingerprint, now, read, write_json
 
 from .api import Evaluator, _Store
-from .references import require_valid
+from .references import original_evaluation, require_valid
+
+
+def adopt_prepared_original(evaluator: Evaluator, folder: Path, pack: dict):
+    """Admit an already verified original without another compiler invocation."""
+    evaluation = original_evaluation(pack)
+    require_valid(evaluation, pack["row"], pack["row"]["src"])
+    references = {
+        version: item["reference"]
+        for version, item in pack["incumbent"]["per_version"].items()
+    }
+    pin = fingerprint(references)
+    path = folder / "initial_measurement.json"
+    if path.exists():
+        saved = read(path)
+        if (
+            saved.get("reference_policy") != "prepared_original_reference_identity"
+            or saved.get("prepared_reference_sha256") != pin
+            or saved.get("compiler_calls") != 0
+            or saved.get("evaluation") != evaluation
+        ):
+            raise ValueError("Prepared original admission changed")
+        return pack["row"]["src"], evaluation
+    marker = folder / "initial_measurement_started.json"
+    if marker.exists():
+        raise RuntimeError("Prepared original admission has an unknown prior intent")
+    started = time.time()
+    write_json(
+        marker, {"started_epoch": started, "kind": "prepared_reference_admission"}
+    )
+    write_json(
+        path,
+        {
+            "at": now(),
+            "started_epoch": started,
+            "finished_epoch": time.time(),
+            "evaluation": evaluation,
+            "reference_policy": "prepared_original_reference_identity",
+            "prepared_reference_sha256": pin,
+            "compiler_calls": 0,
+            "timeout_retries": 0,
+            "attempt_sha256": {},
+        },
+    )
+    return pack["row"]["src"], evaluation
 
 
 def private_evaluator(evaluator: Evaluator, folder: Path, pack: dict) -> Evaluator:

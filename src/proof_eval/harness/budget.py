@@ -115,9 +115,13 @@ def run_cell(
                     "at": now(),
                     "started_epoch": budget["started_epoch"] if budget else time.time(),
                     "scope": (
-                        "model_phase_original_and_selected_measurement_admission_search"
-                        if config.get("model_phase_version")
-                        else "original_measurement_initial_optimization_model_search"
+                        "model_phase_prepared_original_admission_search"
+                        if config.get("original_measurement_policy") == "prepared"
+                        else (
+                            "model_phase_original_and_selected_measurement_admission_search"
+                            if config.get("model_phase_version")
+                            else "original_measurement_initial_optimization_model_search"
+                        )
                     ),
                 },
             )

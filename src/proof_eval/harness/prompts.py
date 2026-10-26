@@ -115,6 +115,7 @@ def tool_instructions(
     web_search=False,
     initial_only=False,
     deterministic_enabled=True,
+    prepared_original=False,
 ):
     if mode not in (*MODE_TOOLS, "score_edges"):
         raise ValueError("Unsupported or retired search mode: " + mode)
@@ -133,15 +134,14 @@ best checked proof after your call. Reference denominators remain the original.
         placement += "Deterministic cleanup is performed only before and after model search; no in-loop deterministic tool is available.\n"
         if initial_only:
             placement = (
-                "The harness freshly measured the original proof inside this run. "
-                + (
-                    "It then ran initial deterministic optimization for at most five minutes. "
-                    if deterministic_enabled
-                    else "All deterministic transformations are disabled for this condition. "
-                )
-                + "All deterministic work precedes model search; there is no final cleanup. "
-                "Reference denominators remain pinned to the original benchmark.\n"
-            )
+                "The original proof was verified during CPU preparation; it is admitted without recompilation at model startup. "
+                if prepared_original
+                else "The harness freshly measured the original proof inside this run. "
+            ) + (
+                "It then ran initial deterministic optimization for at most five minutes. "
+                if deterministic_enabled
+                else "All deterministic transformations are disabled for this condition. "
+            ) + "All deterministic work precedes model search; there is no final cleanup. " "Reference denominators remain pinned to the original benchmark.\n"
         policy = MODE_TOOLS["score"]
         if budget_tracking is not None:
             budget_policy = (
@@ -158,6 +158,11 @@ best checked proof after your call. Reference denominators remain the original.
                 budget_policy
                 + "\nThe host may start a fresh attempt from your best verified proof after completion.\nWhen cost tracking is enabled, the native CLI receives the remaining spending budget.",
             )
+            if prepared_original:
+                policy = policy.replace(
+                    "Your supplied whole-problem deadline includes original measurement, initial optimization and all host checks.",
+                    "Your model-phase deadline covers admission, model search and host candidate checks. Original CPU preparation is outside this clock.",
+                )
         return (
             common
             + "\n"
@@ -230,6 +235,11 @@ def budget_suffix(
                 "There is no final deterministic cleanup. Use status for remaining time; "
                 "the host retains the best proof verified on every required version."
             )
+            if config.get("original_measurement_policy") == "prepared":
+                suffix = suffix.replace(
+                    "including original measurement, initial optimization and host checks.",
+                    "including admission, model search and host candidate checks; original CPU preparation is outside this clock.",
+                )
     if config.get("budget_tracking") == "cost":
         limit, total = config["budget_usd_per_problem"], cost["total_usd"]
         suffix += (

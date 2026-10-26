@@ -9,7 +9,7 @@ outputs for non-Qwen conditions. Qwen defaults to model-only with both cleanup
 phases off. Enabled cleanup phases use eight workers with no five-minute cap.
 Local Qwen defaults to ten model workers and eight hours per theorem; Sol and
 gateway Qwen keep five workers. Local serving defaults are 266400 context,
-222400 compaction, xhigh and MTP3. Public Lean verification defaults to 300 seconds
+222400 compaction, xhigh and MTP3. Public Lean verification defaults to 600 seconds
 per check. Model jobs contain no deterministic transforms.
 Restart history is off by default; enable it explicitly with `--restart-history`.
 The default starting state is the original dataset. Reuse cleaned/optimized proofs
@@ -49,17 +49,17 @@ Lemex (`deepseek-ai/DeepSeek-V4.1-Flash/high` and
   unchanged resume. Preparation, offline tests and read-only analysis need no
   experiment approval. Do not launch a model or Lean search experiment merely
   to test a code change.
-- New harness runs explicitly measure the original proof on every required version
-  inside the model-phase clock before any model call. Keep canonical scoring denominators
-  pinned; save the fresh measurement separately. General evaluator/reward calls must
-  still never remeasure reference denominators implicitly. An explicitly selected
-  starting proof is freshly verified; never import another run's candidate/analysis
-  cache. Raw JSONL inputs have declared external provenance, not an implied audit.
-  Labelled model-produced inputs must match the receiving model and effort.
-  New runs allow one recorded original-measurement retry only after a terminal
-  wall timeout; keep both attempts, the same pinned verifier, private caches,
-  and the original problem clock. Never replay an interrupted measurement or
-  retry a semantic failure.
+- Local Qwen prepares original proofs once on CPU with the default 600-second
+  Lean limit, then admits the same hash-bound all-version references without
+  recompiling originals at model startup. Never retry a preparation timeout or
+  unknown check automatically. Do not allocate model GPUs before preparation is
+  complete. Preserve the producer machine and original measurement records when
+  explicitly importing a complete cohort onto another host; only the local cache
+  keys are rebound after fresh environment/source validation. Selected nonoriginal
+  starting proofs are still freshly checked in the model phase. Other providers
+  retain their explicit fresh-original policy; historical sources remain frozen.
+  Keep canonical scoring denominators pinned, full lineage and private candidate
+  caches; the evaluator/reward API never silently prepares a missing reference.
 - Keep the dataset's original token denominator. Measure candidates using fresh
   pinned `lake env lean`, synchronous `Elab.async=false`, and the existing
   `IO.getNumHeartbeats` wrapper. Timing and `--profile` are not heartbeats.

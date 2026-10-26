@@ -347,7 +347,7 @@ search. Raw attempt, generation, stop and usage records remain unchanged.
 Recovered model-phase timing uses the recorded stop time, excluding a later
 offline reconstruction delay.
 
-The October 26 Qwen default is eight hours and ten local workers, with 266400 context, 222400 compaction, history off, model-only cleanup placement and 300-second Lean checks. Gateway concurrency remains capped at five. Historical four-hour/five-worker and 57-minute runs keep their saved settings. The user-reported
+The October 26 Qwen default is eight hours and ten local workers, with 266400 context, 222400 compaction, history off, model-only cleanup placement and 600-second Lean checks. Gateway concurrency remains capped at five. Historical four-hour/five-worker and 57-minute runs keep their saved settings. The user-reported
 48-hour resource allowance is for one 64-core node with four A100 80GB GPUs.
 Pipeline reports include all phases, but there is no automatic 48-hour workflow
 watchdog. Confirm the overall resource plan before starting an experiment.
@@ -675,4 +675,17 @@ through this interface. Reports separate the checkpoint score from subsequent
 model gains. Keep the source condition and runtime frozen; incomplete checkpoint
 verification is never automatically replayed.
 
-Fresh Qwen defaults live in `proof_eval/defaults.py`. `RunConfig.verification_timeout_seconds` defaults to 300 and is saved in the run configuration and evaluator worker request. The frozen verifier backend bytes are unchanged; explicit old deadlines and archived reference fingerprints remain valid. `PipelineConfig` resolves omitted cleanup placement by model: Qwen is model-only, other conditions retain their cleanup phases. Explicit cleanup flags override that choice.
+Fresh Qwen defaults live in `proof_eval/defaults.py`. `RunConfig.verification_timeout_seconds` defaults to 600 and is saved in the run configuration and evaluator worker request. The frozen verifier backend bytes are unchanged; explicit old deadlines and archived reference fingerprints remain valid. `PipelineConfig` resolves omitted cleanup placement by model: Qwen is model-only, other conditions retain their cleanup phases. Explicit cleanup flags override that choice.
+
+
+Fresh local Qwen runs use `original_measurement_policy="prepared"`: a single CPU
+preparation uses the maintained 600-second verifier limit and no retry pass.
+`verification/reference_transfer.py` imports only a complete hash-bound cohort
+after fresh environment/row checks, retains the producer records and machine
+identity, and binds them to receiving cache keys without copying candidate caches.
+`benchmark/preparation.py` freezes original-only packs from existing references
+with zero compiler calls. Prepared original admission has explicit audited evidence
+and zero timeout retries; selected nonoriginal states are still freshly checked.
+Other providers retain the explicit fresh-original policy and historical evidence
+retains its original interpretation. CPU preparation is outside the eight-hour
+model clock; source and metadata admission inside the model phase are timed.

@@ -20,17 +20,26 @@ def audit_initial(
         tuple(config["initial_deterministic_methods"]),
         config["initial_deterministic_seconds"],
     )
+    prepared = config.get("original_measurement_policy") == "prepared"
     _require(
         config["initial_pipeline_version"] == 1
         and config["seed"]
         == (
-            "fresh_original_then_explicit_state"
+            (
+                "prepared_original_then_explicit_state"
+                if prepared
+                else "fresh_original_then_explicit_state"
+            )
             if config.get("starting_proofs")
-            else "fresh_measured_original"
+            else ("prepared_original" if prepared else "fresh_measured_original")
         )
         and config["candidate_cache_policy"] == "private_per_cell"
         and config["reference_policy"]
-        == "fresh_original_measurement_fixed_denominators"
+        == (
+            "prepared_original_reference_identity"
+            if prepared
+            else "fresh_original_measurement_fixed_denominators"
+        )
         and config["deterministic_placement"] == "initial_only"
         and config["cleanup_reserve_seconds"] == 0
         and not config.get("incumbent_sources"),
@@ -61,25 +70,59 @@ def audit_initial(
         )
         return 0
     measurement = read(measurement_path)
-    audit_measurement_attempts(
-        folder, row, config.get("initial_measurement_timeout_retries", 0)
-    )
+    if prepared:
+        from .configuration import load_inputs
+
+        pack = load_inputs(Path(config["base_directory"]))[row["name"]]
+        from proof_eval.verification.references import original_evaluation
+
+        _require(
+            fingerprint(pack) == config["input_sha256"][row["name"]]
+            and {k: v for k, v in pack["row"].items() if k != "published_heartbeats"}
+            == {k: v for k, v in row.items() if k != "published_heartbeats"}
+            and measurement.get("evaluation") == original_evaluation(pack)
+            and measurement.get("reference_policy")
+            == "prepared_original_reference_identity"
+            and measurement.get("compiler_calls") == 0
+            and measurement.get("timeout_retries") == 0
+            and config.get("initial_measurement_timeout_retries") == 0
+            and measurement.get("prepared_reference_sha256")
+            == fingerprint(
+                {v: x["reference"] for v, x in pack["incumbent"]["per_version"].items()}
+            ),
+            "Prepared original admission changed or was remeasured",
+        )
+    else:
+        audit_measurement_attempts(
+            folder, row, config.get("initial_measurement_timeout_retries", 0)
+        )
     evaluation = measurement["evaluation"]
     _require(
         started <= measurement["started_epoch"] <= measurement["finished_epoch"]
         and inp["seed_evaluation"] == evaluation
         and all(
-            check.get("cached") is False for check in evaluation["per_version"].values()
+            check.get("cached") is prepared
+            for check in evaluation["per_version"].values()
         ),
         "Original measurement was cached, outside the clock, or differs from the seed",
     )
-    count = _evaluation(row, reference, row["src"], evaluation, "fresh original")
+    count = _evaluation(
+        row,
+        reference,
+        row["src"],
+        evaluation,
+        "prepared original" if prepared else "fresh original",
+    )
     if config.get("model_phase_version"):
         _require(
             config["model_phase_version"] == 1
             and config["budget_scope"] == "model_phase"
             and read(folder / "problem_started.json")["scope"]
-            == "model_phase_original_and_selected_measurement_admission_search"
+            == (
+                "model_phase_prepared_original_admission_search"
+                if prepared
+                else "model_phase_original_and_selected_measurement_admission_search"
+            )
             and not config["initial_deterministic_methods"]
             and result["model_phase_elapsed_seconds"]
             == result["pipeline_elapsed_seconds"]

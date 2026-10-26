@@ -117,10 +117,16 @@ def main(argv=None) -> int:
             help="Model-phase wall time per theorem; default: Qwen 28800 seconds, other open models 3420, closed models no wall deadline",
         )
         sub.add_argument(
+            "--original-measurement-policy",
+            choices=("fresh", "prepared"),
+            default=None,
+            help="Original admission: reuse verified prepared references for local Qwen; fresh measurement for other providers",
+        )
+        sub.add_argument(
             "--verification-timeout-seconds",
             type=float,
             default=RunConfig.verification_timeout_seconds,
-            help="Per Lean check wall deadline (default: 300 seconds); included in the original model-phase clock",
+            help="Per Lean check wall deadline (default: 600 seconds); included in the original model-phase clock",
         )
         tracking = sub.add_mutually_exclusive_group()
         tracking.add_argument(
@@ -244,6 +250,7 @@ def main(argv=None) -> int:
                     "workers",
                     "problem_timeout_seconds",
                     "verification_timeout_seconds",
+                    "original_measurement_policy",
                     "budget_tracking",
                     "budget_usd_per_problem",
                     "usage_policy",

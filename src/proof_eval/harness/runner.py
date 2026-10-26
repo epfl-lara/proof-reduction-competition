@@ -48,6 +48,7 @@ def run(args: RunConfig) -> dict:
             restart_history=args.restart_history,
             proof_theory_cleanup=args.proof_theory_cleanup,
             initial_pipeline=True,
+            original_measurement_policy=args.original_measurement_policy,
             initial_methods=args.deterministic_methods if args.deterministic else (),
             initial_seconds=args.deterministic_seconds,
             max_budget_restarts=args.max_budget_restarts,
