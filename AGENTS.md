@@ -9,7 +9,7 @@ outputs for non-Qwen conditions. Qwen defaults to model-only with both cleanup
 phases off. Enabled cleanup phases use eight workers with no five-minute cap.
 Local Qwen defaults to ten model workers and eight hours per theorem; Sol and
 gateway Qwen keep five workers. Local serving defaults are 266400 context,
-222400 compaction, xhigh and MTP3. Public Lean verification defaults to 300 seconds
+222400 compaction, xhigh and MTP3. Public Lean verification defaults to 600 seconds
 per check. Model jobs contain no deterministic transforms.
 Restart history is off by default; enable it explicitly with `--restart-history`.
 The default starting state is the original dataset. Reuse cleaned/optimized proofs

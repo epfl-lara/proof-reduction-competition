@@ -2,7 +2,7 @@
 
 Lean proof optimization for [Lean Refactor Arena](https://huggingface.co/spaces/delta-lab-ai/lean-refactor-arena).
 
-The default local Qwen Flash-Next FP8 benchmark uses **eight hours per theorem, ten model workers, 266,400 context, 222,400 compaction, xhigh, MTP3, history off and no deterministic cleanup**. Each Lean check gets **600 seconds** inside the original model-phase clock. The standard serving recipe uses four A100 80GB GPUs; see [local model setup](docs/LOCAL_MODELS.md). These values are shared runtime defaults, not per-run patches.
+The default local Qwen Flash-Next FP8 benchmark uses **eight hours per theorem, ten model workers, 266,400 context, 222,400 compaction, xhigh, MTP3, history off and no deterministic cleanup**. Each Lean check gets **600 seconds**. Originals are prepared once on CPU before allocating GPUs; local Qwen admits those references without another compiler pass at model startup. The standard serving recipe uses four A100 80GB GPUs; see [local model setup](docs/LOCAL_MODELS.md). These values are shared runtime defaults, not per-run patches.
 
 Other model conditions retain their cohort cleanup → model → cleanup workflow, with eight cleanup workers and five Sol model workers. Gateway Qwen retains the shared five-request admission cap and uses the same eight-hour model budget. Runs start from original dataset proofs; reusing prepared proofs requires an explicit path.
 

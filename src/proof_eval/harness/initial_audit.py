@@ -71,11 +71,9 @@ def audit_initial(
         return 0
     measurement = read(measurement_path)
     if prepared:
-        pack = read(
-            Path(config["base_directory"])
-            / "inputs"
-            / (fingerprint(row["name"]) + ".json")
-        )
+        from .configuration import load_inputs
+
+        pack = load_inputs(Path(config["base_directory"]))[row["name"]]
         from proof_eval.verification.references import original_evaluation
 
         _require(
