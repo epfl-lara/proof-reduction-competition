@@ -37,6 +37,7 @@ def prepare(
     verification_timeout_seconds: float = VERIFICATION_TIMEOUT_SECONDS,
     port: int = 8128,
     binary: str = "vllm",
+    server_python: str | None = None,
 ) -> dict:
     """Create a new explicit recipe without changing the user's native home."""
     if (
@@ -58,6 +59,7 @@ def prepare(
         model=model,
         revision=revision,
         binary=binary,
+        python=server_python,
         model_cache=str(model_cache or Path.home() / ".cache/huggingface"),
         port=port,
         max_model_len=context,

@@ -5,9 +5,10 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import shlex
+import shutil
 import socket
 import subprocess
-import sys
 import threading
 import time
 from dataclasses import asdict, dataclass
@@ -42,11 +43,11 @@ class ServerConfig:
     mode: str = "mtp3"
     port: int = 8128
     binary: str = "vllm"
-    python: str = sys.executable
+    python: str | None = None
     model_cache: str = str(Path.home() / ".cache/huggingface")
     model: str = MODEL
     revision: str = REVISION
-    startup_seconds: float = 1200
+    startup_seconds: float = 1800
     execution_mode: str = "compiled"
     profile: str = "rcp-api-flags"
     max_model_len: int = QWEN_CONTEXT_TOKENS
@@ -168,20 +169,75 @@ def environment(config: ServerConfig, plugin: Path) -> dict[str, str]:
     return env
 
 
+def serving_runtime(config: ServerConfig) -> dict:
+    """Resolve the serving CLI's Python, independently of the harness venv."""
+    binary = shutil.which(config.binary)
+    if binary is None:
+        raise ValueError("vLLM executable is unavailable; install the serving runtime")
+    launcher = Path(binary).absolute()
+    python = config.python
+    if python is None:
+        with launcher.open("rb") as stream:
+            first = stream.readline(4096).decode(errors="replace").strip()
+        argv = shlex.split(first[2:]) if first.startswith("#!") else []
+        if argv and Path(argv[0]).name.startswith("python"):
+            python = argv[0]
+        elif (
+            len(argv) == 2
+            and Path(argv[0]).name == "env"
+            and argv[1].startswith("python")
+        ):
+            python = shutil.which(argv[1])
+        elif launcher == Path("/opt/rcp/bin/vllm"):
+            # The pinned RCP entrypoint is a shell wrapper, not a Python script.
+            python = "/opt/rcp/venv/bin/python"
+    executable = shutil.which(python) if python else None
+    if executable is None:
+        raise ValueError(
+            "Cannot resolve the vLLM serving Python; prepare the profile with --vllm-python"
+        )
+    return {
+        "binary": str(launcher),
+        "python": str(Path(executable).absolute()),
+        "binary_sha256": digest(launcher),
+    }
+
+
 def metadata(config: ServerConfig, plugin: Path) -> dict:
-    versions = subprocess.check_output(
+    runtime = serving_runtime(config)
+    wanted = ["ampere_ple_patch"] if (plugin / "ampere_ple_patch.py").is_file() else []
+    probe = subprocess.check_output(
         [
-            config.python,
+            runtime["python"],
             "-c",
-            "import importlib.metadata,json; print(json.dumps({k:importlib.metadata.version(k) for k in ('vllm','torch','transformers')}))",
+            "import hashlib,importlib.metadata,inspect,json,sys; from pathlib import Path; "
+            "wanted=json.loads(sys.argv[1]); "
+            "eps=[e for e in importlib.metadata.entry_points(group='vllm.general_plugins') if e.name in wanted]; "
+            "plugins={e.name:{'entry_point':e.value,'source':inspect.getfile(e.load()),"
+            "'sha256':hashlib.sha256(Path(inspect.getfile(e.load())).read_bytes()).hexdigest()} for e in eps}; "
+            "print(json.dumps({'versions':{k:importlib.metadata.version(k) for k in ('vllm','torch','transformers')},"
+            "'python':sys.executable,'plugins':plugins}))",
+            json.dumps(wanted),
         ],
         text=True,
+        env=environment(config, plugin),
+        timeout=30,
     )
+    actual = json.loads(probe)
+    for name in wanted:
+        if name not in actual["plugins"] or actual["plugins"][name]["sha256"] != digest(
+            plugin / (name + ".py")
+        ):
+            raise ValueError(
+                "Serving plugin is missing or differs; install its package metadata before GPU allocation"
+            )
     return {
         "schema_version": 1,
         "config": asdict(config),
         "argv": command(config),
-        "versions": json.loads(versions),
+        "versions": actual["versions"],
+        "serving_runtime": {**runtime, "reported_python": actual["python"]},
+        "plugins": actual["plugins"],
         "plugin_sha256": {
             str(p.relative_to(plugin)): digest(p)
             for p in sorted(plugin.rglob("*"))
