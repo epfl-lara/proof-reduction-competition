@@ -96,6 +96,7 @@ def command(
         effort=effort,
         load_user_config=True,
         settings={
+            "include_environment_context": True,
             "model_catalog_json": str(catalog),
             "model_provider": "local_qwen",
             "model_providers.local_qwen.name": "Local Qwen via vLLM",

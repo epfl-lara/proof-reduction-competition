@@ -15,6 +15,11 @@ policies. The default model is
 `Qwen/Qwen3.8-Flash-Next-FP8`; the ThinkingCap Flash-Next FP8 condition is also
 explicitly registered. Preparation and command previews make no model calls.
 
+Local native turns receive their actual working-directory context. The shell
+smoke check supplies the exact workspace and command arguments and still requires
+a successful command receipt; returning the requested text after a failed tool
+call does not pass. Canonical proof-optimization prompts remain separate.
+
 The local Qwen workflow prepares originals once on CPU with a 600-second Lean limit and no automatic retry, then imports the complete hash-bound cohort and admits those records without recompiling the originals at model startup. Original preparation must finish before GPU allocation. Selected nonoriginal states still require fresh checks in the model phase.
 Historical runs whose clocks began after reference preparation retain their
 frozen runtime and original labels. A new checkout is not a byte-identical

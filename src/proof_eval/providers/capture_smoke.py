@@ -75,6 +75,12 @@ def native_capture_smoke(
         started = time.time()
         nonce = "arena-capture-smoke-" + str(index)
         output = folder / f"client-{index}"
+        tool_arguments = {
+            "cmd": "printf " + nonce,
+            "workdir": str((output / "workspace").resolve()),
+            "login": False,
+            "yield_time_ms": 10000,
+        }
         result = lemex_local.generate(
             folder=output,
             capacity_slots=workers,
@@ -85,11 +91,12 @@ def native_capture_smoke(
                 },
                 {
                     "role": "user",
-                    "content": "Use the shell tool once to run printf "
+                    "content": "Call exec_command once with exactly these arguments: "
+                    + json.dumps(tool_arguments)
+                    + ". This is the actual workspace; do not use an example path. "
+                    "Only after exit code 0, answer exactly "
                     + nonce
-                    + ". Then answer exactly "
-                    + nonce
-                    + ". Do not perform other work.",
+                    + ". If the command fails, report the error. Do not perform other work.",
                 },
             ],
             model=lemex_local.MODEL,
