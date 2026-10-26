@@ -39,6 +39,7 @@ class RunConfig:
     workers: int | None = None
     problem_timeout_seconds: float | None = None
     verification_timeout_seconds: float = VERIFICATION_TIMEOUT_SECONDS
+    original_measurement_policy: Literal["fresh", "prepared"] | None = None
     budget_tracking: BudgetTracking = "auto"
     budget_usd_per_problem: float = 3.0
     max_budget_restarts: int | None = None
@@ -130,6 +131,14 @@ class RunConfig:
         if not self.conditions or len(set(self.conditions)) != len(self.conditions):
             raise ValueError("Specify nonempty, unique model conditions")
         validate(self.provider, self.conditions)
+        if self.original_measurement_policy is None:
+            object.__setattr__(
+                self,
+                "original_measurement_policy",
+                "prepared" if self.provider == "lemex-local" else "fresh",
+            )
+        if self.original_measurement_policy not in ("fresh", "prepared"):
+            raise ValueError("Unknown original measurement policy")
         if self.max_budget_restarts is None:
             object.__setattr__(
                 self,

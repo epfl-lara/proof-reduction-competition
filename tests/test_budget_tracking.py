@@ -97,6 +97,7 @@ def tracking_run(tmp_path, monkeypatch):
         initial_pipeline=False,
         initial_methods=(),
         initial_seconds=300.0,
+        original_measurement_policy="fresh",
     ):
         output = tmp_path / "run"
         model, effort = (agy.MODEL, "high") if provider == "agy" else (MODEL, EFFORT)
@@ -118,6 +119,7 @@ def tracking_run(tmp_path, monkeypatch):
             initial_pipeline=initial_pipeline,
             initial_methods=initial_methods,
             initial_seconds=initial_seconds,
+            original_measurement_policy=original_measurement_policy,
             problem_timeout_seconds=timeout,
             paths={
                 "dataset_path": str(ROOT / "data/benchmark_data_warmup.jsonl"),

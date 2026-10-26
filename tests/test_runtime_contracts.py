@@ -215,7 +215,7 @@ def test_full_cohort_uses_fixed_parallel_slots_and_isolates_cell_failures(
             runner.run(arguments)
     else:
         runner.run(arguments)
-    assert evaluator_limits == [300]
+    assert evaluator_limits == [600]
     assert set(started) == ended == set(names) and len(started) == 15
     assert maximum == workers and len(first_starts) == workers
     assert not (tmp_path / "pilot_audit.json").exists()

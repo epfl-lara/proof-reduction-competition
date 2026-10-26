@@ -16,7 +16,8 @@ def test_local_qwen_defaults_use_the_full_model_only_regime(model):
     model_run = RunConfig(provider="lemex-local", conditions=((model, "xhigh"),))
     workflow = PipelineConfig(model_run)
     assert model_run.problem_timeout_seconds == 28800 and model_run.workers == 10
-    assert model_run.verification_timeout_seconds == 300
+    assert model_run.verification_timeout_seconds == 600
+    assert model_run.original_measurement_policy == "prepared"
     assert model_run.max_budget_restarts == 10000
     assert not model_run.restart_history and not model_run.deterministic
     assert not workflow.cleanup_before and not workflow.cleanup_after
@@ -56,7 +57,7 @@ def test_public_evaluator_and_server_share_the_approved_defaults(tmp_path):
     evaluator = Evaluator(
         ROOT / "data/benchmark_data_warmup.jsonl", None, tmp_path / "cache"
     )
-    assert evaluator.timeout == evaluator.backend.timeout == 300
+    assert evaluator.timeout == evaluator.backend.timeout == 600
     assert evaluator.version_workers == 4
     server = ServerConfig()
     assert server.mode == "mtp3" and server.max_model_len == 266400
@@ -67,7 +68,7 @@ def test_public_evaluator_and_server_share_the_approved_defaults(tmp_path):
 def test_default_profile_records_the_host_verifier_deadline(tmp_path):
     local_profile.prepare(tmp_path / "profile")
     profile, _ = local_profile.load(tmp_path / "profile")
-    assert profile["verification_timeout_seconds"] == 300
+    assert profile["verification_timeout_seconds"] == 600
 
 
 @pytest.mark.parametrize("value", [0, -1, True, float("nan"), float("inf")])
@@ -91,7 +92,7 @@ def test_standard_cli_resolves_qwen_defaults_without_a_wrapper(
     config = seen[0]
     assert config.model.problem_timeout_seconds == 28800
     assert (
-        config.model.workers == 10 and config.model.verification_timeout_seconds == 300
+        config.model.workers == 10 and config.model.verification_timeout_seconds == 600
     )
     assert config.cleanup_before is cleanup and config.cleanup_after is cleanup
     capsys.readouterr()

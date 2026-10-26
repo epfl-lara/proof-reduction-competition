@@ -205,6 +205,7 @@ def prepare(
     restart_history: bool = False,
     proof_theory_cleanup: bool = False,
     initial_pipeline: bool = False,
+    original_measurement_policy: str = "fresh",
     initial_methods: tuple[str, ...] = (),
     initial_seconds: float = 300.0,
 ) -> dict:
@@ -376,12 +377,22 @@ def prepare(
             config["initial_deterministic_methods"] = list(PROOF_THEORY_METHODS)
             config["deterministic_methods"] += list(PROOF_THEORY_METHODS)
     if initial_pipeline:
+        if original_measurement_policy not in ("fresh", "prepared"):
+            raise ValueError("Unknown original measurement policy")
+        prepared_original = original_measurement_policy == "prepared"
         config.pop("proof_theory_cleanup_version", None)
         config.update(
             initial_pipeline_version=1,
-            initial_measurement_timeout_retries=1,
-            seed="fresh_measured_original",
-            reference_policy="fresh_original_measurement_fixed_denominators",
+            initial_measurement_timeout_retries=0 if prepared_original else 1,
+            original_measurement_policy=original_measurement_policy,
+            seed=(
+                "prepared_original" if prepared_original else "fresh_measured_original"
+            ),
+            reference_policy=(
+                "prepared_original_reference_identity"
+                if prepared_original
+                else "fresh_original_measurement_fixed_denominators"
+            ),
             candidate_cache_policy="private_per_cell",
             initial_deterministic_methods=list(initial_methods),
             initial_deterministic_seconds=float(initial_seconds),
@@ -408,6 +419,12 @@ def prepare(
             "admission and model search share this clock; external cleanup phases "
             "are recorded separately by the cohort pipeline"
         )
+    if config.get("original_measurement_policy") == "prepared":
+        config["time_budget_policy"] = (
+            "Original references were measured once during CPU preparation; "
+            "prepared-reference admission, selected-state verification and model "
+            "search share the model clock, with no original remeasurement or retry"
+        )
     if deterministic_checkpoint is not None:
         from .checkpoint import freeze_checkpoint, validate_checkpoint_policy
 
@@ -426,7 +443,11 @@ def prepare(
         )
         for condition in conditions:
             validate_lineage(config["starting_proofs"], tuple(condition))
-        config["seed"] = "fresh_original_then_explicit_state"
+        config["seed"] = (
+            "prepared_original_then_explicit_state"
+            if config.get("original_measurement_policy") == "prepared"
+            else "fresh_original_then_explicit_state"
+        )
         config["model_phase_version"] = 1
         config["budget_scope"] = "model_phase"
         config["time_budget_policy"] = (

@@ -17,7 +17,11 @@ from proof_eval.providers.retries import RECOVERY_BACKOFF_SECONDS
 from proof_eval.providers.spending import native_cost_guard
 from proof_eval.verification.api import Evaluator
 from proof_eval.verification.feedback import build_validity_feedback
-from proof_eval.verification.initial import measure_original, private_evaluator
+from proof_eval.verification.initial import (
+    adopt_prepared_original,
+    measure_original,
+    private_evaluator,
+)
 from proof_eval.verification.references import required_versions
 
 from .agent import generate
@@ -102,11 +106,17 @@ def _run_cell(
 
         checked_guard()
         seed = (
-            measure_original(
-                evaluator,
-                folder,
-                pack,
-                timeout_retries=config.get("initial_measurement_timeout_retries", 0),
+            (
+                adopt_prepared_original(evaluator, folder, pack)
+                if config.get("original_measurement_policy") == "prepared"
+                else measure_original(
+                    evaluator,
+                    folder,
+                    pack,
+                    timeout_retries=config.get(
+                        "initial_measurement_timeout_retries", 0
+                    ),
+                )
             )
             if config.get("initial_pipeline_version")
             else (starting_point(pack, mode) if mode in DETERMINISTIC_MODES else None)

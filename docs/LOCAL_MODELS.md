@@ -9,13 +9,13 @@ The local profile declares a model revision, xhigh effort, MTP3, 266,400 context
 222,400 compaction, ten local model workers, eight hours per model phase, no
 cross-restart history and no deterministic cleanup. These are explicit profile
 defaults for fresh local Qwen runs across the profile CLI, public RunConfig and
-server configuration. Host Lean checks default to 300 seconds; the saved profile
+server configuration. Host Lean checks default to 600 seconds; the saved profile
 records that limit. Other model conditions retain their separately declared
 policies. The default model is
 `Qwen/Qwen3.8-Flash-Next-FP8`; the ThinkingCap Flash-Next FP8 condition is also
 explicitly registered. Preparation and command previews make no model calls.
 
-The current workflow freshly measures originals inside each model-phase clock.
+The local Qwen workflow prepares originals once on CPU with a 600-second Lean limit and no automatic retry, then imports the complete hash-bound cohort and admits those records without recompiling the originals at model startup. Original preparation must finish before GPU allocation. Selected nonoriginal states still require fresh checks in the model phase.
 Historical runs whose clocks began after reference preparation retain their
 frozen runtime and original labels. A new checkout is not a byte-identical
 replacement for those historical releases.

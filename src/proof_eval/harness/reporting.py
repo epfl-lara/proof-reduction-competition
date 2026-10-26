@@ -272,7 +272,11 @@ def _report(output, config):
     elif config.get("initial_pipeline_version"):
         lines += [
             "",
-            "Original-start pipeline: fresh all-version original measurement inside the clock; private per-cell evaluation and analysis caches; fixed original scoring denominators.",
+            (
+                "Original-start pipeline: verified prepared originals admitted without remeasurement; private per-cell candidate/analysis caches and fixed denominators."
+                if config.get("original_measurement_policy") == "prepared"
+                else "Original-start pipeline: fresh all-version original measurement inside the clock; private per-cell evaluation and analysis caches; fixed original scoring denominators."
+            ),
             "Initial methods: "
             + (", ".join(config["initial_deterministic_methods"]) or "disabled")
             + f". Hard phase cap: {config['initial_deterministic_seconds']:g} seconds. No final deterministic cleanup.",

@@ -28,6 +28,41 @@ from proof_eval.verification.references import original_evaluation
 tracking_run = _tracking_run
 
 
+def test_prepared_original_runs_and_audits_without_another_compiler_pass(
+    tracking_run, monkeypatch
+):
+    run = tracking_run(
+        initial_pipeline=True,
+        cleanup=False,
+        usd=0.1,
+        original_measurement_policy="prepared",
+    )
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("The prepared original must not be recompiled")
+
+    monkeypatch.setattr(run.evaluator.backend, "check", forbidden)
+    result = run_cell(
+        run.output,
+        run.config,
+        run.pack,
+        run.model,
+        run.effort,
+        run.evaluator,
+        generator=fake_native(run),
+    )
+    assert result["seed_proof"] == run.pack["row"]["src"]
+    assert read(run.folder / "initial_measurement.json")["compiler_calls"] == 0
+    assert not (run.folder / "initial_measurements").exists()
+    assert audit(run.output)["status"] == "passed"
+    marker = run.folder / "initial_measurement.json"
+    saved = read(marker)
+    saved["compiler_calls"] = 1
+    write_json(marker, saved)
+    with pytest.raises(ValueError, match="admission"):
+        audit(run.output)
+
+
 def fresh_backend(run, monkeypatch):
     original = original_evaluation(run.pack)
     del run.evaluator.evaluate

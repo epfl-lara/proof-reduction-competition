@@ -2,7 +2,7 @@
 
 Lean proof optimization for [Lean Refactor Arena](https://huggingface.co/spaces/delta-lab-ai/lean-refactor-arena).
 
-The default local Qwen Flash-Next FP8 benchmark uses **eight hours per theorem, ten model workers, 266,400 context, 222,400 compaction, xhigh, MTP3, history off and no deterministic cleanup**. Each Lean check gets **300 seconds** inside the original model-phase clock. The standard serving recipe uses four A100 80GB GPUs; see [local model setup](docs/LOCAL_MODELS.md). These values are shared runtime defaults, not per-run patches.
+The default local Qwen Flash-Next FP8 benchmark uses **eight hours per theorem, ten model workers, 266,400 context, 222,400 compaction, xhigh, MTP3, history off and no deterministic cleanup**. Each Lean check gets **600 seconds** inside the original model-phase clock. The standard serving recipe uses four A100 80GB GPUs; see [local model setup](docs/LOCAL_MODELS.md). These values are shared runtime defaults, not per-run patches.
 
 Other model conditions retain their cohort cleanup → model → cleanup workflow, with eight cleanup workers and five Sol model workers. Gateway Qwen retains the shared five-request admission cap and uses the same eight-hour model budget. Runs start from original dataset proofs; reusing prepared proofs requires an explicit path.
 
@@ -93,7 +93,7 @@ proof-harness run --condition gpt-6.1-sol:max \
 
 `--starting-proofs` accepts a `state.json`, a cleanup directory containing that file, or explicit JSONL records with `name` and a full `proof` declaration (`code` is also accepted). The state must cover the exact declared cohort. Selecting a state does not implicitly disable cleanup; use `--no-cleanup-before` to avoid another sweep. Model-produced manifests retain model/effort lineage and cannot seed another condition. Raw JSONL has external, unverified provenance until the fresh compiler checks; it is not represented as an audited deterministic checkpoint.
 
-Every model cell freshly measures its original proof and verifies any selected state against every required version in its own private cache. The original scoring denominators remain fixed. Invalid or interrupted input checks never trigger a silent replay, and a valid imported proof does not replace a better verified original. Reports separate the starting state, before-cleanup gain, model gain and after-cleanup gain. Reusing a state does not erase its earlier compute cost.
+Local Qwen admits its prepared original references without remeasurement, while other providers retain fresh original measurement inside the model phase. Each cell verifies any selected nonoriginal state against every required version in its own private cache. The original scoring denominators remain fixed. Invalid or interrupted input checks never trigger a silent replay, and a valid imported proof does not replace a better verified original. Reports separate the starting state, before-cleanup gain, model gain and after-cleanup gain. Reusing a state does not erase its earlier compute cost.
 
 The older `--deterministic-checkpoint` interface remains a separate closed-track, cost-only compatibility path requiring `--no-deterministic`. It does not accept model-produced seeds. Use `--starting-proofs` for the new phase workflow.
 
