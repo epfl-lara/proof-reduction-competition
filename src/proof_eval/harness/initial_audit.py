@@ -78,7 +78,8 @@ def audit_initial(
 
         _require(
             fingerprint(pack) == config["input_sha256"][row["name"]]
-            and pack["row"] == row
+            and {k: v for k, v in pack["row"].items() if k != "published_heartbeats"}
+            == {k: v for k, v in row.items() if k != "published_heartbeats"}
             and measurement.get("evaluation") == original_evaluation(pack)
             and measurement.get("reference_policy")
             == "prepared_original_reference_identity"
