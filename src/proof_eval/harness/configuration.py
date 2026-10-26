@@ -409,6 +409,7 @@ def prepare(
                 web_search=web_search,
                 initial_only=True,
                 deterministic_enabled=bool(initial_methods),
+                prepared_original=prepared_original,
             ),
         )
     if initial_pipeline and not initial_methods and deterministic_checkpoint is None:

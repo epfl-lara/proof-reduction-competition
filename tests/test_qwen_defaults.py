@@ -6,6 +6,7 @@ from proof_eval import Evaluator
 from proof_eval.harness import cli
 from proof_eval.harness.config import RunConfig
 from proof_eval.harness.pipeline import PipelineConfig
+from proof_eval.harness.prompts import budget_suffix, tool_instructions
 from proof_eval.paths import ROOT
 from proof_eval.providers import lemex_local, local_profile
 from proof_eval.providers.vllm_server import ServerConfig
@@ -69,6 +70,28 @@ def test_default_profile_records_the_host_verifier_deadline(tmp_path):
     local_profile.prepare(tmp_path / "profile")
     profile, _ = local_profile.load(tmp_path / "profile")
     assert profile["verification_timeout_seconds"] == 600
+
+
+def test_prepared_model_prompts_report_cpu_preparation_outside_the_model_clock():
+    instructions = tool_instructions(
+        "score_edges",
+        budget_tracking="time",
+        initial_only=True,
+        deterministic_enabled=False,
+        prepared_original=True,
+    )
+    assert "without recompilation" in instructions
+    assert "Original CPU preparation is outside this clock" in instructions
+    assert "freshly measured" not in instructions
+    suffix = budget_suffix(
+        {"initial_pipeline_version": 1, "original_measurement_policy": "prepared"},
+        {"timeout_seconds": 28800},
+        {},
+        28799,
+        0,
+    )
+    assert "original CPU preparation is outside this clock" in suffix
+    assert "including original measurement" not in suffix
 
 
 @pytest.mark.parametrize("value", [0, -1, True, float("nan"), float("inf")])
