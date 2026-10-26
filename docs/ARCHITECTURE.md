@@ -35,8 +35,9 @@ workflow. Gateway admission and existing provider defaults stay separate.
 batch, then cleanup of each model condition's own selected outputs. Whole-cohort
 barriers prevent model requests before initial cleanup completes and prevent
 postprocessing before the model batch terminates. `PipelineConfig` defaults both
-cleanup phases on with eight workers. Model pools are independent and configurable;
-Sol and Qwen default to five. `pipeline_reporting.py` reports phase times, total
+cleanup phases off for Qwen and on for other model conditions, using eight workers
+when enabled. Model pools are independent and configurable; local Qwen defaults
+to ten, and Sol/gateway Qwen to five. `pipeline_reporting.py` reports phase times, total
 wall time, score gains and audited source links. Failed cells do not cancel other
 queued cells, but full-cohort means require complete evidence.
 
@@ -218,8 +219,7 @@ uses the already frozen warm-up packs. Pass another directory with `base=...` or
 `--base` for another prepared batch; references are still required in the cache.
 
 Model batches queue the full cohort after cached-reference/runtime preflight.
-Provider defaults are five workers for closed models, five for Qwen and three
-for DeepSeek. Positive explicit worker overrides are accepted; Lemex's shared
+Provider defaults are ten workers for local Qwen, five for closed models/gateway Qwen, and three for DeepSeek. Positive explicit worker overrides are accepted; Lemex's shared
 five-session admission limit still applies independently. Model-only queue time
 precedes a cell's model timer, while the pipeline records whole-workflow time.
 Individual incomplete outcomes do not cancel other queued cells.
@@ -302,7 +302,7 @@ stay unchanged; changed settings require a new output directory.
 
 `RunConfig.budget_tracking="auto"` selects `"time"` for the explicitly listed
 open models (Qwen and DeepSeek) and `"cost"` for closed models. Resolved
-`RunConfig.problem_timeout_seconds` defaults to 14400 (four hours) for Qwen,
+`RunConfig.problem_timeout_seconds` defaults to 28800 (eight hours) for Qwen,
 3420 (57 minutes) for other open models, and `None` for cost tracking. A numeric timeout explicitly adds a watchdog to cost
 tracking; there is no implicit provider or whole-problem timeout in cost-only
 search. Open-model runs receive no spending guard. New configurations use schema 8;
@@ -347,8 +347,7 @@ search. Raw attempt, generation, stop and usage records remain unchanged.
 Recovered model-phase timing uses the recorded stop time, excluding a later
 offline reconstruction delay.
 
-Qwen's four-hour/five-worker policy is the user's new allocation; the prior
-57-minute total-problem runs retain their historical meaning. The user-reported
+The October 26 Qwen default is eight hours and ten local workers, with 266400 context, 222400 compaction, history off, model-only cleanup placement and 300-second Lean checks. Gateway concurrency remains capped at five. Historical four-hour/five-worker and 57-minute runs keep their saved settings. The user-reported
 48-hour resource allowance is for one 64-core node with four A100 80GB GPUs.
 Pipeline reports include all phases, but there is no automatic 48-hour workflow
 watchdog. Confirm the overall resource plan before starting an experiment.
@@ -459,8 +458,9 @@ New runs use `cleanup_reserve_seconds=0`: deterministic work runs in separate
 before/after cohort phases. Historical edge-cleanup runs retain their saved
 30-second reserve for auditing. Cleanup makes no model requests or model spend.
 Both modes allow at most `max_budget_restarts + max_transport_restarts + 1`
-admitted attempts (default 23: 20 optimization restarts, two terminal transport
-recoveries and one initial attempt). Native retries remain within their session.
+admitted attempts (Qwen defaults to 10000 optimization restarts, other models 20,
+plus two terminal transport recoveries and one initial attempt). The original
+problem budget still bounds every restart. Native retries remain within their session.
 Exhausted cumulative cost, insufficient money for one conservatively priced
 output token, cleanup reserve,
 usage that the selected policy cannot price, and the restart safety limit have
@@ -674,3 +674,5 @@ a private cell cache before any model call. No model-produced seed is accepted
 through this interface. Reports separate the checkpoint score from subsequent
 model gains. Keep the source condition and runtime frozen; incomplete checkpoint
 verification is never automatically replayed.
+
+Fresh Qwen defaults live in `proof_eval/defaults.py`. `RunConfig.verification_timeout_seconds` defaults to 300 and is saved in the run configuration and evaluator worker request. The frozen verifier backend bytes are unchanged; explicit old deadlines and archived reference fingerprints remain valid. `PipelineConfig` resolves omitted cleanup placement by model: Qwen is model-only, other conditions retain their cleanup phases. Explicit cleanup flags override that choice.

@@ -16,7 +16,7 @@ bootstrap='import sys; sys.path.insert(0, sys.argv.pop(1)); from proof_eval.inte
 command=(runai submit --name "$RCP_JOB" --project "$RCP_PROJECT"
   --image "$RCP_IMAGE" --image-pull-policy Always --gpu 4
   --cpu "${RCP_CPU:-64}" --memory "${RCP_MEMORY:-512G}"
-  --node-pools "${RCP_GPU_POOL:-a100}" --large-shm
+  --node-pools "${RCP_GPU_POOL:-default}" --large-shm
   --run-as-uid "$RCP_UID" --run-as-gid "$RCP_GID"
   --create-home-dir=false --environment "USER=$RCP_USER"
   --environment "HOME=$RCP_HOME" --environment PYTHONNOUSERSITE=1

@@ -1,10 +1,10 @@
 # Proof Reduction Competition
 
-Lean proof optimization for [Lean Refactor Arena](https://huggingface.co/spaces/delta-lab-ai/lean-refactor-arena). The default workflow is:
+Lean proof optimization for [Lean Refactor Arena](https://huggingface.co/spaces/delta-lab-ai/lean-refactor-arena).
 
-**One-sweep cleanup of the whole cohort → model search → one-sweep cleanup of each model condition's outputs.**
+The default local Qwen Flash-Next FP8 benchmark uses **eight hours per theorem, ten model workers, 266,400 context, 222,400 compaction, xhigh, MTP3, history off and no deterministic cleanup**. Each Lean check gets **300 seconds** inside the original model-phase clock. The standard serving recipe uses four A100 80GB GPUs; see [local model setup](docs/LOCAL_MODELS.md). These values are shared runtime defaults, not per-run patches.
 
-The three phases have separate worker pools. Both cleanup phases default on, with **eight workers** and no five-minute cap. Sol 6.1/max and Qwen3.8-Flash-Next/xhigh default to **five model workers**. Restart history is **off**. The default starting state is the original dataset; reusing prepared proofs requires an explicit path.
+Other model conditions retain their cohort cleanup → model → cleanup workflow, with eight cleanup workers and five Sol model workers. Gateway Qwen retains the shared five-request admission cap and uses the same eight-hour model budget. Runs start from original dataset proofs; reusing prepared proofs requires an explicit path.
 
 The warm-up cohort has 15 declarations and 36 required version checks. Scores use the original token denominators and pinned local heartbeat references. Combined score is the mean of length reduction, heartbeat reduction and compatibility; local scores and organizer results remain separate.
 
@@ -34,10 +34,10 @@ proof-harness prepare --condition gpt-6.1-sol:max \
 proof-harness run --condition gpt-6.1-sol:max \
   --cleanup-workers 8 --model-workers 5 --output results/my_sol
 
-# Qwen: four hours per theorem in the MODEL phase, five model workers.
+# Gateway Qwen: eight hours per theorem, model only; five-request gateway cap.
 proof-harness run --provider lemex \
   --condition Qwen/Qwen3.8-Flash-Next:xhigh \
-  --cleanup-workers 8 --model-workers 5 --output results/my_qwen
+  --output results/my_qwen
 
 # Separate cleanup concurrency before and after; history is an explicit opt-in.
 proof-harness run --condition gpt-6.1-sol:max \
@@ -68,7 +68,7 @@ lint delete golf reuse relax simp_min rw_min consolidate
 
 Each method is visited once, with its bounded local search (`rounds=3`, `trials=32`, `sites=6`). An accepted proof must pass every required version and improve the combined score by more than 0.05 percentage points. There is no overall 300-second cleanup cap; individual Lean/discovery watchdogs and finite method work bounds still apply. Recorded discovery timeouts preserve valid incumbents as limited search outcomes, not exhaustive-search claims.
 
-The measured one-sweep development result was **+12.184 points**, **23.5 minutes per theorem on average**, and **5.87 summed worker-hours** over all 15 theorems. Replaying those measured durations estimates **53 minutes with eight workers** or **46 minutes with sixteen**; these are scheduling estimates, not measurements on the competition hardware. The [completed Sol workflow comparison](results/summary/20261022_sol_cleanup_placement/README.md) measured 89.3761% in 3h 59m with both cleanup phases, versus 89.6591% in 3h 17m with cleanup only at the end. These are single runs; the default still enables both phases.
+The measured one-sweep development result was **+12.184 points**, **23.5 minutes per theorem on average**, and **5.87 summed worker-hours** over all 15 theorems. Replaying those measured durations estimates **53 minutes with eight workers** or **46 minutes with sixteen**; these are scheduling estimates, not measurements on the competition hardware. The [completed Sol workflow comparison](results/summary/20261022_sol_cleanup_placement/README.md) measured 89.3761% in 3h 59m with both cleanup phases, versus 89.6591% in 3h 17m with cleanup only at the end. These are single runs; the closed-model default still enables both phases. Qwen defaults to model-only.
 
 To run just a cleanup phase:
 
@@ -102,14 +102,15 @@ The older `--deterministic-checkpoint` interface remains a separate closed-track
 | Condition | Default per-theorem model budget | Default model workers |
 | --- | --- | ---: |
 | Sol 6.1/max, Astra/max and other closed models | $3 API-equivalent estimate; no implicit wall deadline | 5 |
-| Qwen3.8-Flash-Next/xhigh | Four hours (14,400 seconds) | 5 |
+| Local Qwen Flash-Next FP8/xhigh (including ThinkingCap) | Eight hours (28,800 seconds) | 10 |
+| Gateway Qwen3.8-Flash-Next/xhigh | Eight hours (28,800 seconds) | 5 |
 | DeepSeek V4.1 Flash/high | 57 minutes (3,420 seconds) | 3 |
 
 `--problem-timeout-seconds` changes the model-phase time budget or adds an explicit watchdog to a closed cost run. `--budget-usd` changes the per-theorem cost target. `--track-time` and `--track-cost` explicitly select the budget policy. A mixed cohort with incompatible default time allocations needs an explicit timeout.
 
-Model-phase time includes its original/selected-proof measurements, provider admission, model inference and host tools. Both cleanup phases have separately measured wall time and do not consume that timer. The pipeline report also records total elapsed wall time, including phase transitions and resume gaps. With no overall workflow watchdog, the per-theorem timer alone does **not** enforce the user-reported 48-hour node allocation. Confirm scheduling against the full cohort and hardware before an experiment. For example, 50 Qwen problems at four hours and five workers allocate 40 hours to model waves alone, before both cleanup phases and overhead.
+Model-phase time includes its original/selected-proof measurements, provider admission, model inference and host tools. Both cleanup phases have separately measured wall time and do not consume that timer. The pipeline report also records total elapsed wall time, including phase transitions and resume gaps. With no overall workflow watchdog, the per-theorem timer alone does **not** enforce the user-reported 48-hour node allocation. Confirm scheduling against the full cohort and hardware before an experiment. For example, 50 local Qwen problems at eight hours and ten workers allocate 40 hours to model waves alone, before setup and overhead.
 
-Resuming never replenishes a budget. Indeterminate native requests are not automatically resampled. Terminal transient failures have separately bounded recovery: defaults are 20 optimization restarts plus two transport recoveries, at most 23 admitted attempts per theorem. Every condition keeps one model and effort throughout.
+Resuming never replenishes a budget. Indeterminate native requests are not automatically resampled. Terminal transient failures have separately bounded recovery: Qwen defaults to 10,000 time-bounded optimization restarts plus two transport recoveries so the restart count does not truncate its eight-hour budget; other models retain 20 optimization restarts plus two transport recoveries (at most 23 attempts). Every condition keeps one model and effort throughout.
 
 New Codex cost runs use `--usage-policy best_effort`: native reported counters remain separate from heuristic estimates for missing usage. Strict mode stops when cumulative usage is unknown. API-equivalent estimates are not invoices or certified hard caps; response boundaries can overshoot. Qwen/DeepSeek gateway prices remain unknown. See [accounting details](docs/ARCHITECTURE.md).
 
@@ -118,8 +119,8 @@ New Codex cost runs use `--usage-policy best_effort`: native reported counters r
 For open-weight models on local GPUs, see the [local vLLM/Lemex setup and run
 guide](docs/LOCAL_MODELS.md). The explicit `proof-local-vllm` recipe freezes MTP3,
 266,400 context, eight-hour model phases and history off, with complete raw HTTP
-and host-tool capture. It integrates through the current provider/workflow APIs;
-the general before/model/after cleanup defaults below remain unchanged.
+and host-tool capture. It integrates through the current provider/workflow APIs
+and shares the ordinary Qwen model-only defaults.
 
 Use `--provider codex`, `lemex`, `claude` or `agy`. Codex defaults to Sol 6.1/max and Astra/max; Lemex defaults to DeepSeek V4.1 Flash/high, so specify Qwen explicitly. Claude uses exact Opus 5.5/max without fallback; Antigravity uses Gemini 3.8 Flash/high. Native sampling defaults are unchanged.
 

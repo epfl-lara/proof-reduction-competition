@@ -62,20 +62,20 @@ def main(argv=None) -> int:
         sub.add_argument(
             "--deterministic",
             action=argparse.BooleanOptionalAction,
-            default=True,
-            help="Separate cohort-wide one-sweep cleanup before and after model search; --no-deterministic disables both",
+            default=None,
+            help="Cohort cleanup before/after search; default off for Qwen and on for other models; an explicit flag overrides the model default",
         )
         sub.add_argument(
             "--cleanup-before",
             action=argparse.BooleanOptionalAction,
-            default=True,
-            help="Run a complete one-sweep cleanup cohort before any model calls (default: enabled)",
+            default=None,
+            help="Run cleanup before model calls (default off for Qwen, on for other models)",
         )
         sub.add_argument(
             "--cleanup-after",
             action=argparse.BooleanOptionalAction,
-            default=True,
-            help="Run one-sweep cleanup of each condition after the model batch (default: enabled)",
+            default=None,
+            help="Run cleanup after the model batch (default off for Qwen, on for other models)",
         )
         sub.add_argument("--cleanup-workers", type=int, default=8)
         sub.add_argument("--before-workers", type=int)
@@ -96,7 +96,7 @@ def main(argv=None) -> int:
             "--model-workers",
             type=int,
             default=None,
-            help="Independent model-phase concurrency (default: 5 for Sol/Qwen); cleanup has its own workers",
+            help="Model workers (default: 10 for local Qwen, 5 for Sol/gateway Qwen); cleanup has its own workers",
         )
         sub.add_argument(
             "--semantic-search",
@@ -114,7 +114,13 @@ def main(argv=None) -> int:
             "--problem-timeout-seconds",
             type=float,
             default=RunConfig.problem_timeout_seconds,
-            help="Model-phase wall time per theorem; default: Qwen 14400 seconds, other open models 3420, closed models no wall deadline",
+            help="Model-phase wall time per theorem; default: Qwen 28800 seconds, other open models 3420, closed models no wall deadline",
+        )
+        sub.add_argument(
+            "--verification-timeout-seconds",
+            type=float,
+            default=RunConfig.verification_timeout_seconds,
+            help="Per Lean check wall deadline (default: 300 seconds); included in the original model-phase clock",
         )
         tracking = sub.add_mutually_exclusive_group()
         tracking.add_argument(
@@ -154,7 +160,7 @@ def main(argv=None) -> int:
             "--max-budget-restarts",
             type=int,
             default=RunConfig.max_budget_restarts,
-            help="Restart safety limit when tracking is enabled; 20 permits 21 total attempts",
+            help="Optimization restart safety limit under the original problem budget; default: Qwen 10000, other models 20",
         )
         sub.add_argument(
             "--base",
@@ -237,6 +243,7 @@ def main(argv=None) -> int:
                     "provider",
                     "workers",
                     "problem_timeout_seconds",
+                    "verification_timeout_seconds",
                     "budget_tracking",
                     "budget_usd_per_problem",
                     "usage_policy",
@@ -273,7 +280,7 @@ def main(argv=None) -> int:
             ):
                 if (
                     model_args.deterministic_checkpoint is not None
-                    and args.deterministic
+                    and args.deterministic is not False
                 ):
                     raise ValueError(
                         "Legacy deterministic checkpoints require --no-deterministic; use --starting-proofs for phase workflows"
@@ -283,8 +290,24 @@ def main(argv=None) -> int:
                 result = run_pipeline(
                     PipelineConfig(
                         model=model_args,
-                        cleanup_before=args.deterministic and args.cleanup_before,
-                        cleanup_after=args.deterministic and args.cleanup_after,
+                        cleanup_before=(
+                            False
+                            if args.deterministic is False
+                            else (
+                                args.cleanup_before
+                                if args.cleanup_before is not None
+                                else args.deterministic
+                            )
+                        ),
+                        cleanup_after=(
+                            False
+                            if args.deterministic is False
+                            else (
+                                args.cleanup_after
+                                if args.cleanup_after is not None
+                                else args.deterministic
+                            )
+                        ),
                         cleanup_workers=args.cleanup_workers,
                         before_workers=args.before_workers,
                         after_workers=args.after_workers,

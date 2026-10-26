@@ -179,7 +179,7 @@ def test_timed_qwen_model_budget_starts_only_after_external_cleanup(
     )
     result = run_pipeline(replace(workflow["config"], model=qwen))
     actual = workflow["calls"][0]
-    assert actual.problem_timeout_seconds == 4 * 3600
+    assert actual.problem_timeout_seconds == 8 * 3600
     assert actual.workers == 5
     assert actual.starting_proofs == qwen.output / "before/state.json"
     assert actual.budget_tracking == "time" and actual.deterministic is False

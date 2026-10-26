@@ -64,6 +64,7 @@ def run(args: RunConfig) -> dict:
                 "environments_path": str(Path(args.environments).resolve()),
                 "references_path": str(Path(args.references).resolve()),
                 "references_sha256": digest(args.references),
+                "verification_timeout_seconds": args.verification_timeout_seconds,
                 **(
                     {"local_capacity_slots": args.workers}
                     if args.provider == "lemex-local"
@@ -71,7 +72,12 @@ def run(args: RunConfig) -> dict:
                 ),
             },
         )
-        evaluator = Evaluator(args.dataset, args.environments, args.cache)
+        evaluator = Evaluator(
+            args.dataset,
+            args.environments,
+            args.cache,
+            timeout=args.verification_timeout_seconds,
+        )
         for pack in packs.values():
             guard(config, pack, evaluator)
         if args.action == "prepare":

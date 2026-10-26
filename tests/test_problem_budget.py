@@ -114,6 +114,7 @@ def deadline_run(tmp_path, monkeypatch, provider):
         ROOT / "data/benchmark_data_warmup.jsonl",
         ROOT / "environments.local.json",
         tmp_path / "cache",
+        timeout=60,  # Archived reference fingerprint.
         version_workers=2,
     )
     folder = output / "cells" / fingerprint((name, model, effort, "score_edges"))
@@ -413,7 +414,7 @@ def test_qwen_native_configuration_and_unknown_price():
     config = RunConfig(
         provider="lemex", conditions=(("Qwen/Qwen3.8-Flash-Next", "xhigh"),)
     )
-    assert config.problem_timeout_seconds == 14400
+    assert config.problem_timeout_seconds == 28800
     cost = estimate_token_cost(
         CostConfig(*config.conditions[0]),
         {
@@ -491,6 +492,7 @@ def test_budget_tracking_cost_restarts_from_best_declaration(tmp_path, monkeypat
         ROOT / "data/benchmark_data_warmup.jsonl",
         ROOT / "environments.local.json",
         ROOT / ".proof-eval",
+        timeout=60,  # Fixed historical reference fixture, not the fresh-run default.
     )
     saved = read(
         ROOT
@@ -581,6 +583,7 @@ def test_budget_tracking_can_be_explicitly_disabled(tmp_path, monkeypatch):
         ROOT / "data/benchmark_data_warmup.jsonl",
         ROOT / "environments.local.json",
         ROOT / ".proof-eval",
+        timeout=60,  # Fixed historical reference fixture, not the fresh-run default.
     )
     saved = read(
         ROOT
@@ -650,6 +653,7 @@ def test_budget_tracking_time_restarts_while_time_remains(tmp_path, monkeypatch)
         ROOT / "data/benchmark_data_warmup.jsonl",
         ROOT / "environments.local.json",
         ROOT / ".proof-eval",
+        timeout=60,  # Fixed historical reference fixture, not the fresh-run default.
     )
     saved = read(
         ROOT

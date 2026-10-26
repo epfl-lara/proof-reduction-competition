@@ -277,7 +277,9 @@ def main(argv: list[str] | None = None) -> int:
         action="append",
         help="Exact problem name; repeat to select multiple problems",
     )
-    parser.add_argument("--timeout", type=float, default=60.0)
+    from proof_eval.defaults import VERIFICATION_TIMEOUT_SECONDS
+
+    parser.add_argument("--timeout", type=float, default=VERIFICATION_TIMEOUT_SECONDS)
     parser.add_argument(
         "--refresh",
         action="store_true",

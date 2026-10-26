@@ -8,7 +8,10 @@ authentication, catalog selection, admission limit and default model.
 The local profile declares a model revision, xhigh effort, MTP3, 266,400 context,
 222,400 compaction, ten local model workers, eight hours per model phase, no
 cross-restart history and no deterministic cleanup. These are explicit profile
-settings, not changes to the general harness defaults. The default model is
+defaults for fresh local Qwen runs across the profile CLI, public RunConfig and
+server configuration. Host Lean checks default to 300 seconds; the saved profile
+records that limit. Other model conditions retain their separately declared
+policies. The default model is
 `Qwen/Qwen3.8-Flash-Next-FP8`; the ThinkingCap Flash-Next FP8 condition is also
 explicitly registered. Preparation and command previews make no model calls.
 
@@ -105,8 +108,9 @@ proof-local-vllm run --profile runs/local/profile --output runs/local \
 
 Arguments after `--` go to `proof-harness run`. Model, effort, workers, deadline,
 output and restart history come from the frozen local profile. The local recipe
-disables both cohort cleanup phases; the ordinary `proof-harness` default keeps
-the remote workflow's before/model/after phases. Shared gateway concurrency is
+disables both cohort cleanup phases; the ordinary `proof-harness` Qwen default
+also runs model-only. Other model conditions keep their before/model/after phases;
+explicit cleanup flags remain available. Shared gateway concurrency is
 not reused as local GPU capacity.
 
 On each new GPU configuration, run the real full-window pressure and native/tool

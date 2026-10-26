@@ -26,10 +26,21 @@ def main(argv=None) -> int:
     parser.add_argument("--model", default=local_profile.MODEL)
     parser.add_argument("--revision")
     parser.add_argument("--model-cache", type=Path)
-    parser.add_argument("--workers", type=int, default=10)
-    parser.add_argument("--seconds", type=int, default=28800)
-    parser.add_argument("--context", type=int, default=266400)
-    parser.add_argument("--compaction", type=int, default=222400)
+    parser.add_argument("--workers", type=int, default=local_profile.LOCAL_QWEN_WORKERS)
+    parser.add_argument(
+        "--seconds", type=int, default=local_profile.QWEN_TIMEOUT_SECONDS
+    )
+    parser.add_argument(
+        "--context", type=int, default=local_profile.QWEN_CONTEXT_TOKENS
+    )
+    parser.add_argument(
+        "--compaction", type=int, default=local_profile.QWEN_COMPACTION_TOKENS
+    )
+    parser.add_argument(
+        "--verification-timeout-seconds",
+        type=float,
+        default=local_profile.VERIFICATION_TIMEOUT_SECONDS,
+    )
     parser.add_argument("--port", type=int, default=8128)
     parser.add_argument("--vllm-binary", default="vllm")
     parser.add_argument("--output", type=Path)
@@ -47,6 +58,7 @@ def main(argv=None) -> int:
             seconds=args.seconds,
             context=args.context,
             compaction=args.compaction,
+            verification_timeout_seconds=args.verification_timeout_seconds,
             port=args.port,
             binary=args.vllm_binary,
         )
@@ -60,6 +72,7 @@ def main(argv=None) -> int:
         "--seconds",
         "--context",
         "--compaction",
+        "--verification-timeout-seconds",
         "--port",
         "--vllm-binary",
     }
@@ -83,6 +96,7 @@ def main(argv=None) -> int:
         "--model-workers",
         "--workers",
         "--problem-timeout-seconds",
+        "--verification-timeout-seconds",
         "--restart-history",
         "--deterministic",
         "--budget-tracking",
@@ -127,6 +141,13 @@ def main(argv=None) -> int:
                         str(value["workers"]),
                         "--problem-timeout-seconds",
                         str(value["seconds"]),
+                        "--verification-timeout-seconds",
+                        str(
+                            value.get(
+                                "verification_timeout_seconds",
+                                local_profile.VERIFICATION_TIMEOUT_SECONDS,
+                            )
+                        ),
                         "--budget-tracking",
                         "time",
                         "--no-deterministic",

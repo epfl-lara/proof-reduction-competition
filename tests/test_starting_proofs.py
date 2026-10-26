@@ -132,7 +132,7 @@ def test_model_defaults_and_qwen_phase_budget():
         conditions=(("Qwen/Qwen3.8-Flash-Next", "xhigh"),),
         starting_proofs=Path("state.json"),
     )
-    assert qwen.problem_timeout_seconds == 14400 and qwen.workers == 5
+    assert qwen.problem_timeout_seconds == 28800 and qwen.workers == 5
     assert RunConfig(workers=16).workers == 16
     historical_timeout = RunConfig(
         provider="lemex", conditions=qwen.conditions, problem_timeout_seconds=3420
