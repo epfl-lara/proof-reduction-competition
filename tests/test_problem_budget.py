@@ -50,7 +50,8 @@ write_json(attempt/'request_started.json',dict(started_at=now()))
 start_attempt(attempt,session,initial,0,dict(status='not_started',total_usd=0.0,attempts=0),config['generation_timeout'],None,remaining)
 session.check(saved['selected_proof'])
 assert session.best_code==saved['selected_proof']
-leaf=subprocess.Popen([sys.executable,'-c','import time; time.sleep(1000)'],start_new_session=True)
+leaf_code='import ctypes, time; ctypes.CDLL(None).prctl(4, 0, 0, 0, 0); time.sleep(1000)' if stage=='generation_nondumpable' else 'import time; time.sleep(1000)'
+leaf=subprocess.Popen([sys.executable,'-c',leaf_code,'_ProofEval_deadbeef.lean'],start_new_session=True)
 model=subprocess.Popen([sys.executable,'-c','import time; time.sleep(1000)'],start_new_session=True)
 write_json(folder/'test_children.json',dict(leaf=leaf.pid,model=model.pid))
 write_json(attempt/'process.json',dict(pid=model.pid,started_at=now()))
@@ -135,6 +136,7 @@ def deadline_run(tmp_path, monkeypatch, provider):
         ("generation", "codex"),
         ("cleanup", "codex"),
         ("generation", "lemex"),
+        ("generation_nondumpable", "lemex"),
         ("generation", "claude"),
         ("generation", "agy"),
     ],
@@ -159,10 +161,10 @@ def test_hard_deadline_retains_best_and_kills_detached_tools(
     assert result["time_budget"]["exhausted"] is True
     assert result["stop"]["kind"] == "time_limit"
     assert result["generation_status"] == (
-        "budget_exhausted" if stage == "generation" else "received"
+        "received" if stage == "cleanup" else "budget_exhausted"
     )
     assert result["final_cleanup_status"] == (
-        "skipped_time_limit" if stage == "generation" else "interrupted_time_limit"
+        "interrupted_time_limit" if stage == "cleanup" else "skipped_time_limit"
     )
     for pid in read(folder / "test_children.json").values():
         proc = Path("/proc") / str(pid) / "stat"
