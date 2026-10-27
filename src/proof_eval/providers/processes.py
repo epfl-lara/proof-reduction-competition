@@ -47,6 +47,7 @@ def stop_tree(pid: int) -> dict:
     owned = _descendants(pid, table)
     identities = {child: table[child][1] for child in owned}
     sources = set()
+    metadata_errors = []
     freeze_complete = False
     for _ in range(16):
         for child in owned:
@@ -78,10 +79,17 @@ def stop_tree(pid: int) -> dict:
                             else (proc / "cwd").resolve() / path
                         )
                     )
+        except OSError as error:
+            # Non-dumpable tool/compiler children can deny /proc cwd access.
+            # Optional temporary-file discovery must never skip their termination.
+            metadata_errors.append(
+                {"pid": child, "type": type(error).__name__, "errno": error.errno}
+            )
+        try:
             if _table_identity(child) == identities[child]:
                 os.kill(child, signal.SIGKILL)
-        except (ProcessLookupError, FileNotFoundError, PermissionError):
-            continue
+        except ProcessLookupError:
+            pass
     # Reparented descendants now belong to this trusted subreaper. Wait only on
     # the exact frozen identities, never waitpid(-1) in a shared batch process.
     # The caller retains ownership of the direct root's Popen.wait().
@@ -106,6 +114,7 @@ def stop_tree(pid: int) -> dict:
     return {
         "terminated_pids": sorted(owned),
         "temporary_sources": sorted(sources),
+        "metadata_errors": metadata_errors,
         "process_start_ticks": {str(p): t for p, t in identities.items()},
         "work_stopped_epoch": work_stopped,
         "cleanup": {

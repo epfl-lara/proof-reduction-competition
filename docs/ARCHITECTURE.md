@@ -123,6 +123,10 @@ retain host tool sockets and networking; signals cannot target ancestor or
 sibling PID namespaces. The admission lock is retained by bubblewrap's
 supervisor with `--sync-fd`. Host supervisors remain outside the namespace and
 own deadline cleanup. Isolation preflight has no unrestricted fallback.
+Deadline termination runs independently of optional `/proc` command/cwd reads.
+Non-dumpable compiler or tool children can deny those metadata reads; the host
+records `metadata_errors` and still signals each exact owned identity, then reaps
+its descendants. Clean termination still requires an empty remaining-process list.
 `providers/termination.py` commits exit evidence before native event parsing or
 host-tool draining. Negative return codes prove signal termination; 128+signal
 codes are labelled as an exit convention only. `evidence/watch.py` independently

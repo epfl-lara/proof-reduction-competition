@@ -215,7 +215,10 @@ time.sleep(60)
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Pinned Linux native scope")
-def test_native_timeout_has_full_host_cleanup_and_no_zombie(tmp_path, signal_identity):
+@pytest.mark.parametrize("nondumpable", [False, True])
+def test_native_timeout_has_full_host_cleanup_and_no_zombie(
+    tmp_path, signal_identity, nondumpable
+):
     source = tmp_path / "source"
     source.mkdir()
     folder = tmp_path / "attempt_00"
@@ -227,11 +230,13 @@ def test_native_timeout_has_full_host_cleanup_and_no_zombie(tmp_path, signal_ide
     script = """
 import json, subprocess, sys, time
 from pathlib import Path
-leaf=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'],start_new_session=True)
+leaf_code='import ctypes, time; ctypes.CDLL(None).prctl(4, 0, 0, 0, 0); time.sleep(60)' if NONDUMPABLE else 'import time; time.sleep(60)'
+leaf=subprocess.Popen([sys.executable,'-c',leaf_code,'_ProofEval_deadbeef.lean'],start_new_session=True)
 Path('detached.pid').write_text(str(leaf.pid))
 print(json.dumps({'type':'turn.started'}),flush=True)
 time.sleep(60)
 """
+    script = "NONDUMPABLE=" + repr(nondumpable) + "\n" + script
     identity = {
         "path": sys.executable,
         "version": "test",
