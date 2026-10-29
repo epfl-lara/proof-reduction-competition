@@ -38,7 +38,12 @@ def _successful_nonce_command(output: Path, nonce: str) -> dict:
 
 
 def native_capture_smoke(
-    folder: Path, workers: int, source_project: Path, capture_root: Path
+    folder: Path,
+    workers: int,
+    source_project: Path,
+    capture_root: Path,
+    *,
+    model: str = lemex_local.MODEL,
 ) -> dict:
     """Use synthetic shell tasks, never a training/RL problem or task budget."""
     folder.mkdir(parents=True, exist_ok=False)
@@ -99,7 +104,7 @@ def native_capture_smoke(
                     + ". If the command fails, report the error. Do not perform other work.",
                 },
             ],
-            model=lemex_local.MODEL,
+            model=model,
             effort="xhigh",
             mode="score_edges",
             session=SimpleNamespace(best_code="", row={"name": nonce}),

@@ -42,6 +42,7 @@ def exercise_full_context(
     folder: Path,
     workers: int,
     *,
+    model: str = MODEL,
     context_tokens: int = 266400,
     output_tokens: int = 16384,
 ) -> dict:
@@ -84,7 +85,7 @@ def exercise_full_context(
     if rendered and isinstance(rendered[0], list):
         rendered = rendered[0]
     payload = {
-        "model": MODEL,
+        "model": model,
         "prompt": rendered,
         "max_tokens": 128,
         "temperature": 0,
@@ -136,7 +137,7 @@ def exercise_full_context(
         )
         prompt = prefix + body[len(prefix) :]
         payload = {
-            "model": MODEL,
+            "model": model,
             "prompt": prompt,
             "max_tokens": output_tokens,
             "ignore_eos": True,
@@ -214,6 +215,7 @@ def exercise_full_context(
     )
     receipt = {
         "status": "pressure_passed",
+        "model": model,
         "workers": workers,
         "context_tokens": context_tokens,
         "input_tokens_each": input_tokens,

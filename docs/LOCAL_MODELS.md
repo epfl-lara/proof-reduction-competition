@@ -15,6 +15,12 @@ policies. The default model is
 `Qwen/Qwen3.8-Flash-Next-FP8`; the ThinkingCap Flash-Next FP8 condition is also
 explicitly registered. Preparation and command previews make no model calls.
 
+The SFT checkpoint `EPFL-LARA/Qwen3.8-Flash-Next-ProofOpt-SFT-step148-FP8` is
+registered with revision `f4097c298a5eb404531fed0b7c60df1787e0e895` and the same
+local Qwen defaults. Select it with `prepare --model` below. It keeps its own
+served model name and result condition; capacity and native capture checks accept
+that explicit model name too.
+
 Local native turns receive their actual working-directory context. The shell
 smoke check supplies the exact workspace and command arguments and still requires
 a successful command receipt; returning the requested text after a failed tool

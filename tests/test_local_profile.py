@@ -15,7 +15,7 @@ from proof_eval.providers.registry import adapter, validate
 from proof_eval.providers.vllm_server import command
 
 
-@pytest.mark.parametrize("model", [lemex_local.MODEL, lemex_local.THINKINGCAP_MODEL])
+@pytest.mark.parametrize("model", list(lemex_local.MODELS))
 def test_prepare_and_preview_pin_the_model_and_complete_regime(tmp_path, capsys, model):
     profile = tmp_path / "profile"
     assert local.main(["prepare", "--profile", str(profile), "--model", model]) == 0

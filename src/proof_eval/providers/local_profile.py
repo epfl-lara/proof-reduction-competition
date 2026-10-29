@@ -15,12 +15,13 @@ from proof_eval.defaults import (
 )
 from proof_eval.evidence.io import digest, read, write_json
 
-from .lemex_local import MODEL, MODELS, THINKINGCAP_MODEL
+from .lemex_local import MODEL, MODELS, PROOFOPT_SFT_MODEL, THINKINGCAP_MODEL
 from .vllm_server import REVISION, ServerConfig
 
 REVISIONS = {
     MODEL: REVISION,
     THINKINGCAP_MODEL: "ca9f7a5ca400d8eff644a99a0803f2ba968fb05b",
+    PROOFOPT_SFT_MODEL: "f4097c298a5eb404531fed0b7c60df1787e0e895",
 }
 
 

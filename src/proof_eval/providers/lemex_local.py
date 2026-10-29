@@ -19,7 +19,11 @@ from .execution import Launch
 
 MODEL = "Qwen/Qwen3.8-Flash-Next-FP8"
 THINKINGCAP_MODEL = "bottlecapai/ThinkingCap-Qwen3.8-Flash-Next-FP8"
-MODELS = {m: {"low", "medium", "xhigh"} for m in (MODEL, THINKINGCAP_MODEL)}
+PROOFOPT_SFT_MODEL = "EPFL-LARA/Qwen3.8-Flash-Next-ProofOpt-SFT-step148-FP8"
+MODELS = {
+    m: {"low", "medium", "xhigh"}
+    for m in (MODEL, THINKINGCAP_MODEL, PROOFOPT_SFT_MODEL)
+}
 
 
 def parse_events(events, final, returncode):

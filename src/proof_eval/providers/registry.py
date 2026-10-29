@@ -27,11 +27,13 @@ MODEL_WORKERS = {
     "Qwen/Qwen3.8-Flash-Next": 5,
     lemex_local.MODEL: LOCAL_QWEN_WORKERS,
     lemex_local.THINKINGCAP_MODEL: LOCAL_QWEN_WORKERS,
+    lemex_local.PROOFOPT_SFT_MODEL: LOCAL_QWEN_WORKERS,
 }
 MODEL_TIMEOUT_SECONDS = {
     "Qwen/Qwen3.8-Flash-Next": QWEN_TIMEOUT_SECONDS,
     lemex_local.MODEL: QWEN_TIMEOUT_SECONDS,
     lemex_local.THINKINGCAP_MODEL: QWEN_TIMEOUT_SECONDS,
+    lemex_local.PROOFOPT_SFT_MODEL: QWEN_TIMEOUT_SECONDS,
 }
 QWEN_MODELS = frozenset(MODEL_TIMEOUT_SECONDS)
 # Experiment contract: routing additions must declare their track separately.
@@ -41,6 +43,7 @@ MODEL_TRACKS: dict[str, Literal["open", "closed"]] = {
     "Qwen/Qwen3.8-Flash-Next": "open",
     lemex_local.MODEL: "open",
     lemex_local.THINKINGCAP_MODEL: "open",
+    lemex_local.PROOFOPT_SFT_MODEL: "open",
     "gpt-6.1-sol": "closed",
     "gpt-6-astra": "closed",
     "claude-opus-5-5": "closed",

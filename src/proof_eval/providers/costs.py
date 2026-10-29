@@ -38,6 +38,7 @@ UNPRICED_MODELS = {
 LOCAL_MODELS = {
     "Qwen/Qwen3.8-Flash-Next-FP8",
     "bottlecapai/ThinkingCap-Qwen3.8-Flash-Next-FP8",
+    "EPFL-LARA/Qwen3.8-Flash-Next-ProofOpt-SFT-step148-FP8",
 }
 TIERS = {"standard": 1.0, "fast": 2.0, "flex": 0.5, "batch": 0.5}
 USAGE_FIELDS = (
