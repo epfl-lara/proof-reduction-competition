@@ -1,0 +1,110 @@
+"""Executable identities and Codex-compatible terminal event parsing."""
+
+import hashlib
+import shutil
+import subprocess
+from pathlib import Path
+
+from .retries import reconnect_notice
+
+DISABLED = (
+    "apps",
+    "plugins",
+    "memories",
+    "multi_agent",
+    "multi_agent_v2",
+    "goals",
+    "hooks",
+    "skill_search",
+    "skill_mcp_dependency_install",
+    "recommended_plugins",
+    "unbounded_connection_retries",
+)
+
+
+def cli_identity(name: str = "codex") -> dict:
+    binary = Path(shutil.which(name) or name).resolve(strict=True)
+    return {
+        "path": str(binary),
+        "sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+        "version": subprocess.check_output(
+            [str(binary), "--version"], text=True
+        ).strip(),
+    }
+
+
+def terminal(event: object) -> bool:
+    """The Codex/Lemex Responses terminal record, recognized by recovery."""
+    return isinstance(event, dict) and event.get("type") == "turn.completed"
+
+
+def parse_events(events, final, returncode, *, allow_empty_final=False):
+    turns = [e for e in events if e.get("type") == "turn.completed"]
+    bad = [e for e in events if e.get("type") in {"error", "turn.failed"}]
+    recovered = [e for e in bad if reconnect_notice(e)]
+    items = [e["item"] for e in events if e.get("type") == "item.completed"]
+    tools = [e for e in items if e.get("type") not in {"agent_message", "reasoning"}]
+    # Native streams can emit a whitespace-only message after the message
+    # written by --output-last-message. It is not a replacement final answer.
+    messages = [
+        e.get("text", "")
+        for e in items
+        if e.get("type") == "agent_message" and e.get("text", "").strip()
+    ]
+    empty_completion = bool(
+        allow_empty_final
+        and len(turns) == 1
+        and not final.strip()
+        and not messages
+        and isinstance(turns[0].get("usage"), dict)
+        and turns[0].get("usage", {}).get("output_tokens", 0) > 0
+        and any(i.get("type") in {"reasoning", "command_execution"} for i in items)
+    )
+    if (
+        returncode
+        or len(bad) != len(recovered)
+        or len(turns) != 1
+        or (
+            not empty_completion
+            and (
+                not final.strip()
+                or not messages
+                or messages[-1].strip() != final.strip()
+            )
+        )
+    ):
+        return {
+            "status": "transport_error",
+            "error": "Codex did not produce one complete final",
+            "returncode": returncode,
+            "completed_turns": len(turns),
+            "tool_items": len(tools),
+            "events_errors": bad,
+            "usage": turns[-1].get("usage") if turns else None,
+        }
+    usage = turns[0].get("usage", {})
+    result = {
+        "status": "received",
+        "content": final,
+        "finish_reason": "stop",
+        "usage": {
+            "prompt_tokens": usage.get("input_tokens"),
+            "completion_tokens": usage.get("output_tokens"),
+            "cached_input_tokens": usage.get("cached_input_tokens"),
+        },
+        "codex_usage": usage,
+        "token_usage": usage,
+        "completed_turns": 1,
+        "tool_items": len(tools),
+        "tool_item_types": [t.get("type") for t in tools],
+    }
+    if allow_empty_final:
+        result.update(terminal_schema_version=2, empty_completion=empty_completion)
+    if recovered:
+        result.update(
+            events_errors=bad,
+            recovered_transport_errors=recovered,
+            usage_complete=False,
+            usage_incomplete_reason="Native terminal counters may omit interrupted upstream responses",
+        )
+    return result

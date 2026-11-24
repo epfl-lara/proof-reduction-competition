@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "scope": "Generic proof-search heuristics with no benchmark identifiers, per-problem mappings, target-specific answers or measured tactic prices. The initial structural cards came from warm-up analysis; the later kernel-cost and local-unfolding cards reflect general Lean documentation and community advice and have not been benchmark evaluated.",
+  "cards": [
+    {
+      "id": "reuse_abstraction",
+      "trigger": "The proof reconstructs a property of an operation or representation through many small steps.",
+      "action": "Search definitions and nearby theorems for a characterization, composition, commutation, extensionality, or general existence theorem that directly supplies the needed property.",
+      "check": "Read the full signature and hypotheses; check availability in every pinned version. Avoid circular use of the target declaration."
+    },
+    {
+      "id": "induct_on_evidence",
+      "trigger": "Syntax induction repeatedly reconstructs an invariant from a separate hypothesis or the case splits of a recursive function.",
+      "action": "Inspect the evidence constructors and the function's equations. Consider induction on the evidence or a function induction principle whose cases provide the needed facts and recursive hypotheses together.",
+      "check": "Inspect the induction principle in the pinned source. Verify dependent indices, generalized variables and hypotheses; changing induction helps only when it simplifies the obligations."
+    },
+    {
+      "id": "factor_local_identity",
+      "trigger": "Several branches or arguments repeat the same inclusion, algebraic identity, transport, or closure reasoning.",
+      "action": "State one local lemma with the exact reusable parameters, prove it once, then compose it across branches or instantiate it at several values.",
+      "check": "Keep the helper within the proof body. Count its definition and applications in the total length; excessive generality can add elaboration work."
+    },
+    {
+      "id": "control_inference",
+      "trigger": "Automation searches for apparent constructors or witnesses, or elaboration repeatedly struggles with ambiguous types, symmetric cases or intermediate facts.",
+      "action": "Read the constructors and supporting lemmas. Make ambiguous choices explicit, orient similar cases consistently, and let Lean infer information already determined by the goal. Leave focused arithmetic and simplification to automation.",
+      "check": "Both a slightly longer explicit derivation and a shorter inferred term can win. Compare the full token and heartbeat score; spelling out every witness can add needless work."
+    },
+    {
+      "id": "change_representation",
+      "trigger": "The proof manually unfolds a mathematical construction, or broad automation repeatedly reconstructs the logical form or invariant needed by the argument.",
+      "action": "Choose a representation that exposes an existing theorem or a small direct derivation. Consider introducing a useful assumption before induction, reformulating an implication or non-membership claim, or exposing an invariant before automation. Search by mathematical property and object types.",
+      "check": "Preserve the exact outer statement and justify the reformulation locally. Check assumptions, induction generality and conversion overhead; a new formulation must simplify the measured proof."
+    },
+    {
+      "id": "reduce_kernel_work",
+      "trigger": "A concrete decidable equality, finite membership or bounded combinatorial property is proved by a short computational tactic such as decide, but the resulting proof remains heartbeat-heavy.",
+      "action": "Distinguish elaboration/search work from kernel reduction of the resulting proof term. For finite or concrete goals, compare an existing mathematical characterization, a small explicit witness, a decomposition into smaller checked facts or a structural derivation with normalizing one large decision computation. Share repeated local reasoning rather than repeating the computation. Spending more source tokens can improve the combined score when it substantially reduces checked computation.",
+      "check": "Keep ordinary kernel verification enabled. Do not trust native computation, create custom metaprograms or bypass certificate checking. Compare the complete token/heartbeat score through the supplied checker on every required version; neither a short tactic nor a longer explicit term is automatically cheaper."
+    },
+    {
+      "id": "scope_recursive_unfolding",
+      "trigger": "A proof involves recursively defined functions, inductive data, nested pattern matches or conversion between equivalent representations, and unfolding or definitional equality appears to dominate elaboration.",
+      "action": "Inspect the pinned definitions and compare focused change, unfold, dsimp only or simp only with a narrowly scoped set_option smartUnfolding false in ... inside the existing proof body. This ordinary Lean option changes which unfolding path elaboration uses; it does not disable kernel checking. Restore the default or narrow the scope when the alternative is worse.",
+      "check": "Only proof-local smartUnfolding with a literal true/false value and in scope is allowed. Do not add a command around the declaration or change any other option. Count the option syntax in proof length, check all required versions and keep it only when the measured combined score improves."
+    }
+  ]
+}

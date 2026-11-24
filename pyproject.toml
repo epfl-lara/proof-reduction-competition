@@ -1,0 +1,51 @@
+# Installation metadata for the inference-only archive, independent of research extras.
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lean-proof-eval"
+version = "0.3.0"
+description = "Lean Refactor Arena inference and proof cleanup"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+semantic = ["lean-explore[local]==1.3.0"]
+dev = ["black==26.10.0", "ruff==0.14.14", "pytest>=9.1,<10", "pytest-subtests==0.14.2"]
+
+[project.scripts]
+proof-eval = "proof_eval.interfaces.cli:main"
+proof-harness = "proof_eval.harness.cli:main"
+proof-local-vllm = "proof_eval.interfaces.local:main"
+proof-submission = "proof_eval.interfaces.submission:main"
+proof-deterministic = "proof_eval.optimization.cohort_cli:main"
+proof-setup = "proof_eval.benchmark.setup:main"
+proof-audit = "proof_eval.evidence.audit:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+proof_eval = ["benchmark/*.lean", "providers/signal_scope.c", "providers/proc_exe.c", "providers/local_catalog.json"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-m 'not live'"
+markers = ["live: explicit paid model or remote provider integration"]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+force-exclude = "src/proof_eval/verification/backend\\.py$"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/proof_eval/verification/backend.py" = ["I"]

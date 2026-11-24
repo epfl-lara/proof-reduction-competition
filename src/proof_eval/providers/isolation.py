@@ -1,0 +1,191 @@
+"""Run native tools in private PID namespaces with Landlock write restrictions.
+
+Reads, execution and networking remain available. The trusted Lean evaluator
+runs outside this process. Require ABI 3 so truncation is also restricted.
+See https://www.kernel.org/doc/html/v6.10/userspace-api/landlock.html.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ctypes
+import os
+import platform
+import shutil
+import sys
+from pathlib import Path
+
+WRITE_FILE = 1 << 1
+TRUNCATE = 1 << 14
+WRITE_ACCESS = WRITE_FILE | sum(1 << bit for bit in range(4, 15))
+LIBC = ctypes.CDLL(None, use_errno=True)
+
+
+class PathRule(ctypes.Structure):
+    _pack_ = 1
+    _fields_ = [("allowed_access", ctypes.c_uint64), ("parent_fd", ctypes.c_int32)]
+
+
+def checked(result):
+    if result < 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error))
+    return result
+
+
+def abi_version():
+    if platform.system() != "Linux" or platform.machine() not in {"x86_64", "aarch64"}:
+        raise RuntimeError("This launcher supports Linux x86_64/aarch64 only")
+    return checked(LIBC.syscall(444, 0, 0, 1))
+
+
+def restrict_writes(writable, protected):
+    if abi_version() < 3:
+        raise RuntimeError(
+            "Landlock ABI >= 3 is required; refusing unrestricted fallback"
+        )
+    protected = [Path(p).resolve(strict=True) for p in protected]
+    allowed = sorted({Path(p).resolve(strict=True) for p in writable})
+    for path in allowed:
+        if any(
+            path == p or path.is_relative_to(p) or p.is_relative_to(path)
+            for p in protected
+        ):
+            raise ValueError(f"Writable path overlaps a protected source tree: {path}")
+    rights = ctypes.c_uint64(WRITE_ACCESS)
+    ruleset = checked(LIBC.syscall(444, ctypes.byref(rights), ctypes.sizeof(rights), 0))
+    try:
+        for path in allowed:
+            fd = os.open(path, os.O_PATH | os.O_CLOEXEC)
+            try:
+                rule = PathRule(
+                    WRITE_ACCESS if path.is_dir() else WRITE_FILE | TRUNCATE, fd
+                )
+                checked(LIBC.syscall(445, ruleset, 1, ctypes.byref(rule), 0))
+            finally:
+                os.close(fd)
+        checked(LIBC.prctl(38, 1, 0, 0, 0))  # PR_SET_NO_NEW_PRIVS
+        checked(LIBC.syscall(446, ruleset, 0))
+    finally:
+        os.close(ruleset)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--writable", type=Path, action="append", required=True)
+    parser.add_argument("--protected", type=Path, action="append", required=True)
+    parser.add_argument("--temporary-directory", type=Path)
+    parser.add_argument("--parent-pid-namespace")
+    parser.add_argument("--signal-scope", action="store_true")
+    parser.add_argument(
+        "--filesystem-backend",
+        choices=("landlock", "readonly-mounts"),
+        default="landlock",
+    )
+    parser.add_argument("command", nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+    command = args.command[1:] if args.command[:1] == ["--"] else args.command
+    if not command:
+        parser.error("A command after -- is required")
+    if not args.parent_pid_namespace and not args.signal_scope:
+        raise RuntimeError("An explicit process boundary is required")
+    if (
+        args.parent_pid_namespace
+        and os.readlink("/proc/self/ns/pid") == args.parent_pid_namespace
+    ):
+        raise RuntimeError("Private PID namespace is required; refusing host execution")
+    if args.parent_pid_namespace and int(os.readlink("/proc/self")) != os.getpid():
+        raise RuntimeError("Private /proc mount is required")
+    if args.filesystem_backend == "readonly-mounts":
+        if not args.signal_scope or args.parent_pid_namespace:
+            raise RuntimeError("Read-only mounts require the existing signal broker")
+        # This file is also executed directly, outside the package import path.
+        import readonly_mounts
+
+        argv = readonly_mounts.command(
+            command, args.writable, args.protected, args.temporary_directory
+        )
+        os.execvp(argv[0], argv)
+    restrict_writes(args.writable, args.protected)
+    if args.temporary_directory:
+        os.environ["TMPDIR"] = str(args.temporary_directory.resolve())
+    os.execvp(command[0], command)
+
+
+def launch_command(
+    command: list[str],
+    folder: Path,
+    protected: list[Path],
+    *,
+    runtime_paths: tuple[Path, ...] | list[Path] | None = None,
+    lifetime_fd: int | None = None,
+    process_boundary: str = "pid_namespace",
+    filesystem_backend: str = "landlock",
+) -> list[str]:
+    """Fail closed without bubblewrap; retain admission locks in its supervisor.
+
+    A private /proc makes tools such as pkill see only their own job. The kernel
+    PID namespace also rejects direct signals to sibling jobs and host workers.
+    Keep networking and host tool sockets, and apply Landlock after mount setup.
+    """
+    if process_boundary not in ("pid_namespace", "signal_scope"):
+        raise ValueError("Unknown process boundary")
+    if filesystem_backend not in ("landlock", "readonly-mounts"):
+        raise ValueError("Unknown filesystem backend")
+    if filesystem_backend == "readonly-mounts" and process_boundary != "signal_scope":
+        raise ValueError("Read-only mounts require the existing signal broker")
+    binary = shutil.which("bwrap")
+    if process_boundary == "pid_namespace" and binary is None:
+        raise RuntimeError("bubblewrap is required for process isolation")
+    folder = Path(folder).resolve()
+    temporary = folder / "runtime_tmp"
+    temporary.mkdir(exist_ok=True)
+    # Preserve the user's existing Codex authentication/runtime location.
+    # Source projects are never among the writable roots.
+    runtime_paths = (
+        [Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex")))]
+        if runtime_paths is None
+        else runtime_paths
+    )
+    writable = [folder, *runtime_paths, Path.home() / ".cache", Path("/dev/null")]
+    if process_boundary == "signal_scope":
+        arguments = [sys.executable, str(Path(__file__).resolve()), "--signal-scope"]
+        if filesystem_backend != "landlock":
+            arguments += ["--filesystem-backend", filesystem_backend]
+    else:
+        arguments = [
+            str(Path(binary).resolve()),
+            "--unshare-user",
+            "--unshare-pid",
+            "--unshare-ipc",
+            "--die-with-parent",
+            "--new-session",
+            "--cap-drop",
+            "ALL",
+            "--bind",
+            "/",
+            "/",
+            "--proc",
+            "/proc",
+            "--dev",
+            "/dev",
+        ]
+        if lifetime_fd is not None:
+            arguments += ["--sync-fd", str(lifetime_fd)]
+        arguments += [
+            "--",
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "--parent-pid-namespace",
+            os.readlink("/proc/self/ns/pid"),
+        ]
+    for path in writable:
+        if path.exists():
+            arguments += ["--writable", str(path.resolve())]
+    for path in protected:
+        arguments += ["--protected", str(Path(path).resolve())]
+    return arguments + ["--temporary-directory", str(temporary), "--", *command]
+
+
+if __name__ == "__main__":
+    main()
